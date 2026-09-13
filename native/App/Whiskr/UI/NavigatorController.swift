@@ -1,0 +1,732 @@
+import AppKit
+import MeadowScene
+import SwiftUI
+import WhiskrKit
+import WhiskrMeadow
+
+/// The sidebar (docs/DESIGN.md): the meadow, one blanket per workspace in a column, or with
+/// View › Show Workspaces as List the same workspaces as rows. It shows who needs you and takes you
+/// there; it never takes the keyboard from a terminal, and nothing an agent does moves its camera.
+/// Choosing a workspace yourself (anywhere: a click, a menu, Go to) scrolls its blanket into view; a
+/// request out of view shows as a capsule at that edge; a request whose terminal is not on screen is
+/// answered from a card beside its cat. ⌥⌘0 puts the keyboard here: arrows, Return, Space, Esc.
+final class NavigatorController: NSViewController {
+    let meadow: MeadowView
+    private let workbench: Workbench
+    private let list: NSHostingView<NavigatorList>
+    private let note = HoverNote()
+    private let hint = NSTextField(labelWithString: "")
+    /// With nothing open, the meadow is the welcome: the Start page on a card over empty ground.
+    private let welcome: NSHostingView<StartCard>
+    private var observers: [Observing] = []
+    private var scene: SceneSnapshot?
+    private lazy var answerCard = AnswerCardController(workbench: workbench)
+    /// The "↑ 1 needs you" capsules at the meadow's edges.
+    private let edges = MeadowEdges()
+    private var capsules: NSHostingView<EdgeCapsules>?
+    /// The workspace last shown, so a change of workspace (always yours) brings its blanket into view.
+    private var shownWorkspace: UUID?
+
+    private static let cameraKey = "meadowCamera"
+    /// Set once a cat has ever appeared: the first-run hint never comes back.
+    private static let hintKey = "sawFirstCat"
+
+    var kind: WindowLayout.Navigator = .meadow {
+        didSet { if isViewLoaded { showKind() } }
+    }
+
+    init(workbench: Workbench) {
+        self.workbench = workbench
+        meadow = MeadowView(frame: NSRect(x: 0, y: 0, width: 300, height: 800))
+        list = NSHostingView(rootView: NavigatorList(workbench: workbench))
+        welcome = NSHostingView(rootView: StartCard(workbench: workbench))
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("NavigatorController is created in code")
+    }
+
+    override func loadView() {
+        let container = DropView()
+        container.onFolders = { [weak self] urls in urls.forEach { self?.workbench.open(folder: $0.path) } }
+        container.onAppearance = { [weak self] in self?.applySettings() }
+        container.onTab = { [weak self] id, point in self?.dropped(tab: id, at: point) ?? false }
+        meadow.onKeyDown = { [weak self] event in self?.key(event) ?? false }
+        meadow.onViewChanged = { [weak self] in self?.updateEdges() }
+        meadow.setAccessibilityLabel(String(localized: "Workspaces", comment: "Accessibility label of the sidebar's meadow"))
+        meadow.takesKeyboardFocus = false
+        meadow.onSelect = { [weak self] item in self?.chose(item) }
+        meadow.onHover = { [weak self] item in self?.hovered(item) }
+        meadow.onContextMenu = { [weak self] item in self?.menu(for: item) }
+        hint.font = .systemFont(ofSize: 11)
+        hint.textColor = .labelColor
+        hint.alignment = .center
+        // `claude` in the command's own type, as on the Start page.
+        hint.attributedStringValue = Self.codeStyled(AttributedString(localized: "Type `claude` in a terminal and your cat appears here.",
+                                                                      comment: "First-run hint under the first blanket (Markdown: `claude` is the command)"),
+                                                     font: .systemFont(ofSize: 11))
+        hint.maximumNumberOfLines = 2
+        hint.lineBreakMode = .byWordWrapping
+        hint.drawsBackground = false
+        // The hint sits on a small solid pill so it reads on grass by day and by night.
+        let pill = HintPill(label: hint)
+        for part in [meadow, list, pill] as [NSView] {
+            part.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(part)
+        }
+        let capsules = NSHostingView(rootView: EdgeCapsules(edges: edges) { [weak self] id in
+            self?.meadow.reveal(.blanket(id.uuidString))
+        })
+        capsules.translatesAutoresizingMaskIntoConstraints = false
+        capsules.sizingOptions = []
+        container.addSubview(capsules)
+        self.capsules = capsules
+        welcome.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(welcome)
+        container.addSubview(note)
+        NSLayoutConstraint.activate([
+            meadow.topAnchor.constraint(equalTo: container.topAnchor),
+            meadow.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            meadow.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            meadow.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            list.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+            list.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            list.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            list.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            pill.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            pill.widthAnchor.constraint(lessThanOrEqualTo: container.widthAnchor, constant: -32),
+            pill.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -18),
+            welcome.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            welcome.centerYAnchor.constraint(equalTo: container.centerYAnchor, constant: 24),
+            capsules.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+            capsules.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            capsules.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            capsules.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+        ])
+        container.registerForDraggedTypes([.fileURL, TabDrag.pasteboardType])
+        view = container
+        showKind()
+        observers.append(Observing { [weak self] in
+            guard let self else { return }
+            self.sceneChanged(self.workbench.scene)
+        })
+        observers.append(Observing { [weak self] in self?.applySettings() })
+        // One terminal's program messaging another's (`paw`): their cats act it out.
+        workbench.onPassed = { [weak self] message in self?.passed(message) }
+    }
+
+    private func showKind() {
+        meadow.isHidden = kind != .meadow
+        list.isHidden = kind != .list
+        updateHint()
+        if kind != .meadow { note.hide() }
+    }
+
+    // MARK: The model, into the meadow
+
+    private func sceneChanged(_ snapshot: SceneSnapshot) {
+        guard snapshot != scene else { return }
+        scene = snapshot
+        meadow.world = MeadowMapping.world(snapshot, accountColors: Colors.accountColors, machineName: String(localized: "This Mac"))
+        // The current workspace is ringed; the camera stays where you left it.
+        let ring = MeadowMapping.selection(in: snapshot)
+        if meadow.selection != ring { meadow.selection = ring }
+        if !AppPlaces.defaults.bool(forKey: Self.hintKey), snapshot.spaces.contains(where: { $0.blankets.contains { $0.panes.contains { if case .agent = $0.kind { true } else { false } } } }) {
+            AppPlaces.defaults.set(true, forKey: Self.hintKey)
+        }
+        // Only you change the workspace shown (§6.5), so following it never moves the camera on its own.
+        if let selected = snapshot.selectedSpace, selected != shownWorkspace {
+            let first = shownWorkspace == nil
+            shownWorkspace = selected
+            if !first { meadow.reveal(.blanket(selected.uuidString)) }
+        }
+        updateHint()
+        updateEdges()
+        updateAccessibility(snapshot)
+    }
+
+    /// Inline Markdown text for an AppKit label: code spans in the monospaced system font, the rest in
+    /// `font`, centred, in the label colour.
+    static func codeStyled(_ text: AttributedString, font: NSFont) -> NSAttributedString {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let result = NSMutableAttributedString()
+        for run in text.runs {
+            let code = run.inlinePresentationIntent?.contains(.code) == true
+            result.append(NSAttributedString(string: String(text[run.range].characters), attributes: [
+                .font: code ? NSFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular) : font,
+                .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph,
+            ]))
+        }
+        return result
+    }
+
+    /// Workspaces with a request or an error whose blanket is out of view, by edge.
+    private func updateEdges() {
+        guard let scene, kind == .meadow, !meadow.isHiddenOrHasHiddenAncestor else {
+            edges.set(above: [], below: [])
+            return
+        }
+        let waiting = Set(scene.spaces.filter { $0.status == .blocked }.map(\.id.uuidString))
+        let out = meadow.blanketsOutOfView
+        edges.set(above: out.above.filter(waiting.contains).compactMap(UUID.init(uuidString:)),
+                  below: out.below.filter(waiting.contains).compactMap(UUID.init(uuidString:)))
+    }
+
+    /// The one line that teaches where cats come from, until the first one has come.
+    private func updateHint() {
+        let welcoming = workbench.workspaces.isEmpty
+        if welcome.isHidden == welcoming {
+            welcome.isHidden = !welcoming
+            // The last workspace closed: the keyboard goes to the card, as at launch (↑ ↓ and Return).
+            if welcoming { view.window?.makeFirstResponder(welcome) }
+        }
+        // Not beside a Start page, which says the same.
+        let onlyStart = workbench.workspaces.allSatisfy(workbench.isUnusedStart)
+        hint.superview?.isHidden = kind != .meadow || AppPlaces.defaults.bool(forKey: Self.hintKey) || onlyStart
+    }
+
+    private func applySettings() {
+        let store = WorldStore.shared
+        let variant = ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(view.effectiveAppearance))
+        let accent = NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? .systemBlue
+        let chrome = MeadowMapping.chrome(variant, focus: (Double(accent.redComponent), Double(accent.greenComponent), Double(accent.blueComponent)))
+        let settings = MeadowMapping.settings(store.settings, weather: store.weather, chrome: chrome)
+        if meadow.settings != settings { meadow.settings = settings }
+    }
+
+    // MARK: Choosing
+
+    private func chose(_ item: MeadowItem?) {
+        guard let item, let target = MeadowMapping.target(of: item) else {
+            // Grass chooses nothing: a workspace is always selected.
+            meadow.selection = scene.flatMap(MeadowMapping.selection(in:))
+            return
+        }
+        switch target {
+        case .blanket(let id): workbench.selectBlanket(id)
+        case .pane(let id, nil) where !workbench.isVisible(id):
+            // A request whose terminal is not on screen: answered from a card beside the cat (§7).
+            if let request = workbench.openRequest(pane: id), let rect = meadow.screenRect(of: item) {
+                answerCard.show(request, relativeTo: besideMeadow(rect), of: meadow)
+            } else {
+                workbench.selectPane(id, agent: nil)
+            }
+        case .pane(let id, let agent): workbench.selectPane(id, agent: agent)
+        }
+    }
+
+    /// Opens the answer card for a pane's request, beside its cat (Debug, and the card's own tests).
+    func showAnswerCard(pane id: UUID) {
+        guard let request = workbench.openRequest(pane: id), let rect = meadow.screenRect(of: .cat(blanket: blanketID(of: id) ?? "", agent: id.uuidString)) else { return }
+        answerCard.show(request, relativeTo: besideMeadow(rect), of: meadow)
+    }
+
+    /// The card opens over the terminals, never over the meadow (§7): it points from the meadow's edge,
+    /// level with the cat.
+    private func besideMeadow(_ cat: NSRect) -> NSRect {
+        NSRect(x: cat.minX, y: cat.minY, width: max(1, meadow.bounds.maxX - cat.minX - 2), height: cat.height)
+    }
+
+    private func blanketID(of pane: UUID) -> String? {
+        if let place = workbench.workspace(of: pane) { return place.0.id.uuidString }
+        // A helper terminal with no tab sits on its boss's blanket.
+        return workbench.panes[pane].flatMap { workbench.boss(of: $0) }.flatMap { workbench.workspaceOfBoss($0) }?.0.id.uuidString
+    }
+
+    /// A message, a note or a task passed from one terminal to another: the sender's cat takes it over
+    /// (a helper trots to its boss to report), the receiver's turns to it.
+    private func passed(_ message: PassedMessage) {
+        guard let from = message.from, let fromBlanket = blanketID(of: from), let toBlanket = blanketID(of: message.to) else { return }
+        meadow.passNote(from: .cat(blanket: fromBlanket, agent: MeadowMapping.catID(pane: from, agent: nil)),
+                        to: .cat(blanket: toBlanket, agent: MeadowMapping.catID(pane: message.to, agent: nil)))
+    }
+
+    var answerCardWindow: NSWindow? { answerCard.cardWindow }
+
+    /// A tab dropped on a blanket moves to that workspace (§3).
+    private func dropped(tab id: UUID, at point: NSPoint) -> Bool {
+        let local = meadow.convert(point, from: view)
+        guard let target = workbench.workspaces.first(where: { meadow.screenRect(of: .blanket($0.id.uuidString))?.contains(local) ?? false }),
+              let tab = workbench.workspaces.lazy.flatMap(\.tabs).first(where: { $0.id == id }) else { return false }
+        workbench.move(tab: tab, to: target)
+        return true
+    }
+
+    // MARK: The keyboard in the meadow (§4.5)
+
+    /// ⌥⌘0: the keyboard comes here, on the selected workspace.
+    func takeKeyboard() {
+        guard let window = view.window else { return }
+        if kind == .list {
+            window.makeFirstResponder(list)
+            return
+        }
+        meadow.takesKeyboardFocus = true
+        window.makeFirstResponder(meadow)
+        meadow.keyboardFocus = workbench.selectedWorkspace.map { .blanket($0.id.uuidString) }
+        if let focus = meadow.keyboardFocus { meadow.reveal(focus) }
+    }
+
+    /// The keyboard has gone back to a terminal (Esc, Tab, Return, or a click there).
+    func keyboardLeft() {
+        guard meadow.takesKeyboardFocus else { return }
+        meadow.takesKeyboardFocus = false
+        meadow.keyboardFocus = nil
+        note.hide()
+    }
+
+    private func giveKeyboardBack() {
+        keyboardLeft()
+        if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) }
+    }
+
+    /// ↑ ↓ between workspaces, ← → through the focused workspace's cats, Return as a click, Space for
+    /// its label, Esc or Tab back to the terminal; letters jump to the first workspace named so.
+    private func key(_ event: NSEvent) -> Bool {
+        let order = workbench.workspaces.map { $0.id.uuidString }
+        let focus = meadow.keyboardFocus ?? workbench.selectedWorkspace.map { .blanket($0.id.uuidString) }
+        guard let focus, let at = order.firstIndex(of: focus.blanketID) else { return false }
+        switch event.keyCode {
+        case 126, 125: // ↑ ↓
+            let next = order[min(max(at + (event.keyCode == 125 ? 1 : -1), 0), order.count - 1)]
+            setKeyboardFocus(.blanket(next))
+        case 123, 124: // ← →
+            let items = [MeadowItem.blanket(focus.blanketID)] + cats(in: focus.blanketID)
+            let index = items.firstIndex(of: focus) ?? 0
+            setKeyboardFocus(items[(index + (event.keyCode == 124 ? 1 : -1) + items.count) % items.count])
+        case 36, 76: // Return, Enter
+            keyboardLeft()
+            chose(focus)
+        case 49: // Space
+            hovered(focus, at: meadow.screenRect(of: focus).map { NSPoint(x: $0.midX, y: $0.maxY) })
+        case 53, 48: // Esc, Tab
+            giveKeyboardBack()
+        default:
+            guard let typed = event.charactersIgnoringModifiers?.lowercased(), typed.count == 1, typed.first?.isLetter == true,
+                  let match = workbench.workspaces.first(where: { $0.name.lowercased().hasPrefix(typed) }) else { return false }
+            setKeyboardFocus(.blanket(match.id.uuidString))
+        }
+        return true
+    }
+
+    private func setKeyboardFocus(_ item: MeadowItem) {
+        meadow.keyboardFocus = item
+        meadow.reveal(item)
+        note.hide()
+        NSAccessibility.post(element: meadow, notification: .focusedUIElementChanged)
+    }
+
+    /// The cats on a blanket, in order: each Claude, then its helpers.
+    private func cats(in blanketID: String) -> [MeadowItem] {
+        guard let id = UUID(uuidString: blanketID), let blanket = scene?.blanket(id) else { return [] }
+        return blanket.panes.flatMap { pane -> [MeadowItem] in
+            guard case .agent(_, _, _, let family) = pane.kind else { return [] }
+            let agents = family.isEmpty ? [nil] : family.map { $0.parentID == nil ? nil : $0.id }
+            return agents.map { .cat(blanket: blanketID, agent: MeadowMapping.catID(pane: pane.id, agent: $0)) }
+        }
+    }
+
+    // MARK: VoiceOver (§12)
+
+    /// One element per workspace, read as a sentence, with its frame in the meadow; Press selects it.
+    private func updateAccessibility(_ snapshot: SceneSnapshot) {
+        let elements = snapshot.spaces.map { space -> MeadowAccessibilityElement in
+            let element = MeadowAccessibilityElement(meadow: meadow, item: .blanket(space.id.uuidString)) { [weak self] in
+                self?.workbench.selectBlanket(space.id)
+            }
+            element.setAccessibilityLabel(sentence(for: space))
+            return element
+        }
+        meadow.setAccessibilityChildren(elements)
+        meadow.setAccessibilityRole(.group)
+    }
+
+    /// "shop-web, branch fix-cart. Claude: needs you, wants to run npm test. 2 helpers working."
+    private func sentence(for space: SceneSnapshot.Space) -> String {
+        var parts = [space.name]
+        if let branch = space.blankets.first?.branch { parts[0] += ", " + String(localized: "branch \(branch)", comment: "VoiceOver: a workspace's git branch") }
+        for pane in space.blankets.flatMap(\.panes) {
+            guard case .agent(let status, _, let failed, let family) = pane.kind else { continue }
+            let state = failed ? String(localized: "Error") : status.label
+            let line = family.first?.line ?? ""
+            parts.append(line.isEmpty ? String(localized: "Claude: \(state)") : String(localized: "Claude: \(state), \(line)", comment: "VoiceOver: a Claude's state and what it is doing"))
+            let helpers = max(0, family.count - 1)
+            if helpers > 0 { parts.append(String(localized: "\(helpers) helpers working", comment: "Accessibility: helpers in a workspace")) }
+        }
+        return parts.joined(separator: ". ")
+    }
+
+    // MARK: Pointing
+
+    private func hovered(_ item: MeadowItem?, at spot: NSPoint? = nil) {
+        guard let item, let scene, let hover = MeadowMapping.hover(item, in: scene), let window = view.window else {
+            note.hide()
+            return
+        }
+        let point = spot.map { view.convert($0, from: meadow) } ?? view.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        note.show(title: hover.name, detail: words(for: hover, item: item), at: point, within: view.bounds)
+    }
+
+    /// The hover label, as a sentence (§2.3, §4.4).
+    private func words(for hover: MeadowMapping.Hover, item: MeadowItem) -> String? {
+        switch hover.kind {
+        case .blanket:
+            guard let target = MeadowMapping.target(of: item), case .blanket(let id) = target,
+                  let workspace = workbench.workspaces.first(where: { $0.id == id }) else { return nil }
+            let tabs = workspace.tabs.count
+            return tabs == 1 ? workspace.displayPath : String(localized: "\(workspace.displayPath) · \(tabs) tabs", comment: "Hover label of a workspace: its folder and how many tabs")
+        case .agent(let status, let line):
+            let doing = line.flatMap { $0.isEmpty ? nil : $0 }
+            switch status {
+            case .blocked: return doing.map { String(localized: "Claude · \($0). Click to answer.", comment: "Hover label of a cat with a request") }
+                ?? String(localized: "Claude needs you. Click to answer.")
+            case .done: return String(localized: "Claude · Finished", comment: "Hover label of a cat whose turn finished")
+            default: return doing.map { String(localized: "Claude · \($0)", comment: "Hover label of a working cat: what it is doing") } ?? String(localized: "Claude")
+            }
+        case .helper(let line):
+            return line.isEmpty ? String(localized: "Helper") : String(localized: "Helper · \(line)", comment: "Hover label of a helper: what it is doing")
+        case .lantern(.lit): return String(localized: "Running", comment: "A plain terminal with a command running in it")
+        case .lantern(.dark): return String(localized: "Waiting for a command", comment: "A plain terminal whose shell waits at its prompt")
+        case .lantern(.failed(let code)): return String(localized: "Exited with code \(code)")
+        }
+    }
+
+    // MARK: Menus
+
+    /// Right-click in the meadow (§4.4).
+    private func menu(for item: MeadowItem?) -> NSMenu? {
+        let menu = NSMenu()
+        func add(_ title: String, _ action: @escaping () -> Void) {
+            menu.addItem(closureMenuItem(title: title, action: action))
+        }
+        guard let item, let target = MeadowMapping.target(of: item) else {
+            add(String(localized: "New Workspace")) { [weak self] in self?.workbench.newWorkspace() }
+            add(String(localized: "Open Folder…")) { NSApp.sendAction(#selector(MainWindowController.openFolder(_:)), to: nil, from: nil) }
+            return menu
+        }
+        switch target {
+        case .blanket(let id):
+            guard let workspace = workbench.workspaces.first(where: { $0.id == id }) else { return nil }
+            add(String(localized: "New Tab")) { [weak self] in
+                self?.workbench.select(workspace: workspace)
+                self?.workbench.newTab()
+            }
+            add(String(localized: "Rename Workspace…")) { [weak self] in
+                self?.workbench.select(workspace: workspace)
+                self?.workbench.renamingWorkspaceID = workspace.id
+            }
+            menu.addItem(.separator())
+            WorktreeMenu.add(to: menu, workbench: workbench, workspace: workspace)
+            add(String(localized: "Reveal in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: workspace.folder)]) }
+            add(String(localized: "Copy Path")) {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(workspace.folder, forType: .string)
+            }
+            menu.addItem(.separator())
+            add(String(localized: "Close Workspace")) { [weak self] in
+                self?.workbench.select(workspace: workspace)
+                NSApp.sendAction(#selector(MainWindowController.closeWorkspace(_:)), to: nil, from: nil)
+            }
+        case .pane(let id, let agent):
+            guard let pane = workbench.panes[id] else { return nil }
+            if agent == nil, pane.origin != nil {
+                // A terminal a Claude started (`paw run`): look at it, give it a tab, or stop it.
+                add(String(localized: "Show Terminal")) { [weak self] in self?.workbench.selectPane(id) }
+                if workbench.isLooseHelper(pane) {
+                    add(String(localized: "Keep as Tab")) { [weak self] in self?.workbench.keepAsTab(id) }
+                }
+                if let boss = workbench.boss(of: pane) {
+                    add(String(localized: "Go to Boss")) { [weak self] in self?.workbench.focus(pane: boss.id) }
+                }
+                if pane.agentRunning, workbench.openRequest(pane: id) != nil {
+                    add(String(localized: "Answer…")) { [weak self] in self?.showAnswerCard(pane: id) }
+                }
+                if let address = pane.address {
+                    add(String(localized: "Copy Address")) {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(address, forType: .string)
+                    }
+                }
+                menu.addItem(.separator())
+                add(String(localized: "Stop", comment: "A helper terminal's menu: ends it")) { [weak self] in self?.workbench.stopHelper(id) }
+            } else if agent == nil {
+                add(String(localized: "Go to Pane")) { [weak self] in self?.workbench.focus(pane: id) }
+                if pane.agentRunning {
+                    if workbench.openRequest(pane: id) != nil {
+                        add(String(localized: "Answer…")) { [weak self] in self?.showAnswerCard(pane: id) }
+                    }
+                    add(String(localized: "Interrupt")) { pane.interrupt() }
+                    add(workbench.pinnedPanes.contains(id) ? String(localized: "Unpin Claude") : String(localized: "Pin Claude")) { [weak self] in
+                        self?.workbench.togglePin(pane: id)
+                    }
+                    if workbench.canMarkUnread(pane: id) {
+                        add(String(localized: "Mark as Unread")) { [weak self] in self?.workbench.markUnread(pane: id) }
+                    }
+                    if let id = pane.sessionID, let command = ClaudeResume.resumeCommand(sessionID: id, account: pane.sessionConfigDir.map { workbench.account(configDir: $0) }) {
+                        add(String(localized: "Copy Resume Command")) {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(command, forType: .string)
+                        }
+                    }
+                }
+            } else {
+                add(String(localized: "Show Story")) { [weak self] in self?.workbench.selectPane(id, agent: agent) }
+                add(String(localized: "Go to Boss")) { [weak self] in self?.workbench.focus(pane: id) }
+            }
+        }
+        return menu
+    }
+
+    // MARK: Saving and restoring
+
+    func saveState() {
+        let angle = meadow.cameraAngle
+        AppPlaces.defaults.set([Double(angle.bearing), Double(angle.pitch)], forKey: Self.cameraKey)
+    }
+
+    /// After the workbench has brought back its workspaces: the camera at the angle it was left at.
+    func restore() {
+        _ = view
+        scene = nil
+        sceneChanged(workbench.scene)
+        if let angle = AppPlaces.defaults.array(forKey: Self.cameraKey) as? [Double], angle.count == 2 {
+            meadow.turn(toBearing: Float(angle[0]), pitch: Float(angle[1]))
+        }
+        meadow.frame(nil, besidePanelWidth: 0, animated: false)
+    }
+}
+
+/// A menu item that runs a closure. The closure's holder is the item's target, kept alive by the item.
+func closureMenuItem(title: String, action run: @escaping () -> Void) -> NSMenuItem {
+    let holder = MenuAction(run)
+    let item = NSMenuItem(title: title, action: #selector(MenuAction.fire), keyEquivalent: "")
+    item.target = holder
+    item.representedObject = holder
+    return item
+}
+
+final class MenuAction: NSObject {
+    private let run: () -> Void
+    init(_ run: @escaping () -> Void) { self.run = run }
+    @objc func fire() { run() }
+}
+
+/// A view that opens folders dropped on it as workspaces (and, in the meadow, takes a tab dropped on a
+/// blanket).
+final class DropView: NSView {
+    var onFolders: (([URL]) -> Void)?
+    var onAppearance: (() -> Void)?
+    /// A tab dropped at a point in this view; returns whether it was taken.
+    var onTab: ((UUID, NSPoint) -> Bool)?
+
+    private func folders(_ info: NSDraggingInfo) -> [URL] {
+        let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        return urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+    }
+
+    private func tab(_ info: NSDraggingInfo) -> UUID? {
+        guard onTab != nil else { return nil }
+        return info.draggingPasteboard.string(forType: TabDrag.pasteboardType).flatMap(UUID.init(uuidString:))
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        if tab(sender) != nil { return .move }
+        return folders(sender).isEmpty ? [] : .link
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        draggingEntered(sender)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        if let tab = tab(sender) { return onTab?(tab, convert(sender.draggingLocation, from: nil)) ?? false }
+        let found = folders(sender)
+        guard !found.isEmpty else { return false }
+        onFolders?(found)
+        return true
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        onAppearance?()
+    }
+}
+
+/// The name label shown while pointing at a blanket, cat or lantern: solid, in the theme's ink, beside
+/// the pointer and never under it.
+final class HoverNote: NSView {
+    private let title = NSTextField(labelWithString: "")
+    private let detail = NSTextField(labelWithString: "")
+    private static let inset = NSEdgeInsets(top: 6, left: 10, bottom: 7, right: 11)
+    private static let widest: CGFloat = 280
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.shadowOpacity = 0.18
+        layer?.shadowRadius = 10
+        layer?.shadowOffset = CGSize(width: 0, height: -3)
+        title.font = .systemFont(ofSize: 12, weight: .semibold)
+        detail.font = .systemFont(ofSize: 11.5)
+        for label in [title, detail] {
+            label.lineBreakMode = .byTruncatingTail
+            label.maximumNumberOfLines = 1
+            addSubview(label)
+        }
+        isHidden = true
+        setAccessibilityElement(false)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("HoverNote is created in code")
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    func show(title text: String, detail words: String?, at point: NSPoint, within area: NSRect) {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = Colors.text.cgColor
+            layer?.shadowColor = NSColor.black.cgColor
+        }
+        title.textColor = Colors.surface
+        detail.textColor = Colors.surface.withAlphaComponent(0.78)
+        title.stringValue = text
+        detail.stringValue = words ?? ""
+        detail.isHidden = (words ?? "").isEmpty
+        let inset = Self.inset
+        let titleSize = title.fittingSize
+        let detailSize = detail.isHidden ? .zero : detail.fittingSize
+        let textWidth = min(max(titleSize.width, detailSize.width), Self.widest - inset.left - inset.right)
+        let height = inset.top + titleSize.height + (detail.isHidden ? 0 : 1 + detailSize.height) + inset.bottom
+        let width = textWidth + inset.left + inset.right
+        detail.frame = NSRect(x: inset.left, y: inset.bottom, width: textWidth, height: detailSize.height)
+        title.frame = NSRect(x: inset.left, y: height - inset.top - titleSize.height, width: textWidth, height: titleSize.height)
+        var origin = NSPoint(x: point.x + 14, y: point.y + 14)
+        if origin.x + width > area.maxX - 8 { origin.x = point.x - 14 - width }
+        if origin.y + height > area.maxY - 8 { origin.y = point.y - 18 - height }
+        origin.x = max(area.minX + 8, origin.x)
+        origin.y = max(area.minY + 8, origin.y)
+        frame = NSRect(origin: origin, size: NSSize(width: width, height: height))
+        isHidden = false
+    }
+
+    func hide() {
+        isHidden = true
+    }
+}
+
+/// A label on a small solid rounded backing in the window's own colour.
+final class HintPill: NSView {
+    init(label: NSTextField) {
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 9
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 5),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -5),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("HintPill is created in code")
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.backgroundColor = Colors.surface.withAlphaComponent(0.94).cgColor
+    }
+}
+
+/// The workspaces with a request out of the meadow's view, at each edge.
+@MainActor @Observable
+final class MeadowEdges {
+    private(set) var above: [UUID] = []
+    private(set) var below: [UUID] = []
+
+    func set(above: [UUID], below: [UUID]) {
+        if self.above != above { self.above = above }
+        if self.below != below { self.below = below }
+    }
+}
+
+/// "↑ 1 needs you" at the top edge, "↓ 2 need you" at the bottom (§4.1): vermillion text on the surface,
+/// only while a blanket with a request is out of view; a click scrolls to the nearest.
+struct EdgeCapsules: View {
+    let edges: MeadowEdges
+    let reveal: (UUID) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack {
+            if let nearest = edges.above.last {
+                capsule(arrow: "arrow.up", count: edges.above.count) { reveal(nearest) }
+                    .padding(.top, 12)
+                    .transition(.opacity)
+            }
+            Spacer()
+            if let nearest = edges.below.first {
+                capsule(arrow: "arrow.down", count: edges.below.count) { reveal(nearest) }
+                    .padding(.bottom, 16)
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: edges.above.count + edges.below.count * 100)
+    }
+
+    private func capsule(arrow: String, count: Int, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(String(localized: "\(count) need you", comment: "Meadow edge capsule: requests out of view"), systemImage: arrow)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(StateMark.vermillion)
+                .padding(.horizontal, 12)
+                .frame(height: 24)
+                .background(Capsule().fill(Color.surface))
+                .overlay(Capsule().strokeBorder(Color.line))
+                .shadow(color: .black.opacity(0.14), radius: 6, y: 2)
+                .frame(minHeight: 28)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(String(localized: "Scroll to it"))
+    }
+}
+
+/// A workspace in the meadow as VoiceOver sees it: its sentence, where its blanket is, and Press.
+/// AppKit asks for these on the main thread.
+nonisolated final class MeadowAccessibilityElement: NSAccessibilityElement {
+    private nonisolated(unsafe) weak var meadow: MeadowView?
+    private let item: MeadowItem
+    private let press: @MainActor @Sendable () -> Void
+
+    init(meadow: MeadowView, item: MeadowItem, press: @escaping @MainActor @Sendable () -> Void) {
+        self.meadow = meadow
+        self.item = item
+        self.press = press
+        super.init()
+        setAccessibilityRole(.button)
+        setAccessibilityParent(meadow)
+    }
+
+    override func accessibilityFrame() -> NSRect {
+        let meadow = meadow, item = item
+        return MainActor.assumeIsolated {
+            guard let meadow, let rect = meadow.screenRect(of: item), let window = meadow.window else { return .zero }
+            return window.convertToScreen(meadow.convert(rect, to: nil))
+        }
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        let press = press
+        MainActor.assumeIsolated { press() }
+        return true
+    }
+}

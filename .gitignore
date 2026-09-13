@@ -1,0 +1,40 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Swift Package Manager and Xcode build output (builds go outside the tree; these catch strays)
+.build/
+.swiftpm/
+DerivedData/
+build/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.dSYM/
+*.dSYM.zip
+
+# Packaged downloads (make dist writes outside the tree)
+*.zip
+*.zip.sha256
+*.dmg
+
+# Snapshots and traces from local runs
+*.trace/
+/snapshots/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local working material that is not part of the project
+/design/
+/prototype-web/
+/native/Spikes/
+/native/Scene/NOTES.md
+/native/Scene/Comparisons/

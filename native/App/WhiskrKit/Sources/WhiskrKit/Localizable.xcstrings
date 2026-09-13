@@ -1,0 +1,872 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ is idle": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@は手すきです"
+          }
+        }
+      }
+    },
+    "%@ tokens in its last request": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最後のリクエストで%@トークン"
+          }
+        }
+      }
+    },
+    "%@ tool calls": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ツール呼び出し%@回"
+          }
+        }
+      }
+    },
+    "1 tool call": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ツール呼び出し1回"
+          }
+        }
+      }
+    },
+    "A step failed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステップが失敗しました"
+          }
+        }
+      }
+    },
+    "A teammate is idle": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "チームメイトが手すきです"
+          }
+        }
+      }
+    },
+    "API error: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "APIエラー: %@"
+          }
+        }
+      }
+    },
+    "Added a task: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを追加しました: %@"
+          }
+        }
+      }
+    },
+    "Added the folder %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ「%@」を追加しました"
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可しました"
+          }
+        }
+      }
+    },
+    "An MCP server needs your input": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MCPサーバーが入力を求めています"
+          }
+        }
+      }
+    },
+    "Answer a question": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "質問に答える"
+          }
+        }
+      }
+    },
+    "Approve the plan": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プランを承認"
+          }
+        }
+      }
+    },
+    "Asked you to approve a plan": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プランの承認を求めました"
+          }
+        }
+      }
+    },
+    "Asked you: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あなたに質問しました: %@"
+          }
+        }
+      }
+    },
+    "Automatic notice from Claude Code": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Codeからの自動通知"
+          }
+        }
+      }
+    },
+    "Checked the task list": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクリストを確認しました"
+          }
+        }
+      }
+    },
+    "Claude has a question": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeから質問があります"
+          }
+        }
+      }
+    },
+    "Compacted the conversation": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会話を要約しました"
+          }
+        }
+      }
+    },
+    "Compacting the conversation": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "会話を要約しています"
+          }
+        }
+      }
+    },
+    "Compacting the conversation, as you asked": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "指示どおり会話を要約しています"
+          }
+        }
+      }
+    },
+    "Create or overwrite %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を作成または上書き"
+          }
+        }
+      }
+    },
+    "Edit %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を編集"
+          }
+        }
+      }
+    },
+    "Edited %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を編集しました"
+          }
+        }
+      }
+    },
+    "Editing": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集しています"
+          }
+        }
+      }
+    },
+    "Fetch a page from %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@からページを取得"
+          }
+        }
+      }
+    },
+    "Fetch a web page": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Webページを取得"
+          }
+        }
+      }
+    },
+    "Fetched %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を取得しました"
+          }
+        }
+      }
+    },
+    "Finished": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了"
+          }
+        }
+      }
+    },
+    "Finished a task: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを完了しました: %@"
+          }
+        }
+      }
+    },
+    "Finished the turn": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターンを終えました"
+          }
+        }
+      }
+    },
+    "Handed back its report": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "報告を返しました"
+          }
+        }
+      }
+    },
+    "It did not run.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行されませんでした。"
+          }
+        }
+      }
+    },
+    "It never reported back.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "結果は返ってきませんでした。"
+          }
+        }
+      }
+    },
+    "Launch a helper": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーを起動"
+          }
+        }
+      }
+    },
+    "Launched %@: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を起動しました: %2$@"
+          }
+        }
+      }
+    },
+    "Launched a helper: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーを起動しました: %@"
+          }
+        }
+      }
+    },
+    "Loaded %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を読み込みました"
+          }
+        }
+      }
+    },
+    "Loaded instructions": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "指示を読み込みました"
+          }
+        }
+      }
+    },
+    "Looked at a task": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを確認しました"
+          }
+        }
+      }
+    },
+    "Looked for %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@に合うファイルを探しました"
+          }
+        }
+      }
+    },
+    "Model changed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "モデルが変わりました"
+          }
+        }
+      }
+    },
+    "Model: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "モデル: %@"
+          }
+        }
+      }
+    },
+    "Moved to %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@に移りました"
+          }
+        }
+      }
+    },
+    "Moved to another folder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のフォルダに移りました"
+          }
+        }
+      }
+    },
+    "Not allowed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可されませんでした"
+          }
+        }
+      }
+    },
+    "Prompt": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プロンプト"
+          }
+        }
+      }
+    },
+    "Ran %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を実行しました"
+          }
+        }
+      }
+    },
+    "Read %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を読む"
+          }
+        }
+      }
+    },
+    "Reading": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読んでいます"
+          }
+        }
+      }
+    },
+    "Ready for you": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待機中"
+          }
+        }
+      }
+    },
+    "Removed a task: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを削除しました: %@"
+          }
+        }
+      }
+    },
+    "Reopened a task: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを再開しました: %@"
+          }
+        }
+      }
+    },
+    "Run a command": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンドを実行"
+          }
+        }
+      }
+    },
+    "Running": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行しています"
+          }
+        }
+      }
+    },
+    "Running in the background.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックグラウンドで実行中です。"
+          }
+        }
+      }
+    },
+    "Search the web": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Webを検索"
+          }
+        }
+      }
+    },
+    "Searched for %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を検索しました"
+          }
+        }
+      }
+    },
+    "Searched the web for %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Webで%@を検索しました"
+          }
+        }
+      }
+    },
+    "Searching the web": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Webを検索しています"
+          }
+        }
+      }
+    },
+    "Session ended": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "セッションが終了しました"
+          }
+        }
+      }
+    },
+    "Settings changed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定が変わりました"
+          }
+        }
+      }
+    },
+    "Settings changed: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定が変わりました: %@"
+          }
+        }
+      }
+    },
+    "Started a task: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを始めました: %@"
+          }
+        }
+      }
+    },
+    "Started as %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@として開始しました"
+          }
+        }
+      }
+    },
+    "Started as a helper": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーとして開始しました"
+          }
+        }
+      }
+    },
+    "Started planning": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プランを立て始めました"
+          }
+        }
+      }
+    },
+    "Stopped on an error": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エラーで停止"
+          }
+        }
+      }
+    },
+    "Stopped: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止: %@"
+          }
+        }
+      }
+    },
+    "Task %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスク%@"
+          }
+        }
+      }
+    },
+    "The session ended.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "セッションが終了しました。"
+          }
+        }
+      }
+    },
+    "Thinking": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "考えています"
+          }
+        }
+      }
+    },
+    "Updated a task: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスクを更新しました: %@"
+          }
+        }
+      }
+    },
+    "Updated the to-do list": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ToDoリストを更新しました"
+          }
+        }
+      }
+    },
+    "Use %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を使う"
+          }
+        }
+      }
+    },
+    "Used the %@ skill": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スキル「%@」を使いました"
+          }
+        }
+      }
+    },
+    "Waiting for you": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あなたを待っています"
+          }
+        }
+      }
+    },
+    "Waiting on %lld helpers": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld人のヘルパーを待っています"
+          }
+        }
+      }
+    },
+    "Waiting on a helper": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーを待っています"
+          }
+        }
+      }
+    },
+    "Waiting on a helper · %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーを待っています · %@"
+          }
+        }
+      }
+    },
+    "Wrote %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を書きました"
+          }
+        }
+      }
+    },
+    "and %lld more questions": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかに%lld件の質問"
+          }
+        }
+      }
+    },
+    "and 1 more question": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかに1件の質問"
+          }
+        }
+      }
+    },
+    "from %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@から"
+          }
+        }
+      }
+    },
+    "interrupted": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中断"
+          }
+        }
+      }
+    },
+    "step.read": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を読みました"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

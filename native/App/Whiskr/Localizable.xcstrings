@@ -1,0 +1,6005 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "!": {
+      "shouldTranslate": false
+    },
+    "$ ": {
+      "shouldTranslate": false
+    },
+    "%@ (%@)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@（%2$@）"
+          }
+        }
+      }
+    },
+    "%@ (⌘%lld)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ (⌘%2$lld)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@（⌘%2$lld）"
+          }
+        }
+      }
+    },
+    "%@ has a dark version only, so the app stays dark while it is chosen.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@にはダーク版しかないため、選んでいる間はアプリもダークのままになります。"
+          }
+        }
+      }
+    },
+    "%@ has a light version only, so the app stays light while it is chosen.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@にはライト版しかないため、選んでいる間はアプリもライトのままになります。"
+          }
+        }
+      }
+    },
+    "%@ theme": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@テーマ"
+          }
+        }
+      }
+    },
+    "%@ theme, selected": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@テーマ、選択中"
+          }
+        }
+      }
+    },
+    "%@ · %lld tabs": {
+      "comment": "Hover label of a workspace: its folder and how many tabs",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@ · %lld tab"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@ · %lld tabs"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$lld個のタブ"
+          }
+        }
+      }
+    },
+    "%@ · Changes": {
+      "comment": "Tab title: a file's changes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · 変更"
+          }
+        }
+      }
+    },
+    "%@ · Staged": {
+      "comment": "Tab title: a file's staged changes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · ステージ済み"
+          }
+        }
+      }
+    },
+    "%@ · answer it in the terminal (⌘↩)": {
+      "comment": "Answer card footer when it cannot be answered here",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · ターミナルで答えてください（⌘↩）"
+          }
+        }
+      }
+    },
+    "%@ · ⌘↩ Go to Terminal": {
+      "comment": "Answer card footer",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · ⌘↩ ターミナルへ"
+          }
+        }
+      }
+    },
+    "%@ ×%lld": {
+      "comment": "Story view: a tool and how many times it was used",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ ×%2$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ×%2$lld"
+          }
+        }
+      }
+    },
+    "%@, %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、%2$@"
+          }
+        }
+      }
+    },
+    "%@, %@ · updated %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, %2$@ · updated %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、%2$@ · %3$@に更新"
+          }
+        }
+      }
+    },
+    "%@, %lld changed files": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、変更されたファイル %2$lld 件"
+          }
+        }
+      }
+    },
+    "%@: %@": {
+      "comment": "Dock menu: a workspace and what waits there",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@: %2$@"
+          }
+        }
+      },
+      "shouldTranslate": false
+    },
+    "%@: every open workspace is in this menu (⌥⌘1…9) and in the meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@：開いているワークスペースはすべてこのメニュー（⌥⌘1…9）と草原にあります"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "shouldTranslate": false
+    },
+    "%lld Claudes": {
+      "comment": "Status line: how many Claudes are running",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude %lld件"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claude"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claudes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld Claudes and %lld commands are running. They will stop. Claude conversations reopen where you left them.": {
+      "comment": "Quit and Stop All Terminals alert body: how many Claudes and other programs are running",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%#@claudes@ and %#@commands@ are running. They will stop. Claude conversations reopen where you left them."
+          },
+          "substitutions": {
+            "claudes": {
+              "argNum": 1,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Claude"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg Claudes"
+                    }
+                  }
+                }
+              }
+            },
+            "commands": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg command"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg commands"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude %1$lld件とコマンド%2$lld件が実行中です。これらは停止します。Claudeの会話は中断したところから再開できます。"
+          }
+        }
+      }
+    },
+    "%lld Claudes are running. They will stop; their conversations reopen where you left them.": {
+      "comment": "Quit and Stop All Terminals alert body: only Claudes are running",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claude is running. It will stop; its conversation reopens where you left it."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claudes are running. They will stop; their conversations reopen where you left them."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude %lld件が実行中です。停止されますが、会話は中断したところから再開できます。"
+          }
+        }
+      }
+    },
+    "%lld changed files": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更されたファイル %lld 件"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld changed file"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld changed files"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld commands are running. They will stop.": {
+      "comment": "Quit and Stop All Terminals alert body: programs other than Claude are running",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld command is running. It will stop."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commands are running. They will stop."
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個のコマンドが実行中です。停止されます。"
+          }
+        }
+      }
+    },
+    "%lld commits to pull": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プルするコミット %lld 件"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commit to pull"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commits to pull"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld commits to push": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プッシュするコミット %lld 件"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commit to push"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld commits to push"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld helpers working": {
+      "comment": "Accessibility: helpers in a workspace",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパー%lld件が作業中"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld helper working"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld helpers working"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld need you": {
+      "comment": "Meadow edge capsule: requests out of view\nStatus line: how many requests wait",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld件が応答待ち"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld needs you"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld need you"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld to-dos done": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld to-dos done"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To-do %2$lld件中%1$lld件完了"
+          }
+        }
+      }
+    },
+    "%lld pt": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld pt"
+          }
+        }
+      }
+    },
+    "%lld spaces": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スペース %lld 個"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld space"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld spaces"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld terminals started by a different version of Whiskr keep running in the background. This version cannot show them. They stay until their programs end; open that version to see them again.": {
+      "comment": "Launch notice: how many terminals an incompatible session host holds",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のバージョンの Whiskr で開始したターミナル %lld 個がバックグラウンドで実行を続けています。このバージョンでは表示できません。プログラムが終了するまで残ります。再び表示するには、そのバージョンを開いてください。"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld terminal started by a different version of Whiskr keeps running in the background. This version cannot show it. It stays until its program ends; open that version to see it again."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld terminals started by a different version of Whiskr keep running in the background. This version cannot show them. They stay until their programs end; open that version to see them again."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld/%2$lld"
+          }
+        }
+      },
+      "shouldTranslate": false
+    },
+    "+%lld helpers": {
+      "comment": "Sidebar list: how many helpers are working",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ヘルパー%lld件"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld helper"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld helpers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "> ": {
+      "shouldTranslate": false
+    },
+    "A binary file: there is no text to compare.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バイナリファイルのため、比較するテキストがありません。"
+          }
+        }
+      }
+    },
+    "A loaf, then curled up asleep after ten minutes.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "香箱座り。10分たつと丸くなって眠ります。"
+          }
+        }
+      }
+    },
+    "A new workspace, starting on the Start page. Every other workspace stays open.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいワークスペースをスタートページから始めます。ほかのワークスペースは開いたままです。"
+          }
+        }
+      }
+    },
+    "A new worktree of the repository, opened as a workspace of its own.": {
+      "comment": "Help page: worktrees",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リポジトリの新しいワークツリーを、独立したワークスペースとして開きます。"
+          }
+        }
+      }
+    },
+    "A program is still running. Closing stops it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プログラムがまだ実行中です。閉じると停止します。"
+          }
+        }
+      }
+    },
+    "A tab by its number.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "番号でタブを選びます。"
+          }
+        }
+      }
+    },
+    "A tool needs your input": {
+      "comment": "Answer card: an MCP form",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ツールが入力を求めています"
+          }
+        }
+      }
+    },
+    "A workspace by its number. The workspace button at the start of the tab bar lists them all.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "番号でワークスペースを選びます。タブバー先頭のワークスペースボタンに一覧があります。"
+          }
+        }
+      }
+    },
+    "About %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@について"
+          }
+        }
+      }
+    },
+    "Actual Size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実際のサイズ"
+          }
+        }
+      }
+    },
+    "Added line %lld: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加された %1$lld 行目: %2$@"
+          }
+        }
+      }
+    },
+    "After a restart, a pane that was running Claude runs claude --resume with its conversation, and waits for you.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再起動後、Claudeを実行していたペインは claude --resume でその会話を開き、あなたを待ちます。"
+          }
+        }
+      }
+    },
+    "Alerts": {
+      "comment": "Settings pane",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知"
+          }
+        }
+      }
+    },
+    "Alerts paused until %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@まで通知を一時停止中"
+          }
+        }
+      }
+    },
+    "Allow": {
+      "comment": "Notification button: answers Claude's permission request with Yes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可"
+          }
+        }
+      }
+    },
+    "Always Day": {
+      "comment": "Settings › Meadow › Time of day",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常に昼"
+          }
+        }
+      }
+    },
+    "Always Night": {
+      "comment": "Settings › Meadow › Time of day",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "常に夜"
+          }
+        }
+      }
+    },
+    "Answer…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "答える…"
+          }
+        }
+      }
+    },
+    "Any menu command can have a different shortcut: System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どのメニューコマンドにも別のショートカットを割り当てられます：システム設定 › キーボード › キーボードショートカット › アプリのショートカット。"
+          }
+        }
+      }
+    },
+    "App": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリ"
+          }
+        }
+      }
+    },
+    "At %@, this file is too large to open here.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルは %@ あり、ここで開くには大きすぎます。"
+          }
+        }
+      }
+    },
+    "Back to Terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルに戻る"
+          }
+        }
+      }
+    },
+    "Back to “%@”": {
+      "comment": "Go menu: ⌘J returns to where you were",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”に戻る"
+          }
+        }
+      }
+    },
+    "Background": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背景"
+          }
+        }
+      }
+    },
+    "Bigger Text": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストを大きく"
+          }
+        }
+      }
+    },
+    "Blinking cursor": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カーソルを点滅"
+          }
+        }
+      }
+    },
+    "Both": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "両方"
+          }
+        }
+      }
+    },
+    "Bounce the Dock icon for requests": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リクエストがあるときDockアイコンを弾ませる"
+          }
+        }
+      }
+    },
+    "Branch": {
+      "comment": "New Worktree: the branch field",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブランチ"
+          }
+        }
+      }
+    },
+    "Branch %@": {
+      "comment": "Status line: the git branch's tooltip",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブランチ %@"
+          }
+        }
+      }
+    },
+    "Branch for the new worktree": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいワークツリーのブランチ"
+          }
+        }
+      }
+    },
+    "Bring All to Front": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてを手前に移動"
+          }
+        }
+      }
+    },
+    "CR (Classic Mac)": {
+      "comment": "Line endings menu",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CR（クラシック Mac）"
+          }
+        }
+      }
+    },
+    "CRLF (Windows)": {
+      "comment": "Line endings menu",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CRLF（Windows）"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "Changes": {
+      "comment": "Diff header: unstaged changes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更"
+          }
+        }
+      }
+    },
+    "Changes to %@": {
+      "comment": "Accessibility: the diff",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ の変更"
+          }
+        }
+      }
+    },
+    "Choose": {
+      "comment": "Folder picker's button for the worktrees folder",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択"
+          }
+        }
+      }
+    },
+    "Choose…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択…"
+          }
+        }
+      }
+    },
+    "Claude": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude"
+          }
+        }
+      }
+    },
+    "Claude Code": {
+      "comment": "A pane's title while Claude Code runs in it and its chat has no name yet",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Code"
+          }
+        }
+      }
+    },
+    "Claude Code's ⌥P, ⌥T and word moves need Option as Meta; the other Option key still types characters such as é and ©.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude Codeの⌥P、⌥T、単語移動にはOptionをMetaとして使う必要があります。もう一方のOptionキーでは、éや©などの文字を入力できます。"
+          }
+        }
+      }
+    },
+    "Claude asks:": {
+      "comment": "Answer card: a question",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeからの質問："
+          }
+        }
+      }
+    },
+    "Claude has a plan for you to approve": {
+      "comment": "Answer card",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeがプランの承認を求めています"
+          }
+        }
+      }
+    },
+    "Claude is working in %lld tabs. Closing stops them; you can resume the conversations later.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが%lld個のタブで作業中です。閉じると停止しますが、会話はあとで再開できます。"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Claude is working in %lld tab. Closing stops it; you can resume the conversation later."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Claude is working in %lld tabs. Closing stops them; you can resume the conversations later."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Claude needs you": {
+      "comment": "Notification body: a request with no detail",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが応答を待っています"
+          }
+        }
+      }
+    },
+    "Claude needs you. Click to answer.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが応答を待っています。クリックして答えます。"
+          }
+        }
+      }
+    },
+    "Claude wants to edit a file": {
+      "comment": "Answer card",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeがファイルを編集しようとしています"
+          }
+        }
+      }
+    },
+    "Claude wants to fetch a web page": {
+      "comment": "Answer card",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ClaudeがWebページを取得しようとしています"
+          }
+        }
+      }
+    },
+    "Claude wants to run a command": {
+      "comment": "Answer card",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeがコマンドを実行しようとしています"
+          }
+        }
+      }
+    },
+    "Claude wants to use %@": {
+      "comment": "Answer card: another tool",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが%@を使おうとしています"
+          }
+        }
+      }
+    },
+    "Claude · %@": {
+      "comment": "Hover label of a working cat: what it is doing",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude · %@"
+          }
+        }
+      }
+    },
+    "Claude · %@. Click to answer.": {
+      "comment": "Hover label of a cat with a request",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude · %@。クリックして答えます。"
+          }
+        }
+      }
+    },
+    "Claude · Finished": {
+      "comment": "Hover label of a cat whose turn finished",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude · 完了"
+          }
+        }
+      }
+    },
+    "Claude: %@": {
+      "comment": "Accessibility: one Claude in a workspace and its state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude：%@"
+          }
+        }
+      }
+    },
+    "Claude: %@, %@": {
+      "comment": "VoiceOver: a Claude's state and what it is doing",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Claude: %1$@, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude：%1$@、%2$@"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "comment": "Edit menu: clears the terminal's scrollback\nWeather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消去"
+          }
+        }
+      }
+    },
+    "Clear Menu": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メニューを消去"
+          }
+        }
+      }
+    },
+    "Close": {
+      "comment": "File menu: closes the focused pane",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じる"
+          }
+        }
+      }
+    },
+    "Close Other Tabs": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかのタブを閉じる"
+          }
+        }
+      }
+    },
+    "Close Pane": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを閉じる"
+          }
+        }
+      }
+    },
+    "Close Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを閉じる"
+          }
+        }
+      }
+    },
+    "Close Tab (⌥⌘W)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを閉じる（⌥⌘W）"
+          }
+        }
+      }
+    },
+    "Close Window": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウインドウを閉じる"
+          }
+        }
+      }
+    },
+    "Close Workspace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースを閉じる"
+          }
+        }
+      }
+    },
+    "Close “%@”?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を閉じますか？"
+          }
+        }
+      }
+    },
+    "Closed · Undo ⌘Z": {
+      "comment": "Note while a closed tab can be brought back",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じました · ⌘Zで取り消す"
+          }
+        }
+      }
+    },
+    "Cloudy": {
+      "comment": "Weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "曇り"
+          }
+        }
+      }
+    },
+    "Collapse All Folders": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのフォルダを閉じる"
+          }
+        }
+      }
+    },
+    "Command Palette": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンドパレット"
+          }
+        }
+      }
+    },
+    "Command Palette…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンドパレット…"
+          }
+        }
+      }
+    },
+    "Commands": {
+      "comment": "Palette section: menu commands",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンド"
+          }
+        }
+      }
+    },
+    "Commit": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コミット"
+          }
+        }
+      }
+    },
+    "Commit %lld Files": {
+      "comment": "Commit button with the number of staged files",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 件のファイルをコミット"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Commit %lld File"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Commit %lld Files"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Commit message": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コミットメッセージ"
+          }
+        }
+      }
+    },
+    "Commit the staged changes (⌘↩)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステージ済みの変更をコミット（⌘↩）"
+          }
+        }
+      }
+    },
+    "Committing…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コミット中…"
+          }
+        }
+      }
+    },
+    "Compare with HEAD": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HEAD と比較"
+          }
+        }
+      }
+    },
+    "Copy": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピー"
+          }
+        }
+      }
+    },
+    "Copy Address": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アドレスをコピー"
+          }
+        }
+      }
+    },
+    "Copy Path": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "パスをコピー"
+          }
+        }
+      }
+    },
+    "Copy Relative Path": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "相対パスをコピー"
+          }
+        }
+      }
+    },
+    "Copy Resume Command": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再開コマンドをコピー"
+          }
+        }
+      }
+    },
+    "Could not find where you are yet; trying again in a while.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地がまだわかりません。しばらくしてからもう一度試します。"
+          }
+        }
+      }
+    },
+    "Could not save the theme: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマを保存できませんでした：%@"
+          }
+        }
+      }
+    },
+    "Current Folder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在のフォルダ"
+          }
+        }
+      }
+    },
+    "Cursor": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カーソル"
+          }
+        }
+      }
+    },
+    "Cut": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カット"
+          }
+        }
+      }
+    },
+    "Dark": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダーク"
+          }
+        }
+      }
+    },
+    "Delete %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を削除"
+          }
+        }
+      }
+    },
+    "Deny": {
+      "comment": "Notification button: refuses Claude's permission request",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拒否"
+          }
+        }
+      }
+    },
+    "Detached at %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ で切り離し中"
+          }
+        }
+      }
+    },
+    "Discard Changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更を破棄"
+          }
+        }
+      }
+    },
+    "Discard Changes…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更を破棄…"
+          }
+        }
+      }
+    },
+    "Discard the changes to “%@”?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”への変更を破棄しますか？"
+          }
+        }
+      }
+    },
+    "Do you want to save the changes you made to %lld files?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個のファイルに加えた変更を保存しますか？"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Do you want to save the changes you made to %lld file?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Do you want to save the changes you made to %lld files?"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Do you want to save the changes you made to “%@”?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”に加えた変更を保存しますか？"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了"
+          }
+        }
+      }
+    },
+    "Don’t Save": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存しない"
+          }
+        }
+      }
+    },
+    "Duplicate and Edit…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複製して編集…"
+          }
+        }
+      }
+    },
+    "Each file keeps its own indentation, encoding and line endings: they are read from it and written back the same way. The tab width is for files that do not say.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インデント、文字エンコーディング、改行コードはファイルごとに読み取られ、同じ形で書き戻されます。タブの幅は、それらが分からないファイルに使われます。"
+          }
+        }
+      }
+    },
+    "Each workspace is a picnic blanket. Each Claude is a black cat on it; small cats beside it are its helpers.": {
+      "comment": "Help page: the one-line explanation",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースはそれぞれピクニックシートです。Claudeはその上の黒猫で、そばの小さな猫はそのヘルパーです。"
+          }
+        }
+      }
+    },
+    "Each worktree is a checkout of another branch, in <folder>/<repository>/<branch>. It opens as a workspace of its own, beside its repository's.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークツリーは別のブランチのチェックアウトで、<フォルダ>/<リポジトリ>/<ブランチ> に作られます。リポジトリの隣に、専用のワークスペースとして開きます。"
+          }
+        }
+      }
+    },
+    "Edit": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集"
+          }
+        }
+      }
+    },
+    "Edit Colors…": {
+      "comment": "Settings › Terminal: edits the theme's colours",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カラーを編集…"
+          }
+        }
+      }
+    },
+    "Edited": {
+      "comment": "File header: the file has unsaved changes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集済み"
+          }
+        }
+      }
+    },
+    "Editor": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタ"
+          }
+        }
+      }
+    },
+    "Editor, %@": {
+      "comment": "Accessibility: the editor and its file",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタ、%@"
+          }
+        }
+      }
+    },
+    "Enter Full Screen": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フルスクリーンにする"
+          }
+        }
+      }
+    },
+    "Error": {
+      "comment": "Alert sound",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エラー"
+          }
+        }
+      }
+    },
+    "Esc": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esc"
+          }
+        }
+      }
+    },
+    "Every command, with its key.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのコマンドとそのキー。"
+          }
+        }
+      }
+    },
+    "Exited with code %d": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コード%dで終了"
+          }
+        }
+      }
+    },
+    "Failed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "失敗"
+          }
+        }
+      }
+    },
+    "File": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル"
+          }
+        }
+      }
+    },
+    "Files": {
+      "comment": "Palette section",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル"
+          }
+        }
+      }
+    },
+    "Files and Changes": {
+      "comment": "Accessibility: the side panel",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルと変更"
+          }
+        }
+      }
+    },
+    "Files and changes": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルと変更"
+          }
+        }
+      }
+    },
+    "Files in %@": {
+      "comment": "Accessibility: the file tree",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ のファイル"
+          }
+        }
+      }
+    },
+    "Filter checkouts…": {
+      "comment": "Open Worktree: the filter field",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "チェックアウトを絞り込む…"
+          }
+        }
+      }
+    },
+    "Find": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索"
+          }
+        }
+      }
+    },
+    "Find Next": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次を検索"
+          }
+        }
+      }
+    },
+    "Find Previous": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前を検索"
+          }
+        }
+      }
+    },
+    "Find and Replace…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索と置換…"
+          }
+        }
+      }
+    },
+    "Find…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索…"
+          }
+        }
+      }
+    },
+    "Finished": {
+      "comment": "Alert sound\nNotification body: Claude's turn ended\nState: Claude finished a turn you have not seen",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了"
+          }
+        }
+      }
+    },
+    "Fog": {
+      "comment": "Weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "霧"
+          }
+        }
+      }
+    },
+    "Follow the Clock": {
+      "comment": "Settings › Meadow › Time of day",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "時計に合わせる"
+          }
+        }
+      }
+    },
+    "Follows your Mac's language": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Macの言語に従います"
+          }
+        }
+      }
+    },
+    "Font": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォント"
+          }
+        }
+      }
+    },
+    "For 1 Hour": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1時間"
+          }
+        }
+      }
+    },
+    "General": {
+      "comment": "Settings pane",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般"
+          }
+        }
+      }
+    },
+    "Getting around": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動のしかた"
+          }
+        }
+      }
+    },
+    "Give this terminal a tab of its own, after its boss's": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このターミナルに専用のタブを、親のタブの隣に作ります"
+          }
+        }
+      }
+    },
+    "Go": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動"
+          }
+        }
+      }
+    },
+    "Go to": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動"
+          }
+        }
+      }
+    },
+    "Go to Boss": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "親のClaudeへ移動"
+          }
+        }
+      }
+    },
+    "Go to Line…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行へ移動…"
+          }
+        }
+      }
+    },
+    "Go to Pane": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインへ移動"
+          }
+        }
+      }
+    },
+    "Go to Terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルへ"
+          }
+        }
+      }
+    },
+    "Go to a file, workspace, tab or Claude…": {
+      "comment": "Go to's field, before anything is typed",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイル、ワークスペース、タブ、Claudeへ移動…"
+          }
+        }
+      }
+    },
+    "Go to any workspace, tab or Claude by name, folder, branch or state.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前、フォルダ、ブランチ、状態で、どのワークスペース、タブ、Claudeにも移動します。"
+          }
+        }
+      }
+    },
+    "Go to the oldest request (⌘J)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いちばん古いリクエストへ移動（⌘J）"
+          }
+        }
+      }
+    },
+    "Go to…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動…"
+          }
+        }
+      }
+    },
+    "Hamper and a few things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスケットと小物"
+          }
+        }
+      }
+    },
+    "Head down at a book, a laptop or a lever: no mark, nothing to do.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本やノートパソコン、レバーに向かって作業中。マークはなく、することはありません。"
+          }
+        }
+      }
+    },
+    "Help": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルプ"
+          }
+        }
+      }
+    },
+    "Helper": {
+      "comment": "Story view: what this is",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパー"
+          }
+        }
+      }
+    },
+    "Helper terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーのターミナル"
+          }
+        }
+      }
+    },
+    "Helper terminal %@": {
+      "comment": "Accessibility: a helper terminal looked at over the panes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーのターミナル %@"
+          }
+        }
+      }
+    },
+    "Helper · %@": {
+      "comment": "Hover label of a helper: what it is doing",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパー · %@"
+          }
+        }
+      }
+    },
+    "Helper · %@ · %@": {
+      "comment": "Go to: a helper's detail",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Helper · %1$@ · %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパー · %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Helpers": {
+      "comment": "Help page: what the small cats are",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパー"
+          }
+        }
+      }
+    },
+    "Hide %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を隠す"
+          }
+        }
+      }
+    },
+    "Hide Files and Changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルと変更を隠す"
+          }
+        }
+      }
+    },
+    "Hide Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を隠す"
+          }
+        }
+      }
+    },
+    "Hide Others": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかを隠す"
+          }
+        }
+      }
+    },
+    "Home Folder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホームフォルダ"
+          }
+        }
+      }
+    },
+    "Idle": {
+      "comment": "State",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待機中"
+          }
+        }
+      }
+    },
+    "Import": {
+      "comment": "Theme file picker's button",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込む"
+          }
+        }
+      }
+    },
+    "Import Theme…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマを読み込む…"
+          }
+        }
+      }
+    },
+    "In conflict, against your side": {
+      "comment": "Diff header: a file with merge conflicts, compared with your branch's version",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "競合中（自分の側と比較）"
+          }
+        }
+      }
+    },
+    "Indentation": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インデント"
+          }
+        }
+      }
+    },
+    "Inline": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まとめて表示"
+          }
+        }
+      }
+    },
+    "Interrupt": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中断"
+          }
+        }
+      }
+    },
+    "It isn’t tracked by git, so this is the only copy. You can get it back from the Trash.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git で追跡されていないため、これが唯一のコピーです。ゴミ箱から戻せます。"
+          }
+        }
+      }
+    },
+    "Its address: paw send %@ … reaches it": {
+      "comment": "Peek: a helper terminal's address",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アドレス：paw send %@ … で届きます"
+          }
+        }
+      }
+    },
+    "Its folder %@ is deleted and its workspace closes. The branch %@ stays.": {
+      "comment": "Remove Worktree: what happens",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Its folder %1$@ is deleted and its workspace closes. The branch %2$@ stays."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ %1$@ は削除され、ワークスペースは閉じます。ブランチ %2$@ は残ります。"
+          }
+        }
+      }
+    },
+    "Just the hamper": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスケットだけ"
+          }
+        }
+      }
+    },
+    "Keep Mine": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分の版を残す"
+          }
+        }
+      }
+    },
+    "Keep Open": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開いたままにする"
+          }
+        }
+      }
+    },
+    "Keep as Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブとして残す"
+          }
+        }
+      }
+    },
+    "Keyboard": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーボード"
+          }
+        }
+      }
+    },
+    "LF (macOS and Linux)": {
+      "comment": "Line endings menu",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LF（macOS と Linux）"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "言語"
+          }
+        }
+      }
+    },
+    "Large": {
+      "comment": "Size of the name flags",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大"
+          }
+        }
+      }
+    },
+    "Last Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最後のタブ"
+          }
+        }
+      }
+    },
+    "Layout": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レイアウト"
+          }
+        }
+      }
+    },
+    "Left Option": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左Option"
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライト"
+          }
+        }
+      }
+    },
+    "Light & dark": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライトとダーク"
+          }
+        }
+      }
+    },
+    "Line %lld changed from %@ to %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 行目が %2$@ から %3$@ に変更"
+          }
+        }
+      }
+    },
+    "Line %lld: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 行目: %2$@"
+          }
+        }
+      }
+    },
+    "Line (1–%lld)": {
+      "comment": "Go to Line: the field's placeholder",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行（1–%lld）"
+          }
+        }
+      }
+    },
+    "Line Endings": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改行コード"
+          }
+        }
+      }
+    },
+    "Line endings": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改行コード"
+          }
+        }
+      }
+    },
+    "Line endings: mixed in the file; saved as %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改行コード: ファイル内で混在。%@ で保存されます"
+          }
+        }
+      }
+    },
+    "Line height": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行の高さ"
+          }
+        }
+      }
+    },
+    "Ln %lld, Col %lld": {
+      "comment": "Status line: cursor position",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 行、%2$lld 列"
+          }
+        }
+      }
+    },
+    "Ln %lld, Col %lld (%lld selected)": {
+      "comment": "Status line: cursor and selection",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld 行、%2$lld 列（%3$lld 文字選択）"
+          }
+        }
+      }
+    },
+    "Ln 1, Col 1": {
+      "comment": "Status line: cursor position",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 行、1 列"
+          }
+        }
+      }
+    },
+    "Map": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マップ"
+          }
+        }
+      }
+    },
+    "Mark as Unread": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未読にする"
+          }
+        }
+      }
+    },
+    "Meadow": {
+      "comment": "Settings pane: the sidebar's scene\nThe meadow map",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原"
+          }
+        }
+      }
+    },
+    "Meadow Only": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原のみ"
+          }
+        }
+      }
+    },
+    "Meadow and Terminals": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原とターミナル"
+          }
+        }
+      }
+    },
+    "Medium": {
+      "comment": "Size of the name flags",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "中"
+          }
+        }
+      }
+    },
+    "Message": {
+      "comment": "Commit message placeholder",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メッセージ"
+          }
+        }
+      }
+    },
+    "Minimize": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "しまう"
+          }
+        }
+      }
+    },
+    "More": {
+      "comment": "Palette section: other places",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他"
+          }
+        }
+      }
+    },
+    "Move Focus to Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原にフォーカスを移動"
+          }
+        }
+      }
+    },
+    "Move the keyboard into the meadow: arrows between blankets and cats, Return to open, Esc to go back.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーボード操作を草原に移します。矢印キーでシートと猫の間を移動し、Returnで開き、Escで戻ります。"
+          }
+        }
+      }
+    },
+    "Move to Trash": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゴミ箱に入れる"
+          }
+        }
+      }
+    },
+    "Move to Workspace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースに移動"
+          }
+        }
+      }
+    },
+    "Move “%@” to the Trash?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”をゴミ箱に入れますか？"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前"
+          }
+        }
+      }
+    },
+    "Name flags": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前の旗"
+          }
+        }
+      }
+    },
+    "Neither": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
+          }
+        }
+      }
+    },
+    "New File (⌥⌘N)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ファイル（⌥⌘N）"
+          }
+        }
+      }
+    },
+    "New File…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ファイル…"
+          }
+        }
+      }
+    },
+    "New Folder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規フォルダ"
+          }
+        }
+      }
+    },
+    "New Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規タブ"
+          }
+        }
+      }
+    },
+    "New Tab (⌘T)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規タブ（⌘T）"
+          }
+        }
+      }
+    },
+    "New Terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ターミナル"
+          }
+        }
+      }
+    },
+    "New Workspace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークスペース"
+          }
+        }
+      }
+    },
+    "New Worktree…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ワークツリー…"
+          }
+        }
+      }
+    },
+    "New file": {
+      "comment": "Diff header: an untracked file",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規ファイル"
+          }
+        }
+      }
+    },
+    "New tabs and panes open in": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいタブとペインを開く場所"
+          }
+        }
+      }
+    },
+    "New worktree of %@": {
+      "comment": "New Worktree panel's title",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ の新しいワークツリー"
+          }
+        }
+      }
+    },
+    "New worktrees go in": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいワークツリーの場所"
+          }
+        }
+      }
+    },
+    "New worktrees will be made in this folder.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいワークツリーはこのフォルダに作られます。"
+          }
+        }
+      }
+    },
+    "Next Change": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の変更"
+          }
+        }
+      }
+    },
+    "Next Finished": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の完了"
+          }
+        }
+      }
+    },
+    "Next Pane": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次のペイン"
+          }
+        }
+      }
+    },
+    "Next Request": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次のリクエスト"
+          }
+        }
+      }
+    },
+    "Next Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次のタブ"
+          }
+        }
+      }
+    },
+    "Next Workspace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次のワークスペース"
+          }
+        }
+      }
+    },
+    "No changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更はありません"
+          }
+        }
+      }
+    },
+    "No checkouts match.": {
+      "comment": "Open Worktree: nothing matches",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致するチェックアウトはありません。"
+          }
+        }
+      }
+    },
+    "No commits yet": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだコミットがありません"
+          }
+        }
+      }
+    },
+    "Nothing": {
+      "comment": "Picnic things on each blanket",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
+          }
+        }
+      }
+    },
+    "Nothing matches.": {
+      "comment": "Palette: no results",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致するものはありません。"
+          }
+        }
+      }
+    },
+    "Nothing yet.": {
+      "comment": "Story view before anything is known",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ何もありません。"
+          }
+        }
+      }
+    },
+    "Notify when Claude finishes a long turn": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが長い作業を終えたら通知"
+          }
+        }
+      }
+    },
+    "Notify when Claude needs you": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが応答を待っているときに通知"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Only while you are in Whiskr and not typing in that Claude's terminal. A request plays two rising notes, an error two low ones, a finish one soft knock.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskrを使っていて、そのClaudeのターミナルに入力していないときだけ鳴ります。リクエストは上がる2音、エラーは低い2音、完了はやわらかいノック1回です。"
+          }
+        }
+      }
+    },
+    "Only while you are in another app. A request's notification has Allow and Deny; a finish is announced quietly, and only after a turn of 30 seconds or more.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかのアプリを使っているときだけ届きます。リクエストの通知には「許可」と「拒否」があります。完了は30秒以上かかった作業のときだけ、音なしで知らせます。"
+          }
+        }
+      }
+    },
+    "Open": {
+      "comment": "Folder picker's button",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開く"
+          }
+        }
+      }
+    },
+    "Open Changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更を開く"
+          }
+        }
+      }
+    },
+    "Open File": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを開く"
+          }
+        }
+      }
+    },
+    "Open Folder…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダを開く…"
+          }
+        }
+      }
+    },
+    "Open Language & Region…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“言語と地域”を開く…"
+          }
+        }
+      }
+    },
+    "Open Recent": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近使った項目を開く"
+          }
+        }
+      }
+    },
+    "Open Worktree…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークツリーを開く…"
+          }
+        }
+      }
+    },
+    "Open a terminal (⌘T) and type `claude`. A cat walks onto that workspace's blanket and acts out what Claude is doing: reading, editing, running a command, thinking.": {
+      "comment": "Help page (Markdown: `claude` is the command)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルを開いて（⌘T）`claude` と入力します。猫がそのワークスペースのシートに歩いてきて、読む、編集する、コマンドを実行する、考えるといったClaudeの作業を演じます。"
+          }
+        }
+      }
+    },
+    "Open a terminal and type `claude`: a cat sits down in the meadow.": {
+      "comment": "Start page: how cats come (Markdown: `claude` is the command)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルを開いて `claude` と入力すると、草原に猫が座ります。"
+          }
+        }
+      }
+    },
+    "Open a worktree of %@": {
+      "comment": "Open Worktree panel's title",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ のワークツリーを開く"
+          }
+        }
+      }
+    },
+    "Open to the Side": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横に開く"
+          }
+        }
+      }
+    },
+    "Open with %@": {
+      "comment": "A button: opens the file in the app that handles it",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ で開く"
+          }
+        }
+      }
+    },
+    "Open with Default App": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトのアプリで開く"
+          }
+        }
+      }
+    },
+    "Option key acts as Meta": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OptionキーをMetaとして使用"
+          }
+        }
+      }
+    },
+    "Or drop a folder here.": {
+      "comment": "Start page: the last line",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "またはフォルダをここにドロップ。"
+          }
+        }
+      }
+    },
+    "Pane Down": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下のペイン"
+          }
+        }
+      }
+    },
+    "Pane Left": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左のペイン"
+          }
+        }
+      }
+    },
+    "Pane Right": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右のペイン"
+          }
+        }
+      }
+    },
+    "Pane Up": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上のペイン"
+          }
+        }
+      }
+    },
+    "Panes": {
+      "comment": "Accessibility label of the terminal area",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペイン"
+          }
+        }
+      }
+    },
+    "Paste": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペースト"
+          }
+        }
+      }
+    },
+    "Pause Alerts": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知を一時停止"
+          }
+        }
+      }
+    },
+    "Picnic things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ピクニックの小物"
+          }
+        }
+      }
+    },
+    "Pin Claude": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeをピン留め"
+          }
+        }
+      }
+    },
+    "Pinned": {
+      "comment": "Palette section: pinned Claudes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ピン留め"
+          }
+        }
+      }
+    },
+    "Plain terminals are lanterns, lit after dark: warm while a command runs, red when one failed.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通常のターミナルはランタンで、暗くなると灯ります。コマンドの実行中は暖かい色、失敗すると赤になります。"
+          }
+        }
+      }
+    },
+    "Play": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再生"
+          }
+        }
+      }
+    },
+    "Play the %@ sound": {
+      "comment": "Settings: a Play button's tooltip",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@の音を再生"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビュー"
+          }
+        }
+      }
+    },
+    "Preview Side by Side": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右に並べてプレビュー"
+          }
+        }
+      }
+    },
+    "Preview of %@": {
+      "comment": "Accessibility: the Markdown preview",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ のプレビュー"
+          }
+        }
+      }
+    },
+    "Previous Change": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前の変更"
+          }
+        }
+      }
+    },
+    "Previous Pane": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前のペイン"
+          }
+        }
+      }
+    },
+    "Previous Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前のタブ"
+          }
+        }
+      }
+    },
+    "Previous Workspace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前のワークスペース"
+          }
+        }
+      }
+    },
+    "Problem: %@": {
+      "comment": "Accessibility: a worktree command failed",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "問題：%@"
+          }
+        }
+      }
+    },
+    "Put it away (⌘W); it keeps running": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "しまう（⌘W）。動き続けます"
+          }
+        }
+      }
+    },
+    "Quit %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を終了"
+          }
+        }
+      }
+    },
+    "Quit and Stop All Terminals": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのターミナルを停止して終了"
+          }
+        }
+      }
+    },
+    "Quitting (⌘Q) leaves every terminal running, Claude included; the next launch puts them back as they were. To stop everything, hold Option and choose Quit and Stop All Terminals (⌥⌘Q).": {
+      "comment": "Help page: what quitting does",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "終了（⌘Q）してもすべてのターミナルはClaudeも含めて動き続け、次に起動したときにそのまま戻ります。すべて止めるには、Optionキーを押しながら「すべてのターミナルを停止して終了」（⌥⌘Q）を選びます。"
+          }
+        }
+      }
+    },
+    "Rain": {
+      "comment": "Weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雨"
+          }
+        }
+      }
+    },
+    "Reading the meadow": {
+      "comment": "Help page title",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の見かた"
+          }
+        }
+      }
+    },
+    "Reading the repository…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リポジトリを読み込み中…"
+          }
+        }
+      }
+    },
+    "Real weather where you are": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地の実際の天気"
+          }
+        }
+      }
+    },
+    "Recent": {
+      "comment": "Palette section: tabs visited lately\nStart page: heading over the recent folders",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近"
+          }
+        }
+      }
+    },
+    "Recent Files": {
+      "comment": "Palette section: files opened lately",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近のファイル"
+          }
+        }
+      }
+    },
+    "Redo": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "やり直す"
+          }
+        }
+      }
+    },
+    "Reload": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再読み込み"
+          }
+        }
+      }
+    },
+    "Remove Anyway": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除する"
+          }
+        }
+      }
+    },
+    "Remove Worktree": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークツリーを削除"
+          }
+        }
+      }
+    },
+    "Remove Worktree…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークツリーを削除…"
+          }
+        }
+      }
+    },
+    "Remove the worktree “%@”?": {
+      "comment": "Remove Worktree: the question",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークツリー「%@」を削除しますか？"
+          }
+        }
+      }
+    },
+    "Removed line %lld: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除された %1$lld 行目: %2$@"
+          }
+        }
+      }
+    },
+    "Removing it deletes them for good. The branch stays.": {
+      "comment": "Remove Worktree: removing anyway",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除すると変更は完全に失われます。ブランチは残ります。"
+          }
+        }
+      }
+    },
+    "Rename Tab…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブの名前を変更…"
+          }
+        }
+      }
+    },
+    "Rename Workspace…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースの名前を変更…"
+          }
+        }
+      }
+    },
+    "Rename…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前を変更…"
+          }
+        }
+      }
+    },
+    "Reopen Closed Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じたタブを開き直す"
+          }
+        }
+      }
+    },
+    "Report": {
+      "comment": "Story view: the helper's final report",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "報告"
+          }
+        }
+      }
+    },
+    "Request": {
+      "comment": "Alert sound\nState: Claude asks for something",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リクエスト"
+          }
+        }
+      }
+    },
+    "Request from Claude in %@": {
+      "comment": "Accessibility label of the answer card",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@のClaudeからのリクエスト"
+          }
+        }
+      }
+    },
+    "Restore Panes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを元に戻す"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再開"
+          }
+        }
+      }
+    },
+    "Resume Alerts": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知を再開"
+          }
+        }
+      }
+    },
+    "Resume Alerts (paused until %@)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知を再開（%@まで一時停止中）"
+          }
+        }
+      }
+    },
+    "Resume Claude in restored panes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復元したペインでClaudeを再開"
+          }
+        }
+      }
+    },
+    "Reveal in Files": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルで表示"
+          }
+        }
+      }
+    },
+    "Reveal in Finder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finderに表示"
+          }
+        }
+      }
+    },
+    "Revert": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "戻す"
+          }
+        }
+      }
+    },
+    "Revert to Saved": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存した状態に戻す"
+          }
+        }
+      }
+    },
+    "Revert “%@” to the version on disk?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”をディスク上の版に戻しますか？"
+          }
+        }
+      }
+    },
+    "Right Option": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右Option"
+          }
+        }
+      }
+    },
+    "Running": {
+      "comment": "A plain terminal with a command running in it",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実行中"
+          }
+        }
+      }
+    },
+    "SF Mono (system)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SF Mono（システム）"
+          }
+        }
+      }
+    },
+    "Same as Terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルと同じ"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存"
+          }
+        }
+      }
+    },
+    "Save All": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべて保存"
+          }
+        }
+      }
+    },
+    "Save As…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別名で保存…"
+          }
+        }
+      }
+    },
+    "Saved as a new theme of your own; %@ stays as it is.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あなた専用の新しいテーマとして保存されます。%@はそのままです。"
+          }
+        }
+      }
+    },
+    "Saved to your themes folder.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマフォルダに保存されます。"
+          }
+        }
+      }
+    },
+    "Scroll to it": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そこまでスクロール"
+          }
+        }
+      }
+    },
+    "Select All": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてを選択"
+          }
+        }
+      }
+    },
+    "Selection": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択範囲"
+          }
+        }
+      }
+    },
+    "Services": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サービス"
+          }
+        }
+      }
+    },
+    "Sessions from another version are still running": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のバージョンのセッションが実行中です"
+          }
+        }
+      }
+    },
+    "Sessions keep running": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "セッションは動き続けます"
+          }
+        }
+      }
+    },
+    "Settings…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定…"
+          }
+        }
+      }
+    },
+    "Shift Left": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左にシフト"
+          }
+        }
+      }
+    },
+    "Shift Right": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右にシフト"
+          }
+        }
+      }
+    },
+    "Show All": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてを表示"
+          }
+        }
+      }
+    },
+    "Show Files and Changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルと変更を表示"
+          }
+        }
+      }
+    },
+    "Show Files and Changes: %lld changed files": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルと変更を表示: 変更されたファイル %lld 件"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Show Files and Changes: %lld changed file"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Show Files and Changes: %lld changed files"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Show Invisibles": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可視文字を表示"
+          }
+        }
+      }
+    },
+    "Show Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を表示"
+          }
+        }
+      }
+    },
+    "Show Preview": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プレビューを表示"
+          }
+        }
+      }
+    },
+    "Show Source": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソースを表示"
+          }
+        }
+      }
+    },
+    "Show Story": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経緯を表示"
+          }
+        }
+      }
+    },
+    "Show Terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルを表示"
+          }
+        }
+      }
+    },
+    "Show Themes Folder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマフォルダを表示"
+          }
+        }
+      }
+    },
+    "Show Workspaces as List": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースをリストで表示"
+          }
+        }
+      }
+    },
+    "Show in Finder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finder で表示"
+          }
+        }
+      }
+    },
+    "Show invisibles": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可視文字を表示"
+          }
+        }
+      }
+    },
+    "Show or hide the meadow (⌃⌘S)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を表示/非表示（⌃⌘S）"
+          }
+        }
+      }
+    },
+    "Show request count on the Dock icon": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dockアイコンにリクエスト数を表示"
+          }
+        }
+      }
+    },
+    "Show the meadow (⌃⌘S): %lld requests in other workspaces": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を表示（⌃⌘S）：ほかのワークスペースにリクエストが%lld件"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Show the meadow (⌃⌘S): %lld request in another workspace"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Show the meadow (⌃⌘S): %lld requests in other workspaces"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Shows every open workspace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開いているワークスペースをすべて表示します"
+          }
+        }
+      }
+    },
+    "Side by Side": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右に並べる"
+          }
+        }
+      }
+    },
+    "Side by side or inline": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右に並べるか、まとめて表示"
+          }
+        }
+      }
+    },
+    "Side-by-side panes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左右に並んだペイン"
+          }
+        }
+      }
+    },
+    "Size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サイズ"
+          }
+        }
+      }
+    },
+    "Small": {
+      "comment": "Size of the name flags",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小"
+          }
+        }
+      }
+    },
+    "Small cats beside a Claude are its helpers. Click one to see its terminal or its story.": {
+      "comment": "Help page: helpers",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeのそばにいる小さな猫はヘルパーです。クリックすると、そのターミナルや経過を表示します。"
+          }
+        }
+      }
+    },
+    "Smaller Text": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストを小さく"
+          }
+        }
+      }
+    },
+    "Snow": {
+      "comment": "Weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雪"
+          }
+        }
+      }
+    },
+    "Some themes could not be imported": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一部のテーマを読み込めませんでした"
+          }
+        }
+      }
+    },
+    "Sound when Claude finishes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが完了したときの音"
+          }
+        }
+      }
+    },
+    "Sound when Claude needs you": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが応答を待っているときの音"
+          }
+        }
+      }
+    },
+    "Source": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソース"
+          }
+        }
+      }
+    },
+    "Source, Preview or Side by Side": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソース、プレビュー、または左右に並べる"
+          }
+        }
+      }
+    },
+    "Spaces: %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スペース: %lld"
+          }
+        }
+      }
+    },
+    "Split Down": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下に分割"
+          }
+        }
+      }
+    },
+    "Split Right": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右に分割"
+          }
+        }
+      }
+    },
+    "Stacked panes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上下に並んだペイン"
+          }
+        }
+      }
+    },
+    "Stage": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステージ"
+          }
+        }
+      }
+    },
+    "Stage All": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてステージ"
+          }
+        }
+      }
+    },
+    "Stage changes to commit them": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コミットするには変更をステージしてください"
+          }
+        }
+      }
+    },
+    "Staged": {
+      "comment": "Changes panel section",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステージ済み"
+          }
+        }
+      }
+    },
+    "Staged changes": {
+      "comment": "Diff header",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステージ済みの変更"
+          }
+        }
+      }
+    },
+    "Start": {
+      "comment": "Accessibility label of the Start page\nStart page: heading over Open Folder and New Terminal\nTitle of the Start page's tab",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スタート"
+          }
+        }
+      }
+    },
+    "Starting": {
+      "comment": "State: Claude has started and not reported yet",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起動中"
+          }
+        }
+      }
+    },
+    "Status": {
+      "comment": "Accessibility label of the status line",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステータス"
+          }
+        }
+      }
+    },
+    "Stop": {
+      "comment": "A helper terminal's menu: ends it",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止"
+          }
+        }
+      }
+    },
+    "Stop All and Quit": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべて停止して終了"
+          }
+        }
+      }
+    },
+    "Stop all terminals and quit?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのターミナルを停止して終了しますか？"
+          }
+        }
+      }
+    },
+    "Stopped on an error": {
+      "comment": "Notification body: Claude's turn ended on an error",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エラーで停止"
+          }
+        }
+      }
+    },
+    "Story of helper %@": {
+      "comment": "Accessibility label of a helper's story",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパー%@の経緯"
+          }
+        }
+      }
+    },
+    "Swap Pane Down": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを下と入れ替える"
+          }
+        }
+      }
+    },
+    "Swap Pane Left": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを左と入れ替える"
+          }
+        }
+      }
+    },
+    "Swap Pane Right": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを右と入れ替える"
+          }
+        }
+      }
+    },
+    "Swap Pane Up": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを上と入れ替える"
+          }
+        }
+      }
+    },
+    "Tab": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ"
+          }
+        }
+      }
+    },
+    "Tab %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ%lld"
+          }
+        }
+      }
+    },
+    "Tab %lld, %@": {
+      "comment": "Accessibility: a tab's number and title",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Tab %1$lld, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ%1$lld、%2$@"
+          }
+        }
+      }
+    },
+    "Tab name": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ名"
+          }
+        }
+      }
+    },
+    "Tab width": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブの幅"
+          }
+        }
+      }
+    },
+    "Tabs": {
+      "comment": "Accessibility label of the tab strip",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ"
+          }
+        }
+      }
+    },
+    "Task": {
+      "comment": "Story view: the task the helper was given",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タスク"
+          }
+        }
+      }
+    },
+    "Terminal": {
+      "comment": "Settings pane",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナル"
+          }
+        }
+      }
+    },
+    "Terminals Only": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルのみ"
+          }
+        }
+      }
+    },
+    "Text": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキスト"
+          }
+        }
+      }
+    },
+    "Text encoding": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テキストエンコーディング"
+          }
+        }
+      }
+    },
+    "That checkout's folder is gone. git worktree prune forgets it.": {
+      "comment": "Open Worktree: a listed checkout whose folder was deleted",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このチェックアウトのフォルダはもうありません。git worktree prune で記録を消せます。"
+          }
+        }
+      }
+    },
+    "That theme could not be imported": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのテーマを読み込めませんでした"
+          }
+        }
+      }
+    },
+    "The branch the new one starts from": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいブランチの起点となるブランチ"
+          }
+        }
+      }
+    },
+    "The cat sits still, facing you. Claude finished while you were elsewhere; the mark clears once you have looked.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "猫がこちらを向いてじっと座っています。あなたがほかを見ている間にClaudeが完了しました。見るとマークは消えます。"
+          }
+        }
+      }
+    },
+    "The cat sits with its ears back. Claude's turn stopped on an error.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "猫が耳を伏せて座っています。Claudeの作業がエラーで止まりました。"
+          }
+        }
+      }
+    },
+    "The cat stands with a paw up. Claude asks for permission or has a question. Answer in its terminal, or click the cat to answer from here.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "猫が前足を上げて立っています。Claudeが許可を求めているか、質問があります。そのターミナルで答えるか、猫をクリックしてここから答えます。"
+          }
+        }
+      }
+    },
+    "The file goes back to its last staged or committed version. This can’t be undone.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルは最後にステージまたはコミットした版に戻ります。この操作は取り消せません。"
+          }
+        }
+      }
+    },
+    "The next request, then the next finished turn, then back where you were.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次のリクエスト、次の完了、そして元いた場所へ。"
+          }
+        }
+      }
+    },
+    "The terminal could not be started: %@": {
+      "comment": "Shown in a pane whose shell failed to launch",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルを開始できませんでした：%@"
+          }
+        }
+      }
+    },
+    "The terminal could not be started: the session host is not running.": {
+      "comment": "Shown in a pane when the background process that owns terminals could not be reached",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルを開始できませんでした：セッションホストが動いていません。"
+          }
+        }
+      }
+    },
+    "The weather service did not answer; trying again in 15 minutes.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天気サービスが応答しませんでした。15分後にもう一度試します。"
+          }
+        }
+      }
+    },
+    "The workspace's files beside the terminals. Click a file to look at it; edit it, or double-click to keep its tab.": {
+      "comment": "Help page: the Files panel",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースのファイルをターミナルの横に表示します。クリックで内容を表示し、編集するかダブルクリックするとタブが残ります。"
+          }
+        }
+      }
+    },
+    "The worktree could not be removed": {
+      "comment": "Remove Worktree: git refused",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークツリーを削除できませんでした"
+          }
+        }
+      }
+    },
+    "The world your workspaces live in.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースが暮らす世界。"
+          }
+        }
+      }
+    },
+    "Theme": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマ"
+          }
+        }
+      }
+    },
+    "This Mac": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このMac"
+          }
+        }
+      }
+    },
+    "This SVG can’t be drawn.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この SVG は描画できません。"
+          }
+        }
+      }
+    },
+    "This file couldn’t be read: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルを読み込めませんでした: %@"
+          }
+        }
+      }
+    },
+    "This file is in conflict. Resolve it in the file, then stage it.": {
+      "comment": "Diff page: a conflicted file with nothing to compare yet",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルは競合しています。ファイルで解決してから、ステージしてください。"
+          }
+        }
+      }
+    },
+    "This file isn’t text, so it can’t be shown here.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルはテキストではないため、ここには表示できません。"
+          }
+        }
+      }
+    },
+    "This file no longer exists. It may have been moved or deleted.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルはもう存在しません。移動または削除された可能性があります。"
+          }
+        }
+      }
+    },
+    "This folder isn’t a git repository.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このフォルダは git リポジトリではありません。"
+          }
+        }
+      }
+    },
+    "This request changed. Look in the terminal.": {
+      "comment": "Answer card: the request is no longer the one shown",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリクエストは変わりました。ターミナルを確認してください。"
+          }
+        }
+      }
+    },
+    "This terminal's programs have ended: the session host stopped.": {
+      "comment": "Shown in a pane when the background process that owns terminals went away",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このターミナルのプログラムは終了しました：セッションホストが停止しました。"
+          }
+        }
+      }
+    },
+    "Time of day": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "時間帯"
+          }
+        }
+      }
+    },
+    "To do": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未完了"
+          }
+        }
+      }
+    },
+    "To-do list: %lld of %lld done": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "To-do list: %1$lld of %2$lld done"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To-doリスト：%2$lld件中%1$lld件完了"
+          }
+        }
+      }
+    },
+    "Toggle Comment": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コメントの切り替え"
+          }
+        }
+      }
+    },
+    "Type `claude` in a terminal and your cat appears here.": {
+      "comment": "First-run hint under the first blanket (Markdown: `claude` is the command)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで `claude` と入力すると、ここに猫が現れます。"
+          }
+        }
+      }
+    },
+    "Type a command or a place…": {
+      "comment": "The command palette's field, before anything is typed",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンドか場所を入力…"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取り消す"
+          }
+        }
+      }
+    },
+    "Unpin Claude": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeのピン留めを外す"
+          }
+        }
+      }
+    },
+    "Unstage": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステージ解除"
+          }
+        }
+      }
+    },
+    "Unstage All": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてステージ解除"
+          }
+        }
+      }
+    },
+    "Until %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@まで"
+          }
+        }
+      }
+    },
+    "Until Tomorrow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "明日まで"
+          }
+        }
+      }
+    },
+    "Until you choose one, the editor uses the terminal’s font and size.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択するまで、エディタはターミナルのフォントとサイズを使います。"
+          }
+        }
+      }
+    },
+    "Untracked": {
+      "comment": "Changes panel section",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未追跡"
+          }
+        }
+      }
+    },
+    "Use %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を使う"
+          }
+        }
+      }
+    },
+    "Use Default": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標準に戻す"
+          }
+        }
+      }
+    },
+    "Use Selection for Find": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択部分を検索に使用"
+          }
+        }
+      }
+    },
+    "Use the Terminal’s Font": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルのフォントを使用"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バージョン"
+          }
+        }
+      }
+    },
+    "View": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示"
+          }
+        }
+      }
+    },
+    "Volume": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音量"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "comment": "Palette section: requests and finished turns",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待機中のもの"
+          }
+        }
+      }
+    },
+    "Waiting %@": {
+      "comment": "Answer card footer: how long the request has waited",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@待機中"
+          }
+        }
+      }
+    },
+    "Waiting for a command": {
+      "comment": "A plain terminal whose shell waits at its prompt",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンド待ち"
+          }
+        }
+      }
+    },
+    "Waiting for you to allow location access…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置情報へのアクセスの許可を待っています…"
+          }
+        }
+      }
+    },
+    "Waiting since just now": {
+      "comment": "Answer card footer: asked less than a minute ago",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "たった今から待機中"
+          }
+        }
+      }
+    },
+    "Weather asks for your location once. It is rounded to about a kilometer and sent to Open-Meteo, a free weather service, every 15 minutes while weather is on.": {
+      "comment": "Settings › Meadow: what real weather sends where",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天気は一度だけ現在地を尋ねます。現在地は約1 kmに丸められ、天気がオンの間、15分ごとに無料の天気サービスOpen-Meteoに送られます。"
+          }
+        }
+      }
+    },
+    "Weather turned itself off: location access was refused. Allow Whiskr in System Settings › Privacy & Security › Location Services, then turn weather on again.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置情報へのアクセスが拒否されたため、天気はオフになりました。システム設定 › プライバシーとセキュリティ › 位置情報サービスでWhiskrを許可してから、天気をもう一度オンにしてください。"
+          }
+        }
+      }
+    },
+    "What changed in the repository: stage, unstage, look at the differences and commit.": {
+      "comment": "Help page: the Changes panel",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リポジトリの変更内容です。ステージ、ステージ解除、差分の確認、コミットができます。"
+          }
+        }
+      }
+    },
+    "What is running there stops.": {
+      "comment": "Remove Worktree: a program or Claude runs in it",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そこで動いているものは停止します。"
+          }
+        }
+      }
+    },
+    "What the marks mean": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マークの意味"
+          }
+        }
+      }
+    },
+    "Where cats come from": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "猫はどこから来るか"
+          }
+        }
+      }
+    },
+    "While paused, no sounds and no notifications; the meadow, the tabs and the Dock icon still show who needs you.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一時停止中は音も通知もありません。草原、タブ、Dockアイコンには、応答を待っているものが引き続き表示されます。"
+          }
+        }
+      }
+    },
+    "Window": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウインドウ"
+          }
+        }
+      }
+    },
+    "Whiskr": {
+      "comment": "The app's name in its menus\nThe app's name on the Start page\nThe window's title while no workspace is open\nWindow menu: brings back the main window",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr"
+          }
+        }
+      }
+    },
+    "Whiskr Help": {
+      "comment": "The help window's title",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr ヘルプ"
+          }
+        }
+      }
+    },
+    "Working": {
+      "comment": "State",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作業中"
+          }
+        }
+      }
+    },
+    "Workspace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース"
+          }
+        }
+      }
+    },
+    "Workspace %@, %lld of %lld": {
+      "comment": "Accessibility: the tab bar's workspace button",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Workspace %1$@, %2$lld of %3$lld"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース%1$@、%3$lld件中%2$lld件目"
+          }
+        }
+      }
+    },
+    "Workspace %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース%lld"
+          }
+        }
+      }
+    },
+    "Workspace name": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース名"
+          }
+        }
+      }
+    },
+    "Workspaces": {
+      "comment": "Accessibility label of the sidebar's meadow\nPalette section\nSidebar list heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース"
+          }
+        }
+      }
+    },
+    "Worktrees of this repository": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリポジトリのワークツリー"
+          }
+        }
+      }
+    },
+    "Wrap Lines": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行を折り返す"
+          }
+        }
+      }
+    },
+    "Wrap long lines": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "長い行を折り返す"
+          }
+        }
+      }
+    },
+    "Your changes will be lost if you don’t save them.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存しないと、変更は失われます。"
+          }
+        }
+      }
+    },
+    "Your own keys": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自分のキー"
+          }
+        }
+      }
+    },
+    "Your themes are .whiskrtheme files (plain JSON) in the themes folder; share them, edit them by hand, or drop a .whiskrtheme or iTerm2 .itermcolors file here to import it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマはテーマフォルダ内の.whiskrthemeファイル（プレーンなJSON）です。共有したり手で編集したりできます。.whiskrthemeまたはiTerm2の.itermcolorsファイルをここにドロップすると読み込めます。"
+          }
+        }
+      }
+    },
+    "Your unsaved changes will be lost.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存していない変更は失われます。"
+          }
+        }
+      }
+    },
+    "Zoom": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拡大/縮小"
+          }
+        }
+      }
+    },
+    "Zoom Pane": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを拡大"
+          }
+        }
+      }
+    },
+    "Zoom to Fit": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウインドウに合わせる"
+          }
+        }
+      }
+    },
+    "added": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加"
+          }
+        }
+      }
+    },
+    "blocked": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブロック"
+          }
+        }
+      }
+    },
+    "branch %@": {
+      "comment": "VoiceOver: a workspace's git branch",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブランチ %@"
+          }
+        }
+      }
+    },
+    "copied": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コピー"
+          }
+        }
+      }
+    },
+    "deleted": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除"
+          }
+        }
+      }
+    },
+    "done": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了"
+          }
+        }
+      }
+    },
+    "editor": {
+      "comment": "Accessibility: the role of the code editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタ"
+          }
+        }
+      }
+    },
+    "existing branch": {
+      "comment": "New Worktree: the name typed is a branch already, which is checked out",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "既存のブランチ"
+          }
+        }
+      }
+    },
+    "finished": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了"
+          }
+        }
+      }
+    },
+    "from %@": {
+      "comment": "New Worktree: the branch a new one starts from",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ から"
+          }
+        }
+      }
+    },
+    "git is not installed.": {
+      "comment": "Changes panel: no git executable",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git がインストールされていません。"
+          }
+        }
+      }
+    },
+    "git stopped with status %d.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "git がステータス %d で終了しました。"
+          }
+        }
+      }
+    },
+    "has changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更あり"
+          }
+        }
+      }
+    },
+    "helper": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパー"
+          }
+        }
+      }
+    },
+    "helper of %@": {
+      "comment": "Peek: which Claude started this terminal",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ のヘルパー"
+          }
+        }
+      }
+    },
+    "idle": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "待機"
+          }
+        }
+      }
+    },
+    "ignored": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無視"
+          }
+        }
+      }
+    },
+    "in conflict": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "競合"
+          }
+        }
+      }
+    },
+    "in your home folder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホームフォルダで"
+          }
+        }
+      }
+    },
+    "main": {
+      "shouldTranslate": false
+    },
+    "main checkout": {
+      "comment": "Open Worktree: the repository's own folder",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "メインのチェックアウト"
+          }
+        }
+      }
+    },
+    "modified": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更"
+          }
+        }
+      }
+    },
+    "needs you": {
+      "comment": "Go to: search word for a request",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "応答待ち"
+          }
+        }
+      }
+    },
+    "npm test": {
+      "shouldTranslate": false
+    },
+    "open": {
+      "comment": "Open Worktree: already a workspace",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開いています"
+          }
+        }
+      }
+    },
+    "renamed": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前変更"
+          }
+        }
+      }
+    },
+    "request": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リクエスト"
+          }
+        }
+      }
+    },
+    "src/cart.ts": {
+      "shouldTranslate": false
+    },
+    "starting": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "起動中"
+          }
+        }
+      }
+    },
+    "type changed": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "種類の変更"
+          }
+        }
+      }
+    },
+    "untitled": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称未設定"
+          }
+        }
+      }
+    },
+    "untitled folder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名称未設定フォルダ"
+          }
+        }
+      }
+    },
+    "untracked": {
+      "comment": "Git state",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未追跡"
+          }
+        }
+      }
+    },
+    "warn ": {
+      "shouldTranslate": false
+    },
+    "working": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作業中"
+          }
+        }
+      }
+    },
+    "worktree of %@": {
+      "comment": "Accessibility: a workspace that is a git worktree of another",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ のワークツリー"
+          }
+        }
+      }
+    },
+    "~/shop ": {
+      "shouldTranslate": false
+    },
+    "×": {
+      "shouldTranslate": false
+    },
+    "“%@” cannot be a branch name.": {
+      "comment": "New Worktree: an invalid branch name",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」はブランチ名にできません。"
+          }
+        }
+      }
+    },
+    "“%@” changed on disk while you were editing it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集中に“%@”がディスク上で変更されました。"
+          }
+        }
+      }
+    },
+    "“%@” could not be saved.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”を保存できませんでした。"
+          }
+        }
+      }
+    },
+    "“%@” has %lld uncommitted changes": {
+      "comment": "Remove Worktree: it has changes",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "“%@” has %lld uncommitted change"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "“%@” has %lld uncommitted changes"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」にはコミットされていない変更が %2$lld 件あります"
+          }
+        }
+      }
+    },
+    "“%@” was deleted or moved. Your text is still here.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@”は削除されたか移動されました。テキストはここに残っています。"
+          }
+        }
+      }
+    },
+    "↩ Create · Esc Cancel": {
+      "comment": "New Worktree: its keys",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "↩ 作成 · Esc キャンセル"
+          }
+        }
+      }
+    },
+    "█": {
+      "shouldTranslate": false
+    },
+    "✓": {
+      "shouldTranslate": false
+    },
+    "✓ 13 passing": {
+      "shouldTranslate": false
+    },
+    "✗ 1 failing": {
+      "shouldTranslate": false
+    }
+  },
+  "version": "1.0"
+}

@@ -1,0 +1,9 @@
+// Build settings for the packages the app links, passed to xcodebuild by the Makefile (a project file
+// cannot set a package's own).
+//
+// SwiftTerm is optimised in Debug builds too. When a terminal's width changes it re-wraps every line of
+// scrollback it holds, on the main thread: unoptimised that is 120–280 ms for 12,000 lines (the hitch
+// when a divider drag ends), optimised 2–13 ms. The meadow scene is optimised
+// in Debug for the same kind of reason (Scene/Package.swift). Every other target keeps its own setting.
+WHISKR_OPTIMIZATION_SwiftTerm = -O
+SWIFT_OPTIMIZATION_LEVEL = $(WHISKR_OPTIMIZATION_$(TARGET_NAME):default=$(inherited))

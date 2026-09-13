@@ -1,0 +1,153 @@
+# The Xcode project is generated from this file (`make project`, needs `brew install xcodegen`).
+# The generated Whiskr.xcodeproj is checked in too, so building needs only Xcode.
+name: Whiskr
+options:
+  bundleIdPrefix: app.whiskr
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+  groupSortPosition: top
+
+packages:
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    exactVersion: 1.99.1
+  WhiskrKit:
+    path: WhiskrKit
+  # The meadow scene (Swift + Metal), a local package beside the app.
+  MeadowScene:
+    path: ../Scene
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEAD_CODE_STRIPPING: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ENABLE_STRICT_OBJC_MSGSEND: YES
+    GCC_WARN_UNUSED_VARIABLE: YES
+    CLANG_ANALYZER_NONNULL: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    # Every user-facing string is localisable; Xcode gathers them into Localizable.xcstrings.
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+
+targets:
+  Whiskr:
+    type: application
+    platform: macOS
+    sources:
+      - path: Whiskr
+        excludes:
+          - "**/.DS_Store"
+    dependencies:
+      - package: SwiftTerm
+        product: SwiftTerm
+      - package: WhiskrKit
+        product: WhiskrKit
+      - package: WhiskrKit
+        product: WhiskrMeadow
+      - package: MeadowScene
+        product: MeadowScene
+      - package: WhiskrKit
+        product: TerminalHost
+      # The session host, copied beside the app's own executable (Contents/MacOS).
+      - target: WhiskrHost
+        embed: true
+        codeSign: false
+        copy:
+          destination: executables
+      # `paw`, the command-line tool every terminal has on its PATH, beside it too.
+      - target: PawTool
+        embed: true
+        codeSign: false
+        copy:
+          destination: executables
+    settings:
+      base:
+        PRODUCT_NAME: Whiskr
+        PRODUCT_MODULE_NAME: Whiskr
+        PRODUCT_BUNDLE_IDENTIFIER: app.whiskr.Whiskr
+        INFOPLIST_FILE: Whiskr/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Whiskr/Whiskr.entitlements
+        # Not signed for now (the linker's automatic ad-hoc signature only). The entitlements and
+        # hardened runtime are set so that signing and notarising later means turning
+        # CODE_SIGNING_ALLOWED on with an identity, with no other change.
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        # Swift 6 with the app's code on the main actor unless it says otherwise.
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_APPROACHABLE_CONCURRENCY: YES
+        SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+
+  # The session host: the small process that owns the terminals, so they keep running when the app
+  # quits. All of its code is the TerminalHost library in WhiskrKit; this target is its `main`.
+  WhiskrHost:
+    type: tool
+    platform: macOS
+    sources:
+      - path: WhiskrHost
+    dependencies:
+      - package: WhiskrKit
+        product: TerminalHost
+    settings:
+      base:
+        PRODUCT_NAME: whiskr-host
+        PRODUCT_BUNDLE_IDENTIFIER: app.whiskr.Whiskr.host
+        PRODUCT_MODULE_NAME: WhiskrHostTool
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_STRICT_CONCURRENCY: complete
+        SKIP_INSTALL: YES
+
+  # `paw`: agents starting and steering agents from inside the app's terminals. All of its code is the
+  # Paw library in WhiskrKit; its `main` is the package's own (Sources/PawTool).
+  PawTool:
+    type: tool
+    platform: macOS
+    sources:
+      - path: WhiskrKit/Sources/PawTool
+    dependencies:
+      - package: WhiskrKit
+        product: Paw
+    settings:
+      base:
+        PRODUCT_NAME: paw
+        PRODUCT_BUNDLE_IDENTIFIER: app.whiskr.Whiskr.paw
+        PRODUCT_MODULE_NAME: PawTool
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        SWIFT_STRICT_CONCURRENCY: complete
+        SKIP_INSTALL: YES
+
+schemes:
+  Whiskr:
+    build:
+      targets:
+        Whiskr: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: WhiskrKit/WhiskrKitTests
+        - package: WhiskrKit/WhiskrMeadowTests
+    archive:
+      config: Release

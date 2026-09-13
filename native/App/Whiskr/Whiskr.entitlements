@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hardened runtime, no App Sandbox. The app is a terminal: its whole job is to run your shell and
+  `claude` in any folder you choose, with your own PATH and files, which the sandbox forbids (a
+  sandboxed app's child processes inherit its sandbox). Terminal, iTerm2 and Ghostty ship the same way.
+  Apple Events: programs in your terminals (osascript, open) may script other apps; macOS still asks you.
+  Location: only for Settings › World › Real weather, asked when you turn it on.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<key>com.apple.security.personal-information.location</key>
+	<true/>
+</dict>
+</plist>

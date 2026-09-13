@@ -1,0 +1,51 @@
+name: CI
+
+# Builds the app and runs the Kit's and the meadow scene's tests on macOS.
+#
+# The repository is private for now and macOS minutes are costly, so CI runs on pull requests and by
+# hand only. Once the repository is public (where hosted runners are free), add:
+#
+#   push:
+#     branches: [main]
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The Xcode the project is developed with (Swift 6.2). The macos-26 image carries it beside newer ones.
+  XCODE_PATH: /Applications/Xcode_26.1.1.app
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: native/App
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch "$XCODE_PATH"
+          xcodebuild -version
+          swift --version
+
+      - name: Kit tests
+        run: make test-kit SCRATCH="$RUNNER_TEMP/whiskr"
+
+      - name: Meadow scene tests
+        run: make test-scene SCRATCH="$RUNNER_TEMP/whiskr"
+
+      - name: Build the app (Debug)
+        run: make build DERIVED="$RUNNER_TEMP/derived"

@@ -1,0 +1,70 @@
+import Foundation
+
+/// Runs the `git` executable, always off the main thread. Reads set `GIT_OPTIONAL_LOCKS=0`, so a status
+/// never takes the index lock from under the user's own git or Claude's; nothing here writes unless a
+/// person clicked for it (stage, unstage, discard, commit).
+enum Git {
+    struct Failure: Error, LocalizedError {
+        let status: Int32
+        let message: String
+        var errorDescription: String? { message }
+    }
+
+    /// The git you would get in a terminal: Homebrew's first, then the system's.
+    nonisolated static let executable: URL? = ["/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git"]
+        .first { FileManager.default.isExecutableFile(atPath: $0) }
+        .map { URL(fileURLWithPath: $0) }
+
+    /// `git <arguments>` in `folder`; its output, or a `Failure` with what it printed on stderr.
+    nonisolated static func run(_ arguments: [String], in folder: URL, input: Data? = nil, writes: Bool = false) async throws -> Data {
+        try await Task.detached(priority: writes ? .userInitiated : .utility) {
+            try runNow(arguments, in: folder, input: input, writes: writes)
+        }.value
+    }
+
+    nonisolated private static func runNow(_ arguments: [String], in folder: URL, input: Data?, writes: Bool) throws -> Data {
+        guard let executable else { throw Failure(status: -1, message: String(localized: "git is not installed.", comment: "Changes panel: no git executable")) }
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = ["-c", "core.quotepath=false", "-c", "color.ui=false"] + arguments
+        process.currentDirectoryURL = folder
+        var environment = ProcessInfo.processInfo.environment
+        environment["GIT_TERMINAL_PROMPT"] = "0"
+        environment["GIT_PAGER"] = "cat"
+        if !writes { environment["GIT_OPTIONAL_LOCKS"] = "0" }
+        process.environment = environment
+        let output = Pipe(), errors = Pipe()
+        process.standardOutput = output
+        process.standardError = errors
+        let stdin = Pipe()
+        process.standardInput = input == nil ? FileHandle.nullDevice : stdin
+        try process.run()
+        if let input {
+            stdin.fileHandleForWriting.write(input)
+            try? stdin.fileHandleForWriting.close()
+        }
+        // Both pipes are drained at once, or a chatty stderr would block the process on a full pipe.
+        let errorText = ErrorBuffer()
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            errorText.set(errors.fileHandleForReading.readDataToEndOfFile())
+            group.leave()
+        }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        group.wait()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            let message = String(decoding: errorText.data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+            throw Failure(status: process.terminationStatus, message: message.isEmpty ? String(localized: "git stopped with status \(process.terminationStatus).") : message)
+        }
+        return data
+    }
+
+    nonisolated private final class ErrorBuffer: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored = Data()
+        func set(_ data: Data) { lock.withLock { stored = data } }
+        var data: Data { lock.withLock { stored } }
+    }
+}

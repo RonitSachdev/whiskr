@@ -1,0 +1,372 @@
+#if DEBUG
+import AppKit
+import WhiskrKit
+
+/// Debug builds only: a run driven step by step from a file, as a person would drive it, without a mouse,
+/// a key window or a single event outside this process. Commands go where AppKit would send them: menu
+/// items through the main window's own responder chain (a window behind others is never key, so a
+/// nil-targeted action would otherwise find nothing), keys to the first responder, presses through the
+/// accessibility tree (no tracking loop waiting for a mouse-up that never comes).
+///
+///   --script <file>     one step per line: `<seconds to wait> <command> [argument]`; `#` starts a comment
+///
+/// Commands:
+///   menu <Menu>Item>…>      validates the item as the menu would, prints whether it is enabled, performs it
+///   key <keys>              e.g. cmd+t, cmd+shift+p, return, esc, tab, down, cmd+opt+left; a key equivalent
+///                           goes to the window's views, then to the menus; anything else to the first responder
+///   type <text>             typed into the first responder, key by key (\r Return, \e Esc, \t Tab)
+///   press <label>           the first accessibility element whose label, title or identifier is <label>
+///   snapshot <png>          the window as drawn, with the palette and answer card over it
+///   menus <file>            every menu item: key, enabled state for the present focus, title
+///   views <file>            the window's view tree with frames; ax <file> its accessibility tree
+///   state                   the workbench in one line, and what has the keyboard
+///   window <w>x<h>          resizes the window; layout split|terminals|meadow|list|meadow-view
+///   start-terminal          New Terminal on the selected Start page
+///   quit                    quits as ⌘Q does
+@MainActor
+enum DebugScript {
+    /// A background run stays out of the way of whoever is at this Mac: no Dock icon, never active, every
+    /// window it orders in (sheets, popovers, panels too) transparent and click-through, no full screen
+    /// (who asked is printed), no Dock bounce.
+    static func keepOutOfSight() {
+        guard DebugScenario.keepsInBackground else { return }
+        NSApp.setActivationPolicy(.accessory)
+        let swaps: [(AnyClass, Selector, Selector)] = [
+            (NSWindow.self, #selector(NSWindow.toggleFullScreen(_:)), #selector(NSWindow.debugRefusedFullScreen(_:))),
+            (NSWindow.self, #selector(NSWindow.order(_:relativeTo:)), #selector(NSWindow.debugOrderUnseen(_:relativeTo:))),
+            (NSApplication.self, #selector(NSApplication.activate as (NSApplication) -> () -> Void), #selector(NSApplication.debugRefusedActivate as (NSApplication) -> () -> Void)),
+            (NSApplication.self, #selector(NSApplication.activate(ignoringOtherApps:)), #selector(NSApplication.debugRefusedActivate(ignoringOtherApps:))),
+            (NSApplication.self, #selector(NSApplication.requestUserAttention(_:)), #selector(NSApplication.debugRefusedAttention(_:))),
+        ]
+        for (type, original, replacement): (AnyClass, Selector, Selector) in swaps {
+            guard let from = class_getInstanceMethod(type, original), let to = class_getInstanceMethod(type, replacement) else {
+                print("keep-out-of-sight: cannot replace \(original)")
+                continue
+            }
+            method_exchangeImplementations(from, to)
+        }
+    }
+
+    static func run(workbench: Workbench, window controller: MainWindowController) {
+        guard let path = DebugScenario.value("--script"), let text = try? String(contentsOfFile: path, encoding: .utf8) else { return }
+        // Every line out at once: a crash must not swallow what led to it.
+        setvbuf(stdout, nil, _IONBF, 0)
+        let steps = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty && !$0.hasPrefix("#") }
+        Task { @MainActor in
+            for step in steps {
+                let parts = step.split(separator: " ", maxSplits: 2).map(String.init)
+                guard parts.count >= 2, let wait = Double(parts[0]) else { print("script: cannot read “\(step)”"); continue }
+                try? await Task.sleep(for: .seconds(wait))
+                let argument = parts.count > 2 ? parts[2] : ""
+                print("step \(parts[1]) \(argument)")
+                perform(parts[1], argument, workbench: workbench, controller: controller)
+                fflush(stdout)
+            }
+        }
+    }
+
+    private static func perform(_ command: String, _ argument: String, workbench: Workbench, controller: MainWindowController) {
+        guard let window = controller.window else { return }
+        switch command {
+        case "menu":
+            guard let item = menuItem(path: argument.split(separator: ">").map { $0.trimmingCharacters(in: .whitespaces) }) else { return print("  no such menu item") }
+            send(item, window: window)
+        case "key":
+            key(argument, window: keyWindow(over: window))
+        case "type":
+            let window = keyWindow(over: window)
+            let text = argument.replacingOccurrences(of: "\\r", with: "\r").replacingOccurrences(of: "\\e", with: "\u{1b}").replacingOccurrences(of: "\\t", with: "\t")
+            for character in text {
+                guard let event = keyEvent(characters: String(character), modifiers: [], code: 0, window: window) else { continue }
+                (window.firstResponder ?? window).keyDown(with: event)
+            }
+        case "press":
+            let root = window.contentView?.superview ?? window.contentView
+            let targets: [Any] = [root as Any] + (window.childWindows ?? []).compactMap(\.contentView) + [controller.navigator.answerCardWindow?.contentView as Any]
+            for target in targets {
+                if let element = accessibilityElement(in: target, named: argument) {
+                    print("  pressed \(describe(element)): \(element.accessibilityPerformPress())")
+                    return
+                }
+            }
+            print("  nothing called “\(argument)”")
+        case "snapshot":
+            DebugShell.snapshot(window: controller, workbench: workbench, to: URL(fileURLWithPath: argument))
+        case "menus":
+            write(menuLines(window: window), to: argument)
+        case "views":
+            var lines: [String] = []
+            if let frame = window.contentView?.superview { viewLines(frame, depth: 0, into: &lines) }
+            for child in window.childWindows ?? [] { lines.append("child window \(child.frame)"); if let view = child.contentView { viewLines(view, depth: 1, into: &lines) } }
+            write(lines, to: argument)
+        case "ax":
+            var lines: [String] = []
+            accessibilityLines(window, depth: 0, into: &lines)
+            write(lines, to: argument)
+        case "state":
+            state(workbench: workbench, window: window)
+        case "window":
+            let size = argument.split(separator: "x").compactMap { Double($0) }
+            if size.count == 2 { window.setContentSize(NSSize(width: size[0], height: size[1])) }
+        case "layout":
+            controller.debugSetLayout { layout in
+                switch argument {
+                case "terminals": layout.mode = .terminalsOnly
+                case "meadow": layout.mode = .meadowOnly
+                case "list": layout.navigator = .list
+                case "meadow-view": layout.navigator = .meadow
+                default: layout.mode = .split
+                }
+            }
+        case "surface-pdf":
+            // The focused terminal drawn by its own draw(_:) into a PDF: a second way to see what it draws.
+            guard let surface = workbench.focusedPane?.surface else { return print("  no terminal") }
+            try? surface.dataWithPDF(inside: surface.bounds).write(to: URL(fileURLWithPath: argument))
+            print("  terminal \(surface.frame) drawn to \(argument)")
+        case "start-terminal":
+            // What choosing New Terminal on the selected Start page does (its rows are SwiftUI's, out of reach
+            // of a press from here).
+            guard let page = workbench.selectedTab.flatMap({ workbench.page(in: $0) })?.id else { return print("  no Start page") }
+            workbench.startTerminal(from: page)
+        case "quit":
+            NSApp.terminate(nil)
+        default:
+            print("  unknown command")
+        }
+    }
+
+    // MARK: Menus
+
+    private static func menuItem(path: [String]) -> NSMenuItem? {
+        var menu = NSApp.mainMenu
+        var found: NSMenuItem?
+        for title in path {
+            guard let item = menu?.items.first(where: { $0.title == title }) else { return nil }
+            found = item
+            menu?.delegate?.menuNeedsUpdate?(menu!)
+            menu = item.submenu
+            if let menu { menu.delegate?.menuNeedsUpdate?(menu) }
+        }
+        return found
+    }
+
+    /// Where AppKit would send the item's action if the window were key: its own target, else the first
+    /// in the window's responder chain, the window's delegate, the app, the app's delegate.
+    private static func target(for item: NSMenuItem, window: NSWindow) -> AnyObject? {
+        guard let action = item.action else { return nil }
+        if let target = item.target { return target }
+        var responder: NSResponder? = window.firstResponder
+        while let current = responder {
+            if current.responds(to: action) { return current }
+            responder = current.nextResponder
+        }
+        for candidate in [window as AnyObject, window.delegate as AnyObject?, window.windowController as AnyObject?, NSApp as AnyObject, NSApp.delegate as AnyObject?] {
+            if let candidate, candidate.responds(to: action) { return candidate }
+        }
+        return nil
+    }
+
+    private static func isEnabled(_ item: NSMenuItem, window: NSWindow) -> Bool {
+        guard item.action != nil else { return item.submenu != nil }
+        guard let target = target(for: item, window: window) else { return false }
+        if let validating = target as? NSMenuItemValidation { return validating.validateMenuItem(item) }
+        if let validating = target as? NSUserInterfaceValidations { return validating.validateUserInterfaceItem(item) }
+        return true
+    }
+
+    private static func send(_ item: NSMenuItem, window: NSWindow) {
+        // A submenu's own item carries AppKit's private `submenuAction:`, meant only for menu tracking
+        // (sent from here it breaks the run). Choosing it opens the submenu: its items were just refreshed.
+        if let submenu = item.submenu {
+            return print("  “\(item.title)” opens a submenu: \(submenu.items.map(\.title))")
+        }
+        let enabled = isEnabled(item, window: window)
+        let target = target(for: item, window: window)
+        print("  “\(item.title)” enabled=\(enabled) target=\(target.map { String(describing: type(of: $0)) } ?? "none")")
+        guard enabled, let action = item.action, let target else { return }
+        NSApp.sendAction(action, to: target, from: item)
+    }
+
+    private static func menuLines(window: NSWindow) -> [String] {
+        var lines: [String] = []
+        func walk(_ menu: NSMenu, _ trail: String) {
+            menu.delegate?.menuNeedsUpdate?(menu)
+            for item in menu.items where !item.isSeparatorItem {
+                let enabled = isEnabled(item, window: window)
+                let keys = keyLabel(item)
+                lines.append("\(keys.padding(toLength: 10, withPad: " ", startingAt: 0)) \(enabled ? "on " : "off") \(item.isHidden ? "(hidden) " : "")\(item.isAlternate ? "(alt) " : "")\(trail)\(item.title)\(item.state == .on ? " ✓" : "")")
+                if let submenu = item.submenu { walk(submenu, "\(trail)\(item.title) > ") }
+            }
+        }
+        if let bar = NSApp.mainMenu { for top in bar.items { if let menu = top.submenu { walk(menu, "\(top.title) > ") } } }
+        return lines
+    }
+
+    private static func keyLabel(_ item: NSMenuItem) -> String {
+        guard !item.keyEquivalent.isEmpty else { return "" }
+        let mask = item.keyEquivalentModifierMask
+        var label = ""
+        if mask.contains(.control) { label += "⌃" }
+        if mask.contains(.option) { label += "⌥" }
+        if mask.contains(.shift) { label += "⇧" }
+        if mask.contains(.command) { label += "⌘" }
+        let names: [String: String] = ["\r": "↩", "\t": "⇥", "\u{1b}": "⎋", String(Character(UnicodeScalar(NSLeftArrowFunctionKey)!)): "←",
+                                       String(Character(UnicodeScalar(NSRightArrowFunctionKey)!)): "→", String(Character(UnicodeScalar(NSUpArrowFunctionKey)!)): "↑",
+                                       String(Character(UnicodeScalar(NSDownArrowFunctionKey)!)): "↓", "\u{8}": "⌫", "\u{7f}": "⌫"]
+        return label + (names[item.keyEquivalent] ?? item.keyEquivalent.uppercased())
+    }
+
+    // MARK: Keys
+
+    /// Where typed keys go: an overlay over the window (the palette, a worktree panel) when one is open,
+    /// as it would be the key window; otherwise the window itself.
+    private static func keyWindow(over window: NSWindow) -> NSWindow {
+        window.childWindows?.last(where: { $0.isVisible && $0.canBecomeKey }) ?? window
+    }
+
+    private static let namedKeys: [String: (String, UInt16)] = [
+        "return": ("\r", 36), "esc": ("\u{1b}", 53), "tab": ("\t", 48), "space": (" ", 49), "delete": ("\u{7f}", 51),
+        "left": (String(Character(UnicodeScalar(NSLeftArrowFunctionKey)!)), 123), "right": (String(Character(UnicodeScalar(NSRightArrowFunctionKey)!)), 124),
+        "down": (String(Character(UnicodeScalar(NSDownArrowFunctionKey)!)), 125), "up": (String(Character(UnicodeScalar(NSUpArrowFunctionKey)!)), 126),
+    ]
+
+    private static func key(_ spec: String, window: NSWindow) {
+        var modifiers: NSEvent.ModifierFlags = []
+        var name = ""
+        for part in spec.lowercased().split(separator: "+").map(String.init) {
+            switch part {
+            case "cmd": modifiers.insert(.command)
+            case "shift": modifiers.insert(.shift)
+            case "opt", "alt": modifiers.insert(.option)
+            case "ctrl": modifiers.insert(.control)
+            default: name = part
+            }
+        }
+        let (characters, code) = namedKeys[name] ?? (name, 0)
+        guard let event = keyEvent(characters: characters, modifiers: modifiers, code: code, window: window) else { return }
+        if !modifiers.isDisjoint(with: [.command, .control]) {
+            // As NSApplication does: the window's views first, then the menus.
+            if window.performKeyEquivalent(with: event) { return print("  taken by a view") }
+            if let item = matchingItem(NSApp.mainMenu, characters: characters, modifiers: modifiers) { return send(item, window: window) }
+        }
+        print("  to \(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nothing")")
+        (window.firstResponder ?? window).keyDown(with: event)
+    }
+
+    private static func matchingItem(_ menu: NSMenu?, characters: String, modifiers: NSEvent.ModifierFlags) -> NSMenuItem? {
+        for item in menu?.items ?? [] {
+            if let submenu = item.submenu, let found = matchingItem(submenu, characters: characters, modifiers: modifiers) { return found }
+            let mask = item.keyEquivalentModifierMask.intersection([.command, .shift, .option, .control])
+            if item.keyEquivalent.lowercased() == characters.lowercased(), !item.keyEquivalent.isEmpty, mask == modifiers.intersection([.command, .shift, .option, .control]),
+               !item.isAlternate || modifiers.contains(.option) {
+                return item
+            }
+        }
+        return nil
+    }
+
+    private static func keyEvent(characters: String, modifiers: NSEvent.ModifierFlags, code: UInt16, window: NSWindow) -> NSEvent? {
+        NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: ProcessInfo.processInfo.systemUptime,
+                         windowNumber: window.windowNumber, context: nil, characters: characters,
+                         charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code)
+    }
+
+    // MARK: Looking
+
+    private static func state(workbench: Workbench, window: NSWindow) {
+        let workspace = workbench.selectedWorkspace
+        let tab = workbench.selectedTab
+        let page = workbench.focusedPage.map { "\($0)" } ?? "-"
+        print("  workspaces \(workbench.workspaces.map(\.name)) selected “\(workspace?.name ?? "-")” tabs \(workspace?.tabs.map { workbench.title(of: $0) } ?? []) selected “\(tab.map { workbench.title(of: $0) } ?? "-")” panes \(tab?.tree.panes.count ?? 0) focused-pane \(workbench.focusedPane != nil) page \(page) peek \(workbench.peekedPane != nil)")
+        print("  first responder \(window.firstResponder.map { describe($0) } ?? "none") title “\(window.title)” size \(window.frame.size)")
+    }
+
+    private static func describe(_ object: Any) -> String {
+        var text = String(describing: type(of: object))
+        if let element = object as? NSAccessibilityProtocol {
+            let label = element.accessibilityLabel() ?? ""
+            if !label.isEmpty { text += " “\(label)”" }
+        }
+        if let view = object as? NSView, let window = view.window { text += " at \(view.convert(view.bounds, to: nil).integral) in \(window === NSApp.mainWindow ? "main" : "a window")" }
+        return text
+    }
+
+    private static func viewLines(_ view: NSView, depth: Int, into lines: inout [String]) {
+        guard depth < 40 else { return }
+        let indent = String(repeating: "  ", count: depth)
+        var line = "\(indent)\(type(of: view)) \(view.frame.integral)"
+        if view.bounds.origin != .zero { line += " bounds-origin \(view.bounds.origin)" }
+        if view.isHidden { line += " hidden" }
+        if view.alphaValue < 1 { line += " alpha \(view.alphaValue)" }
+        if let label = view.accessibilityLabel(), !label.isEmpty { line += " label “\(label)”" }
+        if let field = view as? NSTextField, !field.stringValue.isEmpty { line += " text “\(field.stringValue.prefix(60))”" }
+        if let button = view as? NSButton, !button.title.isEmpty { line += " title “\(button.title)”" }
+        lines.append(line)
+        guard !view.isHidden else { return }
+        for child in view.subviews { viewLines(child, depth: depth + 1, into: &lines) }
+    }
+
+    private static func accessibilityLines(_ element: Any, depth: Int, into lines: inout [String]) {
+        guard depth < 30, let element = element as? NSAccessibilityProtocol else { return }
+        let indent = String(repeating: "  ", count: depth)
+        let role = element.accessibilityRole()?.rawValue ?? "?"
+        var line = "\(indent)\(role)"
+        for (name, value) in [("label", element.accessibilityLabel()), ("title", element.accessibilityTitle()), ("id", element.accessibilityIdentifier()),
+                              ("help", element.accessibilityHelp()), ("value", (element.accessibilityValue() as? String))] {
+            if let value, !value.isEmpty { line += " \(name)=“\(value.prefix(80))”" }
+        }
+        if element.isAccessibilityElement() == false, role == "AXGroup" || role == "?" {
+            // Only containers: their children say more.
+        }
+        lines.append(line)
+        for child in element.accessibilityChildren() ?? [] { accessibilityLines(child, depth: depth + 1, into: &lines) }
+    }
+
+    private static func accessibilityElement(in root: Any, named name: String) -> NSAccessibilityProtocol? {
+        guard let element = root as? NSAccessibilityProtocol else { return nil }
+        for candidate in [element.accessibilityLabel(), element.accessibilityTitle(), element.accessibilityIdentifier()] where candidate == name {
+            return element
+        }
+        for child in element.accessibilityChildren() ?? [] {
+            if let found = accessibilityElement(in: child, named: name) { return found }
+        }
+        return nil
+    }
+
+    private static func write(_ lines: [String], to path: String) {
+        try? Data((lines.joined(separator: "\n") + "\n").utf8).write(to: URL(fileURLWithPath: path))
+        print("  wrote \(lines.count) lines to \(path)")
+    }
+}
+
+extension NSWindow {
+    /// Stands in for `toggleFullScreen(_:)` in a background run (`DebugScript.refuseFullScreen`).
+    @objc func debugRefusedFullScreen(_ sender: Any?) {
+        print("full screen refused in a background run; asked by \(sender.map { String(describing: type(of: $0)) } ?? "nil")")
+        Thread.callStackSymbols.prefix(14).forEach { print("  \($0)") }
+        fflush(stdout)
+    }
+
+    /// Stands in for `order(_:relativeTo:)`: the window is ordered as asked, but nobody sees or clicks it.
+    @objc func debugOrderUnseen(_ place: NSWindow.OrderingMode, relativeTo other: Int) {
+        if place != .out {
+            alphaValue = 0
+            ignoresMouseEvents = true
+        }
+        debugOrderUnseen(place, relativeTo: other)     // the original, exchanged
+    }
+}
+
+private func noteRefusedActivation() {
+    print("activation refused in a background run; asked by:")
+    Thread.callStackSymbols.dropFirst(2).prefix(8).forEach { print("  \($0)") }
+}
+
+extension NSApplication {
+    // These stand in for the originals after `keepOutOfSight` exchanges them: calling one of them by name
+    // would run the original, so they share a plain function instead.
+    @objc func debugRefusedActivate() { noteRefusedActivation() }
+    @objc func debugRefusedActivate(ignoringOtherApps flag: Bool) { noteRefusedActivation() }
+    @objc func debugRefusedAttention(_ type: NSApplication.RequestUserAttentionType) -> Int { 0 }
+}
+#endif

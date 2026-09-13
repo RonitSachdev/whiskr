@@ -1,0 +1,117 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "CFBundleDisplayName": {
+      "comment": "Info.plist: CFBundleDisplayName",
+      "extractionState": "manual",
+      "shouldTranslate": true
+    },
+    "CFBundleName": {
+      "comment": "Info.plist: CFBundleName",
+      "extractionState": "manual",
+      "shouldTranslate": true
+    },
+    "NSAppleEventsUsageDescription": {
+      "comment": "Info.plist: NSAppleEventsUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで実行中のプログラムが、別のアプリを操作しようとしています。"
+          }
+        }
+      }
+    },
+    "NSDesktopFolderUsageDescription": {
+      "comment": "Info.plist: NSDesktopFolderUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで実行中のプログラムが、デスクトップフォルダのファイルを使おうとしています。"
+          }
+        }
+      }
+    },
+    "NSDocumentsFolderUsageDescription": {
+      "comment": "Info.plist: NSDocumentsFolderUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで実行中のプログラムが、書類フォルダのファイルを使おうとしています。"
+          }
+        }
+      }
+    },
+    "NSDownloadsFolderUsageDescription": {
+      "comment": "Info.plist: NSDownloadsFolderUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで実行中のプログラムが、ダウンロードフォルダのファイルを使おうとしています。"
+          }
+        }
+      }
+    },
+    "NSHumanReadableCopyright": {
+      "comment": "Info.plist: NSHumanReadableCopyright (the About panel's copyright line; the app's name and the year, the same in every language)",
+      "extractionState": "manual",
+      "shouldTranslate": false
+    },
+    "NSLocationUsageDescription": {
+      "comment": "Info.plist: NSLocationUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の実際の天気は、約1 kmに丸めた現在地を使ってOpen-Meteoに天気を問い合わせます。"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "comment": "Info.plist: NSLocationWhenInUseUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の実際の天気は、約1 kmに丸めた現在地を使ってOpen-Meteoに天気を問い合わせます。"
+          }
+        }
+      }
+    },
+    "NSNetworkVolumesUsageDescription": {
+      "comment": "Info.plist: NSNetworkVolumesUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで実行中のプログラムが、ネットワークボリューム上のファイルを使おうとしています。"
+          }
+        }
+      }
+    },
+    "NSRemovableVolumesUsageDescription": {
+      "comment": "Info.plist: NSRemovableVolumesUsageDescription",
+      "extractionState": "manual",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで実行中のプログラムが、リムーバブルボリューム上のファイルを使おうとしています。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

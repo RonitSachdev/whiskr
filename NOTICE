@@ -1,0 +1,62 @@
+Whiskr
+Copyright 2026 Whiskr contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The name "Whiskr", the app icon (docs/logo.svg and the icon images made from it) and the cat character are
+used to identify this project. Apache License 2.0, section 6, grants no permission to use them as trade
+names, trademarks or product names, except as needed to describe the origin of the work.
+
+
+Third-party software
+====================
+
+The Whiskr app includes the following third-party software, under its own licence.
+
+SwiftTerm
+https://github.com/migueldeicaza/SwiftTerm (version 1.99.1)
+Licence: MIT
+
+  Copyright (c) 2019-2026 Miguel de Icaza (https://github.com/migueldeicaza)
+  Copyright (c) 2017-2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)
+  Copyright (c) 2014-2016, SourceLair Private Company (https://www.sourcelair.com)
+  Copyright (c) 2012-2013, Christopher Jeffrey (https://github.com/chjj/)
+
+  Permission is hereby granted, free of charge, to any person obtaining
+  a copy of this software and associated documentation files (the
+  "Software"), to deal in the Software without restriction, including
+  without limitation the rights to use, copy, modify, merge, publish,
+  distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to
+  the following conditions:
+
+  The above copyright notice and this permission notice shall be
+  included in all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+SwiftTerm's package also names swift-argument-parser (used only by its Termcast tool) and swift-png
+(used only on Linux, Windows, WASI and Android). Neither is built into Whiskr.
+
+
+Colour themes
+=============
+
+The built-in terminal themes reproduce the colour palettes of these projects, each under the MIT licence:
+Catppuccin (catppuccin.com), Tokyo Night (github.com/enkia/tokyo-night-vscode-theme), Gruvbox
+(github.com/morhetz/gruvbox), Solarized (ethanschoonover.com/solarized), Rosé Pine (rosepinetheme.com),
+Dracula (draculatheme.com) and Nord (nordtheme.com). Each theme's credit is also shown in Settings.
+
+
+Services
+========
+
+When "Real weather" is turned on in Settings › Meadow, the app asks Open-Meteo (open-meteo.com) for the
+weather at your location, rounded to about a kilometre. The app makes no other network requests of its
+own: Claude Code's hook events reach it on this Mac only (127.0.0.1).

@@ -1,0 +1,700 @@
+import AppKit
+@preconcurrency import Metal
+import MetalKit
+import QuartzCore
+import simd
+
+/// The meadow, as an AppKit view to embed anywhere. Give it a `world` and it shows it; it tells you what
+/// is pointed at and chosen; you can choose things and frame them beside a panel from outside.
+///
+/// It draws at the display's refresh rate (120 Hz on ProMotion) while you interact or something moves
+/// fast, at 30 Hz when the window is not key or the scene is calm, and not at all while the window is
+/// hidden or covered. Left alone with nothing new for a few seconds it rests: the scene's time slows and it
+/// draws at a slow tick, so the meadow still sways; any input or change brings the full rate back at once.
+/// It lowers its own resolution, in steps, when frames take too long.
+@MainActor
+public final class MeadowView: MTKView {
+    public enum Mode: Sendable { case meadow, catPlayground }
+
+    // MARK: public API
+
+    /// Everything to show. Set it whenever the app's model changes; arrivals, departures and changes are
+    /// worked out here and animated.
+    public var world: MeadowWorld = .empty {
+        didSet { if world != oldValue { stage.show(world); worldChanged = true; wake() } }
+    }
+    public var settings = MeadowSettings() {
+        didSet { if settings != oldValue { stage.settings = settings; wake() } }
+    }
+    /// What is chosen: its blanket is ringed (or the cat, or the lantern). Setting it does not move the
+    /// camera; call `frame` for that.
+    public var selection: MeadowItem? {
+        get { stage.selection }
+        set { stage.selection = newValue; wake() }
+    }
+    /// What the pointer is over right now.
+    public private(set) var hovered: MeadowItem?
+    /// Called when the user clicks something (or empty ground: nil).
+    public var onSelect: ((MeadowItem?) -> Void)?
+    /// Called when what the pointer is over changes.
+    public var onHover: ((MeadowItem?) -> Void)?
+    /// A right-click's menu for what was clicked (nil: grass). When it returns a menu, the menu shows and
+    /// the right button does not slide the view.
+    public var onContextMenu: ((MeadowItem?) -> NSMenu?)?
+    /// Whether a click takes the keyboard. A host that keeps a terminal beside the meadow turns this off
+    /// while the terminal is showing, so dragging, scrolling or clicking the meadow never takes the keys
+    /// from it. The meadow has no keys of its own: while it has them they go to `onKeyDown`.
+    public var takesKeyboardFocus = true
+    /// Keys pressed while the meadow has the keyboard (arrows, Return, Space, Esc…): return true when
+    /// handled; anything else goes on up the responder chain.
+    public var onKeyDown: ((NSEvent) -> Bool)?
+    /// What the keyboard is on: ringed in `MeadowChrome.focus`, two points wide, apart from the selection's
+    /// ring. A blanket, a cat or a lantern; nil for none. Cleared when it leaves the world.
+    public var keyboardFocus: MeadowItem? {
+        get { stage.keyboardFocus }
+        set { stage.keyboardFocus = newValue; wake() }
+    }
+
+    /// One agent messaging another (both `.cat` items): a helper writing to whoever launched it (or launched
+    /// its boss) on the same blanket trots over, hands a note to them, sees them nod and trots back; any
+    /// other two turn to each other while the note floats across. Unknown cats are ignored, and nothing
+    /// plays on a cat that needs you. A cat already busy with a note gets this one after it (two at most
+    /// wait). With `reduceMotion` they only look at each other.
+    public func passNote(from sender: MeadowItem, to receiver: MeadowItem) {
+        stage.village?.passNote(from: sender, to: receiver)
+        wake()
+    }
+
+    /// Reduce Motion: helpers do not trot or carry notes, they only glance. Follows the system's setting
+    /// (and its changes); set it to override until the system's setting next changes.
+    public var reduceMotion: Bool {
+        get { stage.village?.reduceMotion ?? false }
+        set { stage.village?.reduceMotion = newValue }
+    }
+
+    /// Where something is in the view, in its own coordinates (points, origin bottom left): a blanket
+    /// with its flag, a cat with its bubble, a lantern (only after dark, when lanterns show). Nil if it is
+    /// not laid out. As of the last frame drawn; for anchoring popovers and accessibility frames.
+    public func screenRect(of item: MeadowItem) -> CGRect? {
+        guard let box = stage.screenBox(of: item), !box.isEmpty else { return nil }
+        return CGRect(x: CGFloat(box.left), y: bounds.height - CGFloat(box.bottom), width: CGFloat(box.right - box.left), height: CGFloat(box.bottom - box.top))
+    }
+
+    /// The blankets whose blanket and flag are not wholly in view, as of the last frame: past the top edge
+    /// and past the bottom edge, by id, in the world's order.
+    public private(set) var blanketsOutOfView: (above: [String], below: [String]) = ([], [])
+    /// Called on the main actor after a frame in which `blanketsOutOfView` changed (at most once a frame).
+    public var onViewChanged: (() -> Void)?
+
+    /// In the column (`MeadowSettings.Arrangement.column`), scrolls it just far enough to bring a
+    /// blanket and its flag wholly into view with a small margin, as the scroll gesture would: nothing if
+    /// they are in view already (so nothing in the rows form unless the set is taller than the view).
+    /// Eased over 0.3 s when animated, at once with Reduce Motion. Ignored while the user is dragging or
+    /// scrolling the view; while the camera is flying it waits for it to land. Meant for the user's own
+    /// actions (choosing a workspace), not for things happening on their own.
+    public func reveal(_ item: MeadowItem, animated: Bool = true) {
+        guard stage.settings.arrangement == .column else { return }
+        if stage.camera.held || CACurrentMediaTime() - lastScrolled < 0.3 { return }
+        if stage.camera.flying { pendingReveal = (item, animated); return }
+        pendingReveal = nil
+        let distance = stage.revealDistance(item.blanketID, margin: Self.revealMargin)
+        if distance == 0 { return }
+        let ease = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        stage.camera.scroll(by: distance, seconds: ease ? 0.3 : 0)
+        wake()
+    }
+    /// Points kept clear between a revealed blanket and the view's edge.
+    static let revealMargin: Float = 12
+
+    /// Frames `item` (or everything, for nil) in the part of the view a panel of `panelWidth` points on
+    /// the right leaves open, keeping the angle the user has turned the view to. Never moves the camera
+    /// while the user is dragging it.
+    public func frame(_ item: MeadowItem?, besidePanelWidth panelWidth: CGFloat, animated: Bool = true) {
+        stage.focus = item
+        stage.camera.coverGoal = Vec2(Float(panelWidth), 0)
+        if animated { stage.camera.fly() } else { stage.camera.settle() }
+        wake()
+    }
+
+    /// The angle the view is turned to: bearing round the ground (radians, 0 looking from +z) and pitch
+    /// above it. Read it to save the view; set it to restore one. Ignored while the user is dragging.
+    public var cameraAngle: (bearing: Float, pitch: Float) {
+        (stage.camera.view.bearing, stage.camera.view.pitch)
+    }
+    public func turn(toBearing bearing: Float, pitch: Float? = nil) {
+        guard !stage.camera.held else { return }
+        var v = stage.camera.view
+        v.bearing = bearing
+        if let pitch { v.pitch = min(max(pitch, MapCamera.lowest), MapCamera.highest) }
+        stage.camera.setView(v)
+        stage.camera.fly()
+        wake()
+    }
+
+    /// Draws one frame into an image of the given size in pixels, from the current camera, without
+    /// disturbing what is on screen. For tests, comparisons and thumbnails.
+    public func renderImage(width: Int, height: Int) -> CGImage? {
+        renderer?.image(stage, width: width, height: height, pointScale: Float(width) / Float(max(bounds.width, 1)))
+    }
+
+    /// Runs the scene forward by `seconds` in steps of `step` without drawing, so a preview or test can
+    /// show a settled moment (cats arrived, camera landed) deterministically.
+    public func advance(seconds: Double, step: Double = 1.0 / 60) {
+        var left = seconds
+        while left > 1e-9 {
+            let dt = min(step, left)
+            stage.update(Float(dt))
+            left -= dt
+            if pendingReveal != nil { revealWhenLanded() }
+        }
+        noticeView()
+        tellViewChanged()
+    }
+
+    /// Measured over the last second, for diagnostics.
+    public struct Timings: Sendable {
+        /// Main-thread time per frame, all of it (update + posing + encoding), and its parts.
+        public var cpuMilliseconds: Double
+        public var updateMilliseconds: Double
+        public var poseMilliseconds: Double
+        public var encodeMilliseconds: Double
+        /// Main-thread time per frame spent blocked: waiting for a free frame slot (the GPU is behind),
+        /// and waiting for a drawable from the display.
+        public var slotWaitMilliseconds: Double
+        public var drawableWaitMilliseconds: Double
+        public var gpuMilliseconds: Double
+        /// Frames encoded, and frames actually shown on the display, per second.
+        public var framesPerSecond: Double
+        public var presentedPerSecond: Double
+        /// Presented frames that came later than one refresh after the one before (a visible hitch).
+        public var droppedFrames: Int
+        /// The longest gap between two presented frames, in milliseconds.
+        public var worstIntervalMilliseconds: Double
+        public var targetFramesPerSecond: Int
+        public var renderScale: Double
+        public var drawableSize: CGSize
+        public var cats: Int
+    }
+    public private(set) var timings: Timings?
+    public var onTimings: ((Timings) -> Void)?
+    /// Draw at the full rate even when the window is not key (normally 30 Hz then). For measuring; a host
+    /// app should leave it off.
+    public var keepsFullRateWhenInactive = false { didSet { updateRate() } }
+
+    /// Diagnostics: a drag of the view as if made with the mouse, for measuring how interaction feels.
+    @_spi(Diagnostics) public func simulateDrag(dx: Float, dy: Float, slide: Bool = false) {
+        stage.camera.grab()
+        if slide { stage.camera.slide(dx: dx, dy: dy) } else { stage.camera.turn(dx: dx, dy: dy) }
+        stage.camera.release()
+        wake()
+    }
+    /// Diagnostics: one frame drawn offscreen at `width`×`height` pixels after `dt` seconds of scene time,
+    /// timed: main-thread milliseconds (and the posing part of them) and GPU milliseconds. Shows nothing on
+    /// screen, so it can measure without a window.
+    @_spi(Diagnostics) public func timeOffscreenFrame(width: Int, height: Int, dt: Double) -> (cpu: Double, pose: Double, update: Double, gpu: Double) {
+        guard let renderer else { return (0, 0, 0, 0) }
+        if offscreenTarget?.width != width || offscreenTarget?.height != height {
+            let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: renderer.gpu.colorFormat, width: width, height: height, mipmapped: false)
+            d.usage = [.renderTarget]
+            d.storageMode = .private
+            offscreenTarget = renderer.gpu.device.makeTexture(descriptor: d)
+        }
+        guard let target = offscreenTarget, let cb = renderer.gpu.queue.makeCommandBuffer() else { return (0, 0, 0, 0) }
+        stage.camera.viewport = Vec2(Float(width) / 2, Float(height) / 2)
+        renderer.semaphore.wait()
+        let t0 = CACurrentMediaTime()
+        stage.update(Float(dt))
+        noticeView()
+        let t1 = CACurrentMediaTime()
+        renderer.prepare(stage, into: cb, width: width, height: height, pointScale: 2)
+        renderer.encodePass(stage, into: cb, target: target)
+        cb.commit()
+        let t2 = CACurrentMediaTime()
+        tellViewChanged()
+        cb.waitUntilCompleted()
+        renderer.semaphore.signal()
+        return ((t2 - t0) * 1000, renderer.poseMilliseconds, (t1 - t0) * 1000, (cb.gpuEndTime - cb.gpuStartTime) * 1000)
+    }
+    private var offscreenTarget: MTLTexture?
+
+    @_spi(Diagnostics) public func simulateZoom(by factor: Float, at point: CGPoint) {
+        stage.camera.zoom(by: factor, at: Vec2(Float(point.x), Float(point.y)))
+        wake()
+    }
+
+    // MARK: setup
+
+    let stage: Stage
+    private var renderer: Renderer?
+    private let driver = FrameDriver()
+    /// Frames come from a CAMetalDisplayLink on the view's Metal layer, which calls back only when a
+    /// drawable is ready, at the cadence the display really gives this window. MTKView's own loop (which
+    /// asks for the drawable on the main thread and blocks there until one is free) stays switched off.
+    private var link: CAMetalDisplayLink?
+    /// The rate asked of the display link now.
+    private var targetRate = 60
+    private var running = false
+    /// The rate the display was found to give this window, when lower than asked; retried now and then.
+    private var displayCap: Int?
+    private var shortSeconds = 0
+    private var cappedSeconds = 0
+
+    public init(frame: NSRect, mode: Mode = .meadow) {
+        stage = Stage(mode: mode == .catPlayground ? .playground : .meadow)
+        let device = MTLCreateSystemDefaultDevice()
+        super.init(frame: frame, device: device)
+        colorPixelFormat = .bgra8Unorm_srgb
+        depthStencilPixelFormat = .invalid
+        sampleCount = 1
+        autoResizeDrawable = false
+        framebufferOnly = true
+        clearColor = MTLClearColor(red: 0.98, green: 0.976, blue: 0.965, alpha: 1)
+        layer?.isOpaque = true
+        // The drawable always has the view's shape (`sizeDrawable`), but while the view is resized a frame
+        // drawn for the old size can still be on screen for a moment: it is scaled keeping its shape,
+        // never stretched to the new one.
+        layer?.contentsGravity = .resizeAspectFill
+        layer?.masksToBounds = true
+        if let device {
+            do { renderer = try Renderer(device: device) } catch { NSLog("MeadowView: could not build the renderer: \(error)") }
+        }
+        isPaused = true
+        enableSetNeedsDisplay = false
+        driver.view = self
+        if let metal = layer as? CAMetalLayer {
+            let link = CAMetalDisplayLink(metalLayer: metal)
+            link.delegate = driver
+            link.preferredFrameLatency = 2
+            link.isPaused = true
+            // Common modes, so frames keep coming while a window is resized or a menu is open.
+            link.add(to: .main, forMode: .common)
+            self.link = link
+        }
+        stage.settings = settings
+        updateTrackingAreas()
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(pacingChanged), name: NSApplication.didBecomeActiveNotification, object: nil)
+        center.addObserver(self, selector: #selector(pacingChanged), name: NSApplication.didResignActiveNotification, object: nil)
+        // Reduce Motion is announced on the workspace's own notification centre, not the default one.
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(pacingChanged),
+                                                          name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil)
+        stage.camera.calm = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        sizeDrawable()
+    }
+
+    @available(*, unavailable)
+    required init(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    public override var acceptsFirstResponder: Bool { takesKeyboardFocus }
+    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    public override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        let center = NotificationCenter.default
+        for name in [NSWindow.didChangeOcclusionStateNotification, NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                     NSWindow.didChangeScreenNotification, NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification] {
+            center.removeObserver(self, name: name, object: nil)
+            if let window { center.addObserver(self, selector: #selector(pacingChanged), name: name, object: window) }
+        }
+        sizeDrawable()
+        pacingChanged()
+    }
+
+    public override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        sizeDrawable()
+    }
+    public override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        sizeDrawable()
+        stage.camera.fly()
+        wake()
+    }
+    public override func setBoundsSize(_ newSize: NSSize) {
+        super.setBoundsSize(newSize)
+        sizeDrawable()
+    }
+    public override func layout() {
+        super.layout()
+        sizeDrawable()
+    }
+
+    // MARK: what is in view
+
+    private var pendingReveal: (item: MeadowItem, animated: Bool)?
+    /// The system's Reduce Motion as last seen, so only a change of it overrides `reduceMotion`.
+    private var systemReducesMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    private var lastScrolled: CFTimeInterval = 0
+    /// Blankets out of view this frame and as last told, by index (kept, so a frame allocates nothing).
+    private var outAbove: [Int] = [], outBelow: [Int] = [], toldAbove: [Int] = [], toldBelow: [Int] = []
+    private var worldChanged = false
+    private var viewChanged = false
+
+    private func revealWhenLanded() {
+        guard let (item, animated) = pendingReveal, !stage.camera.flying else { return }
+        reveal(item, animated: animated)
+    }
+
+    /// After each step of the scene: which blankets are out of view, noted when that changes.
+    private func noticeView() {
+        stage.outOfView(above: &outAbove, below: &outBelow)
+        guard worldChanged || outAbove != toldAbove || outBelow != toldBelow else { return }
+        worldChanged = false
+        swap(&outAbove, &toldAbove)
+        swap(&outBelow, &toldBelow)
+        let plots = stage.village?.plots ?? []
+        let now = (above: toldAbove.map { plots[$0].view.id }, below: toldBelow.map { plots[$0].view.id })
+        if now != blanketsOutOfView {
+            blanketsOutOfView = now
+            viewChanged = true
+        }
+    }
+    /// Once the frame is done, so the host may change anything it likes in answer.
+    private func tellViewChanged() {
+        guard viewChanged else { return }
+        viewChanged = false
+        onViewChanged?()
+    }
+
+    // MARK: pacing
+
+    /// Pixels per point we draw at: from 1 up to the screen's backing scale, in quarter steps.
+    private var renderScale: CGFloat = 0
+    private var backing: CGFloat { window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2 }
+
+    /// Diagnostics: `MEADOW_RENDER_SCALE=2` holds the render scale where it is put.
+    private let fixedScale: CGFloat? = ProcessInfo.processInfo.environment["MEADOW_RENDER_SCALE"].flatMap { Double($0) }.map { CGFloat($0) }
+
+    /// The drawable is the view's shape at the render scale, the camera's viewport the view's size in
+    /// points: called on every change of size, backing scale, render scale or window. Width and height
+    /// are rounded alike, so the drawable's shape matches the view's to within a pixel.
+    func sizeDrawable() {
+        if let fixedScale { renderScale = fixedScale }
+        if renderScale == 0 { renderScale = min(backing, 2) }
+        renderScale = min(renderScale, backing)
+        let size = Self.drawableSize(for: bounds.size, scale: renderScale)
+        if drawableSize != size { drawableSize = size }
+        stage.camera.viewport = Vec2(Float(max(bounds.width, 1)), Float(max(bounds.height, 1)))
+    }
+
+    static func drawableSize(for size: CGSize, scale: CGFloat) -> CGSize {
+        CGSize(width: max(1, (size.width * scale).rounded()), height: max(1, (size.height * scale).rounded()))
+    }
+
+    /// Resting (the scene still, nothing done to the view, no change in the world): after this long the
+    /// scene's time eases down to `restPace` and frames come at `restRate`, so each moves things about as
+    /// far as a frame at 30 Hz does and nothing looks stepped, only calmer.
+    static let restAfter: CFTimeInterval = 5
+    static let restRate = 12
+    static let restPace: Float = 0.4
+    /// The scene's pace now, eased toward 1 or `restPace`.
+    private var pace: Float = 1
+    private var resting: Bool {
+        CACurrentMediaTime() - lastInput > Self.restAfter && pendingReveal == nil && stage.still
+    }
+
+    /// Diagnostics: draws as if the view were on screen even while its window is covered, for measuring
+    /// what the meadow costs in a run that must stay out of sight.
+    @_spi(Diagnostics) public var assumesOnScreen = false { didSet { pacingChanged() } }
+
+    private var lastInput = CACurrentMediaTime()
+    private func wake() {
+        lastInput = CACurrentMediaTime()
+        if !running, isVisibleOnScreen { setRunning(true) }
+        updateRate()
+    }
+
+    private var isVisibleOnScreen: Bool {
+        guard let window, !window.isMiniaturized, !isHiddenOrHasHiddenAncestor, bounds.width >= 1, bounds.height >= 1 else { return false }
+        return assumesOnScreen || window.occlusionState.contains(.visible)
+    }
+
+    // A host hides the view (or a view it sits in) when something else takes its place: no frames then.
+    public override func viewDidHide() {
+        super.viewDidHide()
+        pacingChanged()
+    }
+    public override func viewDidUnhide() {
+        super.viewDidUnhide()
+        pacingChanged()
+        wake()
+    }
+
+    @objc private func pacingChanged() {
+        stage.camera.calm = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if stage.camera.calm != systemReducesMotion {
+            systemReducesMotion = stage.camera.calm
+            reduceMotion = systemReducesMotion
+        }
+        setRunning(isVisibleOnScreen)
+        sizeDrawable()
+        updateRate()
+    }
+
+    /// Full rate while you interact, something moves fast or the camera is moving; 30 Hz when the window
+    /// is not key or for a calm scene left alone.
+    private func updateRate() {
+        let fastest = window?.screen?.maximumFramesPerSecond ?? 60
+        let key = (window?.isKeyWindow ?? false) || keepsFullRateWhenInactive
+        let calm = !key || (stage.restful && !stage.camera.moving && CACurrentMediaTime() - lastInput > 4)
+        var goal = calm ? min(30, fastest) : fastest
+        // Resting once the scene has slowed nearly all the way (on the way down it eases at the calm rate).
+        if resting && pace < Self.restPace + 0.05 { goal = min(goal, Self.restRate) }
+        // The display may be giving this window fewer frames than asked (an unfocused window, a 60 Hz
+        // display); then drawing more is wasted work.
+        if let cap = displayCap { goal = min(goal, cap) }
+        if targetRate != goal {
+            targetRate = goal
+            link?.preferredFrameRateRange = CAFrameRateRange(minimum: Float(min(30, goal)), maximum: Float(goal), preferred: Float(goal))
+        }
+    }
+
+    private func setRunning(_ on: Bool) {
+        running = on
+        link?.isPaused = !on
+    }
+
+    // Adaptive render scale, judged once a second on GPU time against the frame budget.
+    private var gpuSmoothed = 0.0
+    private var comfortable = 0
+    private var judgedAt = CACurrentMediaTime()
+    private var lastFrameAt = CACurrentMediaTime()
+    /// Sums over the second being measured.
+    private var sums = (frames: 0, cpu: 0.0, update: 0.0, pose: 0.0, encode: 0.0, slot: 0.0, drawable: 0.0)
+    /// Filled by Metal's handlers on their own threads; read once a second on the main thread.
+    private let fromGPU = GPUReports()
+
+    private func judge(now: CFTimeInterval) {
+        guard now - judgedAt >= 1 else { return }
+        let seconds = now - judgedAt
+        judgedAt = now
+        let report = fromGPU.take()
+        if report.gpuFrames > 0 { gpuSmoothed = report.gpuSum / Double(report.gpuFrames) }
+        let budget = 1000 / Double(max(targetRate, 1))
+        if fixedScale != nil {
+            comfortable = 0
+        } else if gpuSmoothed > budget * 0.9, renderScale > 1 {
+            renderScale = max(1, renderScale - 0.25)
+            comfortable = 0
+            sizeDrawable()
+        } else if gpuSmoothed * pow((renderScale + 0.25) / renderScale, 2) < budget * 0.8 {
+            // The next step up costs about the square of the scale more; take it only if that would fit.
+            comfortable += 1
+            if comfortable >= 4, renderScale < min(backing, 2) {
+                comfortable = 0
+                renderScale = min(min(backing, 2), renderScale + 0.25)
+                sizeDrawable()
+            }
+        } else {
+            comfortable = 0
+        }
+        let n = Double(max(sums.frames, 1))
+        // A presented frame later than one and a half refreshes after the last is a visible hitch.
+        // Against the cadence the display actually gave (it may run slower than asked), so a hitch is a
+        // frame that came late, not a display that runs at 60.
+        let sorted = report.intervals.sorted()
+        let refresh = max(1.0 / Double(max(targetRate, 1)), sorted.isEmpty ? 0 : sorted[sorted.count / 2])
+        let dropped = report.intervals.reduce(0) { $0 + ($1 > refresh * 1.5 ? Int(($1 / refresh).rounded()) - 1 : 0) }
+        timings = Timings(cpuMilliseconds: sums.cpu / n, updateMilliseconds: sums.update / n, poseMilliseconds: sums.pose / n,
+                          encodeMilliseconds: sums.encode / n, slotWaitMilliseconds: sums.slot / n, drawableWaitMilliseconds: sums.drawable / n,
+                          gpuMilliseconds: gpuSmoothed, framesPerSecond: Double(sums.frames) / seconds,
+                          presentedPerSecond: Double(report.intervals.count) / seconds, droppedFrames: dropped,
+                          worstIntervalMilliseconds: (report.intervals.max() ?? 0) * 1000, targetFramesPerSecond: targetRate,
+                          renderScale: Double(renderScale), drawableSize: drawableSize, cats: stage.cats.count)
+        sums = (0, 0, 0, 0, 0, 0, 0)
+        // Presented frames well short of those drawn, two seconds running: draw only what is shown.
+        let presented = Double(report.intervals.count) / seconds, encoded = timings?.framesPerSecond ?? 0
+        if displayCap == nil, encoded > 40, presented < encoded * 0.7 {
+            shortSeconds += 1
+            if shortSeconds >= 2 { displayCap = presented > 75 ? 120 : presented > 40 ? 60 : 30; shortSeconds = 0; cappedSeconds = 0 }
+        } else {
+            shortSeconds = 0
+        }
+        if displayCap != nil {
+            cappedSeconds += 1
+            if cappedSeconds >= 10 { displayCap = nil; cappedSeconds = 0 }   // try the full rate again
+        }
+        if let timings { onTimings?(timings) }
+    }
+
+    fileprivate func drawFrame(_ drawable: CAMetalDrawable) {
+        guard let renderer else { return }
+        let now = CACurrentMediaTime()
+        let dt = Float(min(now - lastFrameAt, 0.05))
+        lastFrameAt = now
+        // A free frame slot (only blocks if the GPU has fallen three frames behind).
+        renderer.semaphore.wait()
+        let t1 = CACurrentMediaTime()
+        // Slowing into rest takes two seconds; waking takes a fraction of one, at the full rate already.
+        let calmer = resting
+        pace += ((calmer ? Self.restPace : 1) - pace) * min(1, dt * (calmer ? 1.5 : 8))
+        if abs(pace - 1) < 0.002 { pace = 1 }
+        stage.pace = pace
+        stage.update(dt)
+        if pendingReveal != nil { revealWhenLanded() }
+        noticeView()
+        let t2 = CACurrentMediaTime()
+        guard let cb = renderer.gpu.queue.makeCommandBuffer() else { renderer.semaphore.signal(); return }
+        let target = drawable.texture
+        // A drawable handed out before the latest resize: drawn at its own shape (the projection follows
+        // the texture), and the next one comes at the new size.
+        if CGSize(width: target.width, height: target.height) != drawableSize { sizeDrawable() }
+        renderer.prepare(stage, into: cb, width: target.width, height: target.height, pointScale: Float(renderScale))
+        renderer.encodePass(stage, into: cb, target: target)
+        let sem = renderer.semaphore
+        let reports = fromGPU
+        cb.addCompletedHandler { cb in
+            reports.gpu((cb.gpuEndTime - cb.gpuStartTime) * 1000)
+            sem.signal()
+        }
+        drawable.addPresentedHandler { d in reports.presented(d.presentedTime) }
+        cb.present(drawable)
+        cb.commit()
+        let t3 = CACurrentMediaTime()
+        sums.frames += 1
+        sums.slot += (t1 - now) * 1000
+        sums.update += (t2 - t1) * 1000
+        sums.pose += renderer.poseMilliseconds
+        sums.encode += ((t3 - t2) * 1000 - renderer.poseMilliseconds)
+        sums.cpu += (t3 - t1) * 1000
+        judge(now: now)
+        updateRate()
+        tellViewChanged()
+    }
+
+    // MARK: input
+
+    private var tracking: NSTrackingArea?
+    public override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let area = NSTrackingArea(rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    /// A point in the view, origin top left (as the web's client coordinates).
+    private func point(_ event: NSEvent) -> Vec2 {
+        let p = convert(event.locationInWindow, from: nil)
+        return Vec2(Float(p.x), Float(bounds.height - p.y))
+    }
+
+    private var pressedAt: Vec2?
+    private var pressedTime: CFTimeInterval = 0
+    private var dragged = false
+    private var petTimer: Timer?
+
+    public override func mouseMoved(with event: NSEvent) {
+        let p = point(event)
+        stage.pointer = Vec2(p.x / Float(bounds.width) * 2 - 1, 1 - p.y / Float(bounds.height) * 2)
+        let found = stage.pick(p)
+        if found != hovered {
+            hovered = found
+            stage.hover(found)
+            onHover?(found)
+            (found != nil ? NSCursor.pointingHand : NSCursor.arrow).set()
+        }
+        wake()
+    }
+    public override func mouseExited(with event: NSEvent) {
+        if hovered != nil { hovered = nil; stage.hover(nil); onHover?(nil); NSCursor.arrow.set() }
+    }
+
+    public override func mouseDown(with event: NSEvent) {
+        if takesKeyboardFocus { window?.makeFirstResponder(self) }
+        pendingReveal = nil
+        pressedAt = point(event)
+        pressedTime = CACurrentMediaTime()
+        dragged = false
+        // Pressing on a cat is for the cat: hold a moment and it is petted.
+        if case .cat = hovered {
+            petTimer = Timer.scheduledTimer(withTimeInterval: 0.26, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { _ = self?.stage.setPetting(true) }
+            }
+        } else {
+            stage.camera.grab()
+        }
+        wake()
+    }
+    public override func mouseDragged(with event: NSEvent) {
+        guard let start = pressedAt else { return }
+        if simd_distance(point(event), start) >= 5 { dragged = true }
+        if case .cat = hovered, !dragged { return }
+        if petTimer != nil, dragged { petTimer?.invalidate(); petTimer = nil; stage.setPetting(false); stage.camera.grab() }
+        let slide = !event.modifierFlags.intersection([.command, .control, .shift]).isEmpty
+        if slide { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)) } else { stage.camera.turn(dx: Float(event.deltaX), dy: Float(event.deltaY)) }
+        wake()
+    }
+    public override func mouseUp(with event: NSEvent) {
+        petTimer?.invalidate()
+        petTimer = nil
+        let wasPetting = stage.setPetting(false)
+        stage.camera.release()
+        defer { pressedAt = nil }
+        guard let start = pressedAt, simd_distance(point(event), start) < 5, !dragged, !wasPetting else { wake(); return }
+        let picked = stage.pick(point(event))
+        if case .cat = picked { stage.hop(picked) }
+        selection = picked
+        onSelect?(picked)
+        wake()
+    }
+
+    public override func rightMouseDown(with event: NSEvent) {
+        if let onContextMenu, let menu = onContextMenu(stage.pick(point(event))) {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+            return
+        }
+        stage.camera.grab()
+        wake()
+    }
+    public override func rightMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake() }
+    public override func rightMouseUp(with event: NSEvent) { stage.camera.release() }
+    public override func otherMouseDown(with event: NSEvent) { stage.camera.grab() }
+    public override func otherMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake() }
+    public override func otherMouseUp(with event: NSEvent) { stage.camera.release() }
+
+    /// Scrolling zooms toward whatever is under the cursor; a trackpad's momentum carries on smoothly.
+    public override func scrollWheel(with event: NSEvent) {
+        let precise = event.hasPreciseScrollingDeltas
+        // A sidebar's column scrolls, as any sidebar does; pinch (or ⌘-scroll) still zooms.
+        if stage.settings.arrangement == .column, !event.modifierFlags.contains(.command) {
+            let dy = precise ? Float(event.scrollingDeltaY) : Float(event.scrollingDeltaY) * 16
+            lastScrolled = CACurrentMediaTime()
+            pendingReveal = nil
+            if dy != 0 { stage.camera.scroll(dy: dy); wake() }
+            return
+        }
+        let pixels = precise ? -Float(event.scrollingDeltaY) : -Float(event.scrollingDeltaY) * 16
+        if pixels == 0 { return }
+        let factor = exp(clamp(pixels, -120, 120) * (precise ? 0.004 : 0.0022))
+        stage.camera.zoom(by: factor, at: point(event), immediate: precise)
+        wake()
+    }
+    /// Pinching zooms toward the cursor.
+    public override func magnify(with event: NSEvent) {
+        stage.camera.zoom(by: 1 / max(0.2, 1 + Float(event.magnification)), at: point(event), immediate: true)
+        wake()
+    }
+    public override func keyDown(with event: NSEvent) {
+        if onKeyDown?(event) == true { return }
+        super.keyDown(with: event)
+    }
+
+    /// Turning two fingers turns the view.
+    public override func rotate(with event: NSEvent) {
+        stage.camera.twist(-Float(event.rotation) * .pi / 180)
+        wake()
+    }
+}
+
+/// Hands the display link's frames to the view, kept out of the public interface.
+private final class FrameDriver: NSObject, CAMetalDisplayLinkDelegate {
+    nonisolated(unsafe) weak var view: MeadowView?
+    func metalDisplayLink(_ link: CAMetalDisplayLink, needsUpdate update: CAMetalDisplayLink.Update) {
+        // Added to the main run loop, so this is the main thread.
+        nonisolated(unsafe) let drawable = update.drawable
+        nonisolated(unsafe) let me = self
+        MainActor.assumeIsolated { me.view?.drawFrame(drawable) }
+    }
+}

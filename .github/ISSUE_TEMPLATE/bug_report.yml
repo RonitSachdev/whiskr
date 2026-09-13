@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in Whiskr does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Please search the open and closed issues first.
+        For a security problem, do not open an issue: see SECURITY.md.
+        Before pasting logs or screenshots, remove anything private (paths with your username, project names, tokens).
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The shortest steps that show the problem.
+      placeholder: |
+        1. Open a workspace on a git repository
+        2. Run `claude` in a pane
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      value: |
+        - Whiskr version or commit:
+        - Built from source or downloaded:
+        - macOS version:
+        - Mac (Apple silicon or Intel):
+        - Claude Code version (`claude --version`):
+        - Shell (zsh, fish, bash):
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Optional. The session host's log is ~/Library/Application Support/Whiskr/host/host.log.
+      render: text

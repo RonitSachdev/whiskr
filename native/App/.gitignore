@@ -1,0 +1,5 @@
+WhiskrKit/.build/
+WhiskrKit/.swiftpm/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+.DS_Store
