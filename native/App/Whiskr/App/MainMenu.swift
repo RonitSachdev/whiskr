@@ -145,6 +145,9 @@ enum MainMenu {
         menu.addItem(item(String(localized: "Terminals Only"), #selector(MainWindowController.showTerminalsOnly(_:)), "2", [.command, .control]))
         menu.addItem(item(String(localized: "Meadow Only"), #selector(MainWindowController.showMeadowOnly(_:)), "3", [.command, .control]))
         menu.addItem(item(String(localized: "Hide Meadow"), #selector(MainWindowController.toggleNavigator(_:)), "s", [.command, .control]))
+        // ⌘/ is Toggle Comment in the editor; the Finder's Status Bar key with Option.
+        menu.addItem(item(String(localized: "Hide Status Bar"), #selector(MainWindowController.toggleStatusBar(_:)), "/", [.command, .option]))
+        menu.addItem(item(String(localized: "Reset Layout"), #selector(MainWindowController.resetLayout(_:))))
         menu.addItem(.separator())
         menu.addItem(item(String(localized: "Show Workspaces as List"), #selector(MainWindowController.toggleWorkspacesAsList(_:))))
         menu.addItem(.separator())
@@ -164,7 +167,11 @@ enum MainMenu {
         menu.addItem(item(String(localized: "Smaller Text"), #selector(MainWindowController.smallerText(_:)), "-"))
         menu.addItem(item(String(localized: "Actual Size"), #selector(MainWindowController.actualSizeText(_:)), "0"))
         menu.addItem(.separator())
-        menu.addItem(item(String(localized: "Enter Full Screen"), #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control]))
+        // AppKit puts its own Enter Full Screen (🌐F) here and hides this one; ⌃⌘F, the key every Mac app
+        // has had, must still work.
+        let fullScreen = item(String(localized: "Enter Full Screen"), #selector(NSWindow.toggleFullScreen(_:)), "f", [.command, .control])
+        fullScreen.allowsKeyEquivalentWhenHidden = true
+        menu.addItem(fullScreen)
         return menu
     }
 

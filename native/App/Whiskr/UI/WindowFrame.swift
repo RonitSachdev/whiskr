@@ -10,10 +10,12 @@ final class FrameController: NSViewController {
     private let workbench: Workbench
     private let chrome: WindowChrome
     private let content: NSViewController
+    private var statusHeight: NSLayoutConstraint!
+    private var status: NSView!
+    private var statusObserver: Observing?
 
-    /// The compact title bar's height: the traffic lights sit centred in the top bar.
-    static let topBarHeight: CGFloat = 38
-    static let statusBarHeight: CGFloat = 24
+    static let topBarHeight = Look.Height.topBar
+    static let statusBarHeight = Look.Height.statusBar
 
     init(content: NSViewController, workbench: Workbench, chrome: WindowChrome) {
         self.content = content
@@ -52,9 +54,38 @@ final class FrameController: NSViewController {
             status.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             status.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             status.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            status.heightAnchor.constraint(equalToConstant: Self.statusBarHeight),
         ])
+        statusHeight = status.heightAnchor.constraint(equalToConstant: Self.statusBarHeight)
+        statusHeight.isActive = true
+        self.status = status
         self.view = view
+        statusObserver = Observing { [weak self] in self?.updateStatusBar() }
+    }
+
+    /// View › Show Status Bar: the bar slides away (or back) and the terminals take the room once, at
+    /// the end, as in a live resize.
+    private func updateStatusBar() {
+        let shown = chrome.showsStatusBar
+        let height = shown ? Self.statusBarHeight : 0
+        guard statusHeight.constant != height else { return }
+        if shown { status.isHidden = false }
+        guard view.window?.isVisible == true, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
+            statusHeight.constant = height
+            status.isHidden = !shown
+            return
+        }
+        LiveResize.shared.begin()
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.15
+            context.allowsImplicitAnimation = true
+            statusHeight.animator().constant = height
+            view.layoutSubtreeIfNeeded()
+        } completionHandler: {
+            MainActor.assumeIsolated {
+                if !self.chrome.showsStatusBar { self.status.isHidden = true }
+                LiveResize.shared.end()
+            }
+        }
     }
 }
 
@@ -62,34 +93,46 @@ final class FrameController: NSViewController {
 @MainActor @Observable
 final class WindowChrome {
     var fullScreen = false
+    /// View › Show Status Bar.
+    var showsStatusBar = true
+    /// The meadow is on screen (its button in the top bar shows as on).
+    var meadowShown = true
     @ObservationIgnored var toggleMeadow: () -> Void = {}
 
     /// Room for the close, minimise and zoom buttons at the top bar's leading end.
-    var leadingInset: CGFloat { fullScreen ? 8 : 78 }
+    var leadingInset: CGFloat { fullScreen ? Look.Space.m : 78 }
+
+    /// Debug builds draw the window as the one in use although a background run's window is never key,
+    /// so a snapshot shows what you see while working (`--key-look`).
+    nonisolated(unsafe) static var drawsAsKey = false
 }
 
 extension View {
-    /// The window's chrome (top bar, tab row, status bar): one calm colour, the terminal's background a
-    /// shade off, so the chrome and the terminals read as one surface.
+    /// The window's chrome (top bar, tab row, status bar, side panel): one colour a step below the
+    /// content (`AppColorKey.chrome`), so the bars recede and the terminals come forward.
     func chromeBackground() -> some View {
-        background(Color(nsColor: Colors.terminalBackground).overlay(Color.primary.opacity(0.07)))
+        background(Color.chrome)
     }
 }
 
-/// The top bar: the meadow button after the traffic lights; in the middle, a quiet field naming where
-/// you are that opens Go to (⌘P); at the end, New, the Files and Changes button, and Settings. Its empty
-/// stretches move the window, and a double-click does what the title bar's does.
+/// The top bar, as Cursor's and Xcode's: after the traffic lights the meadow button and Home; in the
+/// middle a search field that opens Go to (⌘P); at the end New, the Files and Changes button, and
+/// Settings. Its empty stretches move the window, and a double-click does what the title bar's does.
 struct TopBar: View {
     let workbench: Workbench
     let chrome: WindowChrome
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.controlActiveState) private var activeState
 
     var body: some View {
         ZStack {
-            TitleBarDragArea()
-            HStack(spacing: 4) {
+            WindowDragArea()
+            HStack(spacing: Look.Space.xs) {
                 ChromeButton(symbol: "sidebar.left", help: String(localized: "Show or hide the meadow (⌃⌘S)"),
-                             label: String(localized: "Show or hide the meadow"), action: chrome.toggleMeadow)
+                             label: String(localized: "Show or hide the meadow"), selected: chrome.meadowShown, action: chrome.toggleMeadow)
+                ChromeButton(symbol: "house", help: String(localized: "Home (⇧⌘H)", comment: "Top bar: the Home button's tooltip"),
+                             label: String(localized: "Home", comment: "Go menu and the workspace menu: no workspace selected"),
+                             selected: workbench.isHome) { workbench.goHome() }
                 Spacer(minLength: 0)
                 NewMenuButton()
                 PanelButton(workbench: workbench)
@@ -98,12 +141,14 @@ struct TopBar: View {
                 }
             }
             .padding(.leading, chrome.leadingInset)
-            .padding(.trailing, 8)
-            GoToField(workbench: workbench)
-                .frame(maxWidth: 440)
-                .padding(.horizontal, 180)
+            .padding(.trailing, Look.Space.m)
+            GoToField()
+                .frame(maxWidth: 480)
+                .padding(.horizontal, 168)
         }
-        .frame(maxWidth: .infinity, minHeight: FrameController.topBarHeight, maxHeight: FrameController.topBarHeight)
+        // Not the window in use: the bar's content goes quiet, as the system's title bars do.
+        .opacity(activeState.inUse ? 1 : 0.6)
+        .frame(maxWidth: .infinity, minHeight: Look.Height.topBar, maxHeight: Look.Height.topBar)
         .chromeBackground()
         .overlay(alignment: .bottom) { Color.line.frame(height: 1) }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: chrome.leadingInset)
@@ -112,36 +157,64 @@ struct TopBar: View {
     }
 }
 
-/// The middle of the top bar, as Cursor's: where you are, and a click away from Go to.
+/// The middle of the top bar, as Cursor's and Safari's: a field that looks like one (inset in the
+/// content's colour, a line round it) and opens Go to, where you find any workspace, tab, Claude or file.
 private struct GoToField: View {
-    let workbench: Workbench
     @State private var hovering = false
 
     var body: some View {
-        let place = workbench.selectedWorkspace?.name ?? String(localized: "Whiskr", comment: "The top bar's field on Home")
         Button {
             NSApp.sendAction(#selector(MainWindowController.goTo(_:)), to: nil, from: nil)
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: Look.Space.s) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 11, weight: .medium))
-                Text(place)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(Look.smallIcon.weight(.medium))
+                    .foregroundStyle(Color.ink3)
+                Text(String(localized: "Go to a workspace, tab or file", comment: "Top bar: the search field's placeholder"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.ink3)
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                    .truncationMode(.tail)
+                Spacer(minLength: Look.Space.m)
+                KeyCap(text: "⌘P")
             }
-            .foregroundStyle(Color.ink2)
-            .frame(maxWidth: .infinity)
+            .padding(.leading, Look.Space.m + 2)
+            .padding(.trailing, Look.Space.xs)
             .frame(height: 24)
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(hovering ? 0.08 : 0.05)))
-            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.line))
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(FieldButtonStyle(hovering: hovering))
         .onHover { hovering = $0 }
         .help(String(localized: "Go to a workspace, tab, Claude or file (⌘P)"))
         .accessibilityLabel(String(localized: "Go to…"))
-        .accessibilityValue(place)
+    }
+}
+
+/// The search field's look: the content's colour inset in the chrome, its line darker on hover, a
+/// pressed shade while the click lasts.
+private struct FieldButtonStyle: ButtonStyle {
+    let hovering: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(Color.content))
+            .overlay(RoundedRectangle(cornerRadius: Look.Radius.control).fill(configuration.isPressed ? Look.Fill.hover : .clear))
+            .overlay(RoundedRectangle(cornerRadius: Look.Radius.control).strokeBorder(hovering || configuration.isPressed ? Color.lineStrong : Color.line))
+            .contentShape(Rectangle())
+    }
+}
+
+/// A key shown as a small cap ("⌘P"), as menus and Cursor's field show keys.
+struct KeyCap: View {
+    let text: String
+
+    var body: some View {
+        Text(verbatim: text)
+            .font(.system(size: 10.5, weight: .medium).monospacedDigit())
+            .foregroundStyle(Color.ink3)
+            .padding(.horizontal, Look.Space.xs + 1)
+            .frame(height: 16)
+            .background(RoundedRectangle(cornerRadius: Look.Radius.small).fill(Look.Fill.hover))
+            .accessibilityHidden(true)
     }
 }
 
@@ -150,19 +223,17 @@ struct ChromeButton: View {
     let symbol: String
     let help: String
     let label: String
-    var active = false
+    var selected = false
     let action: () -> Void
-    @State private var hovering = false
-    @Environment(\.isEnabled) private var enabled
 
     var body: some View {
         Button(action: action) {
-            ChromeIcon(symbol: symbol, active: active, hovering: hovering && enabled)
+            ChromeIcon(symbol: symbol, active: selected)
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(ChromeButtonStyle(selected: selected))
         .help(help)
         .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -170,16 +241,14 @@ struct ChromeButton: View {
 struct ChromeIcon: View {
     let symbol: String
     var active = false
-    var hovering = false
     @Environment(\.isEnabled) private var enabled
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 13))
+            .font(Look.icon)
             .foregroundStyle(active ? Color.ink : Color.ink2)
             .opacity(enabled ? 1 : 0.4)
-            .frame(width: 28, height: 26)
-            .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(active || hovering ? 0.08 : 0)))
+            .frame(width: Look.Height.iconButton, height: Look.Height.control)
             .contentShape(Rectangle())
     }
 }
@@ -189,7 +258,8 @@ private struct NewMenuButton: View {
     @State private var hovering = false
 
     var body: some View {
-        ChromeIcon(symbol: "plus", hovering: hovering)
+        ChromeIcon(symbol: "plus")
+            .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(hovering ? Look.Fill.hover : .clear))
             .background(MenuAnchor(menu: Self.menu))
             .onHover { hovering = $0 }
             .help(String(localized: "New Tab, Workspace or Worktree"))
@@ -220,13 +290,12 @@ private struct NewMenuButton: View {
 /// Home, which has no folder of its own.
 struct PanelButton: View {
     let workbench: Workbench
-    @State private var hovering = false
 
     var body: some View {
         let shown = workbench.selectedWorkspace.map { workbench.files.panel($0.id).shown } ?? false
         let count = workbench.selectedRepository?.status?.changeCount ?? 0
         Button { workbench.setPanelShown(!shown) } label: {
-            ChromeIcon(symbol: "sidebar.right", active: shown, hovering: hovering)
+            ChromeIcon(symbol: "sidebar.right", active: shown)
                 .overlay(alignment: .topTrailing) {
                     if count > 0, !shown {
                         Text(verbatim: count > 99 ? "99+" : "\(count)")
@@ -234,24 +303,24 @@ struct PanelButton: View {
                             .foregroundStyle(Color.ink)
                             .padding(.horizontal, 3.5)
                             .frame(minWidth: 14, minHeight: 14)
-                            .background(Capsule().fill(Color(nsColor: Colors.terminalBackground)))
+                            .background(Capsule().fill(Color.content))
                             .overlay(Capsule().strokeBorder(Color.lineStrong))
-                            .offset(x: 5, y: -3)
+                            .offset(x: 4, y: -2)
                     }
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ChromeButtonStyle(selected: shown))
         .disabled(workbench.isHome)
-        .onHover { hovering = $0 }
         .help(shown ? String(localized: "Hide Files and Changes") : count > 0 ? String(localized: "Show Files and Changes: \(count) changed files") : String(localized: "Show Files and Changes"))
         .accessibilityLabel(shown ? String(localized: "Hide Files and Changes") : String(localized: "Show Files and Changes"))
         .accessibilityValue(count > 0 ? String(localized: "\(count) changed files") : "")
     }
 }
 
-/// The top bar's empty stretch: it moves the window, and a double-click zooms (or minimises, or does
-/// nothing) as the title bar's does, following Desktop & Dock's setting.
-private struct TitleBarDragArea: NSViewRepresentable {
+/// An empty stretch of the window's bars (the top bar's, and the tab row's under it): it moves the
+/// window, and a double-click does what a title bar's does, following Desktop & Dock's setting (zoom
+/// unless set otherwise). It never opens anything: new tabs come from "+", ⌘T and the menus.
+struct WindowDragArea: NSViewRepresentable {
     func makeNSView(context: Context) -> DragView { DragView() }
     func updateNSView(_ view: DragView, context: Context) {}
 
@@ -259,13 +328,16 @@ private struct TitleBarDragArea: NSViewRepresentable {
         override func mouseDown(with event: NSEvent) {
             guard let window else { return }
             guard event.clickCount == 2 else { return window.performDrag(with: event) }
-            switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
-            case "Minimize": window.performMiniaturize(nil)
-            case "None": break
-            default: window.performZoom(nil)
+            switch TitleBarDoubleClick() {
+            case .zoom: window.performZoom(nil)
+            case .minimize: window.performMiniaturize(nil)
+            case .nothing: break
             }
         }
 
         override var mouseDownCanMoveWindow: Bool { true }
+
+        /// As a title bar: a window that is not the key one moves (or zooms) at the first click.
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     }
 }

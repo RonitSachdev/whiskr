@@ -40,9 +40,39 @@ Nothing has been released yet. This is what the first release will contain.
   in where you left off), and recent folders. Nothing is typed into a terminal at launch, except to
   resume a Claude whose terminal ended with a restart, and not even that while the earlier-named app's
   session host still runs.
-- A window frame like a professional editor's: a top bar across the window (meadow button, a field that
-  opens Go to, New, Files and Changes, Settings) and a status bar along its foot (branch, folder, Claudes
-  and requests, the editor's details, ⌘P and ⇧⌘P), with the meadow and the work area between them.
+- A window frame like a professional editor's: a top bar across the window (meadow button, Home, a search
+  field that opens Go to, New, Files and Changes, Settings) and a status bar along its foot (branch,
+  folder, Claudes and requests, the editor's details, ⌘P and ⇧⌘P), with the meadow and the work area
+  between them. The bars, the tab row and the Files and Changes panel share one chrome colour a step
+  below the terminals, with a clear line between every two regions; the bars go quiet when the window is
+  not the one in use, and lines strengthen with Increase Contrast.
+- Tabs as in Cursor and VS Code: the selected tab joins its terminal, with an accent line along its top;
+  a close button at each tab's end (always on the selected tab, on the others under the pointer); a
+  middle click closes; with more tabs than fit, the row shows those around the selected one and a menu
+  lists them all, and "+" stays in reach. The tab
+  row begins with the workspace's colour and name, whose menu lists every workspace.
+- In a split, the pane that takes your typing has an accent border and the others fade slightly.
+- The bars behave as a Mac title bar: drag them to move the window, double-click to zoom (following
+  Desktop & Dock's setting). A click on the empty tab row no longer opens a tab; "+" and ⌘T do.
+- Show and hide each part of the window, remembered across launches: the meadow (⌃⌘S), Files and Changes
+  (⇧⌘E, ⇧⌘C), and the status bar (⌥⌘/), from the View menu, the buttons in the top bar and the palette;
+  View › Reset Layout puts everything back. Drag the side panel's edge past its least width to close it;
+  double-click a divider for its usual width, or to share the room evenly between two panes. A zoomed
+  pane (⇧⌘↩) says so and brings the others back with a click. Sections in Changes fold away.
+- A click on a tab, a divider or the bars works the first time while Whiskr is in the background, as in
+  Safari; it used to be spent bringing the window forward.
+- ⌃⌘F enters full screen again (AppKit's own Enter Full Screen item had hidden ours, and with it the key).
+- Tabs answer every click: a click on a tab's close button or title, with the pointer resting there, was
+  taken by the drawing over it and did nothing, so tabs could not be closed by their ×.
+- Opening, closing and switching tabs take effect in the frame you act in: the new tab's terminal has the
+  keyboard at once (keys typed straight after ⌘T or ⌘W reach it, never the tab before), its shell starts
+  without waiting, and a closed tab leaves the row without a fade.
+- Terminals draw with Metal on a thread of their own, so neither the meadow nor the window's own work
+  holds up a terminal's frames, and the meadow draws more gently while you type. Output arrives in fewer,
+  larger pieces, and hidden parts of the window (Home, the workspace list) no longer recompute as tabs
+  change.
+- `make run` builds and opens the optimised app; `make run-debug` the Debug build. `make perf` measures
+  typing, tabs and output as a visible window shows them, in an invisible run.
 - English and Japanese throughout, following the system language.
 - Upgrading from the app's earlier working name, "Workers Factory": at first launch, its settings, saved
   layout, the Claudes' last state and themes are carried over. Its git worktree folder

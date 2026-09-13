@@ -22,6 +22,8 @@ public struct WindowLayout: Equatable, Sendable, Codable {
     public var mode: Mode
     /// The meadow's width once you have dragged the divider; nil for the default share of the window.
     public var navigatorWidth: Double?
+    /// View › Show Status Bar.
+    public var showsStatusBar: Bool
 
     /// The meadow's share of the window by default, and its limits then.
     public static let defaultShare: Double = 0.42
@@ -40,10 +42,11 @@ public struct WindowLayout: Equatable, Sendable, Codable {
     /// Dragging the divider this close to either edge switches to that region alone.
     public static let snap: Double = 120
 
-    public init(navigator: Navigator = .meadow, mode: Mode = .split, navigatorWidth: Double? = nil) {
+    public init(navigator: Navigator = .meadow, mode: Mode = .split, navigatorWidth: Double? = nil, showsStatusBar: Bool = true) {
         self.navigator = navigator
         self.mode = mode
         self.navigatorWidth = navigatorWidth
+        self.showsStatusBar = showsStatusBar
     }
 
     /// What the window shows, `width` points wide.
@@ -99,9 +102,15 @@ public struct WindowLayout: Equatable, Sendable, Codable {
         mode = mode == .terminalsOnly ? .split : .terminalsOnly
     }
 
+    /// View › Reset Layout: every region back, at its usual size. How the workspaces are drawn (meadow or
+    /// list) is a preference, not a region, and stays.
+    public mutating func reset() {
+        self = WindowLayout(navigator: navigator)
+    }
+
     // MARK: Saving
 
-    private enum CodingKeys: String, CodingKey { case navigator, mode, navigatorWidth }
+    private enum CodingKeys: String, CodingKey { case navigator, mode, navigatorWidth, showsStatusBar }
 
     /// Reads what it can: anything missing or unknown keeps its default.
     public init(from decoder: Decoder) throws {
@@ -112,6 +121,7 @@ public struct WindowLayout: Equatable, Sendable, Codable {
         if let value = try? container.decodeIfPresent(Double.self, forKey: .navigatorWidth), value.isFinite, value >= Self.navigatorMinimum {
             navigatorWidth = value
         }
+        if let value = try? container.decodeIfPresent(Bool.self, forKey: .showsStatusBar) { showsStatusBar = value }
     }
 
     public var data: Data { (try? JSONEncoder().encode(self)) ?? Data() }

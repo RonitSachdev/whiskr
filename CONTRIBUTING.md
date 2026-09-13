@@ -18,9 +18,12 @@ You need macOS 26 and Xcode 26.1 or later (Swift 6.2). Everything runs from `nat
 
 ```sh
 cd native/App
-make build      # Debug build into ~/Library/Developer/Xcode/DerivedData/Whiskr-make
-make run        # build and open the app
+make build      # Release build (what make run opens) into ~/Library/Developer/Xcode/DerivedData/Whiskr-make
+make run        # build and open the app, optimised as people get it
+make debug      # Debug build (unoptimised, with the test options below); make run-debug opens it
 make test       # all logic tests: make test-kit (WhiskrKit) and make test-scene (MeadowScene)
+make profile    # Release's optimisation with the Debug test options compiled in, for measuring
+make perf       # the profile build's invisible performance and tab checks, as a table (fails on a regression)
 make release    # Release configuration
 make dist       # unsigned zip and checksum, as a release carries them
 make project    # regenerate Whiskr.xcodeproj after changing project.yml (needs xcodegen)
@@ -31,7 +34,7 @@ make project    # regenerate Whiskr.xcodeproj after changing project.yml (needs 
 - **Do not edit `Whiskr.xcodeproj` by hand.** Change `native/App/project.yml` and run `make project`. Commit
   both.
 - **Checks that need the app** run it invisibly against a scratch folder, never against your own
-  settings or sessions. Debug builds only:
+  settings or sessions. Debug and profile builds only (Release leaves these options out):
 
   ```sh
   Whiskr.app/Contents/MacOS/Whiskr --isolated /tmp/whiskr-check --background --demo /tmp/whiskr-demo \
@@ -42,6 +45,11 @@ make project    # regenerate Whiskr.xcodeproj after changing project.yml (needs 
   window invisible and click-through. `--snapshot` draws the window to a PNG and quits. An isolated run
   that crashes exits with status 70 instead of showing a crash report. Treat that as a bug. The full list
   of options is at the top of `native/App/Whiskr/App/DebugScenario.swift`.
+- **Performance** is measured as a visible window would show it (`DebugPerf.swift`): `make perf` runs the
+  profile build invisibly, with the meadow drawing and terminals rendering as on screen, and prints
+  keystroke-to-glyph times, tab open, close and switch times, main-thread stalls and the meadow's cost. It
+  also clicks every part of every tab and checks each pane's size. Run it before a change that touches
+  the terminal, the tab row, the meadow or the model's observation, and keep its limits.
 
 ## Code style
 

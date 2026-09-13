@@ -21,8 +21,8 @@ public enum BuiltInThemes {
         values.mapValues(RGBColor.init)
     }
 
-    /// Ours: off-white and near-black surfaces, charcoal ink in three strengths, soft grey lines,
-    /// one red for "needs you" (docs/DESIGN.md).
+    /// Ours: off-white and near-black surfaces with the bars a step below them, charcoal ink in three
+    /// strengths, soft grey lines, one red for "needs you" (docs/DESIGN.md).
     static let whiskr = Theme(
         id: defaultID, name: "Whiskr", author: "Whiskr", credit: "The app's own neutral palette",
         light: ThemeVariant(
@@ -30,7 +30,7 @@ public enum BuiltInThemes {
                 0x232327, 0xb3261e, 0x1d6b39, 0x8a6100, 0x2f5596, 0x8e3b8f, 0x1f6f78, 0xbdbdb8,
                 0x6b6b72, 0xd4433a, 0x2e8b4f, 0xa87b00, 0x2f6fe4, 0xa855a8, 0x2a8a95, 0xe6e6e2,
             ]),
-            app: app([.surface: 0xfcfcfb, .sidebar: 0xf4f4f2, .hover: 0xefefec, .press: 0xe6e6e2, .line: 0xe5e5e1, .lineStrong: 0xd4d4cf,
+            app: app([.surface: 0xfcfcfb, .chrome: 0xf3f3f1, .sidebar: 0xf4f4f2, .hover: 0xefefec, .press: 0xe6e6e2, .line: 0xd2d2ce, .lineStrong: 0xc4c4bf,
                       .text: 0x232327, .textSecondary: 0x5b5b62, .textTertiary: 0x8a8a91, .well: 0xf1f1ee, .accent: 0x2f6fe4,
                       .working: 0x8a8a91, .needsYou: 0xd4433a, .done: 0x232327, .idle: 0xd4d4cf, .error: 0xd4433a])),
         dark: ThemeVariant(
@@ -38,7 +38,7 @@ public enum BuiltInThemes {
                 0x2a2a2d, 0xef6b62, 0x6cc488, 0xe6c15a, 0x6fa3f2, 0xc98ee0, 0x5fc4cf, 0xd8d8dc,
                 0x6b6b72, 0xff8a80, 0x8fdba6, 0xf5d77e, 0x94bcff, 0xe0b0f2, 0x86dde6, 0xf4f4f6,
             ]),
-            app: app([.surface: 0x1e1e20, .sidebar: 0x19191b, .hover: 0x2a2a2d, .press: 0x343437, .line: 0x2f2f33, .lineStrong: 0x45454a,
+            app: app([.surface: 0x1e1e20, .chrome: 0x0f0f11, .sidebar: 0x19191b, .hover: 0x2a2a2d, .press: 0x343437, .line: 0x36363b, .lineStrong: 0x4a4a50,
                       .text: 0xececee, .textSecondary: 0xa9a9b0, .textTertiary: 0x7a7a82, .well: 0x0f0f11, .accent: 0x6fa3f2,
                       .working: 0x7a7a82, .needsYou: 0xe5564c, .done: 0xececee, .idle: 0x45454a, .error: 0xe5564c])),
         isBuiltIn: true)

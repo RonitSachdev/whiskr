@@ -61,9 +61,10 @@ events, and the terminal text is illustrative.</sub>
 
 ```sh
 cd native/App
-make run        # build (Debug) and open the app
+make run        # build the app as people get it (Release, optimised) and open it
+make run-debug  # the Debug build, for development (unoptimised, with the test options below)
 make test       # the logic tests: the Kit and the meadow scene (Swift Testing)
-make release    # the Release configuration
+make perf       # the performance and tab checks, in invisible runs of an optimised build
 make dist       # an unsigned, zipped Release build and its SHA-256 checksum
 ```
 

@@ -47,17 +47,32 @@ sessions.
 ## The window
 
 - **One window, framed.** A **top bar** runs the window's full width (the traffic lights, the meadow
-  button; in the middle a quiet field naming where you are, which opens Go to; "+", the Files and Changes
-  button and Settings at the end), and a **status bar** runs along its foot (branch, folder as
-  `~/…/parent/folder`, how many Claudes and how many need you, the focused file's details, ⌘P and ⇧⌘P).
-  Both are drawn by the app in one chrome colour, the terminal's background a shade off, never as toolbar
-  items. Between them the meadow is on the left and the work area on the right: a **tab row** led by the
-  **workspace button**, then the panes, which have no headers. Nothing in the bars repeats what is on
+  button and Home; in the middle a search field, "Go to a workspace, tab or file ⌘P", which opens Go to;
+  "+", the Files and Changes button and Settings at the end), and a **status bar** runs along its foot
+  (branch, folder as `~/…/parent/folder`, how many Claudes and how many need you, the focused file's
+  details, ⌘P and ⇧⌘P). Both are drawn by the app in the chrome colour, never as toolbar items. Between
+  them the meadow is on the left and the work area on the right: a **tab row** led by the **workspace
+  button** (its colour, its name, a chevron: the menu of every workspace), then the panes. Terminals have
+  no header; a file or a diff has a slim one with its path. Nothing in the bars repeats what is on
   screen elsewhere.
 - **Sizes.** By default the meadow takes about 42 % of the window and the terminals keep at least 80
   columns. The divider drags from a 240 pt sidebar to the meadow alone. Below about 880 pt of window, the
   meadow steps aside. View offers Meadow and Terminals, Terminals Only, Meadow Only, Hide Meadow, and
   Show Workspaces as List.
+- **The bars behave as a title bar.** The top bar's empty stretches and the tab row's move the window,
+  and a double-click on them does what Desktop & Dock says a title bar's double-click does (zoom, unless
+  set to minimise or nothing). Nothing there opens a tab: new tabs come only from "+", ⌘T and the menus.
+- **Showing and hiding, as in VS Code.** Every region but the tab row can be put away and brought back
+  from the same places, and the choice is remembered: the meadow (⌃⌘S, the sidebar button by the
+  traffic lights), Files and Changes (⇧⌘E and ⇧⌘C, the panel button at the top right; per workspace),
+  and the status bar (View › Hide Status Bar, ⌥⌘/, since ⌘/ comments in the editor). Toggle buttons show
+  their state with the selected fill. The tab row stays: it holds the workspace button and "+". Dragging
+  a divider past its region's least width closes it (the same drag coming back opens it); a double-click
+  on a divider gives the usual width (the meadow's, the panel's) or shares the room evenly (between
+  panes). Hiding a region with the keyboard in it hands the keyboard to the region that stays. View ›
+  Reset Layout brings every region back at its usual size. Zoom Pane (⇧⌘↩, also in a split tab's menu)
+  fills the tab with one pane; a note at its corner, "Zoomed · Show All Panes", brings the others back.
+  In Changes, Staged, Changes and Untracked fold under their chevrons, remembered.
 - **The window title** is the workspace's name (for the Window menu and Mission Control), "Whiskr" on
   Home. It is never "Claude".
 - **Workspaces** are named after their repository (else their folder) and follow the first terminal's
@@ -68,7 +83,8 @@ sessions.
   name, branch, state and Claude count; Return takes you back in exactly where you left it) and
   **Recent** (folders not already open). The tab row shows "Home" and no tabs. It looks the same with no
   workspace or many. **Every launch lands on Home**; everything comes back running, one click away.
-  Go › Home is ⇧⌘H; it is also first in the workspace button's menu, and ⌘N (New Workspace) goes there.
+  Go › Home is ⇧⌘H; it is also the house in the top bar and first in the workspace button's menu, and
+  ⌘N (New Workspace) goes there.
 - **Closing** asks nothing. ⌘Z brings back what was closed, with its process, for ten seconds, and ⇧⌘T
   reopens it later. Closing a workspace's last tab closes the workspace; closing the workspace on screen
   returns Home, never into another workspace's terminal. Closing a workspace asks only when Claude or
@@ -188,12 +204,75 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
 
 ## Look of the interface
 
-- Neutral and solid, framed like a professional editor (Cursor, Xcode): off-white surfaces, charcoal text, soft grey lines, soft shadows, smooth motion. No
-  translucent panels, and no cream-and-brown palette.
-- Mac conventions throughout: every command in the menus with its key, standard Settings (⌘,) with
-  categories on the left and one setting per row on the right, and standard Save / Don't Save / Cancel.
-- English and Japanese, following the system language, for everything a person reads: menus, settings,
-  notifications, Help, and the words in the scene.
+Neutral and solid, framed like a professional editor (Cursor, VS Code, Xcode): flat surfaces, charcoal
+text, lines between regions, shadows only on what floats. No translucent panels, no glass in the work
+area, and no cream-and-brown palette. Every colour comes from the theme (`AppColorKey`); every measure
+from `Look` (`UI/Theme.swift`).
+
+### Layers
+
+The window has two layers and one line, so its structure shows at a glance in light and dark and in
+every theme:
+
+| Layer | What | Colour |
+|---|---|---|
+| **Content** | Panes (terminals, editors, diffs), Home, and the selected tab | The terminal's background |
+| **Chrome** | Top bar, tab row (and its unselected tabs), status bar, Files and Changes panel | `chrome`: a step below the content (toward the text in light themes, toward black in dark ones), 1.03–1.25:1 against it |
+| **Line** | Between any two regions: under the top bar, along the tab row's foot, after each tab, above the status bar, at the meadow's edge, between panes, before the side panel | `line`: at least 1.3:1 on both layers; 3:1 with Increase Contrast |
+
+The meadow is its own region, full height between the bars, edged by a line; nothing of the chrome is
+tinted toward its green. Colour in the chrome means state, never decoration.
+
+### Where the keys go
+
+- **The selected tab** is the content's colour and opens into its panes (no line under it), with a 2 pt
+  accent line along its top: two signs, as VS Code's. Unselected tabs are the chrome's colour with
+  secondary text.
+- **The focused pane of a split** has a 1.5 pt accent border; the others fade 10 % toward the background.
+  A pane alone shows neither.
+- **When the window is not the one in use,** the accent turns grey (`lineStrong`) and the bars' content
+  goes quieter, as every Mac title bar does.
+
+Panes meet flush with a line between them (as Xcode and VS Code), not as cards with gaps: the selected
+tab must join its panes, and the meadow beside them is already the window's one picture.
+
+### Measures
+
+- **Spacing:** 4, 8, 12, 16, 24, 32 (2 and 6 inside a control).
+- **Radii:** 4 for small things (key caps, badges), 6 for controls (buttons, fields, rows), 10 for what
+  floats (palette, cards, popovers). Bars, tabs and panes are square: they meet edge to edge.
+- **Heights:** top bar 40 (the compact title bar's band: the traffic lights sit centred in it), tab row
+  34, file header 30, status bar 24; controls in the bars 26 tall, icon buttons 28 wide.
+- **Type:** tab titles 13 (medium when selected), the top bar's field 12, status bar, panel headers and
+  breadcrumbs 11, Home's title 22. Nothing under 10.
+- **Icons:** SF Symbols, 13 pt regular in the bars, 11 pt in tabs, headers and the status bar.
+
+### States
+
+Every control in the bars has the same hover (the primary colour at 6 %), pressed (11 %) and selected
+(9 %) fills, and a tooltip naming it with its key. Disabled controls are at 40 %. The search field is the
+content's colour inset in the chrome, its line darker under the pointer.
+
+### Tabs
+
+- Tabs share the row equally up to 220 pt. When even 128 pt each will not fit them all, the row shows as
+  many as fit, a run of neighbours that always holds the selected tab whole (it moves only when the
+  selected tab would leave it), and a chevron with how many are out of sight, whose menu lists every
+  tab. The row never scrolls: every tab in sight is whole, its close button in reach. "+" always stays
+  at the row's end. New tabs come only from "+", ⌘T and the menus: the row's empty stretch belongs to the
+  window, as the top bar's does.
+- Each tab shows what it is (a terminal, a file, changes; a Claude's request or finished mark in its
+  place), its title, and a close button at its **trailing** end, as in Cursor, VS Code and Zed: always on
+  the selected tab, on the others under the pointer; an unsaved file shows a dot there until the pointer
+  comes. A middle click closes. On a workspace's only tab the close button's tooltip says the workspace
+  closes and Home comes.
+
+### Elsewhere
+
+Mac conventions throughout: every command in the menus with its key, standard Settings (⌘,) with
+categories on the left and one setting per row on the right, and standard Save / Don't Save / Cancel.
+English and Japanese, following the system language, for everything a person reads: menus, settings,
+notifications, Help, and the words in the scene.
 
 ## The app icon
 

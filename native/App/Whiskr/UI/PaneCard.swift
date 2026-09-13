@@ -2,14 +2,15 @@ import AppKit
 import SwiftUI
 import WhiskrKit
 
-/// One pane: its terminal with a little room around the text, no header. When its tab has
-/// several panes, the ones you are not typing in are dimmed by 15 %. A helper's story takes the boss's
-/// pane's place while you are looking at it.
+/// One pane: its terminal with a little room around the text, no header. When its tab has several
+/// panes, the one you are typing in has a border in the accent and the others fade a little
+/// toward the background (`PaneFocusView`). A helper's story takes the boss's pane's place while you
+/// are looking at it.
 final class PaneCard: NSView {
     let pane: Pane
     private let workbench: Workbench
     private let terminalHost = NSView()
-    private let dim = DimView()
+    private let dim = PaneFocusView()
     private var story: NSHostingView<StoryView>?
     private var observers: [Observing] = []
     /// The terminal follows the card's edges, except during a live resize (`LiveResize`), when it keeps
@@ -118,8 +119,7 @@ final class PaneCard: NSView {
 
     private func updateLook() {
         let place = workbench.workspace(of: pane.id)
-        let unfocused = place.map { $0.1.tree.panes.count > 1 && $0.1.zoomedPane == nil && $0.1.focusedPane != pane.id } ?? false
-        dim.isHidden = !unfocused
+        dim.state = place.map { PaneFocusView.State(tab: $0.1, pane: pane.id) } ?? .alone
         effectiveAppearance.performAsCurrentDrawingAppearance {
             layer?.backgroundColor = Colors.terminalBackground.cgColor
         }
@@ -163,8 +163,31 @@ final class PaneCard: NSView {
     }
 }
 
-/// The 15 % veil over a pane you are not typing in; clicks pass through to the terminal below.
-final class DimView: NSView {
+/// Which pane takes the keys, over a pane or a page in a split: the focused one has a border in the
+/// accent (grey while the window is not the one in use, as the selected tab's line), as herdr and tmux
+/// mark it; the others fade a tenth of the way to the background, enough to recede, not enough to
+/// hinder reading (Ghostty's 30 % proved heavy). A pane alone shows neither. Clicks pass through.
+final class PaneFocusView: NSView {
+    enum State {
+        case alone, focused, unfocused
+
+        /// How a pane of a tab stands.
+        @MainActor init(tab: Tab, pane: UUID) {
+            guard tab.tree.panes.count > 1, tab.zoomedPane == nil else { self = .alone; return }
+            self = tab.focusedPane == pane ? .focused : .unfocused
+        }
+    }
+
+    var state: State = .alone {
+        didSet {
+            guard state != oldValue else { return }
+            isHidden = state == .alone
+            needsDisplay = true
+        }
+    }
+
+    private var keyObservers: [NSObjectProtocol] = []
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
@@ -173,14 +196,42 @@ final class DimView: NSView {
     }
 
     required init?(coder: NSCoder) {
-        fatalError("DimView is created in code")
+        fatalError("PaneFocusView is created in code")
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    override func updateLayer() {
-        layer?.backgroundColor = (Palette.isDark(effectiveAppearance) ? NSColor.black : NSColor.white).withAlphaComponent(0.15).cgColor
+    /// The focus border greys while the window is not the one in use.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        keyObservers.forEach(NotificationCenter.default.removeObserver)
+        keyObservers = []
+        guard let window else { return }
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification] {
+            keyObservers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.needsDisplay = true }
+            })
+        }
     }
 
     override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        guard let layer else { return }
+        let inUse = window?.isKeyWindow == true || WindowChrome.drawsAsKey
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            switch state {
+            case .alone:
+                layer.backgroundColor = nil
+                layer.borderWidth = 0
+            case .focused:
+                layer.backgroundColor = nil
+                layer.borderWidth = Look.focusBorderWidth
+                layer.borderColor = (Look.focusLine(active: inUse) as NSColor).cgColor
+            case .unfocused:
+                layer.backgroundColor = Colors.terminalBackground.withAlphaComponent(0.1).cgColor
+                layer.borderWidth = 0
+            }
+        }
+    }
 }

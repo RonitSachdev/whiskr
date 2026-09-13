@@ -14,8 +14,10 @@ enum Colors {
     static var text: NSColor { palette[.text] }
     static var textTertiary: NSColor { palette[.textTertiary] }
     static var terminalBackground: NSColor { palette.terminalBackground }
-    /// The focused pane's darker frame.
-    static var focusFrame: NSColor { palette[.textTertiary] }
+    /// The window's chrome: the top bar, the tab row, the status bar and the side panel.
+    static var chrome: NSColor { palette[.chrome] }
+    static var accent: NSColor { palette[.accent] }
+    static var lineStrong: NSColor { palette[.lineStrong] }
 
     /// Accounts are told apart by colour, as in the meadow: the blanket colours, handed out in the
     /// order the accounts are listed (default first). They identify, so they stay the same in every theme.
@@ -31,6 +33,10 @@ extension SwiftUI.Color {
     private static func theme(_ key: AppColorKey) -> SwiftUI.Color { ThemeStore.shared.palette.color(key) }
 
     static var surface: SwiftUI.Color { theme(.surface) }
+    /// The window's chrome (`Colors.chrome`).
+    static var chrome: SwiftUI.Color { theme(.chrome) }
+    /// The content layer: the terminal's own background, which the selected tab shares.
+    static var content: SwiftUI.Color { SwiftUI.Color(nsColor: Colors.terminalBackground) }
     static var sunk: SwiftUI.Color { theme(.sidebar) }
     static var hover: SwiftUI.Color { theme(.hover) }
     static var press: SwiftUI.Color { theme(.press) }
@@ -47,4 +53,88 @@ extension SwiftUI.Color {
     static var done: SwiftUI.Color { theme(.done) }
     static var idle: SwiftUI.Color { theme(.idle) }
     static var error: SwiftUI.Color { theme(.error) }
+}
+
+/// The interface's measures (docs/DESIGN.md, "Look of the interface"): one spacing scale, three radii,
+/// one height per kind of bar and control, one icon size, and the strengths of the hover, pressed and
+/// selected fills. Views use these rather than numbers of their own.
+enum Look {
+    /// Spacing: 4, 8, 12, 16, 24, 32 (and 2 and 6 inside a control).
+    enum Space {
+        static let xxs: CGFloat = 2, xs: CGFloat = 4, s: CGFloat = 6, m: CGFloat = 8, l: CGFloat = 12, xl: CGFloat = 16, xxl: CGFloat = 24, xxxl: CGFloat = 32
+    }
+
+    /// Corners: small things (badges, key caps), controls (buttons, fields, rows), and floating cards
+    /// (the palette, the answer card, popovers). Bars, tabs and panes are square: they meet edge to edge.
+    enum Radius {
+        static let small: CGFloat = 4, control: CGFloat = 6, card: CGFloat = 10
+    }
+
+    /// The bars' heights. The top bar is the compact title bar's band (40 pt on macOS 26, the traffic
+    /// lights centred 20 pt down), so the lights sit centred in it.
+    enum Height {
+        static let topBar: CGFloat = 40, tabRow: CGFloat = 34, paneHeader: CGFloat = 30, statusBar: CGFloat = 24
+        /// An icon button or a field in a bar.
+        static let control: CGFloat = 26
+        /// An icon button's width.
+        static let iconButton: CGFloat = 28
+    }
+
+    /// Every symbol in the bars is this size and weight; inside a tab or the status bar, `smallIcon`.
+    static let icon = Font.system(size: 13, weight: .regular)
+    static let smallIcon = Font.system(size: 11, weight: .regular)
+
+    /// The fills of a control on the chrome, over whatever colour is under it.
+    enum Fill {
+        static let hover = Color.primary.opacity(0.06)
+        static let pressed = Color.primary.opacity(0.11)
+        static let selected = Color.primary.opacity(0.09)
+    }
+
+    /// Where the keys go, on the selected tab and the focused pane: the theme's accent while the window is
+    /// the one you are using, a quiet grey while it is not (as the system's own selection greys).
+    static func focusLine(active: Bool) -> Color { active ? .accent : .lineStrong }
+    static func focusLine(active: Bool) -> NSColor { active ? Colors.accent : Colors.lineStrong }
+
+    /// Width of the line along the selected tab's top, and of the border round the focused pane of a split.
+    static let focusLineWidth: CGFloat = 2
+    static let focusBorderWidth: CGFloat = 1.5
+}
+
+/// A control in the bars: its hover, pressed and selected fills, the same everywhere.
+struct ChromeButtonStyle: ButtonStyle {
+    var selected = false
+    var radius: CGFloat = Look.Radius.control
+
+    func makeBody(configuration: Configuration) -> some View {
+        ChromeButtonBody(configuration: configuration, selected: selected, radius: radius)
+    }
+
+    private struct ChromeButtonBody: View {
+        let configuration: Configuration
+        let selected: Bool
+        let radius: CGFloat
+        @State private var hovering = false
+        @Environment(\.isEnabled) private var enabled
+
+        var body: some View {
+            configuration.label
+                .background(RoundedRectangle(cornerRadius: radius).fill(fill))
+                .contentShape(Rectangle())
+                .onHover { hovering = $0 }
+        }
+
+        private var fill: Color {
+            guard enabled else { return .clear }
+            if configuration.isPressed { return Look.Fill.pressed }
+            if selected { return Look.Fill.selected }
+            return hovering ? Look.Fill.hover : .clear
+        }
+    }
+}
+
+extension ControlActiveState {
+    /// The window is the one in use (the key window): the bars' text and the focus lines go quiet when
+    /// it is not, as every Mac window's title bar does.
+    var inUse: Bool { self == .key || WindowChrome.drawsAsKey }
 }

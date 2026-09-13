@@ -15,7 +15,9 @@ import Foundation
 ///     and adds a `fish_prompt` handler.
 ///   - bash (minimal): a `PROMPT_COMMAND`, which a `.bashrc` that sets its own replaces.
 /// The shim falls through to the real `claude` unchanged when the pane's hooks file is gone (the app
-/// has quit) or the user passes `--settings` themselves.
+/// has quit). When the user passes `--settings` themselves (a file or inline JSON, as a shell function
+/// of their own may), the pane's hooks are added to theirs (`HookSettings.merged`, through `paw`), since
+/// Claude Code takes only one.
 ///
 /// Beside the shim are the app's own command-line tools (`paw`), as links to the copies inside the app.
 public struct ShellIntegration: Sendable, Equatable {
@@ -125,12 +127,38 @@ public struct ShellIntegration: Sendable, Equatable {
     fi
     hooks=$\(Key.hooks)
     if [ -n "$hooks" ] && [ -r "$hooks" ]; then
+      own=
       for arg in "$@"; do
         case $arg in
-          --settings|--settings=*) exec "$real" "$@" ;;
+          --settings|--settings=*) own=1 ;;
         esac
       done
-      exec "$real" --settings "$hooks" "$@"
+      [ -n "$own" ] || exec "$real" --settings "$hooks" "$@"
+      # Claude Code takes one --settings: yours gets the pane's hooks added to it (and stays as it is
+      # if that cannot be done).
+      left=$#
+      while [ "$left" -gt 0 ]; do
+        arg=$1
+        shift
+        left=$((left - 1))
+        case $arg in
+          --settings)
+            if [ "$left" -gt 0 ]; then
+              value=$1
+              shift
+              left=$((left - 1))
+              merged=$("$\(Key.bin)/paw" merge-settings "$hooks" "$value" 2>/dev/null) && [ -n "$merged" ] && value=$merged
+              set -- "$@" --settings "$value"
+            else
+              set -- "$@" "$arg"
+            fi ;;
+          --settings=*)
+            value=${arg#--settings=}
+            merged=$("$\(Key.bin)/paw" merge-settings "$hooks" "$value" 2>/dev/null) && [ -n "$merged" ] && value=$merged
+            set -- "$@" "--settings=$value" ;;
+          *) set -- "$@" "$arg" ;;
+        esac
+      done
     fi
     exec "$real" "$@"
 

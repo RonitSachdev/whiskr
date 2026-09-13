@@ -9,12 +9,13 @@ import WhiskrKit
 /// ⇧⌘P). On Home, only the counts and keys.
 struct StatusBar: View {
     let workbench: Workbench
+    @Environment(\.controlActiveState) private var activeState
 
     var body: some View {
         let workspace = workbench.selectedWorkspace
         let folder = workspace.map { workbench.focusedPane?.currentFolder ?? $0.liveFolder }
         let summary = StatusSummary(statuses: workbench.agentRows.map(\.status))
-        HStack(spacing: 6) {
+        HStack(spacing: 0) {
             if let branch = workspace?.branch {
                 Button {
                     NSApp.sendAction(#selector(MainWindowController.showChangesPanel(_:)), to: nil, from: nil)
@@ -22,8 +23,9 @@ struct StatusBar: View {
                     Label(branch, systemImage: "arrow.triangle.branch")
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        .statusItem()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ChromeButtonStyle(radius: Look.Radius.small))
                 .help(String(localized: "Branch \(branch): show Changes (⇧⌘C)", comment: "Status bar: the git branch's tooltip"))
                 Separator()
             }
@@ -31,11 +33,13 @@ struct StatusBar: View {
                 Label(Places.short(folder, home: FileManager.default.homeDirectoryForCurrentUser.path), systemImage: "folder")
                     .lineLimit(1)
                     .truncationMode(.head)
+                    .statusItem()
                     .help(abbreviatingHome(folder))
                 if summary.claudes > 0 { Separator() }
             }
             if summary.claudes > 0 {
                 Text(String(localized: "\(summary.claudes) Claudes", comment: "Status line: how many Claudes are running"))
+                    .statusItem()
                 if summary.needYou > 0 {
                     Separator()
                     Button {
@@ -43,8 +47,9 @@ struct StatusBar: View {
                     } label: {
                         Text(String(localized: "\(summary.needYou) need you", comment: "Status line: how many requests wait"))
                             .foregroundStyle(StateMark.vermillion)
+                            .statusItem()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ChromeButtonStyle(radius: Look.Radius.small))
                     .help(String(localized: "Go to the oldest request (⌘J)"))
                 }
             }
@@ -54,12 +59,14 @@ struct StatusBar: View {
                 Image(systemName: "bell.slash")
                     .font(.system(size: 10))
                     .foregroundStyle(Color.ink3)
+                    .statusItem()
                     .help(String(localized: "Alerts paused until \(until.formatted(date: .omitted, time: .shortened))"))
                     .accessibilityLabel(String(localized: "Alerts paused until \(until.formatted(date: .omitted, time: .shortened))"))
                 Separator()
             }
             if let document = workbench.focusedDocument, document.isText {
                 FileStatus(document: document)
+                    .statusItem()
                 Separator()
             }
             KeyHint(key: "⌘P", label: String(localized: "Go to"), action: #selector(MainWindowController.goTo(_:)))
@@ -68,8 +75,10 @@ struct StatusBar: View {
         .labelStyle(StatusLabelStyle())
         .font(.system(size: 11))
         .foregroundStyle(Color.ink2)
-        .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, minHeight: FrameController.statusBarHeight, maxHeight: FrameController.statusBarHeight)
+        // Not the window in use: quieter, as the top bar.
+        .opacity(activeState.inUse ? 1 : 0.7)
+        .padding(.horizontal, Look.Space.s)
+        .frame(maxWidth: .infinity, minHeight: Look.Height.statusBar, maxHeight: Look.Height.statusBar)
         .chromeBackground()
         .overlay(alignment: .top) { Color.line.frame(height: 1) }
         .accessibilityElement(children: .contain)
@@ -126,6 +135,13 @@ private struct FileStatus: View {
     }
 }
 
+private extension View {
+    /// A clickable item in the status bar: a little room round it for its hover fill.
+    func statusItem() -> some View {
+        padding(.horizontal, Look.Space.s).frame(height: 18)
+    }
+}
+
 private struct Separator: View {
     var body: some View {
         Text(verbatim: "·").foregroundStyle(Color.ink3).accessibilityHidden(true)
@@ -146,21 +162,16 @@ private struct KeyHint: View {
     let key: String
     let label: String
     let action: Selector
-    @State private var hovering = false
-
     var body: some View {
         Button {
             NSApp.sendAction(action, to: nil, from: nil)
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: Look.Space.xs) {
                 Text(key).foregroundStyle(Color.ink2)
-                Text(label).foregroundStyle(Color.ink3)
+                Text(label).foregroundStyle(Color.ink2)
             }
-            .padding(.horizontal, 6)
-            .frame(height: 18)
-            .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(hovering ? 0.07 : 0)))
+            .statusItem()
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(ChromeButtonStyle(radius: Look.Radius.small))
     }
 }

@@ -76,13 +76,19 @@ bytes, never inside JSON.
 - **Version 2:** terminal addresses (`t1`, `t2`…) and names, `run`, `send`, `keys`, `interrupt`, `wait`,
   `read`, `subscribe`; events `added` and `passed`; programs' own status reports (OSC 7501), which the host
   reads and answers.
+- **Output in as few pieces as keep its order.** A pseudo-terminal gives at most a kilobyte a read on
+  macOS. The host joins what one pass reads into one frame, and the app joins consecutive frames for the
+  same terminal that arrive in one socket read, up to 64 KB (`OutputBatch`). Nothing waits to be joined,
+  so a lone echo goes at once; a flood costs the terminal's lock, which typing and drawing also take,
+  far fewer times.
 - **One connection per pane**, each read on its own thread, plus one for the app. A viewer that cannot keep
   up stops the host reading that terminal (backpressure) instead of filling memory.
 - **Reattaching.** The host keeps each terminal's latest 4 MiB of output. When older output is dropped, it
   first restores the terminal modes the program had set (alternate screen, bracketed paste, mouse and
   focus reports, keyboard protocol, cursor) and asks the program to redraw. Output printed at an earlier
   size is replayed at that size.
-- **Sizes.** A resize reaches the program only after the size has held still for 80 ms. During a live
+- **Sizes.** A new terminal starts at the size its view first takes in the window, in the turn the view is
+  laid out. A resize reaches the program only after the size has held still for 80 ms. During a live
   drag, terminals keep their size and take the new one once at the end, so a long scrollback re-wraps
   once.
 
@@ -167,6 +173,27 @@ stop drawing when nothing moves.
 - Frames come from a `CAMetalDisplayLink`, at the rate the display presents. The render scale adapts to
   hold the frame budget. The scene's per-frame update allocates nothing, and a test checks this.
 - After 5 seconds with nothing new the meadow rests at 12 Hz, and any input or event brings full rate
-  back. Hidden or covered, it draws nothing.
+  back. Hidden or covered, it draws nothing. While keys are typed into a terminal it draws at most 30
+  times a second, at the same pace, and full rate returns 1.5 s after the last key (`yieldFrames`).
+- Terminals draw with SwiftTerm's Metal renderer (`TerminalSurface.drawsWithMetal`), each on a render
+  thread of its own; the main thread only says a frame is due. SwiftTerm's default, Core Graphics, drew
+  every frame on the main thread beside the meadow's frames and typing.
 - The scene is optimised even in Debug builds (`Scene/Package.swift`), as is SwiftTerm
-  (`native/App/Packages.xcconfig`): both run on the main thread beside typing.
+  (`native/App/Packages.xcconfig`): the scene's update and encoding run on the main thread beside typing,
+  and SwiftTerm parses on each pane's connection thread and re-wraps on resize on the main thread.
+- `make run` builds Release. Debug (`make debug`) is for development; `make profile` is Release's
+  optimisation with the Debug test harness, for `make perf`.
+
+## Measuring
+
+`make perf` runs the profile build invisibly (`--isolated … --background --perf`, `DebugPerf.swift`) and
+prints what a person at the window would get. The run's window is never on screen, so three things stand in
+for being in front: the meadow draws as if on screen and key; terminals tick on Core Video's display link
+(`SWIFTTERM_FORCE_CVDISPLAYLINK`), which keeps the display's rate for a covered window, instead of the
+view's own link, which stops; and the window counts as the key window of the active app. Every key and
+click goes through `NSApplication.sendEvent`, to whatever the window's views say is under the pointer
+or has the keyboard. A frame counts as drawn when SwiftTerm reports it drawn (`TerminalView.onFramePresented`)
+or, for the window's own views, once Core Animation has committed it; the compositor's last step to the
+glass (about one refresh) is not seen. Main-thread stalls are a ping every 4 ms from a thread of its own.
+It also clicks every part of every tab, closes tabs every way there is, and checks every pane's size
+against what its program was told.

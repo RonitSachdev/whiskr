@@ -199,6 +199,17 @@
         }
       }
     },
+    "%@, %lld files": {
+      "comment": "Changes panel: a section's header, for VoiceOver",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、%2$lld件のファイル"
+          }
+        }
+      }
+    },
     "%@: %@": {
       "comment": "Dock menu: a workspace and what waits there",
       "localizations": {
@@ -509,6 +520,17 @@
         }
       }
     },
+    "%lld more out of sight": {
+      "comment": "Tab row: how many tabs do not fit",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ほかに%lld件"
+          }
+        }
+      }
+    },
     "%lld need you": {
       "comment": "Meadow edge capsule: requests out of view\nStatus line: how many requests wait",
       "localizations": {
@@ -620,17 +642,6 @@
           }
         }
       }
-    },
-    "%lld/%lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld/%2$lld"
-          }
-        }
-      },
-      "shouldTranslate": false
     },
     "+%lld helpers": {
       "comment": "Sidebar list: how many helpers are working",
@@ -804,6 +815,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@まで通知を一時停止中"
+          }
+        }
+      }
+    },
+    "All tabs": {
+      "comment": "Tab row: the menu listing every tab when they do not fit",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのタブ"
+          }
+        }
+      }
+    },
+    "All tabs: %lld more out of sight": {
+      "comment": "Tab row: the menu listing every tab when they do not fit",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべてのタブ：ほかに%lld件"
           }
         }
       }
@@ -1359,6 +1392,17 @@
         }
       }
     },
+    "Close Tab (⌥⌘W): the workspace's last tab, so the workspace closes and you go Home": {
+      "comment": "Tooltip of the close button on a workspace's only tab",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを閉じる（⌥⌘W）：このワークスペースの最後のタブなので、ワークスペースも閉じてホームに戻ります"
+          }
+        }
+      }
+    },
     "Close Window": {
       "localizations": {
         "ja": {
@@ -1417,6 +1461,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "すべてのフォルダを閉じる"
+          }
+        }
+      }
+    },
+    "Collapsed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "折りたたみ済み"
           }
         }
       }
@@ -1905,6 +1959,16 @@
         }
       }
     },
+    "Expanded": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "展開済み"
+          }
+        }
+      }
+    },
     "Failed": {
       "localizations": {
         "ja": {
@@ -2195,6 +2259,17 @@
         }
       }
     },
+    "Go to a workspace, tab or file": {
+      "comment": "Top bar: the search field's placeholder",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース、タブ、ファイルへ移動"
+          }
+        }
+      }
+    },
     "Go to a workspace, tab, Claude or file (⌘P)": {
       "localizations": {
         "ja": {
@@ -2376,6 +2451,26 @@
         }
       }
     },
+    "Hide Status Bar": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステータスバーを隠す"
+          }
+        }
+      }
+    },
+    "Hides the files": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを隠します"
+          }
+        }
+      }
+    },
     "Home": {
       "comment": "Accessibility label of the Home page\nGo menu and the workspace menu: no workspace selected\nThe tab row's place name while on Home",
       "localizations": {
@@ -2383,6 +2478,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ホーム"
+          }
+        }
+      }
+    },
+    "Home (⇧⌘H)": {
+      "comment": "Top bar: the Home button's tooltip",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホーム（⇧⌘H）"
           }
         }
       }
@@ -2634,6 +2740,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "最後のタブ"
+          }
+        }
+      }
+    },
+    "Laying out the window": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウインドウのレイアウト"
           }
         }
       }
@@ -3924,12 +4041,32 @@
         }
       }
     },
+    "Reset Layout": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "レイアウトをリセット"
+          }
+        }
+      }
+    },
     "Restore Panes": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "ペインを元に戻す"
+          }
+        }
+      }
+    },
+    "Restore Panes (⇧⌘↩)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを元に戻す（⇧⌘↩）"
           }
         }
       }
@@ -4314,6 +4451,16 @@
         }
       }
     },
+    "Show Status Bar": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステータスバーを表示"
+          }
+        }
+      }
+    },
     "Show Story": {
       "localizations": {
         "ja": {
@@ -4374,6 +4521,17 @@
         }
       }
     },
+    "Show or hide Files (⇧⌘C for Changes); the button at the top right does too. Drag the panel's edge to size it, past its least width to close it, or double-click it for its usual width.": {
+      "comment": "Help page: the side panel's toggle",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを表示または非表示にします（変更は ⇧⌘C）。右上のボタンでも同じです。パネルの端をドラッグすると幅が変わり、最小幅より狭くすると閉じ、ダブルクリックすると標準の幅に戻ります。"
+          }
+        }
+      }
+    },
     "Show or hide the meadow": {
       "localizations": {
         "ja": {
@@ -4394,6 +4552,28 @@
         }
       }
     },
+    "Show or hide the meadow; the button by the window's buttons does too. ⌃⌘1, ⌃⌘2 and ⌃⌘3 give both, the terminals alone or the meadow alone.": {
+      "comment": "Help page: the meadow's toggle",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を表示または非表示にします。ウインドウのボタンの横にあるボタンでも同じです。⌃⌘1、⌃⌘2、⌃⌘3 で、両方、ターミナルだけ、草原だけになります。"
+          }
+        }
+      }
+    },
+    "Show or hide the status bar.": {
+      "comment": "Help page: the status bar's toggle",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステータスバーを表示または非表示にします。"
+          }
+        }
+      }
+    },
     "Show request count on the Dock icon": {
       "localizations": {
         "ja": {
@@ -4410,6 +4590,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "開いているワークスペースをすべて表示します"
+          }
+        }
+      }
+    },
+    "Shows the files": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを表示します"
           }
         }
       }
@@ -5353,6 +5543,17 @@
         }
       }
     },
+    "View › Reset Layout puts every part of the window back as it first was. The bars at the top move the window, and a double-click on them zooms it, as on any Mac title bar; new tabs come from + and ⌘T.": {
+      "comment": "Help page: resetting the layout, and what the bars do",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示 › レイアウトをリセット で、ウインドウのすべての部分が最初の状態に戻ります。上のバーをドラッグするとウインドウが移動し、ダブルクリックするとほかの Mac のタイトルバーと同じく拡大/縮小します。新しいタブは + と ⌘T で開きます。"
+          }
+        }
+      }
+    },
     "Volume": {
       "localizations": {
         "ja": {
@@ -5681,12 +5882,34 @@
         }
       }
     },
+    "Zoom the pane you are typing in to fill its tab, and back. A double-click on the line between two panes shares the room evenly again.": {
+      "comment": "Help page: zooming a pane",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力中のペインをタブいっぱいに拡大し、また元に戻します。2つのペインの間の線をダブルクリックすると、幅が均等に戻ります。"
+          }
+        }
+      }
+    },
     "Zoom to Fit": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "ウインドウに合わせる"
+          }
+        }
+      }
+    },
+    "Zoomed · Show All Panes ⇧⌘↩": {
+      "comment": "Note over a zoomed pane; a click brings back the others",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拡大中 · すべてのペインを表示 ⇧⌘↩"
           }
         }
       }

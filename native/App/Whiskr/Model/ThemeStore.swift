@@ -192,6 +192,14 @@ struct Palette {
         for key in AppColorKey.allCases {
             app[key] = Palette.dynamic(theme) { $0.app[key] }
         }
+        // With Increase Contrast, every line between regions reaches 3:1 on the chrome: the hint colour,
+        // which the theme keeps at 3:1 there.
+        for key in [AppColorKey.line, .lineStrong] {
+            app[key] = NSColor(name: nil) { appearance in
+                let variant = theme.variant(dark: Palette.isDark(appearance))
+                return Palette.nsColor(Palette.isHighContrast(appearance) ? variant.app[.textTertiary] : variant.app[key])
+            }
+        }
         self.app = app
         swiftUI = app.mapValues { SwiftUI.Color(nsColor: $0) }
         onNeedsYou = SwiftUI.Color(nsColor: Palette.dynamic(theme) { variant in
@@ -208,6 +216,12 @@ struct Palette {
 
     nonisolated static func isDark(_ appearance: NSAppearance) -> Bool {
         appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+    }
+
+    /// The system's Increase Contrast is on (its appearances are the high-contrast ones then).
+    nonisolated static func isHighContrast(_ appearance: NSAppearance) -> Bool {
+        let name = appearance.bestMatch(from: [.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua])
+        return name == .accessibilityHighContrastAqua || name == .accessibilityHighContrastDarkAqua
     }
 
     nonisolated static func nsColor(_ color: WhiskrKit.RGBColor) -> NSColor {

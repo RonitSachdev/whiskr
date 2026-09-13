@@ -139,8 +139,12 @@ public struct TerminalColors: Hashable, Sendable, Codable {
 }
 
 /// The app's own colours: its surfaces, text, lines, accent, and one colour per agent state.
+///
+/// The window is built from two layers (docs/DESIGN.md, "Look of the interface"): the **content** (the
+/// terminal's background: panes, editors, Home, the selected tab) and the **chrome** a step below it (the
+/// top bar, the tab row, the status bar, the side panel), with one **line** between any two.
 public enum AppColorKey: String, CaseIterable, Codable, Sendable {
-    case surface, sidebar, hover, press, line, lineStrong
+    case surface, chrome, sidebar, hover, press, line, lineStrong
     case text, textSecondary, textTertiary
     case well, accent
     case working, needsYou, done, idle, error
@@ -148,6 +152,7 @@ public enum AppColorKey: String, CaseIterable, Codable, Sendable {
     public var label: String {
         switch self {
         case .surface: "Surface"
+        case .chrome: "Bars and panels"
         case .sidebar: "Sidebar"
         case .hover: "Hover"
         case .press: "Pressed"
@@ -176,17 +181,22 @@ public struct AppColors: Hashable, Sendable {
     }
 
     /// App colours that go with a terminal palette: surfaces just off its background, text in three
-    /// strengths of its foreground, its blue as the accent and its red for "needs you".
+    /// strengths of its foreground, its blue as the accent and its red for "needs you". The chrome sits a
+    /// step below the content: a little toward the text in a light theme, toward black in a dark one (as
+    /// Cursor's and VS Code's do), so the bars recede and the terminals come forward.
     public static func derived(from terminal: TerminalColors) -> AppColors {
         let bg = terminal.background, fg = terminal.foreground
         let dark = terminal.isDark
         var values: [AppColorKey: RGBColor] = [
             .surface: dark ? bg.mixed(with: fg, 0.03) : bg.mixed(with: .white, 0.4),
+            .chrome: dark ? bg.mixed(with: .black, 0.28) : bg.mixed(with: fg, 0.05),
             .sidebar: dark ? bg.mixed(with: .black, 0.12) : bg.mixed(with: fg, 0.04),
             .hover: bg.mixed(with: fg, 0.08),
             .press: bg.mixed(with: fg, 0.12),
-            .line: bg.mixed(with: fg, dark ? 0.12 : 0.1),
-            .lineStrong: bg.mixed(with: fg, dark ? 0.22 : 0.18),
+            // Lines at the strong end of what editors use (about 1.4:1 on the chrome): the regions must read
+            // apart at a glance.
+            .line: bg.mixed(with: fg, dark ? 0.18 : 0.2),
+            .lineStrong: bg.mixed(with: fg, dark ? 0.3 : 0.32),
             .text: fg,
             .textSecondary: fg.mixed(with: bg, 0.28),
             .textTertiary: fg.mixed(with: bg, 0.45),
@@ -196,6 +206,14 @@ public struct AppColors: Hashable, Sendable {
         let surface = values[.surface]!
         // The sidebar must still carry body text well.
         values[.sidebar] = values[.sidebar]!.ensuring(contrast: 4.5, with: fg, movingTo: surface)
+        // The bars carry text in all three strengths: secondary as body text, tertiary as hints.
+        let chrome = values[.chrome]!
+        values[.text] = fg.ensuring(contrast: 4.5, with: chrome, movingTo: dark ? .white : .black)
+        // A line reads on both layers, whatever the palette.
+        values[.line] = values[.line]!.ensuring(contrast: 1.3, with: chrome, movingTo: fg).ensuring(contrast: 1.3, with: bg, movingTo: fg)
+        let ink = values[.text]!
+        values[.textSecondary] = values[.textSecondary]!.ensuring(contrast: 4.5, with: chrome, movingTo: ink)
+        values[.textTertiary] = values[.textTertiary]!.ensuring(contrast: 3, with: chrome, movingTo: ink)
         // "Needs you" must stand out on the surface: the stronger of the two reds, deepened if need be.
         let red = [terminal.ansi[1], terminal.ansi[9]].max { $0.contrast(with: surface) < $1.contrast(with: surface) }!
         values[.needsYou] = red.ensuring(contrast: 3, with: surface, movingTo: fg)
@@ -252,6 +270,9 @@ public struct ThemeVariant: Hashable, Sendable, Codable {
             ("Text on the surface", app[.text], surface, 4.5),
             ("Secondary text on the surface", app[.textSecondary], surface, 3),
             ("Text in the sidebar", app[.text], app[.sidebar], 4.5),
+            ("Text on the bars", app[.text], app[.chrome], 4.5),
+            ("Secondary text on the bars", app[.textSecondary], app[.chrome], 4.5),
+            ("Hints on the bars", app[.textTertiary], app[.chrome], 3),
             ("The \"needs you\" colour on the surface", app[.needsYou], surface, 3),
         ]
         return checks.compactMap { what, a, b, minimum in

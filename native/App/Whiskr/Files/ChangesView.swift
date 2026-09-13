@@ -3,8 +3,8 @@ import SwiftUI
 import WhiskrKit
 
 /// The workspace's git changes (herdr's Changes panel): the branch, then Staged, Changes and Untracked
-/// with their counts; a click shows a file's diff, hovering offers stage, unstage and discard (always
-/// confirmed); a message box and Commit at the bottom.
+/// with their counts, each folding away under its chevron (remembered); a click shows a file's diff,
+/// hovering offers stage, unstage and discard (always confirmed); a message box and Commit at the bottom.
 struct ChangesView: View {
     let workbench: Workbench
     @FocusState private var messageFocused: Bool
@@ -28,9 +28,9 @@ struct ChangesView: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
-                            section(String(localized: "Staged", comment: "Changes panel section"), status.staged, staged: true, repository: repository)
-                            section(String(localized: "Changes", comment: "Changes panel section: unstaged"), status.unstaged, staged: false, repository: repository)
-                            section(String(localized: "Untracked", comment: "Changes panel section"), status.untracked, staged: false, repository: repository)
+                            section("staged", String(localized: "Staged", comment: "Changes panel section"), status.staged, staged: true, repository: repository)
+                            section("changes", String(localized: "Changes", comment: "Changes panel section: unstaged"), status.unstaged, staged: false, repository: repository)
+                            section("untracked", String(localized: "Untracked", comment: "Changes panel section"), status.untracked, staged: false, repository: repository)
                         }
                         .padding(.bottom, 8)
                     }
@@ -44,15 +44,20 @@ struct ChangesView: View {
 
     private func entry(untracked: GitStatusEntry) -> String { untracked.isUntracked ? "untracked" : "changed" }
 
-    @ViewBuilder private func section(_ title: String, _ entries: [GitStatusEntry], staged: Bool, repository: Repository) -> some View {
+    @ViewBuilder private func section(_ key: String, _ title: String, _ entries: [GitStatusEntry], staged: Bool, repository: Repository) -> some View {
         if !entries.isEmpty {
-            SectionHeader(title: title, count: entries.count, staged: staged) {
+            let folded = FoldedSections.shared.keys.contains(key)
+            SectionHeader(title: title, count: entries.count, staged: staged, folded: folded, toggle: { FoldedSections.shared.toggle(key) }) {
                 if staged { repository.unstage(entries.map(\.path)) } else { repository.stage(entries.map(\.path)) }
             }
             // A file both staged and changed again is in two sections: each row is told apart by its section.
-            ForEach(entries.map { (key: "\(staged ? "staged" : entry(untracked: $0)):\($0.path)", entry: $0) }, id: \.key) { row in
-                ChangeRow(entry: row.entry, staged: staged, repository: repository, workbench: workbench)
-            }
+            if !folded { rows(entries, staged: staged, repository: repository) }
+        }
+    }
+
+    @ViewBuilder private func rows(_ entries: [GitStatusEntry], staged: Bool, repository: Repository) -> some View {
+        ForEach(entries.map { (key: "\(staged ? "staged" : entry(untracked: $0)):\($0.path)", entry: $0) }, id: \.key) { row in
+            ChangeRow(entry: row.entry, staged: staged, repository: repository, workbench: workbench)
         }
     }
 }
@@ -85,26 +90,53 @@ private struct BranchLine: View {
     }
 }
 
+/// The sections of Changes folded away, kept for the next launch.
+@MainActor @Observable
+final class FoldedSections {
+    static let shared = FoldedSections()
+    private static let key = "foldedChangesSections"
+    private(set) var keys: Set<String> = Set(AppPlaces.defaults.stringArray(forKey: key) ?? [])
+
+    func toggle(_ section: String) {
+        if keys.contains(section) { keys.remove(section) } else { keys.insert(section) }
+        AppPlaces.defaults.set(keys.sorted(), forKey: Self.key)
+    }
+}
+
 private struct SectionHeader: View {
     let title: String
     let count: Int
     let staged: Bool
+    let folded: Bool
+    let toggle: () -> Void
     let all: () -> Void
     @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
+            Button(action: toggle) {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .rotationEffect(.degrees(folded ? 0 : 90))
+                        .frame(width: 10)
+                    Text(title)
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(verbatim: "\(count)")
+                        .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                }
                 .foregroundStyle(Color.ink3)
-            Text(verbatim: "\(count)")
-                .font(.system(size: 10, weight: .semibold).monospacedDigit())
-                .foregroundStyle(Color.ink3)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "\(title), \(count) files", comment: "Changes panel: a section's header, for VoiceOver"))
+            .accessibilityValue(folded ? String(localized: "Collapsed") : String(localized: "Expanded"))
+            .accessibilityHint(folded ? String(localized: "Shows the files") : String(localized: "Hides the files"))
             Spacer()
             RowAction(symbol: staged ? "minus" : "plus", help: staged ? String(localized: "Unstage All") : String(localized: "Stage All"), action: all)
                 .opacity(hovering ? 1 : 0)
         }
-        .padding(.leading, 14)
+        .padding(.leading, 6)
         .padding(.trailing, 8)
         .padding(.top, 10)
         .frame(height: 30)

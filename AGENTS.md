@@ -33,7 +33,10 @@ Run from `native/App`:
 make test         # Kit and scene tests (Swift Testing); must pass with zero warnings
 make test-kit     # WhiskrKit only (about 30 s)
 make test-scene   # MeadowScene only
-make build        # Debug app
+make build        # Release app (what `make run` opens)
+make debug        # Debug app, with the test harness
+make profile      # Release's optimisation with the test harness (for `--perf` runs)
+make perf         # invisible performance and tab checks of the profile build; fails on a regression
 make release      # Release app
 make dist         # unsigned zip and checksum
 make project      # after changing project.yml
@@ -47,10 +50,12 @@ Point builds at your own folders when you work beside someone's running copy, fo
 1. **Build outside the source tree.** Use the Makefile, or pass `-derivedDataPath` under
    `~/Library/Developer`. Never put build products, `.build`, DerivedData or snapshots in the repository.
 2. **Never show a window, play a sound or post a notification when checking your work.** Run the app only
-   as a Debug build with `--isolated <scratch folder> --background`. Isolated runs have their own
-   settings, support folder and session host, and never read or change the user's. Use `--snapshot <png>`
-   to see the window, and `--script` (see `Whiskr/App/DebugScript.swift`) to drive menus and keys. An
-   isolated run exits with status 70 when it crashes: that is a bug to fix, not noise.
+   as a Debug or profile build (`make debug`, `make profile`) with `--isolated <scratch folder>
+   --background`. Isolated runs have their own settings, support folder and session host, and never read
+   or change the user's. Use `--snapshot <png>` to see the window, `--script` (see
+   `Whiskr/App/DebugScript.swift`) to drive menus and keys, and `--perf` (`Whiskr/App/DebugPerf.swift`,
+   `make perf`) to measure what a visible window would show. An isolated run exits with status 70 when it
+   crashes: that is a bug to fix, not noise.
 3. **Never disturb the user's own Whiskr.** Their sessions may be running inside it. Do not build into
    the DerivedData folder their copy runs from. Do not quit, relaunch or signal it, its session host
    (`whiskr-host`) or any process you did not start. Stop what you started by its own PID, never by port

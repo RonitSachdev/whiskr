@@ -103,23 +103,33 @@ final class HostedTerminal: @unchecked Sendable {
 
     // MARK: Output
 
-    /// Takes what the program has printed: kept for later, and passed to everyone watching.
+    /// Takes what the program has printed: kept for later, and passed to everyone watching, as one piece
+    /// for all that could be read now (`OutputBatch`): a pseudo-terminal gives at most a kilobyte a read.
     private func read(rounds: Int) {
+        var batch = OutputBatch()
+        // Before anything else is said about the terminal (a status, its end), what it printed first.
+        func pass() {
+            if let ready = batch.take() { for viewer in viewers { viewer.send(.output(terminal: ready.0, ready.1)) } }
+        }
+        defer { pass() }
         for _ in 0..<rounds {
             let count = chunk.withUnsafeMutableBytes { Darwin.read(descriptor, $0.baseAddress, $0.count) }
             if count > 0 {
                 let data = Data(chunk[0..<count])
                 history.append(data)
                 modes.scan(data)
-                for viewer in viewers { viewer.send(.output(terminal: id, data)) }
+                if let ready = batch.add(data, for: id) { for viewer in viewers { viewer.send(.output(terminal: ready.0, ready.1)) } }
                 lastOutput = Date()
                 text?.append(data)
-                for finding in scanner.scan(data) { take(finding) }
+                let findings = scanner.scan(data)
+                if !findings.isEmpty { pass() }
+                for finding in findings { take(finding) }
                 onOutput?(self)
             } else if count < 0, errno == EINTR {
                 continue
             } else {
                 // Nothing more for now; or the last program holding the terminal has gone.
+                pass()
                 if count == 0 || (errno != EAGAIN && errno != EWOULDBLOCK) { stopReading() }
                 return
             }

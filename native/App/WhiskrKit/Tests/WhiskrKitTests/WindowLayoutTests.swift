@@ -60,4 +60,15 @@ struct WindowLayoutTests {
         #expect(WindowLayout(data: Data(#"{"style":"meadow","panel":"open","panelWidth":560,"listOpen":true}"#.utf8)) == WindowLayout())
         #expect(WindowLayout(data: nil) == WindowLayout())
     }
+
+    @Test("the status bar can be hidden and is remembered; Reset Layout brings every region back but keeps the list form")
+    func statusBarAndReset() {
+        var layout = WindowLayout(navigator: .list, mode: .terminalsOnly, navigatorWidth: 500, showsStatusBar: false)
+        #expect(WindowLayout(data: layout.data) == layout)
+        // A file saved before the status bar could hide shows it.
+        #expect(WindowLayout(data: Data(#"{"navigator":"meadow","mode":"split"}"#.utf8)).showsStatusBar)
+        layout.reset()
+        #expect(layout == WindowLayout(navigator: .list))
+        #expect(layout.showsStatusBar)
+    }
 }

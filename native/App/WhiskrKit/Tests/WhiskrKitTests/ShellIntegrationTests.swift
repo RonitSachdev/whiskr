@@ -73,14 +73,54 @@ struct ShellIntegrationTests {
         #expect(result.lines == ["real", "--settings", hooks.path, "--resume", "two words"])
     }
 
-    @Test("with the app gone (no hooks file) or the user's own --settings, claude runs unchanged")
+    @Test("with the app gone (no hooks file), claude runs unchanged")
     func fallsThrough() throws {
         let gone = try run("/bin/sh", ["-c", "claude -c"], environment: paneEnvironment(hooks: root.appendingPathComponent("gone.json").path))
         #expect(gone.lines == ["real", "-c"])
+    }
+
+    @Test("your own --settings gets the pane's hooks added, in either spelling, the other arguments in place")
+    func mergesWithYours() throws {
         let hooks = root.appendingPathComponent("hooks.json")
         try Data("{}".utf8).write(to: hooks)
+        let paw = integration.shimFolder.appendingPathComponent("paw")
+        try? FileManager.default.removeItem(at: paw)
+        try Data("#!/bin/sh\nprintf 'merged<%s>' \"$3\"\n".utf8).write(to: paw)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: paw.path)
+        let spaced = try run("/bin/sh", ["-c", "claude -c --settings '{\"a\": 1}' --resume 'two words'"], environment: paneEnvironment(hooks: hooks.path))
+        #expect(spaced.lines == ["real", "-c", "--settings", "merged<{\"a\": 1}>", "--resume", "two words"])
+        let joined = try run("/bin/sh", ["-c", "claude --settings=/mine.json x"], environment: paneEnvironment(hooks: hooks.path))
+        #expect(joined.lines == ["real", "--settings=merged</mine.json>", "x"])
+    }
+
+    @Test("when the hooks cannot be added, your --settings goes through untouched")
+    func keepsYoursWhenMergingFails() throws {
+        let hooks = root.appendingPathComponent("hooks.json")
+        try Data("{}".utf8).write(to: hooks)
+        let paw = integration.shimFolder.appendingPathComponent("paw")
+        try? FileManager.default.removeItem(at: paw)
+        try Data("#!/bin/sh\nexit 2\n".utf8).write(to: paw)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: paw.path)
         let theirs = try run("/bin/sh", ["-c", "claude --settings=/mine.json"], environment: paneEnvironment(hooks: hooks.path))
         #expect(theirs.lines == ["real", "--settings=/mine.json"])
+    }
+
+    @Test("merging keeps everything of yours and adds the pane's hooks after your own")
+    func mergedSettings() throws {
+        let ours = HookSettings.document(addressFolder: "/hooks", note: nil)
+        let merged = try #require(HookSettings.merged(hooks: ours, with: #"{"enabledPlugins":{"x@y":false},"hooks":{"Stop":[{"hooks":[{"type":"command","command":"mine"}]}]}}"#))
+        let settings = try #require(try JSONSerialization.jsonObject(with: merged) as? [String: Any])
+        #expect((settings["enabledPlugins"] as? [String: Bool]) == ["x@y": false])
+        let hooks = try #require(settings["hooks"] as? [String: [[String: Any]]])
+        #expect(hooks["Stop"]?.count == 2)
+        #expect(((hooks["Stop"]?.first?["hooks"] as? [[String: Any]])?.first?["command"] as? String) == "mine")
+        #expect(hooks["UserPromptSubmit"]?.count == 1)
+        let file = root.appendingPathComponent("mine.json")
+        try Data(#"{"model":"haiku"}"#.utf8).write(to: file)
+        let fromFile = try #require(HookSettings.merged(hooks: ours, with: file.path))
+        #expect(((try JSONSerialization.jsonObject(with: fromFile)) as? [String: Any])?["model"] as? String == "haiku")
+        #expect(HookSettings.merged(hooks: ours, with: "/no/such/file.json") == nil)
+        #expect(HookSettings.merged(hooks: ours, with: "[1]") == nil)
     }
 
     @Test("a second shim on PATH is skipped, and no claude at all is the usual 127")

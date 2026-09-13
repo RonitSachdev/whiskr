@@ -35,8 +35,13 @@ import WhiskrKit
 ///   --close-tab-after <s>   closes the selected tab after that many seconds and prints how long it took
 ///   --undo-close-after <s>  Edit › Undo Close Tab after that many seconds
 ///   --measure-echo <file> [--measure-echo-after <s>]  times keystroke-to-echo in the focused pane
+///   --perf <file>           measures what a visible window would show (`DebugPerf`)
+///   --cg-terminals          terminals draw with SwiftTerm's Core Graphics renderer, on the main thread, as
+///                           before Metal (`TerminalSurface.drawsWithMetal`), to compare
 ///   --meadow-on-screen      the meadow draws as if on screen though the window is covered, and prints
 ///                           its timings once a second (frames drawn, GPU and main-thread time per frame)
+///   --key-look              draws the window as the one in use (a background run's never is), so a
+///                           snapshot shows the focus lines and bars as you see them while working
 ///   --snapshot <png> [--after <seconds>] [--hold <seconds>]  draws the window (the meadow from the
 ///                           scene's own offscreen render) into a PNG, then quits
 @MainActor
@@ -52,6 +57,8 @@ enum DebugScenario {
         if let folder = value("--isolated") {
             AppPlaces.isolate(in: URL(fileURLWithPath: folder, isDirectory: true), keepingSettings: has("--keep-settings"))
             exitQuietlyOnCrash()
+            DebugPerf.prepareProcess()
+            WindowChrome.drawsAsKey = has("--key-look")
             // `--debug-crash trap|segv|abort|overflow`: crashes on purpose once the app is up, to check
             // that an isolated run's crash ends quietly (exit 70, no report window, no crash report).
             if let kind = value("--debug-crash") {
@@ -151,6 +158,7 @@ enum DebugScenario {
         DebugScript.run(workbench: workbench, window: window)
         DebugResize.run(workbench: workbench, window: window)
         DebugChurn.run(workbench: workbench, window: window)
+        DebugPerf.run(workbench: workbench, window: window)
         if has("--meadow-on-screen") {
             let meadow = window.navigator.meadow
             meadow.assumesOnScreen = true
@@ -190,6 +198,29 @@ enum DebugScenario {
         }
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         context.draw(base, in: CGRect(x: 0, y: 0, width: width, height: height))
+        // Terminals drawn over the window's drawing, each by itself: drawn as part of the whole window,
+        // SwiftTerm places its text by the dirty rectangle it is given and lands it far to the right of
+        // its pane (only in a snapshot: the screen shows what each terminal draws into its own layer).
+        for pane in workbench.panes.values where pane.surface.window === window && !pane.surface.isHiddenOrHasHiddenAncestor {
+            let surface = pane.surface
+            guard let rep = surface.bitmapImageRepForCachingDisplay(in: surface.bounds) else { continue }
+            // A Metal layer is not part of AppKit's drawing: Core Graphics draws the same frame for a moment.
+            let metal = surface.isUsingMetalRenderer
+            if metal { try? surface.setUseMetal(false) }
+            surface.cacheDisplay(in: surface.bounds, to: rep)
+            if metal { try? surface.setUseMetal(true) }
+            // The whole terminal, and the part of it its pane shows (one held at its size can overhang).
+            let full = surface.convert(surface.bounds, to: frameView)
+            let box = full.intersection(surface.superview.map { $0.convert($0.bounds, to: frameView) } ?? full)
+            if let picture = rep.cgImage {
+                context.saveGState()
+                context.clip(to: CGRect(x: box.minX * scale, y: box.minY * scale, width: box.width * scale, height: box.height * scale))
+                frameView.effectiveAppearance.performAsCurrentDrawingAppearance { context.setFillColor(Colors.terminalBackground.cgColor) }
+                context.fill(CGRect(x: full.minX * scale, y: full.minY * scale, width: full.width * scale, height: full.height * scale))
+                context.draw(picture, in: CGRect(x: full.minX * scale, y: full.minY * scale, width: full.width * scale, height: full.height * scale))
+                context.restoreGState()
+            }
+        }
         let meadow = controller.navigator.meadow
         if meadow.window === window, !meadow.isHiddenOrHasHiddenAncestor {
             if !window.occlusionState.contains(.visible) { meadow.advance(seconds: 3) }

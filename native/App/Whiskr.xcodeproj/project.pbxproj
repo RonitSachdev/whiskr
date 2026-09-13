@@ -72,6 +72,7 @@
 		9D2F516F0C465C6F270B2F72 /* CodeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8DC6839F0E423384790AF /* CodeEditorView.swift */; };
 		9DB881FBC371E8FD0373EC05 /* PeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC289C6C694C32D349CD9B5E /* PeekView.swift */; };
 		A10F0751E4E4176E7D5FAFA0 /* DebugScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8179E0ECDB8D50C2123897FE /* DebugScript.swift */; };
+		A47F669A9D30676135F9F84E /* DebugPerf.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BB918E32F1387D0D8817596 /* DebugPerf.swift */; };
 		A7C93473301CA17AE626A4CA /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9DC1E4FAFD343FC1A6949A /* Settings.swift */; };
 		ABF4FECD8E0EB0205AA5810B /* MainWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8339DBAA88FAEA53E3BAC8FA /* MainWindowController.swift */; };
 		AFEF3463010BB2AC4BB3F0C2 /* WindowFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 693ECB128DE2B9D96373CC4C /* WindowFrame.swift */; };
@@ -154,6 +155,7 @@
 		4F14460A13A5E5E87AA26044 /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
 		56F3A667F1BC9BE5833E6DCE /* TerminalSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
 		57771ED894C51D18CAF74A85 /* PaneCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneCard.swift; sourceTree = "<group>"; };
+		5BB918E32F1387D0D8817596 /* DebugPerf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPerf.swift; sourceTree = "<group>"; };
 		5C184AFC6BB7007CAB0AF03E /* Git.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Git.swift; sourceTree = "<group>"; };
 		6066E62D9D03D72C537EA584 /* PaneArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneArea.swift; sourceTree = "<group>"; };
 		61772DF7148EFC3EB7465F10 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
@@ -436,6 +438,7 @@
 				E86C872A5C64DC9184F2E2FA /* DebugAgents.swift */,
 				B33030D8EC05C103F97BE93A /* DebugChurn.swift */,
 				675F991F8D4ECBE8A7FCE3BA /* DebugFiles.swift */,
+				5BB918E32F1387D0D8817596 /* DebugPerf.swift */,
 				7C761C7BAEFCA43FA5164623 /* DebugResize.swift */,
 				C35271BB358B34CD944F6B04 /* DebugScenario.swift */,
 				8179E0ECDB8D50C2123897FE /* DebugScript.swift */,
@@ -594,6 +597,7 @@
 				75A32B87D94C7CA1F38C4838 /* DebugAgents.swift in Sources */,
 				8A54A8C0F5BDE54C12176801 /* DebugChurn.swift in Sources */,
 				C97DA112EB51526E5D3E7585 /* DebugFiles.swift in Sources */,
+				A47F669A9D30676135F9F84E /* DebugPerf.swift in Sources */,
 				C984AAAB320C32D3B1DF0D52 /* DebugResize.swift in Sources */,
 				D7C06BDCA206E2655EA8CC35 /* DebugScenario.swift in Sources */,
 				A10F0751E4E4176E7D5FAFA0 /* DebugScript.swift in Sources */,

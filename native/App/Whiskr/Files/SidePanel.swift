@@ -3,23 +3,18 @@ import SwiftUI
 import WhiskrKit
 
 /// The side panel on the terminal region's trailing edge (herdr's Files and Changes panels): a header
-/// to switch between the two, then the workspace's file tree or its git changes. Its leading edge drags
-/// to resize it; the width is kept per workspace.
+/// to switch between the two, then the workspace's file tree or its git changes. Its leading edge
+/// (`PanelEdge`, the work area's own, so it stays when the panel is closed) drags to resize it; the width
+/// is kept per workspace.
 final class SidePanelView: NSView {
     private let workbench: Workbench
     private let header: NSHostingView<PanelHeader>
     private let body = NSView()
-    private let edge = PanelEdge()
     private var trees: [ObjectIdentifier: FileTreeView] = [:]
     private var changes: NSHostingView<ChangesView>?
     private var shownKey = ""
     private var observer: Observing?
     private var pendingReveal: URL?
-    /// Called while the edge is dragged, with the width asked for.
-    var onResize: ((CGFloat) -> Void)? {
-        get { edge.onDrag }
-        set { edge.onDrag = newValue }
-    }
 
     static let headerHeight: CGFloat = 34
 
@@ -29,7 +24,7 @@ final class SidePanelView: NSView {
         super.init(frame: .zero)
         header.sizingOptions = []
         wantsLayer = true
-        for view in [header, body, edge] as [NSView] {
+        for view in [header, body] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)
         }
@@ -42,10 +37,6 @@ final class SidePanelView: NSView {
             body.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 1),
             body.trailingAnchor.constraint(equalTo: trailingAnchor),
             body.bottomAnchor.constraint(equalTo: bottomAnchor),
-            edge.topAnchor.constraint(equalTo: topAnchor),
-            edge.bottomAnchor.constraint(equalTo: bottomAnchor),
-            edge.leadingAnchor.constraint(equalTo: leadingAnchor, constant: -3),
-            edge.widthAnchor.constraint(equalToConstant: 7),
         ])
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
@@ -66,7 +57,6 @@ final class SidePanelView: NSView {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             layer?.backgroundColor = PanelLook.background.cgColor
         }
-        edge.needsDisplay = true
     }
 
     /// Shows the selected workspace's tree or changes.
@@ -133,21 +123,24 @@ final class SidePanelView: NSView {
     override var wantsUpdateLayer: Bool { false }
 }
 
-/// The panel's colours: a shade off the terminal, as the tab bar is, so it reads as part of the region.
+/// The panel's colours: the chrome's, as the bars are (VS Code's and Xcode's side bars), so the file you
+/// open stands apart from the list it came from.
 enum PanelLook {
-    static var background: NSColor {
-        NSColor(name: nil) { appearance in
-            let terminal = ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(appearance)).terminal
-            return Palette.nsColor(terminal.background.mixed(with: terminal.foreground, terminal.isDark ? 0.035 : 0.03))
-        }
-    }
+    static var background: NSColor { Colors.chrome }
 
     static var line: NSColor { Colors.line }
 }
 
-/// The 7 pt strip along the panel's leading edge that resizes it.
+/// The 7 pt strip along the panel's leading edge: dragged, it resizes the panel, closing it when
+/// dragged under half its least width (and opening it again if the same drag comes back); a
+/// double-click puts it back at its usual width, as the meadow's divider does. It works in a window
+/// that is not the key one, as every divider does.
 final class PanelEdge: NSView {
+    /// The width asked for while dragging.
     var onDrag: ((CGFloat) -> Void)?
+    var onReset: (() -> Void)?
+    /// The panel's width when the drag starts (0 while it is closed).
+    var currentWidth: () -> CGFloat = { 0 }
     private var startX: CGFloat = 0
     private var startWidth: CGFloat = 0
 
@@ -155,10 +148,12 @@ final class PanelEdge: NSView {
         addCursorRect(bounds, cursor: .resizeLeftRight)
     }
 
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
     override func mouseDown(with event: NSEvent) {
-        guard let panel = superview else { return }
+        if event.clickCount == 2 { return onReset?() ?? () }
         startX = event.locationInWindow.x
-        startWidth = panel.frame.width
+        startWidth = currentWidth()
         LiveResize.shared.during {
             while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
                 if next.type == .leftMouseUp { break }
@@ -224,12 +219,12 @@ private struct PanelTab: View {
                         .foregroundStyle(Color.ink2)
                         .padding(.horizontal, 5)
                         .frame(minWidth: 16, minHeight: 15)
-                        .background(Capsule().fill(Color.primary.opacity(0.09)))
+                        .background(Capsule().fill(Look.Fill.selected))
                 }
             }
             .padding(.horizontal, 9)
             .frame(height: 24)
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(selected ? 0.08 : hovering ? 0.05 : 0)))
+            .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(selected ? Look.Fill.selected : hovering ? Look.Fill.hover : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

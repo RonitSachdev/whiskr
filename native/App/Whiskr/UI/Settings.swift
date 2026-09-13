@@ -265,7 +265,7 @@ struct ThemeCard: View {
     }
 }
 
-/// A miniature of a theme: a strip of the app's chrome with its state marks, and a terminal.
+/// A miniature of a theme: a strip of the app's chrome with its state marks, a line, and a terminal.
 struct ThemePreview: View {
     let variant: ThemeVariant
 
@@ -285,7 +285,7 @@ struct ThemePreview: View {
             }
             .padding(6)
             .frame(width: 58)
-            .background(app(.sidebar))
+            .background(app(.chrome))
             Rectangle().fill(app(.line)).frame(width: 1)
             VStack(alignment: .leading, spacing: 1.5) {
                 Text("$ ").foregroundColor(ansi(2)) + Text("npm test").foregroundColor(color(variant.terminal.foreground))

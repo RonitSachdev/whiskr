@@ -255,7 +255,7 @@ private struct HomeRow<Label: View>: View {
             }
             .padding(.horizontal, 8)
             .frame(height: 32)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(highlighted ? 0.08 : hovering ? 0.05 : 0)))
+            .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(highlighted ? Look.Fill.selected : hovering ? Look.Fill.hover : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -37,8 +37,10 @@ final class PaneArea: NSView {
     }
 
     /// Rebuilds the views when what is shown changes shape; a divider drag only changes a ratio,
-    /// which the split views already show.
-    private func update() {
+    /// which the split views already show. Also called straight away by the window when the keyboard must
+    /// go to a terminal in this same turn (a new tab, a tab closed), rather than when observation next runs:
+    /// keys typed meanwhile would reach the terminal that was there before.
+    func update() {
         let tab = workbench.selectedTab
         let alive = Set(workbench.panes.keys)
         let shown = tab.map { tab -> PaneTree in
@@ -65,18 +67,16 @@ final class PaneArea: NSView {
         view.autoresizingMask = [.width, .height]
         addSubview(view)
         root = view
-        needsLayout = true
+        // Laid out now, so a terminal that has just come has its size (and its shell can start) this turn.
+        layoutSubtreeIfNeeded()
+        // The keys go to what the tab shows at once: the next key typed must not reach the view that was
+        // here before, nor the window.
         if let page = pageViews[tab.focusedPane] {
             // A page takes the keys as a terminal does (the editor, a diff's table).
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.workbench.selectedTab === tab, page.window != nil else { return }
-                self.window?.makeFirstResponder(Self.focusTarget(of: page))
-            }
-        } else if let focused = workbench.panes[tab.focusedPane], window?.firstResponder !== focused.surface {
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.workbench.selectedTab === tab, !focused.surface.isHiddenOrHasHiddenAncestor else { return }
-                self.window?.makeFirstResponder(focused.surface)
-            }
+            if page.window != nil { window?.makeFirstResponder(Self.focusTarget(of: page)) }
+        } else if let focused = workbench.panes[tab.focusedPane], window?.firstResponder !== focused.surface,
+                  focused.surface.window != nil, !focused.surface.isHiddenOrHasHiddenAncestor {
+            window?.makeFirstResponder(focused.surface)
         }
     }
 
@@ -131,8 +131,8 @@ final class PaneArea: NSView {
     }
 }
 
-/// A split of two parts kept at a ratio as the window resizes; dragging the divider changes it. The
-/// divider is drawn 1 pt wide and takes the pointer 8 pt wide.
+/// A split of two parts kept at a ratio as the window resizes; dragging the divider changes it and a
+/// double-click evens it. The divider is drawn 1 pt wide and takes the pointer 8 pt wide.
 final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
     private var ratio: Double
     private let onRatio: (Double) -> Void
@@ -153,9 +153,17 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
 
     override var dividerThickness: CGFloat { 1 }
 
-    /// A click here is on the divider (the panes take their own): the drag is a live resize.
+    /// A click here is on the divider (the panes take their own): the drag is a live resize, and a
+    /// double-click shares the room evenly again, as the meadow's divider goes back to its usual width.
     override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 { return resetRatio() }
         LiveResize.shared.during { super.mouseDown(with: event) }
+    }
+
+    func resetRatio() {
+        ratio = 0.5
+        onRatio(ratio)
+        place()
     }
     override var dividerColor: NSColor { Colors.line }
 

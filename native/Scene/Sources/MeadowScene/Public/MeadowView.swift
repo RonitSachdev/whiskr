@@ -181,6 +181,20 @@ public final class MeadowView: MTKView {
     /// app should leave it off.
     public var keepsFullRateWhenInactive = false { didSet { updateRate() } }
 
+    /// Something beside the meadow is being worked in (keys typed into a terminal): for `seconds` from now
+    /// it draws at most `yieldRate` times a second, at the same pace (things move as far, in fewer
+    /// steps), leaving the frames and the main thread to what is being typed into. Each call extends it;
+    /// the full rate comes back by itself.
+    public func yieldFrames(for seconds: CFTimeInterval = MeadowView.yieldSeconds) {
+        let until = CACurrentMediaTime() + seconds
+        guard until > yieldUntil + 0.05 else { return }
+        yieldUntil = until
+        updateRate()
+    }
+    public static let yieldSeconds: CFTimeInterval = 1.5
+    static let yieldRate = 30
+    private var yieldUntil: CFTimeInterval = 0
+
     /// Diagnostics: a drag of the view as if made with the mouse, for measuring how interaction feels.
     @_spi(Diagnostics) public func simulateDrag(dx: Float, dy: Float, slide: Bool = false) {
         stage.camera.grab()
@@ -432,22 +446,30 @@ public final class MeadowView: MTKView {
         updateRate()
     }
 
-    /// Full rate while you interact, something moves fast or the camera is moving; 30 Hz when the window
-    /// is not key or for a calm scene left alone.
     private func updateRate() {
-        let fastest = window?.screen?.maximumFramesPerSecond ?? 60
-        let key = (window?.isKeyWindow ?? false) || keepsFullRateWhenInactive
-        let calm = !key || (stage.restful && !stage.camera.moving && CACurrentMediaTime() - lastInput > 4)
-        var goal = calm ? min(30, fastest) : fastest
-        // Resting once the scene has slowed nearly all the way (on the way down it eases at the calm rate).
-        if resting && pace < Self.restPace + 0.05 { goal = min(goal, Self.restRate) }
-        // The display may be giving this window fewer frames than asked (an unfocused window, a 60 Hz
-        // display); then drawing more is wasted work.
-        if let cap = displayCap { goal = min(goal, cap) }
+        let now = CACurrentMediaTime()
+        let goal = Self.frameRate(fastest: window?.screen?.maximumFramesPerSecond ?? 60,
+                                  key: (window?.isKeyWindow ?? false) || keepsFullRateWhenInactive,
+                                  calm: stage.restful && !stage.camera.moving && now - lastInput > 4,
+                                  resting: resting && pace < Self.restPace + 0.05,
+                                  yielding: now < yieldUntil && !stage.camera.held, displayCap: displayCap)
         if targetRate != goal {
             targetRate = goal
             link?.preferredFrameRateRange = CAFrameRateRange(minimum: Float(min(30, goal)), maximum: Float(goal), preferred: Float(goal))
         }
+    }
+
+    /// The rate to draw at: the display's full rate while you interact, something moves fast or the camera
+    /// moves; 30 Hz when the window is not key or the scene is calm; `restRate` once resting (on the way
+    /// down it eases at the calm rate); at most `yieldRate` while something beside it is being typed in
+    /// (unless the view is being dragged); never more than the display gives this window (`displayCap`:
+    /// an unfocused window, a 60 Hz display), where drawing more would be wasted work.
+    static func frameRate(fastest: Int, key: Bool, calm: Bool, resting: Bool, yielding: Bool, displayCap: Int?) -> Int {
+        var goal = !key || calm ? min(30, fastest) : fastest
+        if resting { goal = min(goal, restRate) }
+        if yielding { goal = min(goal, yieldRate) }
+        if let displayCap { goal = min(goal, displayCap) }
+        return goal
     }
 
     private func setRunning(_ on: Bool) {

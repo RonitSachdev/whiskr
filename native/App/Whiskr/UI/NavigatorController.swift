@@ -13,7 +13,7 @@ import WhiskrMeadow
 final class NavigatorController: NSViewController {
     let meadow: MeadowView
     private let workbench: Workbench
-    private let list: NSHostingView<NavigatorList>
+    private let list: NSHostingView<WhileShown<NavigatorList>>
     private let note = HoverNote()
     private let hint = NSTextField(labelWithString: "")
     private var observers: [Observing] = []
@@ -36,7 +36,7 @@ final class NavigatorController: NSViewController {
     init(workbench: Workbench) {
         self.workbench = workbench
         meadow = MeadowView(frame: NSRect(x: 0, y: 0, width: 300, height: 800))
-        list = NSHostingView(rootView: NavigatorList(workbench: workbench))
+        list = NSHostingView(rootView: WhileShown(shown: false) { NavigatorList(workbench: workbench) })
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -112,6 +112,7 @@ final class NavigatorController: NSViewController {
     private func showKind() {
         meadow.isHidden = kind != .meadow
         list.isHidden = kind != .list
+        if list.rootView.shown != (kind == .list) { list.rootView.shown = kind == .list }
         updateHint()
         if kind != .meadow { note.hide() }
     }

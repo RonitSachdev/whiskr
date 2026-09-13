@@ -1,4 +1,5 @@
 import AppKit
+import MeadowScene
 import SwiftUI
 import SwiftTerm
 import WhiskrKit
@@ -91,16 +92,20 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             guard let window = self?.window else { return }
             // Only a terminal that is on screen takes the keys.
             let showing: @MainActor () -> Bool = { pane.surface.window === window && !pane.surface.isHiddenOrHasHiddenAncestor }
+            // Its tab is shown now, not when observation next runs: the keyboard moves in this same turn,
+            // so a key typed straight after ⌘T, ⌘W or a tab switch reaches this terminal and no other.
+            if !showing() {
+                self?.terminals.paneArea.update()
+                // The tab row too (SwiftUI, which would otherwise catch up a frame or two later).
+                window.contentView?.layoutSubtreeIfNeeded()
+            }
             if showing() {
-                window.makeFirstResponder(pane.surface)
+                if window.firstResponder !== pane.surface { window.makeFirstResponder(pane.surface) }
             } else {
                 DispatchQueue.main.async { if showing() { window.makeFirstResponder(pane.surface) } }
             }
         }
-        workbench.onFocusHome = { [weak self] in
-            // Once the work area has swapped its panes for the Home page.
-            DispatchQueue.main.async { self?.terminals.focusHome() }
-        }
+        workbench.onFocusHome = { [weak self] in self?.terminals.focusHome() }
         firstResponderWatch = window.observe(\.firstResponder, options: [.new]) { [weak self] window, _ in
             MainActor.assumeIsolated {
                 // A file or diff took the keyboard by a click: its tab and place in it follow.
@@ -128,7 +133,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     private var keyMonitor: Any?
 
-    /// Keys on their way to a terminal: when one was last typed (alert sounds wait for a pause), and
+    /// Keys on their way to a terminal: when one was last typed (alert sounds wait for a pause, the meadow
+    /// draws less often meanwhile), and
     /// which Option key is Meta (Settings › Terminal): SwiftTerm takes Option as Meta or not as a whole,
     /// so it is told per key press whether the Option held is the side that should be.
     private func watchKeys() {
@@ -136,6 +142,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self, let surface = event.window?.firstResponder as? TerminalSurface else { return event }
             self.workbench.lastKeystroke = Date()
+            // The meadow draws less often while you type, leaving the frames to the terminal.
+            self.navigator.meadow.yieldFrames()
             if event.modifierFlags.contains(.option) {
                 let raw = event.modifierFlags.rawValue
                 let left = raw & 0x20 != 0, right = raw & 0x40 != 0     // NX_DEVICELALTKEYMASK, NX_DEVICERALTKEYMASK
@@ -172,6 +180,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         navigator.kind = layout.navigator
         let frame = layout.frame(window: Double(window.frame.width))
         let showNavigator = frame.navigator > 0
+        if chrome.showsStatusBar != layout.showsStatusBar { chrome.showsStatusBar = layout.showsStatusBar }
+        if chrome.meadowShown != showNavigator { chrome.meadowShown = showNavigator }
+        keepKeyboard(meadowShown: showNavigator, terminalsShown: frame.showsTerminals)
         let width: @MainActor () -> Void = { [weak self] in
             guard let self, showNavigator, frame.showsTerminals else { return }
             self.split.setNavigatorWidth(CGFloat(frame.navigator))
@@ -195,6 +206,31 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             if terminalItem.isCollapsed == frame.showsTerminals { terminalItem.isCollapsed = !frame.showsTerminals }
             if navigatorItem.isCollapsed == showNavigator { navigatorItem.isCollapsed = !showNavigator }
             width()
+        }
+    }
+
+    /// A region going away with the keyboard in it hands the keyboard to the one that stays: the meadow's
+    /// to the focused terminal (or Home), the terminals' to the meadow.
+    private func keepKeyboard(meadowShown: Bool, terminalsShown: Bool) {
+        guard let window, let responder = window.firstResponder as? NSView else { return }
+        if !meadowShown, responder.isDescendant(of: navigator.view) {
+            navigator.keyboardLeft()
+            if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else { terminals.focusHome() }
+        } else if !terminalsShown, responder.isDescendant(of: terminals.view) {
+            navigator.takeKeyboard()
+        }
+    }
+
+    /// View › Hide Status Bar / Show Status Bar (⌥⌘/).
+    @objc func toggleStatusBar(_ sender: Any?) { layout.showsStatusBar.toggle() }
+
+    /// View › Reset Layout: the meadow, the terminals, the status bar and the side panel back as they
+    /// first were (the panel at its usual width, shown only if it was).
+    @objc func resetLayout(_ sender: Any?) {
+        layout.reset()
+        if let workspace = workbench.selectedWorkspace {
+            workbench.files.setPanel(workspace.id) { $0.width = FilesCenter.panelDefault }
+            workbench.scheduleSave()
         }
     }
 
@@ -430,6 +466,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         case #selector(toggleNavigator(_:)):
             item.title = layout.mode == .terminalsOnly ? String(localized: "Show Meadow") : String(localized: "Hide Meadow")
             return true
+        case #selector(toggleStatusBar(_:)):
+            item.title = layout.showsStatusBar ? String(localized: "Hide Status Bar") : String(localized: "Show Status Bar")
+            return true
+        case #selector(resetLayout(_:)):
+            return true
         case #selector(showMeadowAndTerminals(_:)):
             item.state = layout.mode == .split ? .on : .off
             return true
@@ -572,8 +613,12 @@ final class RegionsController: NSSplitViewController {
     }
 }
 
+/// The meadow and the work area, with one line between them: the meadow's edge, as every edge in the
+/// window is drawn.
 final class RegionsSplitView: NSSplitView {
     var onDoubleClickDivider: (() -> Void)?
+
+    override var dividerColor: NSColor { Colors.line }
 
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2, subviews.count == 2 {

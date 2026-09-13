@@ -55,6 +55,13 @@ public struct Paw: Sendable {
 
     /// Runs `arguments` (without the program's name) and returns the exit code.
     public func run(_ arguments: [String]) -> Int32 {
+        // Not a command of yours: the `claude` shim asks for your --settings with the pane's hooks added.
+        if arguments.first == "merge-settings" {
+            guard arguments.count == 3, let hooks = FileManager.default.contents(atPath: arguments[1]),
+                  let merged = HookSettings.merged(hooks: hooks, with: arguments[2]) else { return PawExit.usage.rawValue }
+            io.out(String(decoding: merged, as: UTF8.self))
+            return PawExit.ok.rawValue
+        }
         let command: PawCommand
         do {
             command = try PawCommand.parse(arguments)

@@ -152,8 +152,18 @@ public final class HostConnection: @unchecked Sendable {
             if count < 0, errno == EINTR { continue }
             guard count > 0 else { break }
             decoder.append(UnsafeRawBufferPointer(rebasing: chunk[0..<count]))
+            // A terminal's output read in one go is handed over as one piece (`OutputBatch`).
+            var batch = OutputBatch()
             do {
-                while let frame = try decoder.next() { deliver(frame) }
+                while let frame = try decoder.next() {
+                    if case .output(let terminal, let bytes) = frame {
+                        if let ready = batch.add(bytes, for: terminal) { handlers.output(ready.0, ready.1) }
+                    } else {
+                        if let ready = batch.take() { handlers.output(ready.0, ready.1) }
+                        deliver(frame)
+                    }
+                }
+                if let ready = batch.take() { handlers.output(ready.0, ready.1) }
             } catch {
                 break reading
             }

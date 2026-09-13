@@ -54,6 +54,22 @@ public enum HookSettings {
     /// start and steer helper terminals. Kept to a sentence, so it costs nearly nothing.
     public static let pawNote = "In this terminal you can start and steer helper terminals (other Claude Code sessions, long commands) with the `paw` command; run `paw --skill` before using it."
 
+    /// Your own `--settings` (a path, or the JSON itself) with the pane's hooks added: Claude Code takes
+    /// one `--settings`, so the shim passes this instead of yours. Everything of yours stays, your hooks
+    /// first; nil when yours cannot be read as a JSON object (then it is passed on untouched).
+    public static func merged(hooks document: Data, with theirs: String) -> Data? {
+        let trimmed = theirs.trimmingCharacters(in: .whitespacesAndNewlines)
+        let source = trimmed.hasPrefix("{") ? Data(trimmed.utf8) : FileManager.default.contents(atPath: (trimmed as NSString).expandingTildeInPath)
+        guard let source, var settings = (try? JSONSerialization.jsonObject(with: source)) as? [String: Any],
+              let ours = ((try? JSONSerialization.jsonObject(with: document)) as? [String: Any])?["hooks"] as? [String: Any] else { return nil }
+        var hooks = settings["hooks"] as? [String: Any] ?? [:]
+        for (event, added) in ours {
+            hooks[event] = (hooks[event] as? [Any] ?? []) + (added as? [Any] ?? [])
+        }
+        settings["hooks"] = hooks
+        return try? JSONSerialization.data(withJSONObject: settings, options: [.sortedKeys, .withoutEscapingSlashes])
+    }
+
     /// The settings document every pane's `claude` gets: one command hook per event, all posting to the
     /// address kept for the pane in `addressFolder`, and at session start the note about `paw`.
     public static func document(addressFolder: String, note: String? = pawNote) -> Data {

@@ -259,7 +259,7 @@ final class Pane: Identifiable {
         exitCode = code
         foreground = nil
         hostStatus.foreground = nil
-        presence.observe(foreground: nil, liveSession: false)
+        _ = observePresence { $0.observe(foreground: nil, liveSession: false) }
         onExit?(self)
     }
 
@@ -298,6 +298,9 @@ final class Pane: Identifiable {
     #if DEBUG
     /// Debug builds (the demo workbench): the pane behaves as if Claude were in front of its shell.
     var debugPretendsClaude = false
+    /// Debug builds (`DebugPerf`): the host has been asked for the terminal; its shell has drawn its prompt.
+    var debugStarted: Bool { waitingToStart == nil && connection != nil }
+    var debugReady: Bool { ready }
     #endif
 
     // MARK: What runs in it
@@ -319,18 +322,27 @@ final class Pane: Identifiable {
         if debugPretendsClaude, front == nil {
             let pretend = ForegroundProcess(pid: -1, name: "claude")
             if foreground != pretend { foreground = pretend }
-            return presence.observe(foreground: pretend, liveSession: liveSession)
+            return observePresence { $0.observe(foreground: pretend, liveSession: liveSession) }
         }
         #endif
         if foreground != front { foreground = front }
         if !ready, shellLooksReady(now: now) { becomeReady() }
-        return presence.observe(foreground: front, liveSession: liveSession)
+        return observePresence { $0.observe(foreground: front, liveSession: liveSession) }
     }
 
     /// A hook event came from this pane's session.
     @discardableResult
     func heardFromAgent() -> Bool {
-        presence.heard()
+        observePresence { $0.heard() }
+    }
+
+    /// Changes what is known of Claude's presence, telling observers only when it really changed: this
+    /// runs for every pane four times a second, and every tab title, mark and blanket reads it.
+    private func observePresence(_ change: (inout AgentPresence) -> Bool) -> Bool {
+        var next = presence
+        let changed = change(&next)
+        if next != presence { presence = next }
+        return changed
     }
 
     /// The shell has drawn its prompt: our zsh integration says so (OSC 7 from its first prompt);
@@ -386,6 +398,10 @@ extension Pane: TerminalSurfaceDelegate {
     /// being laid out or a divider being dragged passes through many sizes, and each one told would
     /// make the program draw itself again (Claude Code clears its screen to do so).
     func surface(_ surface: TerminalSurface, resizedTo size: TerminalSize) {
+        // A terminal waiting to start starts at its first real size, at once: the view has been laid out
+        // in its place (a size passed through on the way, in a region sliding in, is a live resize, and
+        // waits for its end).
+        if waitingToStart != nil { return tellSize() }
         resizes += 1
         let turn = resizes
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.resizeSettle) { [weak self] in

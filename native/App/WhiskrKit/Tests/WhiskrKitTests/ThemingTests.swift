@@ -119,6 +119,33 @@ struct ThemingTests {
         }
     }
 
+    @Test("every built-in theme tells its layers apart: chrome a step below the content, a line visible on both")
+    func builtInLayers() {
+        for theme in BuiltInThemes.all {
+            for variant in [theme.light, theme.dark].compactMap({ $0 }) {
+                let name = "\(theme.name) \(variant.isDark ? "dark" : "light")"
+                let content = variant.terminal.background, chrome = variant.app[.chrome], line = variant.app[.line]
+                // A step you see at a glance, never a second, louder colour.
+                #expect((1.03...1.25).contains(chrome.contrast(with: content)), "\(name): chrome against content \(chrome.contrast(with: content))")
+                // Below the content: darker in both appearances.
+                #expect(chrome.luminance < content.luminance, "\(name): chrome is not below the content")
+                // Lines at the strong end of what editors use (VS Code's are 1.25:1): the regions must read apart.
+                #expect(line.contrast(with: chrome) >= 1.3, "\(name): line on the chrome \(line.contrast(with: chrome))")
+                #expect(line.contrast(with: content) >= 1.3, "\(name): line on the content \(line.contrast(with: content))")
+                // The focus line (the accent) must stand out on the content and the chrome (WCAG 1.4.11).
+                #expect(variant.app[.accent].contrast(with: content) >= 3, "\(name): accent on the content")
+            }
+        }
+    }
+
+    @Test("an older theme file without a chrome colour gets one worked out")
+    func chromeDerived() throws {
+        let theme = BuiltInThemes.theme(id: "nord")!
+        let back = try Theme.read(try theme.fileData())
+        #expect(back.dark?.app[.chrome] == AppColors.derived(from: theme.dark!.terminal)[.chrome])
+        #expect(!String(decoding: try theme.fileData(), as: UTF8.self).contains("chrome"))
+    }
+
     @Test("a hard-to-read pair is warned about")
     func warning() {
         var variant = BuiltInThemes.theme(id: BuiltInThemes.defaultID)!.light!

@@ -24,6 +24,10 @@ import WhiskrKit
 ///   new-terminal            Home's New Terminal (its rows are SwiftUI's, out of reach of a press from here)
 ///   open <name>             Home's row for that open workspace (back in where it was left)
 ///   terminals <file>        what the session host holds and each pane's screen (as --terminals)
+///   click <x>,<y> [count]   a click (or a double-click, count 2) at that point of the window, in points from
+///                           its top left, through the window's own event path; prints the view it landed on
+///   frame                   the window's frame, and whether it is zoomed or minimised; and the tab count
+///   drag <x>,<y> <x>,<y>    a press at the first point, moved in steps to the second, released there
 ///   quit                    quits as ⌘Q does
 @MainActor
 enum DebugScript {
@@ -133,11 +137,57 @@ enum DebugScript {
             workbench.selectBlanket(row.id)
         case "terminals":
             DebugScenario.Probe.terminals(workbench: workbench, to: URL(fileURLWithPath: argument))
+        case "click":
+            let parts = argument.split(separator: " ")
+            let point = parts.first?.split(separator: ",").compactMap { Double($0) } ?? []
+            guard point.count == 2, let content = window.contentView else { return print("  click <x>,<y> [count]") }
+            click(window: window, at: NSPoint(x: point[0], y: content.bounds.height - point[1]), count: parts.count > 1 ? Int(parts[1]) ?? 1 : 1)
+        case "drag":
+            let points = argument.split(separator: " ").map { $0.split(separator: ",").compactMap { Double($0) } }
+            guard points.count == 2, points.allSatisfy({ $0.count == 2 }), let content = window.contentView else { return print("  drag <x>,<y> <x>,<y>") }
+            let flip = { (p: [Double]) in NSPoint(x: p[0], y: content.bounds.height - p[1]) }
+            drag(window: window, from: flip(points[0]), to: flip(points[1]))
+        case "frame":
+            print("  frame \(window.frame) zoomed \(window.isZoomed) minimised \(window.isMiniaturized) tabs \(workbench.selectedWorkspace?.tabs.count ?? 0) workspaces \(workbench.workspaces.count)")
         case "quit":
             NSApp.terminate(nil)
         default:
             print("  unknown command")
         }
+    }
+
+    /// Every click of a run of `count` (as a person's double-click is: a click, then a second one that
+    /// counts 2) through `NSWindow.sendEvent`. Each release is queued in this app before its press, since
+    /// a press may start a tracking loop (a window drag) that waits for it; nothing leaves the process.
+    private static func click(window: NSWindow, at point: NSPoint, count: Int) {
+        let hit = window.contentView?.superview?.hitTest(point)
+        print("  click at \(point) lands on \(hit.map { String(describing: type(of: $0)) } ?? "nothing")")
+        func event(_ type: NSEvent.EventType, _ number: Int) -> NSEvent? {
+            NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                               windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: number, pressure: type == .leftMouseDown ? 1 : 0)
+        }
+        for number in 1...max(count, 1) {
+            guard let down = event(.leftMouseDown, number), let up = event(.leftMouseUp, number) else { continue }
+            NSApp.postEvent(up, atStart: false)
+            window.sendEvent(down)
+        }
+    }
+
+    /// A press, a drag in ten steps and a release, the moves and the release queued first for the
+    /// tracking loop the press starts.
+    private static func drag(window: NSWindow, from start: NSPoint, to end: NSPoint) {
+        let hit = window.contentView?.superview?.hitTest(start)
+        print("  drag from \(start) on \(hit.map { String(describing: type(of: $0)) } ?? "nothing") to \(end)")
+        func event(_ type: NSEvent.EventType, _ point: NSPoint) -> NSEvent? {
+            NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                               windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1)
+        }
+        for step in 1...10 {
+            let t = CGFloat(step) / 10
+            if let moved = event(.leftMouseDragged, NSPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t)) { NSApp.postEvent(moved, atStart: false) }
+        }
+        if let up = event(.leftMouseUp, end) { NSApp.postEvent(up, atStart: false) }
+        if let down = event(.leftMouseDown, start) { window.sendEvent(down) }
     }
 
     // MARK: Menus
@@ -179,7 +229,7 @@ enum DebugScript {
         return true
     }
 
-    private static func send(_ item: NSMenuItem, window: NSWindow) {
+    private static func send(_ item: NSMenuItem, window: NSWindow, quiet: Bool = false) {
         // A submenu's own item carries AppKit's private `submenuAction:`, meant only for menu tracking
         // (sent from here it breaks the run). Choosing it opens the submenu: its items were just refreshed.
         if let submenu = item.submenu {
@@ -187,7 +237,7 @@ enum DebugScript {
         }
         let enabled = isEnabled(item, window: window)
         let target = target(for: item, window: window)
-        print("  “\(item.title)” enabled=\(enabled) target=\(target.map { String(describing: type(of: $0)) } ?? "none")")
+        if !quiet { print("  “\(item.title)” enabled=\(enabled) target=\(target.map { String(describing: type(of: $0)) } ?? "none")") }
         guard enabled, let action = item.action, let target else { return }
         NSApp.sendAction(action, to: target, from: item)
     }
@@ -235,7 +285,8 @@ enum DebugScript {
         "down": (String(Character(UnicodeScalar(NSDownArrowFunctionKey)!)), 125), "up": (String(Character(UnicodeScalar(NSUpArrowFunctionKey)!)), 126),
     ]
 
-    private static func key(_ spec: String, window: NSWindow) {
+    /// Also used by `DebugPerf`, without the lines it prints (`quiet`).
+    static func key(_ spec: String, window: NSWindow, quiet: Bool = false) {
         var modifiers: NSEvent.ModifierFlags = []
         var name = ""
         for part in spec.lowercased().split(separator: "+").map(String.init) {
@@ -251,10 +302,10 @@ enum DebugScript {
         guard let event = keyEvent(characters: characters, modifiers: modifiers, code: code, window: window) else { return }
         if !modifiers.isDisjoint(with: [.command, .control]) {
             // As NSApplication does: the window's views first, then the menus.
-            if window.performKeyEquivalent(with: event) { return print("  taken by a view") }
-            if let item = matchingItem(NSApp.mainMenu, characters: characters, modifiers: modifiers) { return send(item, window: window) }
+            if window.performKeyEquivalent(with: event) { return quiet ? () : print("  taken by a view") }
+            if let item = matchingItem(NSApp.mainMenu, characters: characters, modifiers: modifiers) { return send(item, window: window, quiet: quiet) }
         }
-        print("  to \(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nothing")")
+        if !quiet { print("  to \(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nothing")") }
         (window.firstResponder ?? window).keyDown(with: event)
     }
 

@@ -43,6 +43,19 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
     /// The view's size for the terminal's grid as it is now (the size kept output is drawn at).
     var gridFrameSize: NSSize { getOptimalFrameSize().size }
 
+    /// Terminals draw with SwiftTerm's Metal renderer, on a render thread of their own: the main thread
+    /// only says that a frame is due. (Its Core Graphics renderer, SwiftTerm's default, draws every frame
+    /// on the main thread, beside the meadow, typing and the window's own work.) Debug builds can keep
+    /// Core Graphics for comparison: `--cg-terminals`.
+    static let drawsWithMetal: Bool = {
+        #if DEBUG
+        !ProcessInfo.processInfo.arguments.contains("--cg-terminals")
+        #else
+        true
+        #endif
+    }()
+    private var metalTried = false
+
     private var themeObserver: Observing?
     private var appliedCursor: (ThemeStore.CursorShape, Bool)?
     nonisolated private let outputHandler = OutputHandler()
@@ -111,6 +124,19 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
 
     func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
         surfaceDelegate?.surface(self, resizedTo: size)
+    }
+
+    /// Metal is turned on once, in the first window the view joins (it needs one); a device or shader that
+    /// fails leaves the terminal on Core Graphics.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil, Self.drawsWithMetal, !metalTried else { return }
+        metalTried = true
+        do {
+            try setUseMetal(true)
+        } catch {
+            NSLog("Whiskr: terminals draw without Metal: \(error)")
+        }
     }
 
     override func viewDidChangeBackingProperties() {

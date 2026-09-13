@@ -1,0 +1,7 @@
+// The profile build (`make perf`): optimised as Release is, with the test harness of Debug builds compiled in
+// (`#if DEBUG` in the app target only: `--isolated`, `--background`, `--script`, `--perf`), so what an
+// isolated, invisible run measures is the optimised code people run. Never shipped.
+#include "Packages.xcconfig"
+
+WHISKR_HARNESS_Whiskr = DEBUG
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) $(WHISKR_HARNESS_$(TARGET_NAME))

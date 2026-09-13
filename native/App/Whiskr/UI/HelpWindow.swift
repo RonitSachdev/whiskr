@@ -79,6 +79,13 @@ private struct HelpPage: View {
                     HelpKey(keys: "⇧⌘H", text: String(localized: "Home: open a folder or a terminal, or go back into a workspace exactly where you left it. Every launch starts here, and closing a workspace comes back here; everything keeps running.", comment: "Help page: Home"))
                     HelpKey(keys: "⌘N", text: String(localized: "A new workspace: Home, ready to open a folder or a terminal. Every other workspace stays open.", comment: "Help page: New Workspace"))
                 }
+                HelpSection(title: String(localized: "Laying out the window", comment: "Help page heading")) {
+                    HelpKey(keys: "⌃⌘S", text: String(localized: "Show or hide the meadow; the button by the window's buttons does too. ⌃⌘1, ⌃⌘2 and ⌃⌘3 give both, the terminals alone or the meadow alone.", comment: "Help page: the meadow's toggle"))
+                    HelpKey(keys: "⇧⌘E", text: String(localized: "Show or hide Files (⇧⌘C for Changes); the button at the top right does too. Drag the panel's edge to size it, past its least width to close it, or double-click it for its usual width.", comment: "Help page: the side panel's toggle"))
+                    HelpKey(keys: "⌥⌘/", text: String(localized: "Show or hide the status bar.", comment: "Help page: the status bar's toggle"))
+                    HelpKey(keys: "⇧⌘↩", text: String(localized: "Zoom the pane you are typing in to fill its tab, and back. A double-click on the line between two panes shares the room evenly again.", comment: "Help page: zooming a pane"))
+                    Text(String(localized: "View › Reset Layout puts every part of the window back as it first was. The bars at the top move the window, and a double-click on them zooms it, as on any Mac title bar; new tabs come from + and ⌘T.", comment: "Help page: resetting the layout, and what the bars do"))
+                }
                 HelpSection(title: String(localized: "Your own keys")) {
                     Text(String(localized: "Any menu command can have a different shortcut: System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts."))
                 }

@@ -337,7 +337,7 @@ final class Workbench {
 
     // MARK: Starting things
 
-    /// A new tab with a shell (⌘T, "+", a double-click on the tab strip), in the focused pane's folder,
+    /// A new tab with a shell (⌘T, "+", the menus), in the focused pane's folder,
     /// as herdr's "follow" does (else the workspace's). On Home, a workspace in your home folder.
     @discardableResult
     func newTab() -> Pane {

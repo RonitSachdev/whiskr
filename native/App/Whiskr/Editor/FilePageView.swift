@@ -230,10 +230,10 @@ final class FilePageView: NSView {
     }
 }
 
-/// A page beside others in its tab is dimmed while another has the keyboard, as panes are.
+/// A page beside others in its tab shows whether it has the keyboard, as panes do (`PaneFocusView`).
 enum PageDimming {
     static func attach(to view: NSView, page: UUID, workbench: Workbench) -> Observing {
-        let dim = DimView()
+        let dim = PaneFocusView()
         dim.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(dim, positioned: .above, relativeTo: nil)
         NSLayoutConstraint.activate([
@@ -244,7 +244,7 @@ enum PageDimming {
         ])
         return Observing { [weak workbench, weak dim] in
             guard let workbench, let dim, let (_, tab) = workbench.workspace(of: page) else { return }
-            dim.isHidden = !(tab.tree.panes.count > 1 && tab.zoomedPane == nil && tab.focusedPane != page)
+            dim.state = PaneFocusView.State(tab: tab, pane: page)
         }
     }
 }
@@ -399,19 +399,15 @@ struct HeaderButton: View {
     let symbol: String
     let help: String
     let action: () -> Void
-    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 11.5))
+                .font(Look.smallIcon)
                 .foregroundStyle(Color.ink2)
                 .frame(width: 24, height: 22)
-                .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(hovering ? 0.08 : 0)))
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(ChromeButtonStyle(radius: Look.Radius.small))
         .help(help)
         .accessibilityLabel(help)
     }
