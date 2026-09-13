@@ -201,6 +201,9 @@ enum MainMenu {
 
     private static func goMenu() -> NSMenu {
         let menu = NSMenu(title: String(localized: "Go"))
+        // Home is no workspace selected: the Home page beside the meadow (⇧⌘H, as in the Finder and Safari).
+        menu.addItem(item(String(localized: "Home", comment: "Go menu and the workspace menu: no workspace selected"), #selector(MainWindowController.goHome(_:)), "h", [.command, .shift]))
+        menu.addItem(.separator())
         menu.addItem(item(String(localized: "Next Request"), #selector(MainWindowController.goToNextThing(_:)), "j"))
         menu.addItem(item(String(localized: "Go to…"), #selector(MainWindowController.goTo(_:)), "p"))
         menu.addItem(item(String(localized: "Command Palette…"), #selector(MainWindowController.showCommandPalette(_:)), "p", [.command, .shift]))

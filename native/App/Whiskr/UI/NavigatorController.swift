@@ -16,8 +16,6 @@ final class NavigatorController: NSViewController {
     private let list: NSHostingView<NavigatorList>
     private let note = HoverNote()
     private let hint = NSTextField(labelWithString: "")
-    /// With nothing open, the meadow is the welcome: the Start page on a card over empty ground.
-    private let welcome: NSHostingView<StartCard>
     private var observers: [Observing] = []
     private var scene: SceneSnapshot?
     private lazy var answerCard = AnswerCardController(workbench: workbench)
@@ -39,7 +37,6 @@ final class NavigatorController: NSViewController {
         self.workbench = workbench
         meadow = MeadowView(frame: NSRect(x: 0, y: 0, width: 300, height: 800))
         list = NSHostingView(rootView: NavigatorList(workbench: workbench))
-        welcome = NSHostingView(rootView: StartCard(workbench: workbench))
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -62,7 +59,7 @@ final class NavigatorController: NSViewController {
         hint.font = .systemFont(ofSize: 11)
         hint.textColor = .labelColor
         hint.alignment = .center
-        // `claude` in the command's own type, as on the Start page.
+        // `claude` in the command's own type, as on the Home page.
         hint.attributedStringValue = Self.codeStyled(AttributedString(localized: "Type `claude` in a terminal and your cat appears here.",
                                                                       comment: "First-run hint under the first blanket (Markdown: `claude` is the command)"),
                                                      font: .systemFont(ofSize: 11))
@@ -82,24 +79,20 @@ final class NavigatorController: NSViewController {
         capsules.sizingOptions = []
         container.addSubview(capsules)
         self.capsules = capsules
-        welcome.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(welcome)
         container.addSubview(note)
         NSLayoutConstraint.activate([
             meadow.topAnchor.constraint(equalTo: container.topAnchor),
             meadow.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             meadow.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             meadow.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            list.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+            list.topAnchor.constraint(equalTo: container.topAnchor),
             list.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             list.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             list.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             pill.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             pill.widthAnchor.constraint(lessThanOrEqualTo: container.widthAnchor, constant: -32),
             pill.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -18),
-            welcome.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            welcome.centerYAnchor.constraint(equalTo: container.centerYAnchor, constant: 24),
-            capsules.topAnchor.constraint(equalTo: container.safeAreaLayoutGuide.topAnchor),
+            capsules.topAnchor.constraint(equalTo: container.topAnchor),
             capsules.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             capsules.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             capsules.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -136,10 +129,10 @@ final class NavigatorController: NSViewController {
             AppPlaces.defaults.set(true, forKey: Self.hintKey)
         }
         // Only you change the workspace shown (§6.5), so following it never moves the camera on its own.
-        if let selected = snapshot.selectedSpace, selected != shownWorkspace {
-            let first = shownWorkspace == nil
-            shownWorkspace = selected
-            if !first { meadow.reveal(.blanket(selected.uuidString)) }
+        // A launch selects none (Home); every later choice, back in from Home too, brings its blanket into view.
+        if snapshot.selectedSpace != shownWorkspace {
+            shownWorkspace = snapshot.selectedSpace
+            if let selected = snapshot.selectedSpace { meadow.reveal(.blanket(selected.uuidString)) }
         }
         updateHint()
         updateEdges()
@@ -174,17 +167,10 @@ final class NavigatorController: NSViewController {
                   below: out.below.filter(waiting.contains).compactMap(UUID.init(uuidString:)))
     }
 
-    /// The one line that teaches where cats come from, until the first one has come.
+    /// The one line that teaches where cats come from, until the first one has come. Not beside the Home
+    /// page, which says the same.
     private func updateHint() {
-        let welcoming = workbench.workspaces.isEmpty
-        if welcome.isHidden == welcoming {
-            welcome.isHidden = !welcoming
-            // The last workspace closed: the keyboard goes to the card, as at launch (↑ ↓ and Return).
-            if welcoming { view.window?.makeFirstResponder(welcome) }
-        }
-        // Not beside a Start page, which says the same.
-        let onlyStart = workbench.workspaces.allSatisfy(workbench.isUnusedStart)
-        hint.superview?.isHidden = kind != .meadow || AppPlaces.defaults.bool(forKey: Self.hintKey) || onlyStart
+        hint.superview?.isHidden = kind != .meadow || AppPlaces.defaults.bool(forKey: Self.hintKey) || workbench.isHome
     }
 
     private func applySettings() {
@@ -200,7 +186,7 @@ final class NavigatorController: NSViewController {
 
     private func chose(_ item: MeadowItem?) {
         guard let item, let target = MeadowMapping.target(of: item) else {
-            // Grass chooses nothing: a workspace is always selected.
+            // Grass chooses nothing: a stray click never takes you out of your terminal (Home is ⇧⌘H).
             meadow.selection = scene.flatMap(MeadowMapping.selection(in:))
             return
         }
@@ -265,7 +251,8 @@ final class NavigatorController: NSViewController {
         }
         meadow.takesKeyboardFocus = true
         window.makeFirstResponder(meadow)
-        meadow.keyboardFocus = workbench.selectedWorkspace.map { .blanket($0.id.uuidString) }
+        // On the workspace shown, or from Home on the first.
+        meadow.keyboardFocus = (workbench.selectedWorkspace ?? workbench.workspaces.first).map { .blanket($0.id.uuidString) }
         if let focus = meadow.keyboardFocus { meadow.reveal(focus) }
     }
 
@@ -277,16 +264,17 @@ final class NavigatorController: NSViewController {
         note.hide()
     }
 
+    /// Esc or Tab: back to the terminal, or to the Home page on Home.
     private func giveKeyboardBack() {
         keyboardLeft()
-        if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) }
+        if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else if workbench.isHome { workbench.onFocusHome?() }
     }
 
     /// ↑ ↓ between workspaces, ← → through the focused workspace's cats, Return as a click, Space for
-    /// its label, Esc or Tab back to the terminal; letters jump to the first workspace named so.
+    /// its label, Esc or Tab back to the terminal (or Home); letters jump to the first workspace named so.
     private func key(_ event: NSEvent) -> Bool {
         let order = workbench.workspaces.map { $0.id.uuidString }
-        let focus = meadow.keyboardFocus ?? workbench.selectedWorkspace.map { .blanket($0.id.uuidString) }
+        let focus = meadow.keyboardFocus ?? (workbench.selectedWorkspace ?? workbench.workspaces.first).map { .blanket($0.id.uuidString) }
         guard let focus, let at = order.firstIndex(of: focus.blanketID) else { return false }
         switch event.keyCode {
         case 126, 125: // ↑ ↓
@@ -402,7 +390,7 @@ final class NavigatorController: NSViewController {
             menu.addItem(closureMenuItem(title: title, action: action))
         }
         guard let item, let target = MeadowMapping.target(of: item) else {
-            add(String(localized: "New Workspace")) { [weak self] in self?.workbench.newWorkspace() }
+            add(String(localized: "New Terminal")) { [weak self] in self?.workbench.newWorkspace() }
             add(String(localized: "Open Folder…")) { NSApp.sendAction(#selector(MainWindowController.openFolder(_:)), to: nil, from: nil) }
             return menu
         }
@@ -426,8 +414,8 @@ final class NavigatorController: NSViewController {
             }
             menu.addItem(.separator())
             add(String(localized: "Close Workspace")) { [weak self] in
-                self?.workbench.select(workspace: workspace)
-                NSApp.sendAction(#selector(MainWindowController.closeWorkspace(_:)), to: nil, from: nil)
+                // That workspace closes; whichever is shown stays (Home, if it was this one).
+                (self?.view.window?.windowController as? MainWindowController)?.requestClose(workspace: workspace)
             }
         case .pane(let id, let agent):
             guard let pane = workbench.panes[id] else { return nil }

@@ -21,7 +21,9 @@ import WhiskrKit
 ///   views <file>            the window's view tree with frames; ax <file> its accessibility tree
 ///   state                   the workbench in one line, and what has the keyboard
 ///   window <w>x<h>          resizes the window; layout split|terminals|meadow|list|meadow-view
-///   start-terminal          New Terminal on the selected Start page
+///   new-terminal            Home's New Terminal (its rows are SwiftUI's, out of reach of a press from here)
+///   open <name>             Home's row for that open workspace (back in where it was left)
+///   terminals <file>        what the session host holds and each pane's screen (as --terminals)
 ///   quit                    quits as ⌘Q does
 @MainActor
 enum DebugScript {
@@ -123,11 +125,14 @@ enum DebugScript {
             guard let surface = workbench.focusedPane?.surface else { return print("  no terminal") }
             try? surface.dataWithPDF(inside: surface.bounds).write(to: URL(fileURLWithPath: argument))
             print("  terminal \(surface.frame) drawn to \(argument)")
-        case "start-terminal":
-            // What choosing New Terminal on the selected Start page does (its rows are SwiftUI's, out of reach
-            // of a press from here).
-            guard let page = workbench.selectedTab.flatMap({ workbench.page(in: $0) })?.id else { return print("  no Start page") }
-            workbench.startTerminal(from: page)
+        case "new-terminal":
+            guard workbench.isHome else { return print("  not on Home") }
+            workbench.newWorkspace()
+        case "open":
+            guard workbench.isHome, let row = workbench.homeRows.first(where: { $0.name == argument }) else { return print("  no such row on Home") }
+            workbench.selectBlanket(row.id)
+        case "terminals":
+            DebugScenario.Probe.terminals(workbench: workbench, to: URL(fileURLWithPath: argument))
         case "quit":
             NSApp.terminate(nil)
         default:
@@ -277,7 +282,7 @@ enum DebugScript {
         let workspace = workbench.selectedWorkspace
         let tab = workbench.selectedTab
         let page = workbench.focusedPage.map { "\($0)" } ?? "-"
-        print("  workspaces \(workbench.workspaces.map(\.name)) selected “\(workspace?.name ?? "-")” tabs \(workspace?.tabs.map { workbench.title(of: $0) } ?? []) selected “\(tab.map { workbench.title(of: $0) } ?? "-")” panes \(tab?.tree.panes.count ?? 0) focused-pane \(workbench.focusedPane != nil) page \(page) peek \(workbench.peekedPane != nil)")
+        print("  workspaces \(workbench.workspaces.map(\.name)) selected “\(workspace?.name ?? "Home")” tabs \(workspace?.tabs.map { workbench.title(of: $0) } ?? []) selected “\(tab.map { workbench.title(of: $0) } ?? "-")” panes \(tab?.tree.panes.count ?? 0) focused-pane \(workbench.focusedPane != nil) page \(page) peek \(workbench.peekedPane != nil)")
         print("  first responder \(window.firstResponder.map { describe($0) } ?? "none") title “\(window.title)” size \(window.frame.size)")
     }
 

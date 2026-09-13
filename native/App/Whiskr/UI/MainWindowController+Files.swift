@@ -186,7 +186,7 @@ extension MainWindowController {
         case #selector(nextChange(_:)), #selector(previousChange(_:)):
             return focusedDiffPage != nil
         case #selector(revealInFiles(_:)):
-            return workbench.focusedPage?.path != nil
+            return workbench.focusedPage != nil
         default:
             return nil
         }

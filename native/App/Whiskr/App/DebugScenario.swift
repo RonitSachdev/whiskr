@@ -19,6 +19,8 @@ import WhiskrKit
 ///   --type-after <s> <text> types into the focused pane after that many seconds ("\r" is Return)
 ///   --new-tab-after <s>     opens a tab (⌘T) after that many seconds
 ///   --select <name>         selects that workspace
+///   --home                  goes Home (Go › Home) once the rest of the scene is set
+///   --recent <path>         adds a folder to the recent folders (repeatable; the folder need not exist)
 ///   --helper                shows the story of the first helper of the selected workspace's Claude
 ///   --list                  the sidebar as a list
 ///   --terminals-only, --meadow-only   those forms of the window
@@ -117,6 +119,10 @@ enum DebugScenario {
             workbench.select(workspace: workspace)
         }
         if has("--helper"), let pane = demo?.helperBoss { workbench.selectPane(pane, agent: "h0") }
+        for (position, argument) in arguments.enumerated() where argument == "--recent" && arguments.count > position + 1 {
+            workbench.remember(folder: arguments[position + 1])
+        }
+        if has("--home") { workbench.goHome() }
         for (position, argument) in arguments.enumerated() where argument == "--type-after" && arguments.count > position + 2 {
             let delay = Double(arguments[position + 1]) ?? 0
             let text = arguments[position + 2].replacingOccurrences(of: "\\r", with: "\r").replacingOccurrences(of: "\\e", with: "\u{1b}")
@@ -307,22 +313,28 @@ enum DebugScenario {
             workbench.focusedPane?.type("sleep 99999\r")
             workbench.focus(pane: shop)
             // An error.
-            let api = claude(root, "api")
-            hook(api, "UserPromptSubmit", [:])
-            hook(api, "StopFailure", ["error": "rate_limit", "error_message": "Rate limited"])
-            // Finished, not yet seen.
-            let docs = claude(root, "docs")
-            hook(docs, "UserPromptSubmit", [:])
-            hook(docs, "Stop", [:])
-            // Working, with three helpers.
-            let auth = claude(root, "auth")
-            hook(auth, "UserPromptSubmit", [:])
-            for (index, kind) in ["Explore", "Explore", "general-purpose"].enumerated() {
-                hook(auth, "PreToolUse", ["tool_name": "Agent", "tool_use_id": .string("t\(index)"), "tool_input": ["subagent_type": .string(kind), "description": "Map the old auth code"]])
-                hook(auth, "SubagentStart", ["agent_id": .string("h\(index)"), "agent_type": .string(kind)])
-                hook(auth, "PreToolUse", ["tool_name": "Grep", "tool_use_id": .string("g\(index)"), "agent_id": .string("h\(index)"), "tool_input": ["pattern": "getSession"]])
+            if count > 1 {
+                let api = claude(root, "api")
+                hook(api, "UserPromptSubmit", [:])
+                hook(api, "StopFailure", ["error": "rate_limit", "error_message": "Rate limited"])
             }
-            helperBoss = auth
+            // Finished, not yet seen.
+            if count > 2 {
+                let docs = claude(root, "docs")
+                hook(docs, "UserPromptSubmit", [:])
+                hook(docs, "Stop", [:])
+            }
+            // Working, with three helpers.
+            if count > 3 {
+                let auth = claude(root, "auth")
+                hook(auth, "UserPromptSubmit", [:])
+                for (index, kind) in ["Explore", "Explore", "general-purpose"].enumerated() {
+                    hook(auth, "PreToolUse", ["tool_name": "Agent", "tool_use_id": .string("t\(index)"), "tool_input": ["subagent_type": .string(kind), "description": "Map the old auth code"]])
+                    hook(auth, "SubagentStart", ["agent_id": .string("h\(index)"), "agent_type": .string(kind)])
+                    hook(auth, "PreToolUse", ["tool_name": "Grep", "tool_use_id": .string("g\(index)"), "agent_id": .string("h\(index)"), "tool_input": ["pattern": "getSession"]])
+                }
+                helperBoss = auth
+            }
             // Idle: finished and seen.
             if count > 4 {
                 let dots = claude(root, "dotfiles")
@@ -330,7 +342,7 @@ enum DebugScenario {
                 hook(dots, "Stop", [:])
                 if let session = sessionOf[dots] { workbench.monitor.markSeen(sessionID: session) }
             }
-            workbench.focus(pane: auth)
+            workbench.focus(pane: helperBoss ?? shop)
         }
 
         private func claude(_ root: URL, _ name: String) -> UUID {

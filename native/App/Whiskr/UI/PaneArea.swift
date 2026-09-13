@@ -67,7 +67,7 @@ final class PaneArea: NSView {
         root = view
         needsLayout = true
         if let page = pageViews[tab.focusedPane] {
-            // A page takes the keys as a terminal does (the Start page's arrows and Return, the editor).
+            // A page takes the keys as a terminal does (the editor, a diff's table).
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.workbench.selectedTab === tab, page.window != nil else { return }
                 self.window?.makeFirstResponder(Self.focusTarget(of: page))
@@ -107,10 +107,6 @@ final class PaneArea: NSView {
 
     private func pageView(_ page: TabPage, id: UUID) -> NSView {
         switch page {
-        case .start:
-            let host = NSHostingView(rootView: StartPageHost(workbench: workbench, page: id))
-            host.sizingOptions = []
-            return host
         case .file(let path):
             return FilePageView(pageID: id, document: workbench.files.document(for: path), workbench: workbench)
         case .changes(let path, let staged):
@@ -132,25 +128,6 @@ final class PaneArea: NSView {
         case .pane(let id): id.uuidString
         case .split(let split): "\(split.axis.rawValue)(\(shape(of: split.first)),\(shape(of: split.second)))"
         }
-    }
-}
-
-/// The Start page as a tab's content: centred in the terminal's colours, so it reads as the tab's own.
-private struct StartPageHost: View {
-    let workbench: Workbench
-    let page: UUID
-
-    var body: some View {
-        // A little above the middle, where the eye expects it; on a short window the recent folders
-        // are fewer rather than scrolled.
-        GeometryReader { area in
-            StartPage(workbench: workbench, page: page, recentLimit: max(0, min(8, Int((area.size.height - 330) / 34))))
-                .padding(.horizontal, 32)
-                .padding(.bottom, area.size.height > 600 ? 64 : 0)
-                .frame(width: area.size.width, height: area.size.height)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: Colors.terminalBackground))
     }
 }
 

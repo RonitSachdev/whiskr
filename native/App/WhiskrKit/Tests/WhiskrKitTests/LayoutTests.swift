@@ -99,7 +99,7 @@ struct LayoutSnapshotTests {
             .init(id: p3, folder: "/code/blog", isClaude: false, accountConfigDir: nil, claudeSessionID: nil, claudeSessionTitle: nil),
         ], focusedPane: p3, zoomedPane: p3)
         let shop = LayoutSnapshot.Workspace(id: UUID(), folder: "/code/shop", tabs: [tab1, tab2], selectedTab: tab2.id)
-        return LayoutSnapshot(workspaces: [shop], selectedWorkspace: shop.id)
+        return LayoutSnapshot(workspaces: [shop])
     }
 
     private func temporaryFile() -> URL {
@@ -146,7 +146,6 @@ struct LayoutSnapshotTests {
         #expect(repaired.workspaces.count == 1)
         #expect(repaired.workspaces[0].tabs == [good])
         #expect(repaired.workspaces[0].selectedTab == nil)
-        #expect(repaired.selectedWorkspace == layout.selectedWorkspace)
     }
 }
 
@@ -195,7 +194,7 @@ struct WorkspaceColourTests {
         #expect(taken == [0, 1, 2, 3, 4, 5, 0, 1])
         // A workspace closed in the middle: its colour is the next one used.
         #expect(LayoutSnapshot.Workspace.nextColor(after: [0, 1, 3, 4, 5]) == 2)
-        let saved = LayoutSnapshot(workspaces: [.init(id: UUID(), folder: "/a", tabs: [], selectedTab: nil, color: 4)], selectedWorkspace: nil)
+        let saved = LayoutSnapshot(workspaces: [.init(id: UUID(), folder: "/a", tabs: [], selectedTab: nil, color: 4)])
         let data = try JSONEncoder().encode(saved)
         #expect(try JSONDecoder().decode(LayoutSnapshot.self, from: data).workspaces[0].color == 4)
         // Layouts saved before colours read with none.

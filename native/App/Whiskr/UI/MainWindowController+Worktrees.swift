@@ -2,7 +2,7 @@ import AppKit
 import WhiskrKit
 
 /// File › New Worktree…, Open Worktree… and Remove Worktree… (also in the workspace button's menu, the
-/// blanket's, the Start page and the palette), for the repository of the selected workspace.
+/// blanket's, Home and the palette), for the repository of the selected workspace.
 extension MainWindowController {
     /// The selected workspace's repository (its main checkout), when it is in one.
     var selectedRepository: String? {

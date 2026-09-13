@@ -3,14 +3,15 @@ import SwiftUI
 import UniformTypeIdentifiers
 import WhiskrKit
 
-/// The current workspace's tabs, in the title bar's row (docs/DESIGN.md) and in the terminal's
-/// colours: the bar a shade off the terminal, the selected tab the terminal's own colour, so it reads as
-/// the top of the terminal below.
+/// The current workspace's tabs, in the row under the top bar over the work area (docs/DESIGN.md), in
+/// the chrome's colour with the selected tab in the terminal's own, so it reads as the top of the
+/// terminal below.
 ///
 /// It begins with the workspace these tabs belong to: its blanket's colour and name, a button whose menu
-/// lists every open workspace (each one click away, ⌥⌘1…9), so opening another never looks as if this one
-/// had closed. Then each tab: its state mark, its title, a close button on hover at its leading edge,
-/// and the to-do progress of a Claude in it; "+" at the end, as Safari, Terminal and herdr have it.
+/// lists Home and every open workspace (each one click away, ⌥⌘1…9), so opening another never looks as if
+/// this one had closed. Then each tab: its state mark, its title, a close button on hover at its leading
+/// edge, and the to-do progress of a Claude in it; "+" at the end, as Safari, Terminal and herdr have it.
+/// On Home the row stays, calm: "Home" where the workspace button sits, with the same menu, and no tabs.
 ///
 /// Clicks are AppKit's, not SwiftUI tap gestures: a tab is chosen the moment the button goes down (as
 /// in Safari), a second click renames it, and the close button closes at once (a double-tap gesture
@@ -18,16 +19,14 @@ import WhiskrKit
 /// another workspace's blanket.
 struct TabStrip: View {
     let workbench: Workbench
-    let chrome: WindowChrome
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    static let height: CGFloat = 38
+    static let height: CGFloat = 36
 
     var body: some View {
         HStack(spacing: 4) {
-            SidebarButton(workbench: workbench, chrome: chrome)
             if let workspace = workbench.selectedWorkspace {
-                WorkspaceButton(workbench: workbench, workspace: workspace, chrome: chrome)
+                WorkspaceButton(workbench: workbench, workspace: workspace)
                     .padding(.trailing, 4)
                 ForEach(Array(workspace.tabs.enumerated()), id: \.element.id) { index, tab in
                     TabButton(workbench: workbench, tab: tab, index: index, selected: workspace.selectedTab === tab)
@@ -36,83 +35,71 @@ struct TabStrip: View {
                 }
                 NewTabButton { workbench.newTab() }
                     .onDrop(of: [TabDrag.type], delegate: TabDropTarget(workbench: workbench, workspace: workspace, index: workspace.tabs.count))
+            } else {
+                HomeButton(workbench: workbench)
             }
-            WindowDragArea { workbench.newTab() }
-            if workbench.selectedWorkspace != nil { PanelButton(workbench: workbench) }
+            EmptyStretch { workbench.newTab() }
         }
-        .padding(.leading, chrome.leadingInset)
-        .padding(.trailing, 8)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height)
-        .background(Color(nsColor: Colors.terminalBackground).overlay(Color.primary.opacity(0.07)))
+        .chromeBackground()
         .overlay(alignment: .bottom) { Color.line.frame(height: 1) }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: chrome.leadingInset)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: workbench.selectedWorkspace?.tabs.map(\.id))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Tabs", comment: "Accessibility label of the tab strip"))
     }
 }
 
-/// The stretch of the bar with nothing on it: it moves the window, as a title bar does.
-private struct WindowDragArea: NSViewRepresentable {
+/// The stretch of the row with nothing on it: a double-click opens a tab, as in Safari and Terminal.
+private struct EmptyStretch: NSViewRepresentable {
     let onDoubleClick: () -> Void
 
-    func makeNSView(context: Context) -> DragView { DragView() }
+    func makeNSView(context: Context) -> StretchView { StretchView() }
 
-    func updateNSView(_ view: DragView, context: Context) {
+    func updateNSView(_ view: StretchView, context: Context) {
         view.onDoubleClick = onDoubleClick
     }
 
-    final class DragView: NSView {
+    final class StretchView: NSView {
         var onDoubleClick: () -> Void = {}
 
         override func mouseDown(with event: NSEvent) {
-            if event.clickCount == 2 { onDoubleClick() } else { window?.performDrag(with: event) }
+            if event.clickCount == 2 { onDoubleClick() }
         }
     }
 }
 
-/// Shows or hides the meadow. While it is hidden, counts the requests in other workspaces (§3).
-private struct SidebarButton: View {
+/// Where the workspace button sits while on Home: a house and "Home", whose menu is the workspace
+/// button's (Home, then every open workspace).
+private struct HomeButton: View {
     let workbench: Workbench
-    let chrome: WindowChrome
     @State private var hovering = false
 
     var body: some View {
-        let current = workbench.selectedWorkspace?.id
-        let waiting = chrome.meadowHidden ? workbench.agentRows.filter { $0.status == .blocked && $0.workspaceID != current }.count : 0
-        Button(action: chrome.toggleMeadow) {
-            Image(systemName: "sidebar.left")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 26)
-                .background(RoundedRectangle(cornerRadius: 7).fill(hovering ? Color.primary.opacity(0.08) : .clear))
-                .overlay(alignment: .topTrailing) {
-                    if waiting > 0 {
-                        Text("\(waiting)")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(Color.onAlert)
-                            .padding(.horizontal, 4)
-                            .frame(minWidth: 14, minHeight: 14)
-                            .background(Capsule().fill(Color.alert))
-                            .offset(x: 4, y: -2)
-                    }
-                }
-                .contentShape(Rectangle())
+        HStack(spacing: 6) {
+            Image(systemName: "house")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(Color.ink2)
+            Text(String(localized: "Home", comment: "The tab row's place name while on Home"))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.ink)
+            if !workbench.workspaces.isEmpty {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Color.ink3)
+            }
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .frame(height: 26)
+        .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(hovering ? 0.08 : 0)))
+        .contentShape(Rectangle())
+        .background(MenuAnchor(menu: { WorkspaceMenu.make(workbench: workbench) }))
         .onHover { hovering = $0 }
-        .help(helpText(waiting: waiting))
-        .accessibilityLabel(String(localized: "Show or hide the meadow (⌃⌘S)"))
-    }
-
-    private func helpText(waiting: Int) -> String {
-        var text = waiting > 0
-            ? String(localized: "Show the meadow (⌃⌘S): \(waiting) requests in other workspaces")
-            : String(localized: "Show or hide the meadow (⌃⌘S)")
-        if let until = Preferences.shared.alertsPausedUntil, until > Date() {
-            text += "\n" + String(localized: "Alerts paused until \(until.formatted(date: .omitted, time: .shortened))")
-        }
-        return text
+        .help(String(localized: "Home: every open workspace is in this menu (⌥⌘1…9) and in the meadow"))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Home", comment: "The tab row's place name while on Home"))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint(String(localized: "Shows every open workspace"))
     }
 }
 
@@ -121,14 +108,12 @@ private struct SidebarButton: View {
 private struct WorkspaceButton: View {
     let workbench: Workbench
     let workspace: Workspace
-    let chrome: WindowChrome
     @State private var hovering = false
     @State private var draft = ""
     @FocusState private var editing: Bool
 
     var body: some View {
         let count = workbench.workspaces.count
-        let elsewhere = workbench.agentRows.filter { $0.status == .blocked && $0.workspaceID != workspace.id }.count
         HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 3)
                 .fill(Colors.accountColor(index: workspace.colorIndex))
@@ -147,18 +132,12 @@ private struct WorkspaceButton: View {
                         editing = true
                     }
             } else {
-                Text(Self.short(workspace.name))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(1)
-                    .fixedSize()
+                // The name itself is in the top bar's field; here only which of how many.
                 if count > 1 {
                     Text("\(index + 1)/\(count)")
                         .font(.system(size: 11).monospacedDigit())
                         .foregroundStyle(Color.ink3)
                 }
-                // While the meadow is hidden its button's badge counts these already: one sign, not two.
-                if elsewhere > 0 && !chrome.meadowHidden { StateMark(status: .blocked) }
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(Color.ink3)
@@ -179,12 +158,6 @@ private struct WorkspaceButton: View {
 
     private var index: Int { workbench.workspaces.firstIndex { $0 === workspace } ?? 0 }
 
-    /// A long name cut in the middle, as the meadow's flag cuts it (22 characters).
-    static func short(_ name: String) -> String {
-        guard name.count > 22 else { return name }
-        return "\(name.prefix(11))…\(name.suffix(10))"
-    }
-
     private func commit() {
         guard workbench.renamingWorkspaceID == workspace.id else { return }
         workbench.rename(workspace: workspace, to: draft)
@@ -192,11 +165,18 @@ private struct WorkspaceButton: View {
     }
 }
 
-/// The workspaces menu: every open workspace (colour, name, where and which branch, a count of its
-/// requests, ⌥⌘ and its number), then New Workspace, Go to…, Rename and Close.
+/// The workspaces menu: Home, then every open workspace (colour, name, where and which branch, a count
+/// of its requests, ⌥⌘ and its number), then New Workspace, Go to…, Rename and Close.
 enum WorkspaceMenu {
     static func make(workbench: Workbench) -> NSMenu {
         let menu = NSMenu()
+        let home = closureMenuItem(title: String(localized: "Home", comment: "Go menu and the workspace menu: no workspace selected")) { workbench.goHome() }
+        home.image = NSImage(systemSymbolName: "house", accessibilityDescription: nil)
+        home.keyEquivalent = "h"
+        home.keyEquivalentModifierMask = [.command, .shift]
+        home.state = workbench.isHome ? .on : .off
+        menu.addItem(home)
+        if !workbench.workspaces.isEmpty { menu.addItem(.separator()) }
         for (index, workspace) in workbench.workspaces.enumerated() {
             let item = closureMenuItem(title: workspace.name) { workbench.select(workspace: workspace) }
             item.image = swatch(workspace.colorIndex)
@@ -225,7 +205,8 @@ enum WorkspaceMenu {
         menu.addItem(.separator())
         menu.addItem(actionItem(String(localized: "New Workspace"), #selector(MainWindowController.newWorkspace(_:)), "n", [.command]))
         menu.addItem(actionItem(String(localized: "Go to…"), #selector(MainWindowController.goTo(_:)), "p", [.command]))
-        if let selected = workbench.selectedWorkspace, workbench.repositoryRoot(of: selected) != nil {
+        guard let selected = workbench.selectedWorkspace else { return menu }
+        if workbench.repositoryRoot(of: selected) != nil {
             menu.addItem(.separator())
             menu.addItem(actionItem(String(localized: "New Worktree…"), #selector(MainWindowController.newWorktree(_:)), "n", [.command, .shift]))
             menu.addItem(actionItem(String(localized: "Open Worktree…"), #selector(MainWindowController.openWorktree(_:)), "", []))
@@ -282,42 +263,6 @@ struct MenuAnchor: NSViewRepresentable {
     }
 }
 
-/// Shows or hides the side panel (Files and Changes); counts the workspace's changed files.
-private struct PanelButton: View {
-    let workbench: Workbench
-    @State private var hovering = false
-
-    var body: some View {
-        let shown = workbench.selectedWorkspace.map { workbench.files.panel($0.id).shown } ?? false
-        let count = workbench.selectedRepository?.status?.changeCount ?? 0
-        Button { workbench.setPanelShown(!shown) } label: {
-            Image(systemName: "sidebar.right")
-                .font(.system(size: 13))
-                .foregroundStyle(shown ? Color.ink : Color.ink2)
-                .frame(width: 28, height: 26)
-                .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(shown ? 0.08 : hovering ? 0.08 : 0)))
-                .overlay(alignment: .topTrailing) {
-                    if count > 0, !shown {
-                        Text(verbatim: count > 99 ? "99+" : "\(count)")
-                            .font(.system(size: 9, weight: .bold).monospacedDigit())
-                            .foregroundStyle(Color.ink)
-                            .padding(.horizontal, 3.5)
-                            .frame(minWidth: 14, minHeight: 14)
-                            .background(Capsule().fill(Color(nsColor: Colors.terminalBackground)))
-                            .overlay(Capsule().strokeBorder(Color.lineStrong))
-                            .offset(x: 5, y: -3)
-                    }
-                }
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .help(shown ? String(localized: "Hide Files and Changes") : count > 0 ? String(localized: "Show Files and Changes: \(count) changed files") : String(localized: "Show Files and Changes"))
-        .accessibilityLabel(shown ? String(localized: "Hide Files and Changes") : String(localized: "Show Files and Changes"))
-        .accessibilityValue(count > 0 ? String(localized: "\(count) changed files") : "")
-    }
-}
-
 private struct NewTabButton: View {
     let action: () -> Void
     @State private var hovering = false
@@ -370,7 +315,7 @@ private struct TabButton: View {
             .background(Circle().fill(Color.primary.opacity(hovering ? 0.08 : 0)))
             .accessibilityHidden(true)
             if let status { StateMark(status: status, failed: failed) }
-            if let page, page.path != nil {
+            if let page {
                 Image(systemName: page.isDiff ? "arrow.left.arrow.right" : FileIcon.symbol(for: page.title, folder: false))
                     .font(.system(size: 10))
                     .foregroundStyle(Color.ink3)

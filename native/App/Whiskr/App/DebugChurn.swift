@@ -7,7 +7,7 @@ import WhiskrKit
 /// go (run `leaks` or `heap` on the process once it prints "churn: done"). Run from `DebugScenario.run`.
 ///
 ///   --churn <n> [--churn-file <path>]   n rounds of: a workspace with two tabs and a split (and the file,
-///                                       in a tab and beside a terminal), the Start page, then all closed;
+///                                       in a tab and beside a terminal), Home, then all closed;
 ///                                       done once the closed terminals' ten-second undo has run out
 ///   --measure-meadow-after <s>          prints what a frame of the meadow costs the main thread
 @MainActor
@@ -59,10 +59,9 @@ enum DebugChurn {
                     workbench.open(file: file, mode: .keep)
                     workbench.open(file: file, mode: .beside)
                 }
-                let start = workbench.newStartWorkspace()
+                workbench.goHome()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    workbench.close(workspace: start)
-                    if let workspace = workbench.workspaces.last(where: { $0 !== start }) { workbench.close(workspace: workspace) }
+                    if let workspace = workbench.workspaces.last { workbench.close(workspace: workspace) }
                 }
             }
         }

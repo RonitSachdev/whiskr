@@ -46,22 +46,33 @@ sessions.
 
 ## The window
 
-- **One window.** The meadow is on the left, flush to the window's edges and up under the title bar. The
-  terminals are on the right. The terminal region's top row is the tab bar (in the terminal's own colours,
-  so tabs and terminal read as one surface), led by the **workspace button**. Panes have no headers. A
-  quiet status line sits at the bottom: folder, branch, how many Claudes need you, ⌘P and ⇧⌘P.
+- **One window, framed.** A **top bar** runs the window's full width (the traffic lights, the meadow
+  button; in the middle a quiet field naming where you are, which opens Go to; "+", the Files and Changes
+  button and Settings at the end), and a **status bar** runs along its foot (branch, folder as
+  `~/…/parent/folder`, how many Claudes and how many need you, the focused file's details, ⌘P and ⇧⌘P).
+  Both are drawn by the app in one chrome colour, the terminal's background a shade off, never as toolbar
+  items. Between them the meadow is on the left and the work area on the right: a **tab row** led by the
+  **workspace button**, then the panes, which have no headers. Nothing in the bars repeats what is on
+  screen elsewhere.
 - **Sizes.** By default the meadow takes about 42 % of the window and the terminals keep at least 80
   columns. The divider drags from a 240 pt sidebar to the meadow alone. Below about 880 pt of window, the
   meadow steps aside. View offers Meadow and Terminals, Terminals Only, Meadow Only, Hide Meadow, and
   Show Workspaces as List.
-- **The window title** is the workspace's name (for the Window menu and Mission Control). It is never
-  "Claude".
+- **The window title** is the workspace's name (for the Window menu and Mission Control), "Whiskr" on
+  Home. It is never "Claude".
 - **Workspaces** are named after their repository (else their folder) and follow the first terminal's
   `cd` until renamed. Choosing a workspace yourself scrolls its blanket into view.
-- **The Start page.** ⌘N opens a workspace on a Start page: Open Folder…, New Terminal, recent folders.
-  On launch everything comes back, and the Start page shows only when nothing does.
+- **Home** is a place, not a tab: no workspace selected. The meadow shows every blanket with none ringed,
+  and the work area shows the Home page: the app's cat, one line on where cats come from, Open Folder…
+  (⌘O), New Terminal (↩), **Open** (the workspaces open now, in the meadow's order, each with its colour,
+  name, branch, state and Claude count; Return takes you back in exactly where you left it) and
+  **Recent** (folders not already open). The tab row shows "Home" and no tabs. It looks the same with no
+  workspace or many. **Every launch lands on Home**; everything comes back running, one click away.
+  Go › Home is ⇧⌘H; it is also first in the workspace button's menu, and ⌘N (New Workspace) goes there.
 - **Closing** asks nothing. ⌘Z brings back what was closed, with its process, for ten seconds, and ⇧⌘T
-  reopens it later. Closing a workspace asks only when Claude or another program is running in it.
+  reopens it later. Closing a workspace's last tab closes the workspace; closing the workspace on screen
+  returns Home, never into another workspace's terminal. Closing a workspace asks only when Claude or
+  another program is running in it.
 - **Quitting** leaves every terminal running in the session host. ⌥⌘Q (Quit and Stop All Terminals) asks
   only when something is running.
 
@@ -123,7 +134,7 @@ bottom.
 
 One side panel on the terminal region's trailing edge holds **Files** (the workspace's repository as an
 outline, with git letters) or **Changes** (staged, changed and untracked, with a commit box). Files and
-diffs open as tabs in the same tab bar, so they can sit in a split beside a terminal. A click opens a
+diffs open as tabs in the same tab row, so they can sit in a split beside a terminal. A click opens a
 preview tab that the next click reuses; editing or double-clicking keeps it. Claude edits files all the
 time: an unmodified file reloads silently, and a modified one shows a quiet bar (Reload or Keep Mine),
 never a dialog. Syntax colours come from our own small line lexer, not a dependency per language.
@@ -168,7 +179,8 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
 
 - Every cute reaction (a cat arriving or trotting off, a butterfly landing on a napper, a glance at the
   pointer) is anchored to its spot, lasts 2 seconds or less, and never plays on a cat with a request.
-- Nothing cute in the tab bar, panes, menus, notifications, the answer card or the palette.
+- Nothing cute in the top bar, tab row, status bar, panes, menus, notifications, the answer card or the
+  palette.
 - While you type, ambient reactions wait and only state changes animate. With Reduce Motion, hops, walks
   and camera moves become short cross-fades.
 - The camera never moves on its own. A drag turns the view, ⌘-drag slides it, and scroll or pinch zooms
@@ -176,7 +188,7 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
 
 ## Look of the interface
 
-- Neutral and solid: off-white surfaces, charcoal text, soft grey lines, soft shadows, smooth motion. No
+- Neutral and solid, framed like a professional editor (Cursor, Xcode): off-white surfaces, charcoal text, soft grey lines, soft shadows, smooth motion. No
   translucent panels, and no cream-and-brown palette.
 - Mac conventions throughout: every command in the menus with its key, standard Settings (⌘,) with
   categories on the left and one setting per row on the right, and standard Save / Don't Save / Cancel.

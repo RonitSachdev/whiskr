@@ -324,7 +324,7 @@ struct LayoutPagesTests {
                                            pages: [.init(id: other, kind: .changes, path: "/b.swift")])
         let broken = LayoutSnapshot.Tab(id: UUID(), name: nil, tree: .pane(UUID()), panes: [], focusedPane: nil, zoomedPane: nil, pages: nil)
         let layout = LayoutSnapshot(workspaces: [.init(id: UUID(), folder: "/", tabs: [mixed, filesOnly, broken], selectedTab: nil,
-                                                       panel: .init(shown: true, mode: .changes, width: 320))], selectedWorkspace: nil)
+                                                       panel: .init(shown: true, mode: .changes, width: 320))])
         let data = try JSONEncoder().encode(layout)
         let read = try JSONDecoder().decode(LayoutSnapshot.self, from: data).repaired
         #expect(read.workspaces[0].tabs.map(\.id) == [mixed.id, filesOnly.id])

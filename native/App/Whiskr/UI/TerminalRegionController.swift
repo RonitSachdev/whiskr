@@ -2,23 +2,23 @@ import AppKit
 import SwiftUI
 import WhiskrKit
 
-/// The terminal region (docs/DESIGN.md): the tab bar in the title bar's row, the selected tab's
-/// panes below it with the side panel (Files and Changes) on their trailing edge when it is open, and a
-/// quiet status line at the bottom, one surface in the terminal's colours. While a closed tab can still
-/// be brought back, a note says so. With nothing open the region steps aside and the meadow welcomes you.
+/// The work area (docs/DESIGN.md): the tab row, the selected tab's panes below it with the side panel
+/// (Files and Changes) on their trailing edge when it is open, one surface in the terminal's colours. On
+/// Home, the Home page in the panes' place. While a closed tab can still be brought back, a note says so.
 final class TerminalRegionController: NSViewController {
     private let workbench: Workbench
 
-    private let chrome: WindowChrome
     private(set) var paneArea: PaneArea!
+    /// The Home page, shown while no workspace is selected.
+    private(set) var home: NSHostingView<HomePage>!
+    private var homeObserver: Observing?
     private(set) var sidePanel: SidePanelView!
     private var panelWidth: NSLayoutConstraint!
     private var panelObserver: Observing?
     private var shownPanel: (workspace: UUID?, shown: Bool)?
 
-    init(workbench: Workbench, chrome: WindowChrome) {
+    init(workbench: Workbench) {
         self.workbench = workbench
-        self.chrome = chrome
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -28,16 +28,7 @@ final class TerminalRegionController: NSViewController {
 
     override func loadView() {
         let view = DropView()
-        view.onFolders = { [weak self] urls in
-            guard let self else { return }
-            // Dropped on a Start page, the first folder becomes that workspace's.
-            var rest = urls
-            if let tab = self.workbench.selectedTab, let page = self.workbench.page(in: tab)?.id, let first = rest.first {
-                self.workbench.start(from: page, folder: first.path)
-                rest.removeFirst()
-            }
-            rest.forEach { self.workbench.open(folder: $0.path) }
-        }
+        view.onFolders = { [weak self] urls in urls.forEach { self?.workbench.open(folder: $0.path) } }
         view.registerForDraggedTypes([.fileURL])
         let panes = PaneArea(workbench: workbench)
         paneArea = panes
@@ -45,14 +36,14 @@ final class TerminalRegionController: NSViewController {
         sidePanel = panel
         let undo = NSHostingView(rootView: UndoNote(workbench: workbench))
         undo.sizingOptions = [.intrinsicContentSize]
-        let tabs = NSHostingView(rootView: TabStrip(workbench: workbench, chrome: chrome))
+        let tabs = NSHostingView(rootView: TabStrip(workbench: workbench))
         tabs.sizingOptions = []
-        // The bar lies under the clear title bar on purpose.
         tabs.safeAreaRegions = []
-        let status = NSHostingView(rootView: StatusLine(workbench: workbench))
-        status.sizingOptions = []
-        status.safeAreaRegions = []
-        for part in [panes, panel, tabs, status, undo] as [NSView] {
+        let home = NSHostingView(rootView: HomePage(workbench: workbench))
+        home.sizingOptions = []
+        home.safeAreaRegions = []
+        self.home = home
+        for part in [panes, panel, tabs, home, undo] as [NSView] {
             part.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(part)
         }
@@ -64,17 +55,17 @@ final class TerminalRegionController: NSViewController {
             panes.topAnchor.constraint(equalTo: tabs.bottomAnchor),
             panes.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             panes.trailingAnchor.constraint(equalTo: panel.leadingAnchor),
-            panes.bottomAnchor.constraint(equalTo: status.topAnchor),
+            panes.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             panel.topAnchor.constraint(equalTo: tabs.bottomAnchor),
             panel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            panel.bottomAnchor.constraint(equalTo: status.topAnchor),
-            status.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            status.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            status.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            status.heightAnchor.constraint(equalToConstant: StatusLine.height),
+            panel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            home.topAnchor.constraint(equalTo: tabs.bottomAnchor),
+            home.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            home.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            home.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             panes.widthAnchor.constraint(greaterThanOrEqualToConstant: CGFloat(WindowLayout.terminalMinimum)),
             undo.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            undo.bottomAnchor.constraint(equalTo: status.topAnchor, constant: -12),
+            undo.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
         ])
         panelWidth = panel.widthAnchor.constraint(equalToConstant: 0)
         panelWidth.isActive = true
@@ -91,6 +82,17 @@ final class TerminalRegionController: NSViewController {
         ])
         self.view = view
         panelObserver = Observing { [weak self] in self?.updatePanel() }
+        homeObserver = Observing { [weak self] in
+            guard let self else { return }
+            let isHome = self.workbench.isHome
+            if self.home.isHidden == isHome { self.home.isHidden = !isHome }
+        }
+    }
+
+    /// Home takes the keyboard (at launch, ⌘N, Go › Home, a workspace closing): ↑ ↓ and Return.
+    func focusHome() {
+        guard let window = view.window, !home.isHidden else { return }
+        if window.firstResponder !== home { window.makeFirstResponder(home) }
     }
 
     /// The selected workspace's panel: shown or not (sliding in and out), at its width.

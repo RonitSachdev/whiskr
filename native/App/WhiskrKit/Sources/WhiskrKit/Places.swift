@@ -1,7 +1,7 @@
 import Foundation
 
-/// Folders as the app shows and offers them: shortened paths, and the recent folders that the Start page
-/// and File › Open Recent list (the same list in both).
+/// Folders as the app shows and offers them: shortened paths, and the recent folders that Home
+/// and File › Open Recent list (Home leaves out those already open).
 public enum Places {
     /// The path with your home folder written "~".
     public static func abbreviate(_ path: String, home: String) -> String {

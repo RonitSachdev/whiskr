@@ -221,9 +221,6 @@
         }
       }
     },
-    "%lld": {
-      "shouldTranslate": false
-    },
     "%lld Claudes": {
       "comment": "Status line: how many Claudes are running",
       "localizations": {
@@ -337,6 +334,35 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claude %lld件が実行中です。停止されますが、会話は中断したところから再開できます。"
+          }
+        }
+      }
+    },
+    "%lld Claudes were not resumed here, so none runs twice: they may still be running there.": {
+      "comment": "Launch notice: Claude conversations not resumed because the other version's host may still run them",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude %lld件は二重に動かないよう、ここでは再開していません。そちらでまだ動いている可能性があります。"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claude was not resumed here, so it does not run twice: it may still be running there."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claudes were not resumed here, so none runs twice: they may still be running there."
+                }
+              }
+            }
           }
         }
       }
@@ -658,12 +684,13 @@
         }
       }
     },
-    "A new workspace, starting on the Start page. Every other workspace stays open.": {
+    "A new workspace: Home, ready to open a folder or a terminal. Every other workspace stays open.": {
+      "comment": "Help page: New Workspace",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "新しいワークスペースをスタートページから始めます。ほかのワークスペースは開いたままです。"
+            "value": "新しいワークスペース：ホームでフォルダかターミナルを開きます。ほかのワークスペースは開いたままです。"
           }
         }
       }
@@ -710,12 +737,12 @@
         }
       }
     },
-    "A workspace by its number. The workspace button at the start of the tab bar lists them all.": {
+    "A workspace by its number. The workspace button at the start of the tab row lists them all, and Home.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "番号でワークスペースを選びます。タブバー先頭のワークスペースボタンに一覧があります。"
+            "value": "番号でワークスペースを選びます。タブ行の先頭にあるワークスペースボタンに、すべてとホームの一覧があります。"
           }
         }
       }
@@ -854,6 +881,17 @@
         }
       }
     },
+    "Back to %@, where you left it — %@": {
+      "comment": "Home: an open workspace's tooltip",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@に離れたときのまま戻ります — %2$@"
+          }
+        }
+      }
+    },
     "Back to Terminal": {
       "localizations": {
         "ja": {
@@ -936,13 +974,13 @@
         }
       }
     },
-    "Branch %@": {
-      "comment": "Status line: the git branch's tooltip",
+    "Branch %@: show Changes (⇧⌘C)": {
+      "comment": "Status bar: the git branch's tooltip",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブランチ %@"
+            "value": "ブランチ %@：変更を表示（⇧⌘C）"
           }
         }
       }
@@ -2157,6 +2195,16 @@
         }
       }
     },
+    "Go to a workspace, tab, Claude or file (⌘P)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペース、タブ、Claude、ファイルへ移動（⌘P）"
+          }
+        }
+      }
+    },
     "Go to any workspace, tab or Claude by name, folder, branch or state.": {
       "localizations": {
         "ja": {
@@ -2328,12 +2376,61 @@
         }
       }
     },
+    "Home": {
+      "comment": "Accessibility label of the Home page\nGo menu and the workspace menu: no workspace selected\nThe tab row's place name while on Home",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホーム"
+          }
+        }
+      }
+    },
     "Home Folder": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "ホームフォルダ"
+          }
+        }
+      }
+    },
+    "Home.Open": {
+      "comment": "Home: heading over the workspaces open now (not the verb)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開いている"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open"
+          }
+        }
+      }
+    },
+    "Home: every open workspace is in this menu (⌥⌘1…9) and in the meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホーム：開いているワークスペースはすべてこのメニュー（⌥⌘1…9）と草原にあります"
+          }
+        }
+      }
+    },
+    "Home: open a folder or a terminal, or go back into a workspace exactly where you left it. Every launch starts here, and closing a workspace comes back here; everything keeps running.": {
+      "comment": "Help page: Home",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホーム：フォルダやターミナルを開くか、ワークスペースに離れたときのまま戻ります。起動するといつもここから始まり、ワークスペースを閉じるとここに戻ります。どれも動き続けます。"
           }
         }
       }
@@ -2849,12 +2946,33 @@
         }
       }
     },
+    "Needs you": {
+      "comment": "Home: a workspace with a request or an error",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "応答待ち"
+          }
+        }
+      }
+    },
     "Neither": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "なし"
+          }
+        }
+      }
+    },
+    "New": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規"
           }
         }
       }
@@ -2905,6 +3023,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "新規タブ（⌘T）"
+          }
+        }
+      }
+    },
+    "New Tab, Workspace or Worktree": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新規タブ、ワークスペース、ワークツリー"
           }
         }
       }
@@ -3248,7 +3376,7 @@
       }
     },
     "Open a terminal and type `claude`: a cat sits down in the meadow.": {
-      "comment": "Start page: how cats come (Markdown: `claude` is the command)",
+      "comment": "Home: how cats come (Markdown: `claude` is the command)",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -3311,7 +3439,7 @@
       }
     },
     "Or drop a folder here.": {
-      "comment": "Start page: the last line",
+      "comment": "Home: the last line",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -3620,7 +3748,7 @@
       }
     },
     "Recent": {
-      "comment": "Palette section: tabs visited lately\nStart page: heading over the recent folders",
+      "comment": "Home: heading over the recent folders\nPalette section: tabs visited lately",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -4048,6 +4176,26 @@
         }
       }
     },
+    "Settings": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定"
+          }
+        }
+      }
+    },
+    "Settings (⌘,)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定（⌘,）"
+          }
+        }
+      }
+    },
     "Settings…": {
       "localizations": {
         "ja": {
@@ -4226,6 +4374,16 @@
         }
       }
     },
+    "Show or hide the meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を表示/非表示"
+          }
+        }
+      }
+    },
     "Show or hide the meadow (⌃⌘S)": {
       "localizations": {
         "ja": {
@@ -4242,34 +4400,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dockアイコンにリクエスト数を表示"
-          }
-        }
-      }
-    },
-    "Show the meadow (⌃⌘S): %lld requests in other workspaces": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "草原を表示（⌃⌘S）：ほかのワークスペースにリクエストが%lld件"
-          }
-        },
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Show the meadow (⌃⌘S): %lld request in another workspace"
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "Show the meadow (⌃⌘S): %lld requests in other workspaces"
-                }
-              }
-            }
           }
         }
       }
@@ -4510,7 +4640,7 @@
       }
     },
     "Start": {
-      "comment": "Accessibility label of the Start page\nStart page: heading over Open Folder and New Terminal\nTitle of the Start page's tab",
+      "comment": "Home: heading over Open Folder and New Terminal",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -5049,6 +5179,17 @@
         }
       }
     },
+    "Top bar": {
+      "comment": "Accessibility label of the window's top bar",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トップバー"
+          }
+        }
+      }
+    },
     "Type `claude` in a terminal and your cat appears here.": {
       "comment": "First-run hint under the first blanket (Markdown: `claude` is the command)",
       "localizations": {
@@ -5360,7 +5501,7 @@
       }
     },
     "Whiskr": {
-      "comment": "The app's name in its menus\nThe app's name on the Start page\nThe window's title while no workspace is open\nWindow menu: brings back the main window",
+      "comment": "The app's name in its menus\nThe app's name on the Home page\nThe top bar's field on Home\nThe window's title while no workspace is open\nWindow menu: brings back the main window",
       "localizations": {
         "ja": {
           "stringUnit": {

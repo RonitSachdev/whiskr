@@ -73,10 +73,11 @@ private struct HelpPage: View {
                     HelpKey(keys: "⌘J", text: String(localized: "The next request, then the next finished turn, then back where you were."))
                     HelpKey(keys: "⌘P", text: String(localized: "Go to any workspace, tab or Claude by name, folder, branch or state."))
                     HelpKey(keys: "⇧⌘P", text: String(localized: "Every command, with its key."))
-                    HelpKey(keys: "⌥⌘1…9", text: String(localized: "A workspace by its number. The workspace button at the start of the tab bar lists them all."))
+                    HelpKey(keys: "⌥⌘1…9", text: String(localized: "A workspace by its number. The workspace button at the start of the tab row lists them all, and Home."))
                     HelpKey(keys: "⌘1…9", text: String(localized: "A tab by its number."))
                     HelpKey(keys: "⌥⌘0", text: String(localized: "Move the keyboard into the meadow: arrows between blankets and cats, Return to open, Esc to go back."))
-                    HelpKey(keys: "⌘N", text: String(localized: "A new workspace, starting on the Start page. Every other workspace stays open."))
+                    HelpKey(keys: "⇧⌘H", text: String(localized: "Home: open a folder or a terminal, or go back into a workspace exactly where you left it. Every launch starts here, and closing a workspace comes back here; everything keeps running.", comment: "Help page: Home"))
+                    HelpKey(keys: "⌘N", text: String(localized: "A new workspace: Home, ready to open a folder or a terminal. Every other workspace stays open.", comment: "Help page: New Workspace"))
                 }
                 HelpSection(title: String(localized: "Your own keys")) {
                     Text(String(localized: "Any menu command can have a different shortcut: System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts."))

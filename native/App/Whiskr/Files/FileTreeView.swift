@@ -333,12 +333,12 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
     private func retitlePages(from old: URL, to new: URL) {
         let oldPath = old.standardizedFileURL.path, newPath = new.standardizedFileURL.path
         for (id, page) in workbench.pages {
-            guard let path = page.path, path == oldPath || path.hasPrefix(oldPath + "/") else { continue }
+            let path = page.path
+            guard path == oldPath || path.hasPrefix(oldPath + "/") else { continue }
             let moved = newPath + path.dropFirst(oldPath.count)
             switch page {
             case .file: workbench.pages[id] = .file(path: moved)
             case .changes(_, let staged): workbench.pages[id] = .changes(path: moved, staged: staged)
-            case .start: break
             }
         }
         workbench.scheduleSave()

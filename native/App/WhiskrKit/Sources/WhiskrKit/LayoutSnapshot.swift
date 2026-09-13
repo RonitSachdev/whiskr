@@ -10,12 +10,12 @@ public struct LayoutSnapshot: Sendable, Equatable, Codable {
     public static let currentVersion = 1
 
     public var version = Self.currentVersion
+    /// In the meadow's order. Which one was selected is not kept: a launch always lands on Home (an older
+    /// file's `selectedWorkspace` is read past).
     public var workspaces: [Workspace]
-    public var selectedWorkspace: UUID?
 
-    public init(workspaces: [Workspace], selectedWorkspace: UUID?) {
+    public init(workspaces: [Workspace]) {
         self.workspaces = workspaces
-        self.selectedWorkspace = selectedWorkspace
     }
 
     public struct Workspace: Sendable, Equatable, Codable, Identifiable {
@@ -183,7 +183,6 @@ public struct LayoutSnapshot: Sendable, Equatable, Codable {
             if let selected = workspace.selectedTab, !workspace.tabs.contains(where: { $0.id == selected }) { workspace.selectedTab = nil }
             return workspace
         }
-        if let selected = selectedWorkspace, !copy.workspaces.contains(where: { $0.id == selected }) { copy.selectedWorkspace = nil }
         return copy
     }
 }

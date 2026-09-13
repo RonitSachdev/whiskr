@@ -2,33 +2,39 @@ import AppKit
 import SwiftUI
 import WhiskrKit
 
-/// A quiet line under the terminals (as herdr's status bar; asked for over the first design's "no status
-/// bar"): where the focused terminal is and the workspace's branch, how many Claudes there are and how
-/// many need you (click: Next Request, ⌘J), and the two keys that find everything (⌘P, ⇧⌘P).
-struct StatusLine: View {
+/// The status bar along the window's foot (as Cursor's and herdr's): the workspace's branch (a click
+/// shows Changes) and where its focused terminal is; how many Claudes there are and how many need you
+/// (click: Next Request, ⌘J), across every workspace; then a quiet bell while alerts are paused, the
+/// focused file's details when an editor has the keyboard, and the two keys that find everything (⌘P,
+/// ⇧⌘P). On Home, only the counts and keys.
+struct StatusBar: View {
     let workbench: Workbench
-
-    static let height: CGFloat = 24
 
     var body: some View {
         let workspace = workbench.selectedWorkspace
-        let folder = workbench.focusedPane?.currentFolder ?? workspace?.liveFolder
+        let folder = workspace.map { workbench.focusedPane?.currentFolder ?? $0.liveFolder }
         let summary = StatusSummary(statuses: workbench.agentRows.map(\.status))
         HStack(spacing: 6) {
+            if let branch = workspace?.branch {
+                Button {
+                    NSApp.sendAction(#selector(MainWindowController.showChangesPanel(_:)), to: nil, from: nil)
+                } label: {
+                    Label(branch, systemImage: "arrow.triangle.branch")
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+                .buttonStyle(.plain)
+                .help(String(localized: "Branch \(branch): show Changes (⇧⌘C)", comment: "Status bar: the git branch's tooltip"))
+                Separator()
+            }
             if let folder {
-                Label(abbreviatingHome(folder), systemImage: "folder")
+                Label(Places.short(folder, home: FileManager.default.homeDirectoryForCurrentUser.path), systemImage: "folder")
                     .lineLimit(1)
                     .truncationMode(.head)
-                    .help(folder)
-            }
-            if let branch = workspace?.branch {
-                Separator()
-                Label(branch, systemImage: "arrow.triangle.branch")
-                    .lineLimit(1)
-                    .help(String(localized: "Branch \(branch)", comment: "Status line: the git branch's tooltip"))
+                    .help(abbreviatingHome(folder))
+                if summary.claudes > 0 { Separator() }
             }
             if summary.claudes > 0 {
-                Separator()
                 Text(String(localized: "\(summary.claudes) Claudes", comment: "Status line: how many Claudes are running"))
                 if summary.needYou > 0 {
                     Separator()
@@ -43,6 +49,15 @@ struct StatusLine: View {
                 }
             }
             Spacer(minLength: 12)
+            if let until = Preferences.shared.alertsPausedUntil, until > Date() {
+                // Pause Alerts is on: no sounds and no notifications until then.
+                Image(systemName: "bell.slash")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.ink3)
+                    .help(String(localized: "Alerts paused until \(until.formatted(date: .omitted, time: .shortened))"))
+                    .accessibilityLabel(String(localized: "Alerts paused until \(until.formatted(date: .omitted, time: .shortened))"))
+                Separator()
+            }
             if let document = workbench.focusedDocument, document.isText {
                 FileStatus(document: document)
                 Separator()
@@ -54,8 +69,8 @@ struct StatusLine: View {
         .font(.system(size: 11))
         .foregroundStyle(Color.ink2)
         .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height)
-        .background(Color(nsColor: Colors.terminalBackground).overlay(Color.primary.opacity(0.04)))
+        .frame(maxWidth: .infinity, minHeight: FrameController.statusBarHeight, maxHeight: FrameController.statusBarHeight)
+        .chromeBackground()
         .overlay(alignment: .top) { Color.line.frame(height: 1) }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Status", comment: "Accessibility label of the status line"))

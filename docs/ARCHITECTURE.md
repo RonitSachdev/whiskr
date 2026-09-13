@@ -90,7 +90,7 @@ bytes, never inside JSON.
 
 | Where | What | Notes |
 |---|---|---|
-| `~/Library/Application Support/Whiskr/layout.json` | Workspaces, tabs, panes, their folders, the host terminal each pane shows | Written on changes and on quit |
+| `~/Library/Application Support/Whiskr/layout.json` | Workspaces, tabs, panes, their folders, the host terminal each pane shows | Written on changes and on quit. Which workspace was selected is not kept: a launch lands on Home |
 | `…/Whiskr/agents.json` | The Claudes' last known state | So cats come back as they were after a relaunch |
 | `…/Whiskr/Themes/*.whiskrtheme` | The user's own themes (plain JSON) | |
 | `…/Whiskr/shell/` | The shim, zsh and fish integration | Rewritten at every launch |
@@ -112,6 +112,22 @@ suite and their own host.
 | Theme file type | `app.whiskr.theme` (`.whiskrtheme`) |
 | Dragged tab type | `app.whiskr.tab` |
 | Pane environment | `WHISKR_PANE`, `WHISKR_BIN`, `WHISKR_HOOKS`, `WHISKR_ZDOTDIR`, `WHISKR_XDG_DATA_DIRS`, `PAW_ID`, `PAW_SOCKET`, `PAW_PARENT`, `PAW_NAME`, `PAW_WORKTREES`; `TERM_PROGRAM=Whiskr` |
+
+## Launching
+
+A launch brings every workspace back and selects none: the window opens on Home, once the layout is
+restored (or after a second, if the session host is slow to start), so it never shows an empty Home that
+fills in. Each saved pane is decided by `ResumePlan` (in the Kit, tested):
+
+- the session host still holds its terminal: it is attached, screen and process as they were, and
+  nothing is typed;
+- otherwise a fresh shell starts in its folder, and nothing is typed, except for a pane that ran Claude:
+  that one types `claude --resume <id>` (Settings › Resume Claude in restored panes);
+- never while another version's host, or the earlier-named app's, still holds terminals: those Claudes may
+  be alive there, and a resume would start a second Claude on the same conversation. The launch notice
+  about the other version's terminals then says how many Claudes were not resumed.
+
+A terminal the host holds that no pane claims joins its folder's workspace without being selected.
 
 ## Migration from the earlier name
 

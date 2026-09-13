@@ -43,30 +43,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let controller = MainWindowController(workbench: workbench)
         windowController = controller
         #if DEBUG
-        if DebugScenario.keepsInBackground {
-            // Shown, but behind every other window, and the app never activates itself (nor goes full screen).
-            // Invisible and click-through as well: nobody at this Mac can see or catch it by accident
-            // (snapshots draw the views themselves).
-            DebugScript.keepOutOfSight()
-            controller.window?.orderBack(nil)
-        } else {
-            controller.showWindow(nil)
-        }
-        #else
-        controller.showWindow(nil)
+        if DebugScenario.keepsInBackground { DebugScript.keepOutOfSight() }
         #endif
+        // The window comes once the workspaces are back, drawn as it will stay: Home with every blanket,
+        // rather than an empty Home that fills in a moment later. A slow start (the session host's first
+        // launch) shows it after a second regardless.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.present(controller) }
         Task {
             await workbench.launch()
-            // The first launch, or nothing came back: the meadow fills the window and offers to start.
+            // Every launch lands on Home; a folder opened with the app (from the Finder or the Dock) is shown.
             for folder in pendingFolders { workbench.open(folder: folder) }
             pendingFolders = []
             launched = true
             controller.workbenchDidLaunch()
-            HostNotice.show(for: workbench.host, on: controller.window)
+            present(controller)
+            HostNotice.show(for: workbench.host, withheld: workbench.resumesWithheld, on: controller.window)
             #if DEBUG
             DebugScenario.run(workbench: workbench, window: controller)
             #endif
         }
+    }
+
+    private var presented = false
+
+    /// Puts the window on screen, once.
+    private func present(_ controller: MainWindowController) {
+        guard !presented else { return }
+        presented = true
+        #if DEBUG
+        if DebugScenario.keepsInBackground {
+            // Shown, but behind every other window, and the app never activates itself (nor goes full screen).
+            // Invisible and click-through as well: nobody at this Mac can see or catch it by accident
+            // (snapshots draw the views themselves).
+            controller.window?.orderBack(nil)
+            return
+        }
+        #endif
+        controller.showWindow(nil)
     }
 
     /// A SIGTERM (logout, `kill`) quits as ⌘Q does: the layout is saved and the terminals keep running
@@ -123,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: Open Recent
 
-    /// File › Open Recent: the same folders as the Start page, by name, with where each is.
+    /// File › Open Recent: the same folders as Home's Recent, by name, with where each is.
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard menu === MainMenu.openRecent else { return }
         menu.removeAllItems()
@@ -145,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Dock
 
     /// The Dock menu (§6.1): who is waiting, oldest first ("shop-web: Wants to run npm test"), then New
-    /// Workspace and Pause Alerts. Choosing one is yours to do, so it brings the window forward.
+    /// Workspace (Home) and Pause Alerts. Choosing one is yours to do, so it brings the window forward.
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
         let menu = NSMenu()
         let waiting = workbench.agentRows.filter { $0.status == .blocked || $0.status == .done }
@@ -163,7 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !waiting.isEmpty { menu.addItem(.separator()) }
         menu.addItem(closureMenuItem(title: String(localized: "New Workspace")) { [weak self] in
             self?.showMainWindow(nil)
-            self?.workbench.newStartWorkspace()
+            self?.workbench.goHome()
         })
         let pause = NSMenuItem(title: String(localized: "Pause Alerts"), action: nil, keyEquivalent: "")
         pause.submenu = AlertCenter.pauseMenu()

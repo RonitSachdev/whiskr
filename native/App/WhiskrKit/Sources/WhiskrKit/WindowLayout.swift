@@ -4,7 +4,8 @@ import Foundation
 /// left where herdr's sidebar is, the terminals on the right, both present; by default the meadow takes
 /// about 42 % of the window while the terminals keep 90 columns. The divider drags anywhere from a 240 pt
 /// sidebar to the meadow taking the whole window; View has three one-key forms (Meadow and Terminals,
-/// Terminals Only, Meadow Only). With no terminal open the meadow fills the window: it is the welcome.
+/// Terminals Only, Meadow Only). Home (no workspace selected) has the same arrangement, its page in the
+/// terminals' place, so entering or leaving it moves nothing.
 public struct WindowLayout: Equatable, Sendable, Codable {
     public enum Navigator: String, Codable, Sendable, CaseIterable {
         case meadow, list
@@ -45,16 +46,14 @@ public struct WindowLayout: Equatable, Sendable, Codable {
         self.navigatorWidth = navigatorWidth
     }
 
-    /// What the window shows, `width` points wide, while terminals are open or not.
+    /// What the window shows, `width` points wide.
     public struct Frame: Equatable, Sendable {
         /// The meadow's width: 0 while it is hidden, the window's width when it is alone.
         public var navigator: Double
         public var showsTerminals: Bool
     }
 
-    public func frame(window width: Double, hasTerminals: Bool) -> Frame {
-        // Nothing open: the meadow is the welcome.
-        guard hasTerminals else { return Frame(navigator: width, showsTerminals: false) }
+    public func frame(window width: Double) -> Frame {
         switch mode {
         case .meadowOnly: return Frame(navigator: width, showsTerminals: false)
         case .terminalsOnly: return Frame(navigator: 0, showsTerminals: true)

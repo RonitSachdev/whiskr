@@ -14,7 +14,7 @@ right](docs/images/meadow-day.jpg)
 
 ![The same meadow at night, with fireflies at each picnic](docs/images/meadow-night.jpg)
 
-![The Start page on first launch](docs/images/start-page.jpg)
+![Home: the meadow with every workspace waiting, and the Home page beside it](docs/images/home.jpg)
 
 <sub>Screenshots from the app's built-in demo (Debug builds, `--demo`): the cats are driven by real hook
 events, and the terminal text is illustrative.</sub>
@@ -32,7 +32,8 @@ events, and the terminal text is illustrative.</sub>
 - **Nothing to set up.** Type `claude` in any pane and its cat appears. Your `~/.claude` settings, your
   `CLAUDE.md` and your shell files are never changed (see [How it works](#how-it-works)).
 - **Sessions outlive the app.** Terminals belong to a small session host inside the app, so quitting (⌘Q)
-  leaves everything running, Claude included, and the next launch puts it back as it was.
+  leaves everything running, Claude included. The next launch opens on Home, with every workspace back as
+  it was and one click away.
 - **Attention without interruption.** ⌘J goes to the oldest request, then the oldest finished turn. Three
   soft sounds while you are in the app. Notifications with Allow and Deny while you are away. A Dock badge.
   Nothing an agent does ever moves the window, the focus, a tab or the camera.
@@ -118,7 +119,8 @@ session starts.
 
 | Keys | Does |
 |---|---|
-| ⌘N / ⌘O / ⌘T | New workspace (Start page) / open a folder / new tab |
+| ⇧⌘H | Home: open a folder or a terminal, or go back into a workspace |
+| ⌘N / ⌘O / ⌘T | New workspace (Home) / open a folder / new tab |
 | ⌘D / ⇧⌘D | Split right / split down |
 | ⌘W / ⌥⌘W | Close pane / close tab (⌘Z brings it back for ten seconds, ⇧⌘T later) |
 | ⌘J | Next request, then the next finished turn |

@@ -4,7 +4,7 @@ import MeadowScene
 import SwiftUI
 import WhiskrKit
 
-/// Debug builds only: command-line steps for the window's own surfaces (workspaces, the Start page, the
+/// Debug builds only: command-line steps for the window's own surfaces (workspaces, Home, the
 /// palette, the answer card), so each can be looked at in a background snapshot. Run from
 /// `DebugScenario.run`, after its own flags.
 ///

@@ -3,11 +3,12 @@ import SwiftUI
 import SwiftTerm
 import WhiskrKit
 
-/// The one window (docs/DESIGN.md), arranged as herdr is: the sidebar on the left (the meadow, one
-/// blanket per workspace, where herdr has its list) and the pane area on the right, with the current
-/// workspace's tabs in the title bar's row. The title bar itself is empty and clear: the tab bar is the
-/// terminal region's own top row, in the terminal's colours, so tabs and terminal read as one thing. The
-/// window's title is the workspace's name (for the Window menu, Mission Control and VoiceOver), not drawn.
+/// The one window (docs/DESIGN.md), framed as Cursor's: a top bar and a status bar the window's full
+/// width (`FrameController`), and between them herdr's arrangement: the sidebar on the left (the meadow,
+/// one blanket per workspace, where herdr has its list) and the work area on the right, the current
+/// workspace's tabs over its panes, or Home while no workspace is selected. The title bar itself is clear:
+/// the top bar is drawn under it. The window's title is the workspace's name, or "Whiskr" on Home (for
+/// the Window menu, Mission Control and VoiceOver), not drawn.
 ///
 /// Every command lives here, reached through the responder chain from the menus.
 final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
@@ -20,7 +21,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     private var firstResponderWatch: NSKeyValueObservation?
     private var observers: [Observing] = []
     private let chrome = WindowChrome()
-    private var hadTerminals = false
     /// The command palette and Go to (one overlay).
     private(set) var palette: PaletteController?
 
@@ -49,7 +49,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         window.title = String(localized: "Whiskr", comment: "The window's title while no workspace is open")
 
         navigator = NavigatorController(workbench: workbench)
-        terminals = TerminalRegionController(workbench: workbench, chrome: chrome)
+        terminals = TerminalRegionController(workbench: workbench)
         // A plain region, not a system sidebar: the meadow runs flush to the window's edges and up under
         // the title bar, rather than sitting in the sidebar's inset panel.
         navigatorItem = NSSplitViewItem(viewController: navigator)
@@ -64,12 +64,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         window.delegate = self
         workbench.undoManager = window.undoManager
         workbench.files.window = window
-        // An empty toolbar: it only gives the title bar the height of the tab bar beside it.
+        // An empty toolbar: it only gives the title bar the height of the top bar, so the traffic lights
+        // sit centred in it.
         let toolbar = NSToolbar(identifier: "main")
         toolbar.allowsUserCustomization = false
         window.toolbar = toolbar
         chrome.toggleMeadow = { [weak self] in self?.layout.toggleNavigator() }
-        window.contentViewController = split
+        window.contentViewController = FrameController(content: split, workbench: workbench, chrome: chrome)
         window.setContentSize(NSSize(width: 1440, height: 900))
         if AppPlaces.isIsolated {
             window.center()
@@ -96,6 +97,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
                 DispatchQueue.main.async { if showing() { window.makeFirstResponder(pane.surface) } }
             }
         }
+        workbench.onFocusHome = { [weak self] in
+            // Once the work area has swapped its panes for the Home page.
+            DispatchQueue.main.async { self?.terminals.focusHome() }
+        }
         firstResponderWatch = window.observe(\.firstResponder, options: [.new]) { [weak self] window, _ in
             MainActor.assumeIsolated {
                 // A file or diff took the keyboard by a click: its tab and place in it follow.
@@ -111,12 +116,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             }
         }
         observers.append(Observing { [weak self] in self?.updateTitle() })
-        // Opening the first workspace, or closing the last, changes what the window shows.
-        observers.append(Observing { [weak self] in
-            guard let self else { return }
-            let open = !self.workbench.workspaces.isEmpty
-            if open != self.hadTerminals { self.hadTerminals = open; self.applyLayout(animated: true) }
-        })
         watchKeys()
         for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification] {
             NotificationCenter.default.addObserver(self, selector: #selector(lookingChanged), name: name, object: nil)
@@ -153,7 +152,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     /// The workspace's name, with its folder as the window's document (for the Window menu, Mission
-    /// Control and VoiceOver; the title bar shows the tabs instead).
+    /// Control and VoiceOver; the top bar shows it instead); "Whiskr" on Home.
     private func updateTitle() {
         guard let window else { return }
         if let workspace = workbench.selectedWorkspace {
@@ -171,7 +170,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         guard let window else { return }
         let animate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion && window.isVisible
         navigator.kind = layout.navigator
-        let frame = layout.frame(window: Double(window.frame.width), hasTerminals: !workbench.workspaces.isEmpty)
+        let frame = layout.frame(window: Double(window.frame.width))
         let showNavigator = frame.navigator > 0
         let width: @MainActor () -> Void = { [weak self] in
             guard let self, showNavigator, frame.showsTerminals else { return }
@@ -197,7 +196,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             if navigatorItem.isCollapsed == showNavigator { navigatorItem.isCollapsed = !showNavigator }
             width()
         }
-        chrome.meadowHidden = !showNavigator
     }
 
     func windowWillStartLiveResize(_ notification: Notification) { LiveResize.shared.begin() }
@@ -208,12 +206,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         applyLayout(animated: false)
     }
 
-    /// After the workbench has brought back its workspaces.
+    /// After the workbench has brought back its workspaces: the window shows Home, with the keyboard
+    /// (or the workspace a folder opened with the app chose).
     func workbenchDidLaunch() {
         applyLayout(animated: false)
         navigator.restore()
         updateTitle()
-        if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) }
+        if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else { terminals.focusHome() }
     }
 
     /// Kept for the next launch (the layout saves itself as it changes; the camera here).
@@ -263,10 +262,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     // MARK: Opening
 
-    /// File › New Workspace (⌘N): a workspace that opens on the Start page; the others stay as they are,
-    /// one click away in the meadow and the workspace button.
+    /// File › New Workspace (⌘N): Home, with the keyboard on New Terminal (Open Folder… is one row up).
+    /// The workspaces stay as they are, one click away on their blankets and under Open.
     @objc func newWorkspace(_ sender: Any?) {
-        workbench.newStartWorkspace()
+        workbench.goHome()
+    }
+
+    /// Go › Home (⇧⌘H): no workspace selected; everything keeps running.
+    @objc func goHome(_ sender: Any?) {
+        workbench.goHome()
     }
 
     @objc func newTab(_ sender: Any?) {
@@ -283,15 +287,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
         panel.prompt = String(localized: "Open", comment: "Folder picker's button")
-        // From a Start page, the folder becomes that workspace's; otherwise it opens (or shows) its own.
-        let page = workbench.selectedTab.flatMap { workbench.page(in: $0) }?.id
         panel.beginSheetModal(for: window) { [weak self] response in
             guard let self, response == .OK, let url = panel.url else { return }
-            if let page, self.workbench.pages[page] != nil {
-                self.workbench.start(from: page, folder: url.path)
-            } else {
-                self.workbench.open(folder: url.path)
-            }
+            self.workbench.open(folder: url.path)
         }
     }
 
@@ -311,12 +309,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             workbench.closePeek()
         } else if let pane = workbench.focusedPane {
             workbench.close(pane: pane.id)
-        } else if let page = workbench.focusedPageID, workbench.focusedPage != .start {
+        } else if let page = workbench.focusedPageID {
             // A file or diff goes from its place (asking first about unsaved changes).
             workbench.close(page: page)
-        } else if let tab = workbench.selectedTab {
-            // The Start page closes with its tab.
-            workbench.close(tab: tab)
         }
     }
 
@@ -331,7 +326,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// File › Close Workspace: asks only when Claude is working or a program other than a shell runs.
     @objc func closeWorkspace(_ sender: Any?) {
         guard let workspace = workbench.selectedWorkspace else { return }
-        // Unsaved files are asked about first, as any document window asks.
+        requestClose(workspace: workspace)
+    }
+
+    /// Closes a workspace (the one shown gives way to Home; another, from its blanket's menu, leaves you
+    /// where you are). Unsaved files are asked about first, as any document window asks.
+    func requestClose(workspace: Workspace) {
         workbench.confirmClosing(workbench.editedDocuments(in: workspace)) { [weak self] in self?.closeRunning(workspace) }
     }
 
@@ -356,7 +356,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         workbench.renamingTabID = workbench.selectedTab?.id
     }
 
-    /// File › Rename Workspace…: its name is edited in place, in the tab bar's workspace button.
+    /// File › Rename Workspace…: its name is edited in place, in the tab row's workspace button.
     @objc func renameWorkspace(_ sender: Any?) {
         if layout.mode == .meadowOnly { layout.mode = .split }
         workbench.renamingWorkspaceID = workbench.selectedWorkspace?.id
@@ -429,16 +429,19 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         switch item.action {
         case #selector(toggleNavigator(_:)):
             item.title = layout.mode == .terminalsOnly ? String(localized: "Show Meadow") : String(localized: "Hide Meadow")
-            return !workbench.workspaces.isEmpty
+            return true
         case #selector(showMeadowAndTerminals(_:)):
             item.state = layout.mode == .split ? .on : .off
-            return !workbench.workspaces.isEmpty
+            return true
         case #selector(showTerminalsOnly(_:)):
             item.state = layout.mode == .terminalsOnly ? .on : .off
-            return !workbench.workspaces.isEmpty
+            return true
         case #selector(showMeadowOnly(_:)):
             item.state = layout.mode == .meadowOnly ? .on : .off
-            return !workbench.workspaces.isEmpty
+            return true
+        case #selector(goHome(_:)):
+            item.state = workbench.isHome ? .on : .off
+            return !workbench.isHome
         case #selector(toggleWorkspacesAsList(_:)):
             item.state = layout.navigator == .list ? .on : .off
             return true
@@ -463,7 +466,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         case #selector(closeTab(_:)), #selector(closeWorkspace(_:)), #selector(renameTab(_:)), #selector(renameWorkspace(_:)):
             return workbench.selectedWorkspace != nil
         case #selector(closePane(_:)):
-            return workbench.selectedTab != nil
+            return workbench.peekedPane != nil || workbench.focusedPane != nil || workbench.focusedPageID != nil
         case #selector(splitRight(_:)), #selector(splitDown(_:)):
             return workbench.focusedPane != nil || workbench.focusedPageID != nil
         case #selector(clearScrollback(_:)), #selector(interrupt(_:)):
@@ -485,7 +488,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         case #selector(nextTab(_:)), #selector(previousTab(_:)):
             return (workbench.selectedWorkspace?.tabs.count ?? 0) > 1
         case #selector(nextWorkspace(_:)), #selector(previousWorkspace(_:)):
-            return workbench.workspaces.count > 1
+            // From Home, the first or the last.
+            return workbench.workspaces.count > (workbench.isHome ? 0 : 1)
         case #selector(goToNextThing(_:)):
             switch workbench.nextThing {
             case .request: item.title = String(localized: "Next Request"); return true
@@ -523,17 +527,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         lookingChanged()
         return false
     }
-}
-
-/// What the tab bar needs to know of the window around it: with the meadow hidden the window's close,
-/// minimise and zoom buttons sit over the bar's leading end (not in full screen, which has none).
-@MainActor @Observable
-final class WindowChrome {
-    var meadowHidden = false
-    var fullScreen = false
-    @ObservationIgnored var toggleMeadow: () -> Void = {}
-
-    var leadingInset: CGFloat { meadowHidden && !fullScreen ? 78 : 8 }
 }
 
 /// The two regions. Routes the system sidebar button to the layout, and reports a dragged divider (and

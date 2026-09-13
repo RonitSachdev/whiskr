@@ -21,8 +21,7 @@ struct AgentRow: Identifiable, Equatable {
 /// and all; then its processes end and it can still be reopened in its folder (⇧⌘T).
 struct ClosedTab {
     let id = UUID()
-    let workspaceID: UUID
-    let workspaceFolder: String
+    let workspace: WorkspacePlace
     let index: Int
     /// The tab as it was. For a closed pane, the tab it was in and its tree before.
     let tab: Tab
@@ -33,6 +32,17 @@ struct ClosedTab {
     let closedAt: Date
     /// What to reopen later: each pane's folder, and the conversation to resume where Claude ran.
     let reopen: [(folder: String, resume: String?)]
+}
+
+/// A workspace as it was when a tab of it closed: what ⌘Z needs to bring it back as it was (its last tab
+/// closes it) and ⇧⌘T to find it again.
+struct WorkspacePlace {
+    let id: UUID
+    let folder: String
+    let colorIndex: Int
+    let customName: String?
+    /// Its place in the meadow's order.
+    let index: Int
 }
 
 /// Everything the window shows and does: workspaces, tabs, panes and the agents in them. The one
@@ -89,13 +99,20 @@ final class Workbench {
     @ObservationIgnored weak var undoManager: UndoManager?
     /// Asks the window to give a pane's terminal the keyboard.
     @ObservationIgnored var onFocusPane: ((Pane) -> Void)?
+    /// Asks the window to give the Home page the keyboard (`goHome`).
+    @ObservationIgnored var onFocusHome: (() -> Void)?
+    /// Counts the times Home was entered: its page starts again on New Terminal each time.
+    var homeVisits = 0
+    /// Claudes not resumed at this launch because another version's session host still holds terminals
+    /// (they may be alive there); the launch notice says so.
+    private(set) var resumesWithheld = 0
     @ObservationIgnored private var saveScheduled = false
     @ObservationIgnored private var ticker: Timer?
-    /// Folders opened here, newest first (File › Open Recent and the Start page).
+    /// Folders opened here, newest first (File › Open Recent and Home).
     private(set) var history: [RecentFolder]
-    /// Folders Claude Code has worked in lately, read once at launch: the Start page offers them too.
+    /// Folders Claude Code has worked in lately, read once at launch: Home offers them too.
     var claudeFolders: [RecentFolder] = []
-    /// The workspace whose name is being edited (in the tab bar's workspace button).
+    /// The workspace whose name is being edited (in the tab row's workspace button).
     var renamingWorkspaceID: UUID?
     /// The session host, which owns every pane's terminal and keeps them running when the app quits.
     @ObservationIgnored let host = HostLink()
@@ -165,7 +182,8 @@ final class Workbench {
     // MARK: Starting up and shutting down
 
     /// Starts the hook listener and the shell integration, finds the session host, then brings back the
-    /// last layout: each pane onto its terminal if the host still holds it, else as a fresh shell.
+    /// last layout: each pane onto its terminal if the host still holds it, else as a fresh shell. Nothing
+    /// is selected: a launch always lands on Home.
     func launch() async {
         do {
             try await monitor.start()
@@ -218,8 +236,9 @@ final class Workbench {
 
     // MARK: Reading
 
+    /// The workspace on screen; nil on Home.
     var selectedWorkspace: Workspace? {
-        workspaces.first { $0.id == selectedWorkspaceID } ?? workspaces.first
+        workspaces.first { $0.id == selectedWorkspaceID }
     }
 
     var selectedTab: Tab? { selectedWorkspace?.selectedTab }
@@ -319,7 +338,7 @@ final class Workbench {
     // MARK: Starting things
 
     /// A new tab with a shell (⌘T, "+", a double-click on the tab strip), in the focused pane's folder,
-    /// as herdr's "follow" does (else the workspace's). With nothing open, a workspace in your home folder.
+    /// as herdr's "follow" does (else the workspace's). On Home, a workspace in your home folder.
     @discardableResult
     func newTab() -> Pane {
         guard let workspace = selectedWorkspace else { return newWorkspace() }
@@ -330,8 +349,8 @@ final class Workbench {
         return pane
     }
 
-    /// A new workspace with a shell (⌘N): in your home folder unless a folder is given (⌘O, a dropped
-    /// folder, Open Recent). Nothing else starts: you type `claude` yourself.
+    /// A new workspace with a shell (Home's New Terminal): in your home folder unless a folder is given
+    /// (⌘O, a dropped folder, Open Recent). Nothing else starts: you type `claude` yourself.
     @discardableResult
     func newWorkspace(folder: String = FileManager.default.homeDirectoryForCurrentUser.path) -> Pane {
         remember(folder: folder)
@@ -380,22 +399,37 @@ final class Workbench {
         let before = tab.tree
         guard tab.remove(id) else { return }
         panes[id] = nil
-        keepClosed(ClosedTab(workspaceID: workspace.id, workspaceFolder: workspace.folder, index: workspace.tabs.firstIndex { $0 === tab } ?? 0,
+        keepClosed(ClosedTab(workspace: place(of: workspace), index: workspace.tabs.firstIndex { $0 === tab } ?? 0,
                              tab: tab, tree: before, onlyPane: id, panes: [pane], closedAt: Date(), reopen: [reopenInfo(pane)]))
         if workspace.selectedTab === tab { focus(pane: tab.focusedPane) }
         scheduleSave()
     }
 
-    /// ⌥⌘W: the tab goes, undoable the same way.
+    /// ⌥⌘W: the tab goes, undoable the same way. The last tab of a workspace closes the workspace, and
+    /// Home comes (never another workspace's terminal).
     func close(tab: Tab) {
         guard let workspace = workspaces.first(where: { $0.tabs.contains { $0 === tab } }) else { return }
         let closed = tab.tree.panes.compactMap { panes[$0] }
         let index = workspace.tabs.firstIndex { $0 === tab } ?? 0
         for pane in closed { panes[pane.id] = nil }
-        keepClosed(ClosedTab(workspaceID: workspace.id, workspaceFolder: workspace.folder, index: index, tab: tab, tree: tab.tree, onlyPane: nil,
+        keepClosed(ClosedTab(workspace: place(of: workspace), index: index, tab: tab, tree: tab.tree, onlyPane: nil,
                              panes: closed, closedAt: Date(), reopen: closed.map(reopenInfo)))
         remove(tab: tab, from: workspace)
         scheduleSave()
+    }
+
+    private func place(of workspace: Workspace) -> WorkspacePlace {
+        WorkspacePlace(id: workspace.id, folder: workspace.folder, colorIndex: workspace.colorIndex, customName: workspace.customName,
+                       index: workspaces.firstIndex { $0 === workspace } ?? workspaces.count)
+    }
+
+    /// The workspace a closed tab belongs in: still open, or brought back as it was (colour, name, place).
+    private func workspace(for place: WorkspacePlace) -> Workspace {
+        if let open = workspaces.first(where: { $0.id == place.id }) { return open }
+        let workspace = Workspace(id: place.id, folder: place.folder, tabs: [], colorIndex: place.colorIndex, customName: place.customName)
+        workspaces.insert(workspace, at: min(place.index, workspaces.count))
+        git.follow(workspace.id, folder: workspace.folder)
+        return workspace
     }
 
     private func reopenInfo(_ pane: Pane) -> (folder: String, resume: String?) {
@@ -435,7 +469,7 @@ final class Workbench {
         // What can no longer be undone leaves the Edit menu; the rest stays, in order.
         undoManager?.removeAllActions(withTarget: self)
         for still in closing { registerUndo(still) }
-        // Its pages (a Start page, files, diffs) and their documents go with it.
+        // Its pages (files, diffs) and their documents go with it.
         prunePages()
     }
 
@@ -444,7 +478,8 @@ final class Workbench {
         if let undoManager, undoManager.canUndo, closing.last != nil { undoManager.undo() } else if let last = closing.last { undoClose(id: last.id) }
     }
 
-    /// Edit › Undo Close Tab (⌘Z): a closed tab or pane comes back exactly as it was, process and all.
+    /// Edit › Undo Close Tab (⌘Z): a closed tab or pane comes back exactly as it was, process and all, and
+    /// is shown; a workspace its closing closed comes back with it.
     private func undoClose(id: UUID) {
         guard let index = closing.firstIndex(where: { $0.id == id }) else { return }
         let closed = closing.remove(at: index)
@@ -453,12 +488,7 @@ final class Workbench {
             pane.keepRunning()
             pane.onExit = { [weak self] pane in self?.paneExited(pane) }
         }
-        let workspace = workspaces.first { $0.id == closed.workspaceID } ?? {
-            let restored = Workspace(id: closed.workspaceID, folder: closed.workspaceFolder, tabs: [],
-                                     colorIndex: LayoutSnapshot.Workspace.nextColor(after: workspaces.map(\.colorIndex)))
-            workspaces.append(restored)
-            return restored
-        }()
+        let workspace = workspace(for: closed.workspace)
         if let pane = closed.onlyPane, workspace.tabs.contains(where: { $0 === closed.tab }) {
             closed.tab.tree = closed.tree
             closed.tab.focus(pane)
@@ -478,7 +508,7 @@ final class Workbench {
     /// conversation where Claude ran.
     func reopenClosedTab() {
         guard let closed = reopenable.popLast(), let first = closed.reopen.first else { return }
-        let workspace = workspaces.first { $0.id == closed.workspaceID } ?? addWorkspace(folder: closed.workspaceFolder)
+        let workspace = workspace(for: closed.workspace)
         let pane = makePane(folder: first.folder)
         if let resume = first.resume { pane.typeWhenReady(resume + "\r") }
         addTab(with: pane, to: workspace)
@@ -491,17 +521,14 @@ final class Workbench {
         workspace.tabs.flatMap(\.tree.panes).compactMap { panes[$0] }.contains { $0.foreground != nil }
     }
 
+    /// Closes a workspace and ends what runs in it. The one on screen gives way to Home.
     func close(workspace: Workspace) {
         for id in workspace.tabs.flatMap(\.tree.panes) { discard(pane: id) }
         git.stop(workspace.id)
         branches.stop(workspace.id)
         branchChanges[workspace.id] = nil
-        let index = workspaces.firstIndex { $0 === workspace } ?? 0
         workspaces.removeAll { $0 === workspace }
-        if selectedWorkspaceID == workspace.id {
-            selectedWorkspaceID = workspaces.isEmpty ? nil : workspaces[min(index, workspaces.count - 1)].id
-            if let tab = selectedTab { focus(pane: tab.focusedPane) }
-        }
+        if HomeRules.selection(afterClosing: workspace.id, selected: selectedWorkspaceID) != selectedWorkspaceID { goHome() }
         // A workspace closed as a whole has no undo: its pages go now (a tab of it still in its ⌘Z moment keeps its own).
         prunePages()
         scheduleSave()
@@ -620,8 +647,13 @@ final class Workbench {
         select(workspace: workspaces[index])
     }
 
+    /// Go › Next / Previous Workspace: in the meadow's order; from Home, the first or the last.
     func selectWorkspace(offset: Int) {
-        guard let current = selectedWorkspace, let index = workspaces.firstIndex(where: { $0 === current }), workspaces.count > 1 else { return }
+        guard !workspaces.isEmpty else { return }
+        guard let current = selectedWorkspace, let index = workspaces.firstIndex(where: { $0 === current }) else {
+            return select(workspace: offset > 0 ? workspaces[0] : workspaces[workspaces.count - 1])
+        }
+        guard workspaces.count > 1 else { return }
         select(workspace: workspaces[(index + offset + workspaces.count) % workspaces.count])
     }
 
@@ -900,20 +932,13 @@ final class Workbench {
         workspaces.insert(workspace, at: min(max(index, 0), workspaces.count))
     }
 
-    /// A workspace made elsewhere (the Start page's), added at the end.
-    func append(_ workspace: Workspace) {
-        workspaces.append(workspace)
-        git.follow(workspace.id, folder: workspace.folder)
-    }
-
-    /// Takes out a workspace with no terminal left in it (its tabs moved away, or it held only a page);
-    /// nothing is stopped.
+    /// Takes out a workspace with no terminal left in it (its tabs moved away); nothing is stopped.
     func removeEmpty(_ workspace: Workspace) {
         guard workspace.tabs.allSatisfy({ $0.tree.panes.allSatisfy { panes[$0] == nil } }) else { return }
         workspaces.removeAll { $0 === workspace }
         git.stop(workspace.id)
         branches.stop(workspace.id)
-        if selectedWorkspaceID == workspace.id { selectedWorkspaceID = workspaces.last?.id }
+        selectedWorkspaceID = HomeRules.selection(afterClosing: workspace.id, selected: selectedWorkspaceID)
     }
 
     func addTab(with pane: Pane, to workspace: Workspace) {
@@ -944,7 +969,7 @@ final class Workbench {
         AppPlaces.defaults.set(history.map { ["path": $0.path, "time": $0.lastUsed.timeIntervalSince1970] }, forKey: Self.historyKey)
     }
 
-    /// File › Open Recent › Clear Menu: the Start page's list empties too.
+    /// File › Open Recent › Clear Menu: Home's Recent empties too.
     func clearRecentFolders() {
         claudeFolders = []
         AppPlaces.defaults.set(Date().timeIntervalSince1970, forKey: "recentsClearedAt")
@@ -970,10 +995,9 @@ final class Workbench {
     }
 
     func snapshot() -> LayoutSnapshot {
-        // Files and diffs are kept; the Start page is not: a tab holding only that is left out, and so is a
-        // workspace left with no tab (a Start page never used), so a relaunch shows it only when nothing else is open.
+        // Which workspace is on screen is not kept: a launch lands on Home.
         LayoutSnapshot(workspaces: workspaces.compactMap { workspace -> LayoutSnapshot.Workspace? in
-            let kept = workspace.tabs.filter { tab in tab.tree.panes.contains { panes[$0] != nil || pages[$0]?.isKept == true } }
+            let kept = workspace.tabs.filter { tab in tab.tree.panes.contains { panes[$0] != nil || pages[$0] != nil } }
             guard !kept.isEmpty else { return nil }
             return LayoutSnapshot.Workspace(id: workspace.id, folder: workspace.folder, tabs: kept.map { tab in
                 LayoutSnapshot.Tab(id: tab.id, name: tab.name, tree: tab.tree, panes: tab.tree.panes.compactMap { id in
@@ -986,16 +1010,19 @@ final class Workbench {
                 }, focusedPane: tab.focusedPane, zoomedPane: tab.zoomedPane, pages: savedPages(of: tab))
             }, selectedTab: kept.contains { $0.id == workspace.selectedTabID } ? workspace.selectedTabID : kept.first?.id,
                color: workspace.colorIndex, name: workspace.customName, panel: files.panels[workspace.id])
-        }, selectedWorkspace: selectedWorkspaceID)
+        })
     }
 
-    /// Rebuilds the saved layout. A pane whose terminal the host still holds (the app was quit, not
-    /// the Mac restarted) is put back onto it, programs, screen and scrollback as they were. Any other
-    /// is a fresh shell in its folder; one that was running Claude types `claude --resume <id>` (for
-    /// the account it ran under), which loads the conversation and waits for you.
+    /// Rebuilds the saved layout (`ResumePlan`). A pane whose terminal the host still holds (the app was
+    /// quit, not the Mac restarted) is put back onto it, programs, screen and scrollback as they were, and
+    /// nothing is typed. Any other is a fresh shell in its folder; one that was running Claude types
+    /// `claude --resume <id>` (for the account it ran under), which loads the conversation and waits for
+    /// you, unless another version's host still holds terminals, where that Claude may be alive. Nothing
+    /// is selected: the workspaces wait on Home.
     private func restore(_ layout: LayoutSnapshot, running: [TerminalInfo]) {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let held = Dictionary(running.filter { !$0.closing }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let otherHosts = host.strangers > 0
         for saved in layout.workspaces {
             let tabs = saved.tabs.map { savedTab -> Tab in
                 for savedPane in savedTab.panes {
@@ -1011,12 +1038,19 @@ final class Workbench {
                         continue
                     }
                     let pane = makePane(id: savedPane.id, folder: folder)
-                    if savedPane.isClaude, Preferences.shared.resumeClaude, let id = savedPane.claudeSessionID,
-                       let command = ClaudeResume.resumeCommand(sessionID: id, account: savedPane.accountConfigDir.map { account(configDir: $0) }) {
-                        pane.sessionID = id
+                    let command = savedPane.isClaude ? savedPane.claudeSessionID.flatMap {
+                        ClaudeResume.resumeCommand(sessionID: $0, account: savedPane.accountConfigDir.map { account(configDir: $0) })
+                    } : nil
+                    switch ResumePlan.action(held: false, claudeSession: command != nil, resumeEnabled: Preferences.shared.resumeClaude, otherHosts: otherHosts) {
+                    case .resume:
+                        pane.sessionID = savedPane.claudeSessionID
                         pane.sessionTitle = savedPane.claudeSessionTitle
                         pane.sessionConfigDir = savedPane.accountConfigDir
-                        pane.typeWhenReady(command + "\r")
+                        if let command { pane.typeWhenReady(command + "\r") }
+                    case .freshShell where command != nil:
+                        resumesWithheld += 1
+                    case .attach, .freshShell:
+                        break
                     }
                 }
                 restorePages(savedTab.pages)
@@ -1027,8 +1061,6 @@ final class Workbench {
             if let panel = saved.panel { files.panels[saved.id] = panel }
         }
         for workspace in workspaces { git.follow(workspace.id, folder: workspace.liveFolder) }
-        selectedWorkspaceID = layout.selectedWorkspace ?? workspaces.first?.id
-        if let tab = selectedTab { focus(pane: tab.focusedPane) }
     }
 
     /// Terminals the host holds that no pane claimed: helpers programs started (`paw run`), which join
@@ -1048,7 +1080,9 @@ final class Workbench {
                 discard(pane: pane.id)
                 continue
             }
-            addTab(with: pane, to: workspaces.first { $0.folder == folder } ?? addWorkspace(folder: folder))
+            // Added where it belongs, not shown: the launch still lands on Home.
+            let workspace = workspaces.first { $0.folder == folder } ?? addWorkspace(folder: folder)
+            workspace.tabs.append(Tab(tree: .pane(pane.id)))
             scheduleSave()
         }
     }
@@ -1069,7 +1103,6 @@ final class Workbench {
         } else {
             let workspace = workspaces.first { $0.folder == folder } ?? addWorkspace(folder: folder)
             workspace.tabs.append(Tab(tree: .pane(pane.id)))
-            if selectedWorkspaceID == nil { selectedWorkspaceID = workspace.id }
         }
         scheduleSave()
     }

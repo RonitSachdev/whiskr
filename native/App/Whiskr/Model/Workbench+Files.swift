@@ -151,7 +151,7 @@ extension Workbench {
     /// File › Split Right / Down while a page has the keyboard: a terminal beside it, in the workspace's folder.
     func splitBesidePage(_ axis: PaneTree.Axis) {
         guard let id = focusedPageID, let (workspace, tab) = workspace(of: id) else { return }
-        let folder = pages[id]?.path.map { ($0 as NSString).deletingLastPathComponent } ?? workspace.folder
+        let folder = pages[id].map { ($0.path as NSString).deletingLastPathComponent } ?? workspace.folder
         let pane = makePane(folder: FileManager.default.fileExists(atPath: folder) ? folder : workspace.folder)
         tab.zoomedPane = nil
         tab.tree = tab.tree.splitting(id, axis: axis, new: pane.id)

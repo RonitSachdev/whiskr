@@ -35,6 +35,14 @@ Nothing has been released yet. This is what the first release will contain.
   `send`, `wait`, `read`, `keys`, `interrupt`, `ls`, `kill`).
 - Themes (built-in, your own `.whiskrtheme` files, and imported iTerm2 colour presets), terminal font and
   cursor settings, and Option as Meta.
+- Home: where every launch lands and where closing a workspace returns you (Go › Home, ⇧⌘H). Beside the
+  meadow it offers Open Folder…, New Terminal, the workspaces open now with their state (Return goes back
+  in where you left off), and recent folders. Nothing is typed into a terminal at launch, except to
+  resume a Claude whose terminal ended with a restart, and not even that while the earlier-named app's
+  session host still runs.
+- A window frame like a professional editor's: a top bar across the window (meadow button, a field that
+  opens Go to, New, Files and Changes, Settings) and a status bar along its foot (branch, folder, Claudes
+  and requests, the editor's details, ⌘P and ⇧⌘P), with the meadow and the work area between them.
 - English and Japanese throughout, following the system language.
 - Upgrading from the app's earlier working name, "Workers Factory": at first launch, its settings, saved
   layout, the Claudes' last state and themes are carried over. Its git worktree folder
