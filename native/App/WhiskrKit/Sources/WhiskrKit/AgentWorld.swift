@@ -90,7 +90,8 @@ public struct AgentWorld: Sendable {
     public static let mainAgent = "main"
 
     static let errorFlash: TimeInterval = 2.5
-    static let napAfter: TimeInterval = 45
+    /// How long after its turn ends a waiting Claude dozes off.
+    public static let napAfter: TimeInterval = 45
     static let forgetEnded: TimeInterval = 20
     static let staleSession: TimeInterval = 8 * 3600
     static let staleAgent: TimeInterval = 20 * 60

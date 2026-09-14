@@ -86,6 +86,8 @@ enum DebugFiles {
             }
         }
         if let report = value("--measure-files"), let file = value("--measure-file") {
+            // Sampling from launch, so the first timings already have the machine's load beside them.
+            MachineLoad.shared.start(hostLog: PerfSuite.hostLog)
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 Task { await Timings(workbench: workbench, window: window, report: URL(fileURLWithPath: report)).run(file: file, folder: value("--measure-folder")) }
             }
@@ -267,13 +269,13 @@ enum DebugFiles {
                 let count = repository.node(for: folder)?.children?.count ?? 0
                 note(String(format: "expand %@ files=%d shown=%.1fms loaded=%@ longest-main-thread-hold=%.1fms", folder, count, shown, loaded ? "yes" : "no", hold))
             }
-            lines += limits.lines
+            lines += limits.lines + [DebugPerf.machineSummary()]
             try? Data((lines.joined(separator: "\n") + "\n").utf8).write(to: report)
             if DebugScenario.has("--measure-limits") {
                 for line in limits.lines { print(line) }
-                guard limits.passed else {
+                if let status = DebugPerf.exitStatus(passed: limits.passed, comparable: limits.comparable) {
                     workbench.shutDown(stoppingSessions: true)
-                    exit(1)
+                    exit(status)
                 }
                 NSApp.terminate(nil)
             }
@@ -302,7 +304,8 @@ enum DebugFiles {
     /// scrolling p95 8 ms, max 13 ms; jumps 18 ms) so the new engine is at least as quick to the eye: a
     /// keystroke or a scroll step stays inside two frames at 60 Hz, and the main thread is never held
     /// longer than that while colours are worked out in the background. Loose enough not to fail by
-    /// chance on a busy machine.
+    /// chance on a busy machine. One passed while the rest of the Mac was busy (`MachineLoad`, over the
+    /// stretch since the check before) is not comparable, neither a failure nor a pass.
     ///
     /// A file of very long lines (a minified script's one 2 MB line) is held to the old editor's numbers on
     /// it instead: its lines are not tokenized (`TextMateTokenizer.lineLimit`), so what is left of an edit
@@ -334,13 +337,22 @@ enum DebugFiles {
         ]
         let longLines: Bool
         private(set) var lines: [String] = []
-        private(set) var passed = true
+        private(set) var passed = true, comparable = true
+        /// Where the stretch the next check covers began.
+        private var since = perfNow()
+
+        init(longLines: Bool) { self.longLines = longLines }
 
         mutating func check(_ name: String, _ value: Double?) {
             guard let most = (longLines ? Self.longLineLimits : Self.limits)[name] else { return }
             let kept = (value ?? .infinity) <= most
-            passed = passed && kept
-            lines.append(String(format: "limit: %@ %@: %@ (limit %g)", kept ? "kept" : "PASSED", name, value.map { String(format: "%.1f", $0) } ?? "none", most))
+            let others = MachineLoad.shared.others(from: since, to: perfNow())
+            since = perfNow()
+            let busy = !kept && (others ?? 0) > MachineLoad.busyCores
+            passed = passed && (kept || busy)
+            comparable = comparable && !busy
+            lines.append(String(format: "limit: %@ %@: %@ (limit %g); others' load %@ cores", kept ? "kept" : busy ? "not comparable" : "PASSED", name,
+                                value.map { String(format: "%.1f", $0) } ?? "none", most, others.map { String(format: "%.1f", $0) } ?? "-"))
         }
     }
 

@@ -10,7 +10,9 @@ import simd
 /// It draws at the display's refresh rate (120 Hz on ProMotion) while you interact or something moves
 /// fast, at 30 Hz when the window is not key or the scene is calm, and not at all while the window is
 /// hidden or covered. Left alone with nothing new for a few seconds it rests: the scene's time slows and it
-/// draws at a slow tick, so the meadow still sways; any input or change brings the full rate back at once.
+/// draws at a slow tick, so the meadow still sways. Your input brings the full rate back at once; a change
+/// in the world (a cat dozing off, a lantern going dark) ends the rest and is drawn at the pace its motion
+/// needs: 30 Hz when nothing in it moves fast.
 /// It lowers its own resolution, in steps, when frames take too long. With `animatesAmbient` off it stops
 /// drawing altogether once a change has settled.
 @MainActor
@@ -53,7 +55,7 @@ public final class MeadowView: MTKView {
     /// ring. A blanket, a cat or a lantern; nil for none. Cleared when it leaves the world.
     public var keyboardFocus: MeadowItem? {
         get { stage.keyboardFocus }
-        set { stage.keyboardFocus = newValue; wake() }
+        set { stage.keyboardFocus = newValue; wake(.input) }
     }
 
     /// One agent messaging another (both `.cat` items): a helper writing to whoever launched it (or launched
@@ -119,7 +121,7 @@ public final class MeadowView: MTKView {
         if distance == 0 { return }
         let ease = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         stage.camera.scroll(by: distance, seconds: ease ? 0.3 : 0)
-        wake()
+        wake(.input)
     }
     /// Points kept clear between a revealed blanket and the view's edge.
     static let revealMargin: Float = 12
@@ -131,7 +133,7 @@ public final class MeadowView: MTKView {
         stage.focus = item
         stage.camera.coverGoal = Vec2(Float(panelWidth), 0)
         if animated { stage.camera.fly() } else { stage.camera.settle() }
-        wake()
+        wake(.input)
     }
 
     /// The angle the view is turned to: bearing round the ground (radians, 0 looking from +z) and pitch
@@ -146,7 +148,7 @@ public final class MeadowView: MTKView {
         if let pitch { v.pitch = min(max(pitch, MapCamera.lowest), MapCamera.highest) }
         stage.camera.setView(v)
         stage.camera.fly()
-        wake()
+        wake(.input)
     }
 
     /// Draws one frame into an image of the given size in pixels, from the current camera, without
@@ -205,7 +207,7 @@ public final class MeadowView: MTKView {
     /// steps), leaving the frames and the main thread to what is being typed into. Each call extends it;
     /// the full rate comes back by itself.
     public func yieldFrames(for seconds: CFTimeInterval = MeadowView.yieldSeconds) {
-        let until = CACurrentMediaTime() + seconds
+        let until = clock() + seconds
         guard until > yieldUntil + 0.05 else { return }
         yieldUntil = until
         updateRate()
@@ -219,7 +221,7 @@ public final class MeadowView: MTKView {
         stage.camera.grab()
         if slide { stage.camera.slide(dx: dx, dy: dy) } else { stage.camera.turn(dx: dx, dy: dy) }
         stage.camera.release()
-        wake()
+        wake(.input)
     }
     /// Diagnostics: one frame drawn offscreen at `width`×`height` pixels after `dt` seconds of scene time,
     /// timed: main-thread milliseconds (and the posing part of them) and GPU milliseconds. Shows nothing on
@@ -252,7 +254,7 @@ public final class MeadowView: MTKView {
 
     @_spi(Diagnostics) public func simulateZoom(by factor: Float, at point: CGPoint) {
         stage.camera.zoom(by: factor, at: Vec2(Float(point.x), Float(point.y)))
-        wake()
+        wake(.input)
     }
 
     // MARK: setup
@@ -265,7 +267,7 @@ public final class MeadowView: MTKView {
     /// asks for the drawable on the main thread and blocks there until one is free) stays switched off.
     private var link: CAMetalDisplayLink?
     /// The rate asked of the display link now.
-    private var targetRate = 60
+    private(set) var targetRate = 60
     private var running = false
     /// The rate the display was found to give this window, when lower than asked; retried now and then.
     private var displayCap: Int?
@@ -342,7 +344,7 @@ public final class MeadowView: MTKView {
         super.setFrameSize(newSize)
         sizeDrawable()
         stage.camera.fly()
-        wake()
+        wake(.input)
     }
     public override func setBoundsSize(_ newSize: NSSize) {
         super.setBoundsSize(newSize)
@@ -422,18 +424,30 @@ public final class MeadowView: MTKView {
     static let restRate = 12
     static let restPace: Float = 0.4
     /// The scene's pace now, eased toward 1 or `restPace`.
-    private var pace: Float = 1
+    private(set) var pace: Float = 1
     private var resting: Bool {
-        CACurrentMediaTime() - lastInput > Self.restAfter && pendingReveal == nil && stage.still
+        clock() - lastChange > Self.restAfter && pendingReveal == nil && stage.still
     }
+    /// Diagnostics: resting at the slow tick now (`restRate`, the scene's time at `restPace`).
+    @_spi(Diagnostics) public var isResting: Bool { resting && pace < Self.restPace + 0.05 }
 
     /// Diagnostics: draws as if the view were on screen even while its window is covered, for measuring
     /// what the meadow costs in a run that must stay out of sight.
     @_spi(Diagnostics) public var assumesOnScreen = false { didSet { pacingChanged() } }
 
-    private var lastInput = CACurrentMediaTime()
-    private func wake() {
-        lastInput = CACurrentMediaTime()
+    /// The clock pacing reads (tests give their own, which starts the view's timers afresh).
+    var clock: () -> CFTimeInterval = { CACurrentMediaTime() } {
+        didSet { lastInput = clock(); lastChange = lastInput; yieldUntil = 0 }
+    }
+    /// What wakes the view: something you did to it (the full rate, until it is calm again), or a change in
+    /// what it shows (the rest ends, at the rate the scene's own motion needs).
+    enum Wake { case input, change }
+    /// When you last did something to the view, and when anything at all last changed.
+    private var lastInput = CACurrentMediaTime(), lastChange = CACurrentMediaTime()
+    private func wake(_ cause: Wake = .change) {
+        let now = clock()
+        if cause == .input { lastInput = now }
+        lastChange = now
         unchanged = 0
         if !running, isVisibleOnScreen { setRunning(true) }
         updateRate()
@@ -492,8 +506,8 @@ public final class MeadowView: MTKView {
         updateRate()
     }
 
-    private func updateRate() {
-        let now = CACurrentMediaTime()
+    func updateRate() {
+        let now = clock()
         let goal = Self.frameRate(fastest: window?.screen?.maximumFramesPerSecond ?? 60,
                                   key: (window?.isKeyWindow ?? false) || keepsFullRateWhenInactive,
                                   calm: stage.restful && !stage.camera.moving && now - lastInput > 4,
@@ -586,14 +600,9 @@ public final class MeadowView: MTKView {
         if let timings { onTimings?(timings) }
     }
 
-    fileprivate func drawFrame(_ drawable: CAMetalDrawable) {
-        guard let renderer else { return }
-        let now = CACurrentMediaTime()
-        let dt = Float(min(now - lastFrameAt, 0.05))
-        lastFrameAt = now
-        // A free frame slot (only blocks if the GPU has fallen three frames behind).
-        renderer.semaphore.wait()
-        let t1 = CACurrentMediaTime()
+    /// One drawn frame's step of the scene, `dt` seconds after the last: the pace eased toward rest or
+    /// back, the scene moved on at that pace.
+    func step(_ dt: Float) {
         // Slowing into rest takes two seconds; waking takes a fraction of one, at the full rate already.
         let calmer = resting
         pace += ((calmer ? Self.restPace : 1) - pace) * min(1, dt * (calmer ? 1.5 : 8))
@@ -603,6 +612,17 @@ public final class MeadowView: MTKView {
         if pendingReveal != nil { revealWhenLanded() }
         settle(dt * pace)
         noticeView()
+    }
+
+    fileprivate func drawFrame(_ drawable: CAMetalDrawable) {
+        guard let renderer else { return }
+        let now = CACurrentMediaTime()
+        let dt = Float(min(now - lastFrameAt, 0.05))
+        lastFrameAt = now
+        // A free frame slot (only blocks if the GPU has fallen three frames behind).
+        renderer.semaphore.wait()
+        let t1 = CACurrentMediaTime()
+        step(dt)
         let t2 = CACurrentMediaTime()
         guard let cb = renderer.gpu.queue.makeCommandBuffer() else { renderer.semaphore.signal(); return }
         let target = drawable.texture
@@ -665,7 +685,7 @@ public final class MeadowView: MTKView {
             onHover?(found)
             (found != nil ? NSCursor.pointingHand : NSCursor.arrow).set()
         }
-        wake()
+        wake(.input)
     }
     public override func mouseExited(with event: NSEvent) {
         if hovered != nil { hovered = nil; stage.hover(nil); onHover?(nil); NSCursor.arrow.set() }
@@ -685,7 +705,7 @@ public final class MeadowView: MTKView {
         } else {
             stage.camera.grab()
         }
-        wake()
+        wake(.input)
     }
     public override func mouseDragged(with event: NSEvent) {
         guard let start = pressedAt else { return }
@@ -694,7 +714,7 @@ public final class MeadowView: MTKView {
         if petTimer != nil, dragged { petTimer?.invalidate(); petTimer = nil; stage.setPetting(false); stage.camera.grab() }
         let slide = !event.modifierFlags.intersection([.command, .control, .shift]).isEmpty
         if slide { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)) } else { stage.camera.turn(dx: Float(event.deltaX), dy: Float(event.deltaY)) }
-        wake()
+        wake(.input)
     }
     public override func mouseUp(with event: NSEvent) {
         petTimer?.invalidate()
@@ -702,12 +722,12 @@ public final class MeadowView: MTKView {
         let wasPetting = stage.setPetting(false)
         stage.camera.release()
         defer { pressedAt = nil }
-        guard let start = pressedAt, simd_distance(point(event), start) < 5, !dragged, !wasPetting else { wake(); return }
+        guard let start = pressedAt, simd_distance(point(event), start) < 5, !dragged, !wasPetting else { wake(.input); return }
         let picked = stage.pick(point(event))
         if case .cat = picked { stage.hop(picked) }
         selection = picked
         onSelect?(picked)
-        wake()
+        wake(.input)
     }
 
     public override func rightMouseDown(with event: NSEvent) {
@@ -716,12 +736,12 @@ public final class MeadowView: MTKView {
             return
         }
         stage.camera.grab()
-        wake()
+        wake(.input)
     }
-    public override func rightMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake() }
+    public override func rightMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake(.input) }
     public override func rightMouseUp(with event: NSEvent) { stage.camera.release() }
     public override func otherMouseDown(with event: NSEvent) { stage.camera.grab() }
-    public override func otherMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake() }
+    public override func otherMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake(.input) }
     public override func otherMouseUp(with event: NSEvent) { stage.camera.release() }
 
     /// Scrolling zooms toward whatever is under the cursor; a trackpad's momentum carries on smoothly.
@@ -732,19 +752,19 @@ public final class MeadowView: MTKView {
             let dy = precise ? Float(event.scrollingDeltaY) : Float(event.scrollingDeltaY) * 16
             lastScrolled = CACurrentMediaTime()
             pendingReveal = nil
-            if dy != 0 { stage.camera.scroll(dy: dy); wake() }
+            if dy != 0 { stage.camera.scroll(dy: dy); wake(.input) }
             return
         }
         let pixels = precise ? -Float(event.scrollingDeltaY) : -Float(event.scrollingDeltaY) * 16
         if pixels == 0 { return }
         let factor = exp(clamp(pixels, -120, 120) * (precise ? 0.004 : 0.0022))
         stage.camera.zoom(by: factor, at: point(event), immediate: precise)
-        wake()
+        wake(.input)
     }
     /// Pinching zooms toward the cursor.
     public override func magnify(with event: NSEvent) {
         stage.camera.zoom(by: 1 / max(0.2, 1 + Float(event.magnification)), at: point(event), immediate: true)
-        wake()
+        wake(.input)
     }
     public override func keyDown(with event: NSEvent) {
         if onKeyDown?(event) == true { return }
@@ -754,7 +774,7 @@ public final class MeadowView: MTKView {
     /// Turning two fingers turns the view.
     public override func rotate(with event: NSEvent) {
         stage.camera.twist(-Float(event.rotation) * .pi / 180)
-        wake()
+        wake(.input)
     }
 }
 

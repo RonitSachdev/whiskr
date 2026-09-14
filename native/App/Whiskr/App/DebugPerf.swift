@@ -26,7 +26,9 @@ import WhiskrKit
 /// taken in by the terminal, to the terminal's next frame drawn (`TerminalView.onFramePresented`); how long the main
 /// thread took to answer a ping sent every 4 ms (a stall is time the window cannot take a key or draw);
 /// terminal frames drawn and the longest gap between them; the meadow's frames, main-thread and GPU time;
-/// memory (the app's and its session host's footprint) with 1 and with 20 tabs; the host's CPU at idle.
+/// memory (the app's and its session host's footprint) with 1 and with 20 tabs; at idle, by day and by night,
+/// the app's and the host's CPU and wakeups and the meadow's frames and GPU time; and, for every limit, how
+/// busy the rest of the Mac was meanwhile (`MachineLoad`).
 /// Not measured: the compositor's own step from a drawn frame to the glass (one display refresh).
 @MainActor
 enum DebugPerf {
@@ -54,18 +56,34 @@ enum DebugPerf {
         meadow.keepsFullRateWhenInactive = true
         let flows = DebugScenario.value("--perf-flows").map { Set($0.split(separator: ",").map(String.init)) }
         let suite = PerfSuite(workbench: workbench, controller: controller, window: window, flows: flows)
+        MachineLoad.shared.start(hostLog: PerfSuite.hostLog)
         Task {
             await suite.run()
             let text = suite.report()
             print(text)
             try? Data(text.utf8).write(to: URL(fileURLWithPath: out))
-            guard suite.passed || !DebugScenario.has("--perf-limits") else {
-                // As quitting would, with the status saying it failed.
+            if DebugScenario.has("--perf-limits"), let status = exitStatus(passed: suite.passed, comparable: suite.comparable) {
+                // As quitting would, with the status saying it failed (1) or could not be judged (3).
                 workbench.shutDown(stoppingSessions: true)
-                exit(1)
+                exit(status)
             }
             NSApp.terminate(nil)
         }
+    }
+
+    /// A run's exit status under `--perf-limits` (and the editor's `--measure-limits`): nil when everything
+    /// held, 1 when a check failed or a limit was passed on a quiet machine, 3 when what passed a limit was
+    /// measured while the rest of the Mac was busy, so the run says nothing either way (`make perf`).
+    static func exitStatus(passed: Bool, comparable: Bool) -> Int32? {
+        !passed ? 1 : !comparable ? 3 : nil
+    }
+
+    /// Others' load over the whole run, for a report's last line.
+    nonisolated static func machineSummary() -> String {
+        let all = MachineLoad.shared.all.sorted()
+        guard !all.isEmpty else { return "machine: others' load not measured" }
+        return String(format: "machine: %d cores; others' load median %.1f, max %.1f cores (busy above %.1f)",
+                      MachineLoad.cores, all[all.count / 2], all.last!, MachineLoad.busyCores)
     }
 }
 
@@ -94,6 +112,115 @@ nonisolated final class PerfLog: @unchecked Sendable {
     func meadow(from: Double, to: Double) -> [MeadowView.Timings] { lock.withLock { meadow.filter { $0.at >= from && $0.at <= to }.map(\.timings) } }
     var lastOutput: Double? { lock.withLock { outputs.last } }
     func firstFrame(after time: Double) -> Double? { lock.withLock { frames.first { $0 > time } } }
+}
+
+/// How busy the rest of the Mac is while a run measures: every core's time as the kernel counts it, less the
+/// run's own (the app, its session host and every process under either), in cores, sampled twice a second
+/// from a thread of its own. A timing taken while others keep more than `busyCores` busy is not comparable
+/// with one taken on a quiet Mac: `make perf` marks it so rather than passing or failing it.
+nonisolated final class MachineLoad: @unchecked Sendable {
+    static let shared = MachineLoad()
+    /// Others' load (in cores) above which a timing is not comparable: about what one busy program costs.
+    static let busyCores = 1.0
+    static let cores = ProcessInfo.processInfo.activeProcessorCount
+
+    private let lock = NSLock()
+    private var samples: [(at: Double, others: Double)] = []
+    private var hostLog: URL?
+    private var started = false
+
+    /// Starts sampling (once); `hostLog` is the run's session host's log, which names its process.
+    func start(hostLog: URL) {
+        let first = lock.withLock {
+            self.hostLog = hostLog
+            defer { started = true }
+            return !started
+        }
+        guard first else { return }
+        let thread = Thread { [self] in
+            var last = reading()
+            while true {
+                usleep(500_000)
+                let now = reading()
+                let wall = now.at - last.at
+                if wall > 0, now.total > last.total {
+                    let machine = Double(now.busy - last.busy) / Double(now.total - last.total) * Double(Self.cores)
+                    // A process of the run's that started since the last sample used all its time in between.
+                    let own = now.own.reduce(0.0) { $0 + max(0, $1.value - (last.own[$1.key] ?? 0)) } / wall
+                    lock.withLock { samples.append((now.at, max(0, machine - own))) }
+                }
+                last = now
+            }
+        }
+        thread.qualityOfService = .utility
+        thread.start()
+    }
+
+    /// Others' mean load from `from` to `to` (milliseconds on `perfNow`'s clock), in cores; nil before the
+    /// first sample.
+    func others(from: Double, to: Double) -> Double? {
+        lock.withLock {
+            let within = samples.filter { $0.at >= from && $0.at <= to + 500 }
+            let chosen = within.isEmpty ? samples.last(where: { $0.at <= to + 500 }).map { [$0] } ?? [] : within
+            return chosen.isEmpty ? nil : chosen.map(\.others).reduce(0, +) / Double(chosen.count)
+        }
+    }
+
+    /// Every sample so far.
+    var all: [Double] { lock.withLock { samples.map(\.others) } }
+
+    private struct Reading { var at: Double; var busy: UInt64; var total: UInt64; var own: [pid_t: Double] }
+
+    private func reading() -> Reading {
+        var busy: UInt64 = 0, total: UInt64 = 0
+        var count: natural_t = 0
+        var info: processor_info_array_t?
+        var infoCount: mach_msg_type_number_t = 0
+        if host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &count, &info, &infoCount) == KERN_SUCCESS, let info {
+            for cpu in 0..<Int(count) {
+                func ticks(_ state: Int32) -> UInt64 { UInt64(UInt32(bitPattern: info[cpu * Int(CPU_STATE_MAX) + Int(state)])) }
+                let used = ticks(CPU_STATE_USER) + ticks(CPU_STATE_SYSTEM) + ticks(CPU_STATE_NICE)
+                busy += used
+                total += used + ticks(CPU_STATE_IDLE)
+            }
+            vm_deallocate(mach_task_self_, vm_address_t(bitPattern: info), vm_size_t(infoCount) * vm_size_t(MemoryLayout<integer_t>.stride))
+        }
+        var own: [pid_t: Double] = [:]
+        for pid in Self.processes(under: [getpid()] + (lock.withLock { hostLog }.flatMap(Self.hostPID).map { [$0] } ?? [])) {
+            if let usage = PerfSuite.usage(pid) { own[pid] = PerfSuite.cpuMilliseconds(usage) }
+        }
+        return Reading(at: perfNow(), busy: busy, total: total, own: own)
+    }
+
+    /// The run's own session host: the process its log, in the run's isolated folder, says is listening.
+    static func hostPID(log: URL) -> pid_t? {
+        guard let text = try? String(contentsOf: log, encoding: .utf8),
+              let line = text.split(separator: "\n").last(where: { $0.contains("] listening on") }),
+              let open = line.firstIndex(of: "["), let close = line[open...].firstIndex(of: "]"),
+              let pid = pid_t(line[line.index(after: open)..<close]), kill(pid, 0) == 0 else { return nil }
+        return pid
+    }
+
+    /// `roots` and every process under them.
+    static func processes(under roots: [pid_t]) -> Set<pid_t> {
+        var pids = [pid_t](repeating: 0, count: Int(max(proc_listallpids(nil, 0), 0)) + 64)
+        let found = Int(max(proc_listallpids(&pids, Int32(pids.count * MemoryLayout<pid_t>.size)), 0))
+        var parent: [pid_t: pid_t] = [:]
+        for pid in pids.prefix(found) where pid > 0 {
+            var info = proc_bsdshortinfo()
+            let size = Int32(MemoryLayout<proc_bsdshortinfo>.size)
+            if proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &info, size) == size { parent[pid] = pid_t(info.pbsi_ppid) }
+        }
+        var own = Set(roots), grew = true
+        while grew {
+            grew = false
+            for (pid, up) in parent where !own.contains(pid) && own.contains(up) {
+                own.insert(pid)
+                grew = true
+            }
+        }
+        return own
+    }
 }
 
 /// Asks the main thread for a moment every 4 ms, from a thread of its own, and notes how long the answer
@@ -172,6 +299,8 @@ final class RunLoopAnatomy {
 @MainActor
 enum KeyStandIn {
     nonisolated(unsafe) static weak var window: NSWindow?
+    /// Off: the window counts as not key and the app as not active (the idle flow's "not key").
+    nonisolated(unsafe) static var standsIn = true
 
     static func install(_ window: NSWindow) {
         self.window = window
@@ -204,12 +333,12 @@ extension NSWindow {
     }
 
     @objc func debugPerfIsKeyWindow() -> Bool {
-        self === KeyStandIn.window || debugPerfIsKeyWindow()     // the original, exchanged
+        self === KeyStandIn.window ? KeyStandIn.standsIn : debugPerfIsKeyWindow()     // the original, exchanged
     }
 }
 
 extension NSApplication {
-    @objc func debugPerfIsActive() -> Bool { KeyStandIn.window != nil || debugPerfIsActive() }
+    @objc func debugPerfIsActive() -> Bool { KeyStandIn.window != nil ? KeyStandIn.standsIn : debugPerfIsActive() }
 }
 
 /// Waits, without polling, for something on the main thread to hold: checked at the start of every turn
@@ -286,15 +415,24 @@ final class PerfSuite {
     var rows: [PerfRow] = []
     private var checks: [(String, Bool, String)] = []
     /// Measurements against their limits (`--perf-limits`): loose enough never to fail by chance on an
-    /// idle Mac, tight enough to catch what made the window lag.
-    private var limits: [(String, Bool, String)] = []
-    var passed: Bool { checks.allSatisfy(\.1) && limits.allSatisfy(\.1) }
+    /// idle Mac, tight enough to catch what made the window lag. One passed while the rest of the Mac was
+    /// busy (`MachineLoad`) is not comparable: neither a failure nor a pass.
+    enum LimitResult: String { case kept, passed = "PASSED", notComparable = "not comparable" }
+    private var limits: [(String, LimitResult, String)] = []
+    var passed: Bool { checks.allSatisfy(\.1) && !limits.contains { $0.1 == .passed } }
+    /// No limit was left undecided by a busy machine.
+    var comparable: Bool { !limits.contains { $0.1 == .notComparable } }
+    /// When the flow being measured began: a limit's machine load is taken over its flow.
+    private var flowStart = perfNow()
 
     func limit(_ name: String, _ value: Double?, atMost most: Double) {
         let ok = value.map { $0.isFinite && $0 <= most } ?? false
-        limits.append((name, ok, "\(value.map { String(format: "%.1f", $0) } ?? "none") (limit \(String(format: "%g", most)))"))
+        let others = MachineLoad.shared.others(from: flowStart, to: perfNow())
+        let result: LimitResult = ok ? .kept : (others ?? 0) > MachineLoad.busyCores ? .notComparable : .passed
+        limits.append((name, result, "\(value.map { String(format: "%.1f", $0) } ?? "none") (limit \(String(format: "%g", most)))"
+                       + "; others' load \(others.map { String(format: "%.1f", $0) } ?? "-") cores"))
         // Said as it is measured, as checks are: a run that crashes later writes no table.
-        print("limit: \(ok ? "kept" : "PASSED") \(name): \(limits.last!.2)")
+        print("limit: \(result.rawValue) \(name): \(limits.last!.2)")
     }
     var root: URL!
     private var main: Pane!
@@ -337,23 +475,31 @@ final class PerfSuite {
         pinger.start()
         anatomy.start()
         defer { pinger.stop() }
+        flowStart = perfNow()
         guard await firstTerminal() else { return note("setup", "the first shell never drew its prompt") }
         // The cats come after it, so the first terminal is the first one the window ever draws.
         if DebugScenario.has("--perf-cats"), let space = workbench.selectedWorkspace {
             _ = DebugScenario.Demo(workbench: workbench, root: root.appendingPathComponent("cats", isDirectory: true), count: 4)
+            catsMadeAt = perfNow()
             workbench.select(workspace: space)
             _ = await PerfWait.until(2000) { self.focused(self.main) }
             await PerfWait.sleep(1000)
         }
-        if wants("memory") { await memory() }
-        if wants("typing") { await typing() }
-        if wants("newtab") || wants("close") { await newAndClose() }
-        if wants("switch") { await switching() }
-        if wants("yes") { await flood("yes", command: "yes 'y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y' | head -200000") }
-        if wants("cat") { await flood("cat", command: "cat \(ShellQuote.quote(bigFile().path))", switchMidway: true) }
-        if wants("stream") { await flood("stream", command: "perl \(ShellQuote.quote(streamScript().path)) 6", switchMidway: true, typeMidway: true) }
-        if wants("idle") { await idle() }
+        let measured: [(String, () async -> Void)] = [
+            ("memory", memory), ("typing", typing), ("newtab", newAndClose), ("switch", switching),
+            ("yes", { await self.flood("yes", command: "yes 'y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y' | head -200000") }),
+            ("cat", { await self.flood("cat", command: "cat \(ShellQuote.quote(self.bigFile().path))", switchMidway: true) }),
+            ("stream", { await self.flood("stream", command: "perl \(ShellQuote.quote(self.streamScript().path)) 6", switchMidway: true, typeMidway: true) }),
+            ("idle", idle),
+        ]
+        for (name, flow) in measured where wants(name) || (name == "newtab" && wants("close")) {
+            flowStart = perfNow()
+            await flow()
+        }
     }
+
+    /// When the demo's cats were made (`--perf-cats`): they doze off `AgentWorld.napAfter` seconds later.
+    private var catsMadeAt: Double?
 
     func folder(_ name: String) -> String {
         let url = root.appendingPathComponent(name, isDirectory: true)
@@ -585,14 +731,8 @@ final class PerfSuite {
     }
 
     /// The run's own session host: the process its log, in this run's isolated folder, says is listening.
-    private var hostPID: pid_t? {
-        let log = AppPlaces.supportFolder.appendingPathComponent("host/host.log")
-        guard let text = try? String(contentsOf: log, encoding: .utf8),
-              let line = text.split(separator: "\n").last(where: { $0.contains("] listening on") }),
-              let open = line.firstIndex(of: "["), let close = line[open...].firstIndex(of: "]"),
-              let pid = pid_t(line[line.index(after: open)..<close]), kill(pid, 0) == 0 else { return nil }
-        return pid
-    }
+    private var hostPID: pid_t? { MachineLoad.hostPID(log: Self.hostLog) }
+    static var hostLog: URL { AppPlaces.supportFolder.appendingPathComponent("host/host.log") }
 
     // MARK: (a) Typing
 
@@ -877,31 +1017,90 @@ final class PerfSuite {
 
     // MARK: Idle
 
-    /// Five seconds with nothing typed and nothing printed, after the meadow has had time to rest: the
-    /// process's CPU time (with the pings stopped, which cost a little of their own).
+    /// The app left alone: nothing typed, nothing printed and nothing due to change (the demo's cats doze
+    /// off `AgentWorld.napAfter` seconds after they are made; that is waited out). Measured by day and by
+    /// night, set here so the wall clock never decides, with the window key; then by night with the window
+    /// not key, and hidden. The pings are stopped first (they would wake the main thread 250 times a second).
     private func idle() async {
         pinger.stop()
+        defer { pinger.start() }
         main.type("clear\r")
-        await PerfWait.sleep(7000)
-        var before = rusage(), after = rusage()
+        if let catsMadeAt {
+            let due = catsMadeAt + (AgentWorld.napAfter + 2) * 1000
+            if perfNow() < due { await PerfWait.sleep(due - perfNow()) }
+        }
+        let store = WorldStore.shared, meadow = controller.navigator.meadow
+        let time = store.settings.timeOfDay
+        defer { store.settings.timeOfDay = time }
+        for (setting, shown, name) in [(WorldSettings.TimeOfDay.day, MeadowSettings.TimeOfDay.day, "day"), (.night, .night, "night")] {
+            store.settings.timeOfDay = setting
+            // The setting reaches the meadow through an observer, a turn or two later.
+            _ = await PerfWait.until(2000) { meadow.settings.timeOfDay == shown }
+            await idleStretch("idle, \(name)", limits: true)
+        }
+        // Not the key window (another window, or another app, in front).
+        KeyStandIn.standsIn = false
+        meadow.keepsFullRateWhenInactive = false
+        NotificationCenter.default.post(name: NSWindow.didResignKeyNotification, object: window)
+        await idleStretch("idle, night, window not key", limits: false)
+        KeyStandIn.standsIn = true
+        meadow.keepsFullRateWhenInactive = true
+        NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
+        // Hidden (⌘H, minimised): the window taken off the screen, then put back behind everything as the run
+        // began. The terminals here still tick on Core Video's link (`SWIFTTERM_FORCE_CVDISPLAYLINK`), where
+        // a hidden window's own link would stop.
+        meadow.assumesOnScreen = false
+        window.orderOut(nil)
+        await idleStretch("idle, night, window hidden", limits: false)
+        window.orderBack(nil)
+        meadow.assumesOnScreen = true
+    }
+
+    /// One idle stretch: once the meadow has come to rest (waiting up to 20 s, which is itself a finding;
+    /// not waited for while it is hidden), 5 s of the process's CPU time and wakeups, its session host's, the
+    /// meadow's frames and GPU time, terminal frames and chrome updates.
+    private func idleStretch(_ name: String, limits: Bool) async {
+        let meadow = controller.navigator.meadow
+        let begun = perfNow()
+        let rested = meadow.assumesOnScreen ? await PerfWait.until(20000) { meadow.isResting } : nil
+        await PerfWait.sleep(1000)
         let host = hostPID
-        let hostBefore = host.flatMap(Self.usage)
-        getrusage(RUSAGE_SELF, &before)
+        let appBefore = Self.usage(getpid()), hostBefore = host.flatMap(Self.usage)
         let start = perfNow()
+        flowStart = start
         await PerfWait.sleep(5000)
-        getrusage(RUSAGE_SELF, &after)
-        let hostAfter = host.flatMap(Self.usage)
-        let elapsed = perfNow() - start
-        let hostCPU = hostBefore.flatMap { first in hostAfter.map { (Self.cpuMilliseconds($0) - Self.cpuMilliseconds(first)) / elapsed * 100 } }
-        func seconds(_ time: timeval) -> Double { Double(time.tv_sec) + Double(time.tv_usec) / 1e6 }
-        let cpu = (seconds(after.ru_utime) + seconds(after.ru_stime) - seconds(before.ru_utime) - seconds(before.ru_stime)) * 1000
-        let frames = log.frames(from: start, to: start + elapsed)
-        limit("idle: process CPU %", cpu / elapsed * 100, atMost: 15)
-        limit("idle: the session host's CPU %", hostCPU, atMost: 3)
-        limit("idle: chrome updates a second", Double(log.invalidations(from: start, to: start + elapsed)) / (elapsed / 1000), atMost: 1)
-        rows.append(PerfRow(name: "idle", values: [("cpu %", String(format: "%.1f", cpu / elapsed * 100)), ("host cpu %", hostCPU.map { String(format: "%.1f", $0) } ?? "-"), ("terminal frames/s", String(format: "%.1f", Double(frames.count) / (elapsed / 1000)))]
-                            + stalls(from: start, to: start + elapsed).filter { $0.0.hasPrefix("meadow") || $0.0.hasPrefix("chrome") }))
-        pinger.start()
+        let appAfter = Self.usage(getpid()), hostAfter = host.flatMap(Self.usage)
+        let end = perfNow(), seconds = (end - start) / 1000
+        func cpu(_ a: rusage_info_v4?, _ b: rusage_info_v4?) -> Double? {
+            guard let a, let b else { return nil }
+            return (Self.cpuMilliseconds(b) - Self.cpuMilliseconds(a)) / (end - start) * 100
+        }
+        func wakeups(_ a: rusage_info_v4?, _ b: rusage_info_v4?) -> String {
+            guard let a, let b else { return "-" }
+            return String(format: "%.0f (from idle %.0f)", Double(b.ri_interrupt_wkups - a.ri_interrupt_wkups) / seconds,
+                          Double(b.ri_pkg_idle_wkups - a.ri_pkg_idle_wkups) / seconds)
+        }
+        let appCPU = cpu(appBefore, appAfter), hostCPU = cpu(hostBefore, hostAfter)
+        let frames = log.frames(from: start, to: end)
+        let chrome = Double(log.invalidations(from: start, to: end)) / seconds
+        let drawn = log.meadow(from: start, to: end)
+        let gpu = drawn.isEmpty ? 0 : drawn.map { $0.gpuMilliseconds * $0.framesPerSecond }.reduce(0, +) / Double(drawn.count)
+        let fps = drawn.isEmpty ? 0 : drawn.map(\.framesPerSecond).reduce(0, +) / Double(drawn.count)
+        let others = MachineLoad.shared.others(from: start, to: end)
+        func f(_ value: Double?) -> String { value.map { String(format: "%.1f", $0) } ?? "-" }
+        rows.append(PerfRow(name: name, values: [
+            ("cpu %", f(appCPU)), ("wakeups/s", wakeups(appBefore, appAfter)),
+            ("host cpu %", f(hostCPU)), ("host wakeups/s", wakeups(hostBefore, hostAfter)),
+            ("terminal frames/s", f(Double(frames.count) / seconds)), ("chrome updates/s", f(chrome)),
+            ("meadow at rest after", rested.map { f(($0 - begun) / 1000) + " s" } ?? (meadow.assumesOnScreen ? "never (20 s)" : "-")),
+            ("meadow frames/s", String(format: "%.0f/%d", fps, drawn.last?.targetFramesPerSecond ?? 0)),
+            ("meadow gpu ms/s", f(gpu)), ("others' load cores", f(others)),
+        ]))
+        guard limits else { return }
+        limit("\(name): process CPU %", appCPU, atMost: 15)
+        limit("\(name): the session host's CPU %", hostCPU, atMost: 3)
+        limit("\(name): chrome updates a second", chrome, atMost: 1)
+        limit("\(name): seconds until the meadow rests", rested.map { ($0 - begun) / 1000 }, atMost: 12)
     }
 
     // MARK: Sizes (correctness)
@@ -1201,10 +1400,15 @@ final class PerfSuite {
         for row in rows {
             lines.append(row.name + ": " + row.values.map { $0.0.isEmpty ? $0.1 : "\($0.0) \($0.1)" }.joined(separator: " · "))
         }
-        let broken = limits.filter { !$0.1 }
+        let broken = limits.filter { $0.1 == .passed }, undecided = limits.filter { $0.1 == .notComparable }
         if !limits.isEmpty {
-            lines.append("limits: \(limits.count - broken.count)/\(limits.count) kept" + (broken.isEmpty ? "" : "; PASSED: " + broken.map { "\($0.0) \($0.2)" }.joined(separator: "; ")))
+            func listed(_ found: [(String, LimitResult, String)]) -> String { found.map { "\($0.0) \($0.2)" }.joined(separator: "; ") }
+            var line = "limits: \(limits.count - broken.count - undecided.count)/\(limits.count) kept"
+            if !broken.isEmpty { line += "; PASSED: " + listed(broken) }
+            if !undecided.isEmpty { line += "; NOT COMPARABLE (the machine was busy): " + listed(undecided) }
+            lines.append(line)
         }
+        lines.append(DebugPerf.machineSummary())
         if !checks.isEmpty {
             let failed = checks.filter { !$0.1 }
             lines.append("checks: \(checks.count - failed.count)/\(checks.count) passed" + (failed.isEmpty ? "" : "; FAILED: " + failed.map { "\($0.0) (\($0.2))" }.joined(separator: "; ")))

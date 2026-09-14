@@ -2,7 +2,11 @@
 # make perf: the profile build in isolated, invisible runs (`DebugPerf`), one after another so they never
 # compete: the checks (closing tabs, sizes, interactions), then the measurements with working cats in the
 # meadow, then the editor on big files. Prints each run's table; fails when a check fails or a measurement
-# passes its limit (`--perf-limits`, `--measure-limits`).
+# passes its limit (`--perf-limits`, `--measure-limits`). Timings are only comparable on a quiet Mac: each run
+# waits (up to ten minutes) until other programs keep at most one core busy, says how busy the Mac was, and
+# a limit passed while it was busy (`MachineLoad`, measured by the run itself) makes the run "not
+# comparable" (exit 3) rather than failed or passed. The meadow is shown by day (the idle flow measures day
+# and night itself): nothing here depends on the time it is run.
 #
 #   Scripts/perf.sh <Whiskr.app> <folder for the runs>
 set -u
@@ -10,6 +14,36 @@ app=$1
 runs=$2
 mkdir -p "$runs"
 failed=0
+undecided=0
+
+# Others' load now, in cores: the Mac's busy share over two seconds, as `top` counts it, times its cores.
+# Nothing of ours is running between runs, so all of it is someone else's.
+busy_cores=1.0
+others_load() {
+    local idle=$(top -l 2 -s 2 -n 0 | awk '/^CPU usage/ { value = $7 } END { sub("%", "", value); print value }')
+    print -- $(( (100.0 - idle) * $(sysctl -n hw.activecpu) / 100.0 ))
+}
+wait_until_quiet() {
+    local name=$1 waited=0 load=$(others_load) note=""
+    while (( load > busy_cores && waited < 600 )); do
+        sleep 20; (( waited += 20 )); load=$(others_load)
+    done
+    (( waited > 0 )) && note=" (after waiting $waited s)"
+    (( load > busy_cores )) && note=" (still busy after waiting $waited s: a limit it passes is not comparable)"
+    printf "%s: others' load before it %.1f cores%s\n" $name $load "$note"
+}
+
+# A run's exit status: 0 held, 3 not comparable (a limit passed while the Mac was busy), anything else failed.
+judge() {
+    local name=$1 code=$2 log=$3
+    if (( code == 3 )); then
+        echo "$name: not comparable: a limit was passed while the Mac was busy. Log: $log"
+        undecided=1
+    elif (( code != 0 )); then
+        echo "$name: failed (exit $code; 70 is a crash, 1 a check or a limit). Log: $log"
+        failed=1
+    fi
+}
 
 # The session host of one run, found only by the lock it holds in that run's own isolated folder
 # (`<dir>/isolated/host/host.lock`), never by name: a run stopped at its timeout, or one that crashed, leaves
@@ -29,7 +63,8 @@ run() {
     local name=$1; shift
     local dir="$runs/$name"
     rm -rf "$dir"; mkdir -p "$dir"
-    "$app/Contents/MacOS/Whiskr" --isolated "$dir/isolated" --background --perf "$dir/table.txt" --perf-limits "$@" > "$dir/log.txt" 2>&1 &
+    wait_until_quiet $name
+    "$app/Contents/MacOS/Whiskr" --isolated "$dir/isolated" --background --time day --perf "$dir/table.txt" --perf-limits "$@" > "$dir/log.txt" 2>&1 &
     local pid=$!
     # Ten minutes at most; then that run, and only it, is stopped.
     local waited=0
@@ -43,10 +78,7 @@ run() {
     local code=$?
     (( code != 0 )) && stop_host "$dir"
     cat "$dir/table.txt" 2>/dev/null || tail -20 "$dir/log.txt"
-    if (( code != 0 )); then
-        echo "$name: failed (exit $code; 70 is a crash, 1 a check or a limit). Log: $dir/log.txt"
-        failed=1
-    fi
+    judge $name $code "$dir/log.txt"
     echo
 }
 
@@ -103,7 +135,8 @@ editor() {
     local name=$1 file=$2; shift 2
     local dir="$runs/$name"
     rm -rf "$dir"; mkdir -p "$dir"
-    "$app/Contents/MacOS/Whiskr" --isolated "$dir/isolated" --background --window 1440x900 --folder "${file:h}" \
+    wait_until_quiet $name
+    "$app/Contents/MacOS/Whiskr" --isolated "$dir/isolated" --background --time day --window 1440x900 --folder "${file:h}" \
         --measure-files "$dir/report.txt" --measure-file "$file" --measure-limits "$@" > "$dir/log.txt" 2>&1 &
     local pid=$!
     local waited=0
@@ -118,10 +151,7 @@ editor() {
     stop_host "$dir"
     echo "$name"
     cat "$dir/report.txt" 2>/dev/null || tail -20 "$dir/log.txt"
-    if (( code != 0 )); then
-        echo "$name: failed (exit $code; 70 is a crash, 1 a limit). Log: $dir/log.txt"
-        failed=1
-    fi
+    judge $name $code "$dir/log.txt"
     echo
 }
 
@@ -132,4 +162,6 @@ editor editor-swift "$runs/editor-files/big50k.swift"
 editor editor-typescript "$runs/editor-files/big50k.ts"
 editor editor-minified "$runs/editor-files/minified.js" long-lines
 editor editor-long-lines "$runs/editor-files/longlines.ts"
-exit $failed
+if (( failed )); then echo "make perf: FAILED"; exit 1; fi
+if (( undecided )); then echo "make perf: NOT COMPARABLE (the Mac was busy while a limit was passed; run it again when it is quiet)"; exit 3; fi
+echo "make perf: every check and limit held"

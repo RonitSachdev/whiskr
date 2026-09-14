@@ -189,6 +189,9 @@ Code does.
   The editor font's four faces (and the fonts Core Text falls back to for arrows, ellipses and Japanese) are
   drawn once off the main thread as the first file opens (`EditorStyle.warmFonts`): Core Text reads a face's
   tables the first time it draws with it, which held the main thread 30–55 ms in about a third of opens.
+  AppKit's text-cursor helper (the input-source indicator by the caret: it loads `TextInputUIMacHelper` and
+  makes a hidden window, 18–30 ms on the main thread, once per process) is set up during launch, while
+  launch waits on the session host (`AppDelegate`), not when the first file's caret is placed.
 - **The language of one file** can be chosen from the status bar's language item (as in VS Code); the choice
   holds for that path while the app runs, and Auto Detect goes back to the detected one.
 - **Lines too long to edit.** TextKit lays a paragraph out again whole on each keystroke in it (about 0.17 ms
@@ -303,8 +306,12 @@ stop drawing when nothing moves.
   hidden ground pixels are rejected early.
 - Frames come from a `CAMetalDisplayLink`, at the rate the display presents. The render scale adapts to
   hold the frame budget. The scene's per-frame update allocates nothing, and a test checks this.
-- After 5 seconds with nothing new the meadow rests at 12 Hz, and any input or event brings full rate
-  back. Hidden or covered, it draws nothing. While keys are typed into a terminal it draws at most 30
+- After 5 seconds with nothing new the meadow rests at 12 Hz, its own time slowed to 0.4 so each frame
+  moves things as far as a frame at 30 Hz would (fireflies, lamps and lanterns included: they run on that
+  time). Input brings the full rate back at once. A change in the world (`world`, `settings`, the
+  selection, a note) ends the rest but is not input: it draws at 30 Hz unless something in the scene moves
+  fast (`Stage.restful`), and rests again 5 s later. Hidden or covered, it draws nothing. The rule is
+  tested frame by frame on a clock of the test's own (`RestTests`), by day and by night. While keys are typed into a terminal it draws at most 30
   times a second, at the same pace, and full rate returns 1.5 s after the last key (`yieldFrames`).
   With Animate Meadow off (`MeadowView.animatesAmbient`), the display link pauses 3 s after the scene
   stands still and wakes for the next change.
@@ -335,6 +342,21 @@ or, for the window's own views, once Core Animation has committed it; the compos
 glass (about one refresh) is not seen. Main-thread stalls are a ping every 4 ms from a thread of its own.
 It also clicks every part of every tab, closes tabs every way there is, and checks every pane's size
 against what its program was told.
+
+Nothing in `make perf` depends on when it runs: the runs show the meadow by day (`--time day`), and the
+idle flow sets the time of day itself, measuring by day and by night. Idle is measured once nothing is due
+to change (the demo's cats doze off `AgentWorld.napAfter` after they are made; that is waited out) and the
+meadow has come to rest, for 5 s each: by day and by night with the window key, then by night with it not
+key, and hidden (taken off the screen). Each stretch reports the app's and the session host's CPU and
+wakeups (`proc_pid_rusage`), the meadow's frames and GPU milliseconds per second, terminal frames and
+chrome updates; day and night are held to the same limits, and to the meadow resting within 12 s.
+
+Timings are only comparable on a quiet Mac. `Scripts/perf.sh` waits, up to ten minutes before each run,
+until other programs keep at most one core busy (`top`), and prints how busy the Mac was. Each run also
+samples, twice a second, every core's time less its own (the app, its session host and every process
+under either: `MachineLoad`), and a limit passed while others kept more than a core busy is "not
+comparable": neither a pass nor a failure. `make perf` then exits with 3 rather than 1, and says to run it
+again when the Mac is quiet; a failed check still fails.
 
 The editor has runs of its own in `make perf` (`DebugFiles --measure-files`, files `Scripts/perf.sh` writes:
 50,000 lines of the app's Swift, 50,000 lines of TypeScript, a 2 MB one-line JavaScript file and lines of

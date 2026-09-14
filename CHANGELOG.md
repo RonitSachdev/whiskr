@@ -140,6 +140,12 @@ Nothing has been released yet. This is what the first release will contain.
 
 ### Fixed
 
+- The meadow at rest costs less: a change in it (a cat dozing off, a lantern going out) no longer draws
+  at the display's full rate for the next few seconds as if you had touched it; it is drawn at a calm
+  30 frames a second when nothing in it moves fast, and it goes back to its slow resting tick sooner.
+  Day and night idle alike.
+- The first file opened after launch no longer catches the window for a moment while macOS sets up the
+  text cursor's helper; that is done during launch.
 - A minified file opens faster: its one long line was laid out twice.
 - ⌘↑ and ⌘↓ move to the start and end in the editor and open in Files again (the terminal's command keys had
   taken them everywhere).

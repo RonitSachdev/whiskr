@@ -54,6 +54,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         // rather than an empty Home that fills in a moment later. A slow start (the session host's first
         // launch) shows it after a second regardless.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.present(controller) }
+        // AppKit sets up its text-cursor helper (a hidden window of its own: 18–30 ms on the main thread) the
+        // first time a text view's caret is placed. Done now, while launch waits on the session host, rather
+        // than in the frames of the first file opened, where it held the main thread past two frames.
+        DispatchQueue.main.async { NSTextView().inputContext?.invalidateCharacterCoordinates() }
         Task {
             await workbench.launch()
             // Every launch lands on Home; a folder opened with the app (from the Finder or the Dock) is shown.
