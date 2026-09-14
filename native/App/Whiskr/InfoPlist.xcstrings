@@ -4,17 +4,51 @@
     "CFBundleDisplayName": {
       "comment": "Info.plist: CFBundleDisplayName",
       "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr"
+          }
+        }
+      },
       "shouldTranslate": true
     },
     "CFBundleName": {
       "comment": "Info.plist: CFBundleName",
       "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr"
+          }
+        }
+      },
       "shouldTranslate": true
     },
     "NSAppleEventsUsageDescription": {
       "comment": "Info.plist: NSAppleEventsUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A program running in one of your terminals wants to control another app."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
@@ -27,6 +61,12 @@
       "comment": "Info.plist: NSDesktopFolderUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A program running in one of your terminals wants to use files in your Desktop folder."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
@@ -39,6 +79,12 @@
       "comment": "Info.plist: NSDocumentsFolderUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A program running in one of your terminals wants to use files in your Documents folder."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
@@ -51,6 +97,12 @@
       "comment": "Info.plist: NSDownloadsFolderUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A program running in one of your terminals wants to use files in your Downloads folder."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
@@ -62,12 +114,32 @@
     "NSHumanReadableCopyright": {
       "comment": "Info.plist: NSHumanReadableCopyright (the About panel's copyright line; the app's name and the year, the same in every language)",
       "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "© 2026 Whiskr contributors"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "© 2026 Whiskr contributors"
+          }
+        }
+      },
       "shouldTranslate": false
     },
     "NSLocationUsageDescription": {
       "comment": "Info.plist: NSLocationUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
@@ -80,6 +152,12 @@
       "comment": "Info.plist: NSLocationWhenInUseUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
@@ -92,6 +170,12 @@
       "comment": "Info.plist: NSNetworkVolumesUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A program running in one of your terminals wants to use files on a network volume."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
@@ -104,6 +188,12 @@
       "comment": "Info.plist: NSRemovableVolumesUsageDescription",
       "extractionState": "manual",
       "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A program running in one of your terminals wants to use files on a removable volume."
+          }
+        },
         "ja": {
           "stringUnit": {
             "state": "translated",
