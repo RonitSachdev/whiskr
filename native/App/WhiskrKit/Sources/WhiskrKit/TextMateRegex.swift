@@ -241,7 +241,14 @@ enum Oniguruma {
     /// of seconds.
     static let searchLimit: UInt = 2_000_000
 
+    /// How deeply an expression's groups may nest. Oniguruma parses recursively, and expressions compile
+    /// lazily on threads with 512 KB stacks (the background tokenizer's, tasks'): its default of 4,096
+    /// levels overflows one at about 700. Grammars nest a few dozen at most; a deeper expression does not
+    /// compile, and so never matches.
+    static let parseDepthLimit: UInt32 = 200
+
     private static let ready: Bool = {
+        onig_set_parse_depth_limit(parseDepthLimit)
         var encodings: [OnigEncoding?] = [whiskr_onig_utf8()]
         return encodings.withUnsafeMutableBufferPointer { onig_initialize(&$0.baseAddress!.pointee, 1) } == ONIG_NORMAL
     }()

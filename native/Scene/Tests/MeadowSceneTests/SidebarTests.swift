@@ -71,6 +71,19 @@ enum Sidebar {
         #expect(label("shop-web", detail: "").shownDetail == nil)
     }
 
+    @Test("a branch short of room gives up its folders before its middle")
+    func branchKeepsItsName() {
+        let full = label("shop-web", detail: "feature/checkout")
+        #expect(full.shownDetail == "feature/checkout")
+        // Just too narrow for the whole branch.
+        let wide = (Float(full.canvas.width) - Float(FlagLabel.shadow * 2)) / Float(FlagLabel.scale) * Float(FlagLabel.onScreen)
+        let short = label("shop-web", detail: "feature/checkout", room: (wide - 4).rounded(.down))
+        #expect(short.shown == "shop-web")
+        #expect(short.shownDetail == "…/checkout")
+        // A branch with no folders is cut in its middle, as before.
+        #expect(label("shop-web", detail: "fix-the-cart-rounding", room: 150).shownDetail?.contains("…") == true)
+    }
+
     @Test("a narrow pill cuts the branch, then the title, then leaves the branch out, and always fits", arguments: [300, 200, 140, 90] as [Float])
     func fitsItsRoom(_ room: Float) {
         let l = label("the-meadow-cats-native-app", detail: "feature/fix-cart-rounding-errors", pinned: true, room: room)

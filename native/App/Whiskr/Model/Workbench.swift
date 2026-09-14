@@ -32,6 +32,18 @@ struct ClosedTab {
     let closedAt: Date
     /// What to reopen later: each pane's folder, and the conversation to resume where Claude ran.
     let reopen: [(folder: String, resume: String?)]
+    /// What its ⌘Z is registered with, so that when its moment passes only its own undo leaves the Edit menu.
+    let undoTarget = UndoTarget()
+}
+
+/// One closed tab's place in the window's undo stack (`ClosedTab.undoTarget`).
+final class UndoTarget {}
+
+/// A closed tab whose ⌘Z moment has passed: where it was and what ⇧⌘T starts again in its place, and
+/// nothing more. Its panes have ended, and are let go with their terminal views and scrollback.
+struct ReopenableTab {
+    let workspace: WorkspacePlace
+    let reopen: [(folder: String, resume: String?)]
 }
 
 /// A workspace as it was when a tab of it closed: what ⌘Z needs to bring it back as it was (its last tab
@@ -71,7 +83,7 @@ final class Workbench {
     /// Closed tabs and panes, still running for `undoSeconds`, newest last.
     private(set) var closing: [ClosedTab] = []
     /// Tabs closed longer ago, to reopen in their folders (⇧⌘T), newest last.
-    private(set) var reopenable: [ClosedTab] = []
+    private(set) var reopenable: [ReopenableTab] = []
     /// Where ⌘J came from, so it can take you back once nothing is waiting.
     private(set) var jumpedFrom: UUID?
 
@@ -207,7 +219,10 @@ final class Workbench {
             NSLog("Whiskr: could not write the shell integration: \(error)")
         }
         let running = await host.start()
-        if let layout = LayoutSnapshot.read(from: Self.layoutFile) { restore(layout, running: running) }
+        // A saved layout this version cannot read is kept aside, never overwritten by this launch's.
+        let saved = LayoutSnapshot.launchRead(from: Self.layoutFile)
+        if let aside = saved.setAside { NSLog("Whiskr: the saved layout could not be read; kept as \(aside.lastPathComponent)") }
+        if let layout = saved.layout { restore(layout, running: running) }
         adopt(running)
         restoreAgents()
         removeStaleHookFiles()
@@ -462,8 +477,14 @@ final class Workbench {
 
     private func registerUndo(_ closed: ClosedTab) {
         guard let undoManager else { return }
-        undoManager.registerUndo(withTarget: self) { $0.undoClose(id: closed.id) }
+        // One close, one ⌘Z: a group of its own, unless it is part of a larger one being made (Close Other
+        // Tabs). Left to the run loop's grouping, a close that came from no event (a shell's `exit`) left its
+        // group open, and the next close joined it: one ⌘Z brought back both.
+        let own = undoManager.groupingLevel == 0
+        if own { undoManager.beginUndoGrouping() }
+        undoManager.registerUndo(withTarget: closed.undoTarget) { [weak self] _ in self?.undoClose(id: closed.id) }
         undoManager.setActionName(closed.onlyPane == nil ? String(localized: "Close Tab") : String(localized: "Close Pane"))
+        if own { undoManager.endUndoGrouping() }
     }
 
     /// The moment for ⌘Z has passed: its processes end; it can still be reopened in its folder.
@@ -484,11 +505,11 @@ final class Workbench {
             pane.disconnect()
             removeHookFiles(for: pane.id)
         }
-        reopenable.append(closed)
+        reopenable.append(ReopenableTab(workspace: closed.workspace, reopen: closed.reopen))
         if reopenable.count > 10 { reopenable.removeFirst(reopenable.count - 10) }
-        // What can no longer be undone leaves the Edit menu; the rest stays, in order.
-        undoManager?.removeAllActions(withTarget: self)
-        for still in closing { registerUndo(still) }
+        // What can no longer be undone leaves the Edit menu, alone: the rest stays as it was, each its own
+        // ⌘Z. (Registered again together, they made one undo that brought back every tab closed lately.)
+        undoManager?.removeAllActions(withTarget: closed.undoTarget)
         // Its pages (files, diffs) and their documents go with it.
         prunePages()
     }
@@ -503,6 +524,9 @@ final class Workbench {
     private func undoClose(id: UUID) {
         guard let index = closing.firstIndex(where: { $0.id == id }) else { return }
         let closed = closing.remove(at: index)
+        // Brought back by the note rather than Edit › Undo: its undo goes too (the undo manager keeps no
+        // hold on its target).
+        undoManager?.removeAllActions(withTarget: closed.undoTarget)
         for pane in closed.panes {
             panes[pane.id] = pane
             pane.keepRunning()
@@ -697,7 +721,8 @@ final class Workbench {
     var nextThing: NextThing {
         let rows = agentRows
         let waiting = rows.filter { $0.status == .blocked }.sorted { $0.since < $1.since }
-        if let row = waiting.first(where: { $0.id != focusedPane?.id }) ?? waiting.first { return .request(row.id) }
+        // At the only request already (⌘J brought you), the next ⌘J goes on: to a finished turn, or back.
+        if let row = waiting.first(where: { $0.id != focusedPane?.id }) { return .request(row.id) }
         let finished = rows.filter { $0.status == .done && $0.id != focusedPane?.id }.sorted { $0.since < $1.since }
         if let row = finished.first { return .finished(row.id) }
         if let home = jumpedFrom, panes[home] != nil, home != focusedPane?.id { return .back(home) }
@@ -744,9 +769,11 @@ final class Workbench {
             // An answered request leaves Notification Center at once (§13.8).
             if previous[session.id] == .blocked { notifier.withdraw(pane: paneID) }
             if session.status == .done, isVisible(paneID) { monitor.markSeen(sessionID: session.id) }
+            // A Claude at work in one of the app's panes, the first time: the moment to ask for notifications,
+            // with the reason plain (never at launch). Asked once; nothing happens after that.
+            if session.status == .working { notifier.requestPermissionIfNeeded() }
             announce(session, pane: pane)
         }
-        NSApp.dockTile.badgeLabel = needsYouCount > 0 && Preferences.shared.dockBadge ? "\(needsYouCount)" : nil
         if layoutChanged { scheduleSave() }
     }
 
@@ -857,7 +884,7 @@ final class Workbench {
     /// tab until you look. A Claude's own marks say more than a bell, so its tab shows none.
     private func rang(_ pane: Pane) {
         if isVisible(pane.id) {
-            if !Preferences.shared.alertsPaused { NSSound.beep() }
+            if !Preferences.shared.alertsPaused { AlertCenter.beep() }
         } else if !pane.agentRunning {
             pane.noteBell()
         }
@@ -880,8 +907,16 @@ final class Workbench {
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
             localeIdentifier: Locale.current.identifier,
             localeExists: { FileManager.default.fileExists(atPath: "/usr/share/locale/\($0)") })
-        let environment = integration.environment(base, shell: shell, paneID: paneID.uuidString, hooksFile: writeHooksFile(for: paneID),
+        var environment = integration.environment(base, shell: shell, paneID: paneID.uuidString, hooksFile: writeHooksFile(for: paneID),
                                                   worktrees: Preferences.shared.worktreeFolder.path)
+#if DEBUG
+        // A test run never starts the real Claude Code (only stand-ins in its own folder), and its shells
+        // keep their history in that folder, not in the history of whoever is at this Mac.
+        if AppPlaces.isIsolated {
+            environment[ShellIntegration.Key.claudeOnlyUnder] = AppPlaces.supportFolder.path
+            environment["HISTFILE"] = AppPlaces.supportFolder.appendingPathComponent("shell-history").path
+        }
+#endif
         return Launch.shell(shell, directory: folder, environment: environment)
     }
 

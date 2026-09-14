@@ -50,7 +50,8 @@ sessions.
   button and Home; in the middle a search field, "Go to a workspace, tab or file ⌘P", which opens Go to;
   "+", the Files and Changes button and Settings at the end), and a **status bar** runs along its foot
   (branch, folder as `~/…/parent/folder`, how many Claudes and how many need you, the focused file's
-  details, ⌘P and ⇧⌘P). Both are drawn by the app in the chrome colour, never as toolbar items. Between
+  details, ⌘P and ⇧⌘P; short of room it lets go of the two keys, then the folder, rather than cutting
+  every item short). Both are drawn by the app in the chrome colour, never as toolbar items. Between
   them the meadow is on the left and the work area on the right: a **tab row** led by the **workspace
   button** (its colour, its name, a chevron: the menu of every workspace), then the panes. Terminals have
   no header; a file or a diff has a slim one with its path. Nothing in the bars repeats what is on
@@ -58,8 +59,8 @@ sessions.
 - **Sizes.** By default the meadow takes about 42 % of the window and the terminals keep at least 80
   columns. The divider drags from a 240 pt sidebar to the meadow alone. Below about 880 pt of window, the
   meadow steps aside; showing it then (⌃⌘S, the meadow button) gives it its narrowest sidebar beside the
-  terminals, at any window size the app allows. View offers Meadow and Terminals, Terminals Only, Meadow Only, Hide Meadow, and
-  Show Workspaces as List.
+  terminals, at any window size the app allows. View offers Meadow and Terminals, Terminals Only, Meadow
+  Only, Hide Meadow, and Show Workspaces as List.
 - **The bars behave as a title bar.** The top bar's empty stretches and the tab row's move the window,
   and a double-click on them does what Desktop & Dock says a title bar's double-click does (zoom, unless
   set to minimise or nothing). Nothing there opens a tab: new tabs come only from "+", ⌘T and the menus.
@@ -327,12 +328,17 @@ pane's border is 2.5 pt and the selected tab's line 3 pt. A theme that forces li
 - **When the window is not the one in use** (neither main nor key: the palette, a panel of its own, does
   not count), the accent turns grey (`lineStrong`) and the bars' content goes quieter, as every Mac title
   bar does. Hover and pressed fills are the primary colour at fixed strengths, not theme colours.
-- **Keys from VS Code where they are free.** ⌘B hides the meadow (the side bar's key), ⌘\ splits, ⌥Z
-  wraps lines, ⇧⌘V previews Markdown, ⌥⌘S saves all, ⌃G goes to a line, and the line keys above, each a
+- **Keys from VS Code where they are free.** ⌘B hides the meadow (the side bar's key), ⌘\ splits,
+  ⇧⌘V previews Markdown, ⌥⌘S saves all, ⌃G goes to a line, and the line keys above, each a
   second key beside the Mac one where both exist. A key without ⌘ belongs to the editor only while it has
-  the keyboard; in a terminal it goes to the program, so ⌥ stays Meta and ⌃ keys reach the shell. Keys
-  that would take a terminal's key or fight a Mac convention are not taken (⌃\`, ⌘1–3 for groups, ⌥⌘
-  arrows, ⌘J for the panel). `KeyTable` in the Kit lists every key and a test checks that no two collide.
+  the keyboard; in a terminal it goes to the program, so ⌥ stays Meta and ⌃ keys reach the shell. VS
+  Code's meanings that would take a terminal's key or fight a Mac convention are not taken: ⌃\` (its
+  terminal) stays the shell's, and ⌘1–3 (its editor groups), ⌥⌘ arrows (its editor tabs) and ⌘J (its
+  panel) keep Whiskr's meanings: tabs, panes and Next Request. No menu key is ⌥ (or ⇧⌥) with a letter or
+  digit: that types a character on many keyboards, which the menu would take from the editor (VS Code's
+  ⌥Z for Wrap Lines is "ż" on a Polish one, "Ω" on a US one), so Editor › Wrap Lines has no key.
+  `KeyTable` in the Kit lists every key, and a test checks that no two collide and that none takes a
+  typed character.
 - **The keyboard is always visible.** The rename field in Files shows the system focus ring. With Full
   Keyboard Access, Tab goes top bar → tab row → content → side panel → status bar.
 

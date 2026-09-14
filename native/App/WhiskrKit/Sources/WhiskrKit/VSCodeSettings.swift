@@ -67,13 +67,16 @@ public struct OtherEditorSettings: Equatable, Sendable {
         } catch {
             throw ThemeImportError.unreadable(String(localized: "The settings file is not JSON.", bundle: .module, comment: "Importing VS Code or Cursor settings: why they could not be read"))
         }
-        func number(_ key: String) -> Double? { (json[key] as? NSNumber).map(\.doubleValue) ?? (json[key] as? String).flatMap(Double.init) }
+        // Only a finite number: "nan", "inf" and 1e300 are no size (and 1e300 would trap as an Int).
+        func number(_ key: String) -> Double? {
+            ((json[key] as? NSNumber).map(\.doubleValue) ?? (json[key] as? String).flatMap(Double.init)).flatMap { $0.isFinite ? $0 : nil }
+        }
         func flag(_ key: String) -> Bool? { json[key] as? Bool }
         func text(_ key: String) -> String? { (json[key] as? String).map { $0.trimmingCharacters(in: .whitespaces) }.flatMap { $0.isEmpty ? nil : $0 } }
 
         editorFonts = text("editor.fontFamily").map(Self.fontFamilies) ?? []
         editorFontSize = number("editor.fontSize")
-        tabSize = number("editor.tabSize").map { Int($0) }
+        tabSize = number("editor.tabSize").flatMap { Int(exactly: $0.rounded(.towardZero)) }
         insertSpaces = flag("editor.insertSpaces")
         wordWrap = text("editor.wordWrap").map { $0 != "off" }
         switch text("editor.renderWhitespace") {

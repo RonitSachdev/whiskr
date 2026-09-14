@@ -43,6 +43,15 @@ targets:
       - path: Whiskr
         excludes:
           - "**/.DS_Store"
+      # The licence and the third-party notices travel inside the app (Contents/Resources), since the app
+      # is all a download holds: SwiftTerm's and Oniguruma's licences ask for their notices to go with the
+      # binary, and Apache 2.0 for NOTICE. The grammars', icons' and themes' licences are in the Kit's bundle.
+      - path: ../../LICENSE
+        group: Whiskr
+        buildPhase: resources
+      - path: ../../NOTICE
+        group: Whiskr
+        buildPhase: resources
     dependencies:
       - package: SwiftTerm
         product: SwiftTerm

@@ -1,0 +1,65 @@
+{
+  "author" : "someone",
+  "dark" : {
+    "app" : {
+      "accent" : "#ff8800",
+      "hover" : "#222222",
+      "press" : "#333333",
+      "sidebar" : "#111111"
+    },
+    "terminal" : {
+      "ansi" : [
+        "#102030",
+        "#1a2a3a",
+        "#243444",
+        "#2e3e4e",
+        "#384858",
+        "#425262",
+        "#4c5c6c",
+        "#566676",
+        "#607080",
+        "#6a7a8a",
+        "#748494",
+        "#7e8e9e",
+        "#8898a8",
+        "#92a2b2",
+        "#9cacbc",
+        "#a6b6c6"
+      ],
+      "background" : "#1b1d23",
+      "cursor" : "#d0d4dc",
+      "foreground" : "#d0d4dc",
+      "selection" : "#242a33"
+    }
+  },
+  "format" : "whiskr-theme",
+  "id" : "era-124a5a7",
+  "light" : {
+    "terminal" : {
+      "ansi" : [
+        "#102030",
+        "#1a2a3a",
+        "#243444",
+        "#2e3e4e",
+        "#384858",
+        "#425262",
+        "#4c5c6c",
+        "#566676",
+        "#607080",
+        "#6a7a8a",
+        "#748494",
+        "#7e8e9e",
+        "#8898a8",
+        "#92a2b2",
+        "#9cacbc",
+        "#a6b6c6"
+      ],
+      "background" : "#fbfaf7",
+      "cursor" : "#2b2b2b",
+      "foreground" : "#2b2b2b",
+      "selection" : "#c1c5c7"
+    }
+  },
+  "name" : "Era One",
+  "version" : 1
+}

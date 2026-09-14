@@ -133,8 +133,13 @@ public enum EditorConfig {
         return Properties(values)
     }
 
+    /// An `.editorconfig` larger than this is not one anybody wrote by hand, and is read as none: it is
+    /// read at every save.
+    static let largestFile = 256 * 1024
+
     public static func readFile(_ path: String) -> String? {
-        guard let data = FileManager.default.contents(atPath: path) else { return nil }
+        guard let size = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? Int, size <= largestFile,
+              let data = FileManager.default.contents(atPath: path) else { return nil }
         return String(decoding: data, as: UTF8.self)
     }
 
@@ -149,79 +154,184 @@ public enum EditorConfig {
         } else if !pattern.contains("/") {
             pattern = "**/" + pattern
         }
-        var ranges: [ClosedRange<Int>] = []
-        let source = "^" + translate(Array(pattern), ranges: &ranges) + "$"
-        guard let expression = try? NSRegularExpression(pattern: source),
-              let match = expression.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)) else { return false }
-        // Each numeric range's capture is a number within it.
-        for (index, range) in ranges.enumerated() {
-            let captured = match.range(at: index + 1)
-            guard captured.location != NSNotFound, let number = Int((path as NSString).substring(with: captured)), range.contains(number) else { return false }
-        }
-        return true
+        return GlobMatcher(Array(pattern)).matches(Array(path))
     }
 
-    /// A glob as a regular expression: `*` any characters but "/", `**` any characters, `?` one but "/",
-    /// `[seq]` and `[!seq]`, `{a,b}` (nested), `{1..5}` (a number in the range, checked after matching),
-    /// and `\` escaping the next character. A `{` or `[` without its closing is itself.
-    static func translate(_ glob: [Character], ranges: inout [ClosedRange<Int>]) -> String {
-        var out = ""
-        var index = 0
-        while index < glob.count {
-            let character = glob[index]
-            switch character {
-            case "\\":
-                index += 1
-                if index < glob.count { out += NSRegularExpression.escapedPattern(for: String(glob[index])) }
-            case "*":
-                if index + 1 < glob.count, glob[index + 1] == "*" {
-                    // "**/" at the start of a segment also matches no folder at all.
-                    let atSegment = index == 0 || glob[index - 1] == "/"
-                    if atSegment, index + 2 < glob.count, glob[index + 2] == "/" {
-                        out += "(?:.*/)?"
-                        index += 2
-                    } else {
-                        out += ".*"
-                        index += 1
-                    }
-                } else {
-                    out += "[^/]*"
-                }
-            case "?":
-                out += "[^/]"
-            case "[":
-                if let close = closing("]", in: glob, from: index + 1), !glob[(index + 1)..<close].contains("/") {
-                    var body = Array(glob[(index + 1)..<close])
-                    let negated = body.first == "!" || body.first == "^"
-                    if negated { body.removeFirst() }
-                    let escaped = body.map { "\\^[]".contains($0) ? "\\\($0)" : String($0) }.joined()
-                    out += "[" + (negated ? "^" : "") + escaped + "]"
-                    index = close
-                } else {
-                    out += "\\["
-                }
-            case "{":
-                if let close = closing("}", in: glob, from: index + 1, opening: "{") {
-                    let body = Array(glob[(index + 1)..<close])
-                    let alternatives = split(body)
-                    if let range = numericRange(String(body)) {
-                        ranges.append(range)
-                        out += "([+-]?[0-9]+)"
-                    } else if alternatives.count > 1 {
-                        out += "(?:" + alternatives.map { translate($0, ranges: &ranges) }.joined(separator: "|") + ")"
-                    } else {
-                        out += "\\{" + translate(body, ranges: &ranges) + "\\}"
-                    }
-                    index = close
-                } else {
-                    out += "\\{"
-                }
-            default:
-                out += NSRegularExpression.escapedPattern(for: String(character))
-            }
-            index += 1
+    /// A glob as a small automaton, run over the path once with every state it can be in at each
+    /// character (as a Thompson NFA), so matching takes time in proportion to the path times the glob,
+    /// never more. A regular expression of the same glob backtracks: `[*a*a*a*a*a*a*c]` from a cloned
+    /// repository took longer than 40 seconds on a 60-character name, on the main thread at every save.
+    ///
+    /// `*` is any characters but "/", `**` any characters, `?` one but "/", `[seq]` and `[!seq]` (ranges
+    /// such as `a-z` included), `{a,b}` (nested), `{1..5}` (a number in the range), and `\` escaping the
+    /// next character. A `{` or `[` without its closing is itself.
+    struct GlobMatcher {
+        enum Step {
+            /// One character that `test` accepts, then the next step.
+            case one((Character) -> Bool)
+            /// An optional sign and digits whose number is in the range, then the next step.
+            case number(ClosedRange<Int>)
+            /// Any of these steps, taking no character.
+            case jump([Int])
         }
-        return out
+
+        private(set) var steps: [Step] = []
+
+        init(_ glob: [Character]) {
+            compile(glob)
+        }
+
+        func matches(_ path: [Character]) -> Bool {
+            let accept = steps.count
+            // reached[i]: the steps the automaton can be at before path[i].
+            var reached = [Set<Int>](repeating: [], count: path.count + 1)
+            reached[0] = [0]
+            for position in 0...path.count {
+                // Every step reachable without taking a character.
+                var stack = Array(reached[position])
+                var states = reached[position]
+                while let state = stack.popLast() {
+                    guard state < accept, case .jump(let targets) = steps[state] else { continue }
+                    for target in targets where states.insert(target).inserted { stack.append(target) }
+                }
+                if position == path.count { return states.contains(accept) }
+                for state in states where state < accept {
+                    switch steps[state] {
+                    case .one(let test):
+                        if test(path[position]) { reached[position + 1].insert(state + 1) }
+                    case .number(let range):
+                        var end = position
+                        if end < path.count, path[end] == "+" || path[end] == "-" { end += 1 }
+                        var digitsEnd = end
+                        while digitsEnd < path.count, path[digitsEnd].isASCII, path[digitsEnd].isNumber {
+                            digitsEnd += 1
+                            if let number = Int(String(path[position..<digitsEnd])), range.contains(number) { reached[digitsEnd].insert(state + 1) }
+                        }
+                    case .jump:
+                        break
+                    }
+                }
+            }
+            return false
+        }
+
+        private mutating func add(_ step: Step) { steps.append(step) }
+
+        /// Any number of what `test` accepts: a jump to it or past it, it, and a jump back.
+        private mutating func repeating(_ test: @escaping (Character) -> Bool) {
+            let start = steps.count
+            add(.jump([start + 1, start + 3]))
+            add(.one(test))
+            add(.jump([start]))
+        }
+
+        /// Braces nested deeper than this are read as plain characters: each level is a call deeper, and a
+        /// repository's `.editorconfig` must not be able to run a thread's stack out.
+        static let deepestBraces = 32
+
+        private mutating func compile(_ glob: [Character], depth: Int = 0) {
+            var index = 0
+            while index < glob.count {
+                let character = glob[index]
+                switch character {
+                case "\\":
+                    index += 1
+                    if index < glob.count {
+                        let escaped = glob[index]
+                        add(.one { $0 == escaped })
+                    }
+                case "*":
+                    if index + 1 < glob.count, glob[index + 1] == "*" {
+                        // "**/" at the start of a segment also matches no folder at all.
+                        let atSegment = index == 0 || glob[index - 1] == "/"
+                        if atSegment, index + 2 < glob.count, glob[index + 2] == "/" {
+                            let start = steps.count
+                            add(.jump([start + 1, start + 5]))
+                            add(.jump([start + 2, start + 4]))
+                            add(.one { _ in true })
+                            add(.jump([start + 1]))
+                            add(.one { $0 == "/" })
+                            index += 2
+                        } else {
+                            repeating { _ in true }
+                            index += 1
+                        }
+                    } else {
+                        repeating { $0 != "/" }
+                    }
+                case "?":
+                    add(.one { $0 != "/" })
+                case "[":
+                    if let close = EditorConfig.closing("]", in: glob, from: index + 1), !glob[(index + 1)..<close].contains("/") {
+                        add(.one(Self.characterClass(Array(glob[(index + 1)..<close]))))
+                        index = close
+                    } else {
+                        add(.one { $0 == "[" })
+                    }
+                case "{":
+                    if depth < Self.deepestBraces, let close = EditorConfig.closing("}", in: glob, from: index + 1, opening: "{") {
+                        let body = Array(glob[(index + 1)..<close])
+                        let alternatives = EditorConfig.split(body)
+                        if let range = EditorConfig.numericRange(String(body)) {
+                            add(.number(range))
+                        } else if alternatives.count > 1 {
+                            alternation(alternatives, depth: depth + 1)
+                        } else {
+                            add(.one { $0 == "{" })
+                            compile(body, depth: depth + 1)
+                            add(.one { $0 == "}" })
+                        }
+                        index = close
+                    } else {
+                        add(.one { $0 == "{" })
+                    }
+                default:
+                    add(.one { $0 == character })
+                }
+                index += 1
+            }
+        }
+
+        /// One of `alternatives`: a jump to each, and from the end of each a jump past them all.
+        private mutating func alternation(_ alternatives: [[Character]], depth: Int) {
+            let fork = steps.count
+            add(.jump([]))
+            var starts: [Int] = [], ends: [Int] = []
+            for alternative in alternatives {
+                starts.append(steps.count)
+                compile(alternative, depth: depth)
+                ends.append(steps.count)
+                add(.jump([]))
+            }
+            steps[fork] = .jump(starts)
+            for end in ends { steps[end] = .jump([steps.count]) }
+        }
+
+        /// `[seq]`'s test: its characters and ranges ("a-z"), or anything but them after "!" or "^".
+        /// A "\\" takes the next character as itself.
+        static func characterClass(_ body: [Character]) -> (Character) -> Bool {
+            var body = body
+            let negated = body.first == "!" || body.first == "^"
+            if negated { body.removeFirst() }
+            var singles = Set<Character>()
+            var ranges: [ClosedRange<Character>] = []
+            var index = 0
+            while index < body.count {
+                var low = body[index]
+                if low == "\\", index + 1 < body.count {
+                    index += 1
+                    low = body[index]
+                }
+                if index + 2 < body.count, body[index + 1] == "-", body[index + 2] >= low {
+                    ranges.append(low...body[index + 2])
+                    index += 3
+                } else {
+                    singles.insert(low)
+                    index += 1
+                }
+            }
+            return { character in (singles.contains(character) || ranges.contains { $0.contains(character) }) != negated }
+        }
     }
 
     /// The index of the `close` that ends what opens before `start` (nested `opening`s counted, `\` escapes).

@@ -74,6 +74,25 @@ struct VSCodeThemeTests {
         }
     }
 
+    @Test("a chain that includes each file twice, or goes too deep, is refused at once instead of read a billion times")
+    func includeExplosion() throws {
+        try Self.withFolder { folder in
+            for level in 0..<30 {
+                let next = "t\(level + 1).json"
+                let text = level == 29 ? ##"{ "tokenColors": [] }"## : #"{ "include": "./\#(next)", "tokenColors": "./\#(next)" }"#
+                try Data(text.utf8).write(to: folder.appendingPathComponent("t\(level).json"))
+            }
+            var refused = false
+            let took = threadTime {
+                refused = (try? VSCodeThemeDocument.read(folder.appendingPathComponent("t0.json"), root: folder)) == nil
+            }
+            #expect(refused)
+            #expect(took < .seconds(2), "took \(took)")
+            // Two levels of both is an ordinary theme, and reads.
+            #expect(throws: Never.self) { try VSCodeThemeDocument.read(folder.appendingPathComponent("t27.json"), root: folder) }
+        }
+    }
+
     @Test("JSON with comments and trailing commas, \"default\" taking back an included colour, semantic colours left out")
     func jsoncAndDefault() throws {
         try Self.withFolder { folder in

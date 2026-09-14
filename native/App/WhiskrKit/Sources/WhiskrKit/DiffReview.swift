@@ -110,7 +110,7 @@ public enum DiffPatch {
     /// nil when no hunk holds them. Every other change in their hunk is turned into what the side the patch
     /// is applied to already has: unchosen lines that side holds become context, the rest are left out.
     public static func patch(_ diff: FileDiff, old: Set<Int>, new: Set<Int>, direction: Direction) -> String? {
-        guard !old.isEmpty || !new.isEmpty else { return nil }
+        guard diff.acceptsChangePatches, !old.isEmpty || !new.isEmpty else { return nil }
         guard let hunk = diff.hunks.first(where: { hunk in
             hunk.lines.contains { line in
                 (line.kind == .removed && line.oldNumber.map(old.contains) == true) || (line.kind == .added && line.newNumber.map(new.contains) == true)
@@ -119,7 +119,7 @@ public enum DiffPatch {
         var body: [String] = []
         var oldCount = 0, newCount = 0
         func add(_ marker: Character, _ line: DiffLine) {
-            body.append(String(marker) + line.text)
+            body.append(String(marker) + line.text + (line.carriageReturn ? "\r" : ""))
             if line.noNewlineAtEnd { body.append("\\ No newline at end of file") }
             if marker != "+" { oldCount += 1 }
             if marker != "-" { newCount += 1 }
@@ -136,7 +136,7 @@ public enum DiffPatch {
         }
         // Each side's start: the side the patch is applied to is the hunk's own; the other follows it.
         let start = direction == .toOld ? hunk.oldStart : hunk.newStart
-        let oldPath = diff.oldPath ?? diff.newPath ?? "", newPath = diff.newPath ?? diff.oldPath ?? ""
+        let oldPath = diff.oldPath ?? "", newPath = diff.newPath ?? ""
         var lines = [
             "diff --git \(quoted("a/" + oldPath)) \(quoted("b/" + newPath))",
             "--- \(quoted("a/" + oldPath))",
@@ -145,6 +145,15 @@ public enum DiffPatch {
         ]
         lines += body
         return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// `git diff`'s arguments for a diff whose changes `patch` can take one by one, whatever the user's git
+    /// configuration: three lines of context (with `diff.context=0` a hunk has none, and `git apply` then
+    /// puts it at the end of the file and says it worked), and the "a/" and "b/" a patch names its sides
+    /// with (`diff.mnemonicPrefix` makes them "i/" and "w/", `diff.noprefix` drops them, and `apply`
+    /// fails). The file's path goes after these, as a pathspec.
+    public static func diffArguments(staged: Bool) -> [String] {
+        ["diff", "--no-ext-diff", "--no-textconv", "--no-color", "-M", "-U3", "--src-prefix=a/", "--dst-prefix=b/"] + (staged ? ["--cached"] : [])
     }
 
     /// A path as git writes it in a patch: in double quotes, with C escapes, when it holds a space, a quote,

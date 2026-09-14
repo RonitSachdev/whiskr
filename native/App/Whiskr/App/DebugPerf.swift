@@ -38,9 +38,18 @@ enum DebugPerf {
     /// covered window; Core Video's link ticks at the display's rate whatever the window, and runs the same
     /// frame code.
     static func prepareProcess() {
+        if isOn || DebugScenario.value("--measure-files") != nil {
+            // A window in front is never put to App Nap; the run's, never seen, would be, and its timers
+            // (the main-thread watches among them) coalesced and late by tens of milliseconds: waits that are
+            // not work, read as holds. Held for the run's life.
+            appNapStandIn = ProcessInfo.processInfo.beginActivity(options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
+                                                                  reason: "Measuring as a window in front")
+        }
         guard isOn else { return }
         setenv("SWIFTTERM_FORCE_CVDISPLAYLINK", "1", 1)
     }
+
+    private static var appNapStandIn: NSObjectProtocol?
 
     static func run(workbench: Workbench, window controller: MainWindowController) {
         guard let out = DebugScenario.value("--perf"), let window = controller.window else { return }
@@ -445,7 +454,7 @@ final class PerfSuite {
     }
 
     /// The correctness checks, run only when named.
-    private static let checkFlows: Set<String> = ["closing", "sizes", "interactions"]
+    private static let checkFlows: Set<String> = ["closing", "sizes", "interactions", "journey", "files", "layout", "robust"]
 
     /// Without `--perf-flows`, every measurement; the checks only when named.
     private func wants(_ flow: String) -> Bool { flows?.contains(flow) ?? !Self.checkFlows.contains(flow) }
@@ -470,6 +479,10 @@ final class PerfSuite {
         if wants("closing") { await closingCheck() }
         if wants("sizes") { await sizesCheck() }
         if wants("interactions") { await interactionsCheck() }
+        if wants("journey") { await journeyCheck() }
+        if wants("files") { await filesCheck() }
+        if wants("layout") { await layoutCheck() }
+        if wants("robust") { await robustCheck() }
         guard flows.map({ !$0.subtracting(Self.checkFlows).isEmpty }) ?? true else { return }
         // From before the first terminal: making its view (its renderer among it) is main-thread work too.
         pinger.start()
@@ -694,6 +707,11 @@ final class PerfSuite {
         ]))
         limit("memory: the app's footprint with \(tabs) tabs, MB", app, atMost: 900)
         limit("memory: the app's footprint for each tab past the first, MB", app.flatMap { app in oneTab.app.map { (app - $0) / Double(max(tabs - 1, 1)) } }, atMost: 35)
+        // Tabs out of the window give their renderers back after `metalRestDelay`: what is left once they have.
+        await PerfWait.sleep(Double(TerminalSurface.metalRestDelay.components.seconds) * 1000 + 2000)
+        let rested = Self.footprint(getpid())
+        rows[rows.count - 1].values.append(("app, \(tabs) tabs after their renderers rest", mb(rested)))
+        limit("memory: the app's footprint with \(tabs) tabs once hidden ones have rested, MB", rested, atMost: 450)
         if let created = workbench.workspaces.first(where: { $0.tabs.contains { $0.tree.contains(first.id) } }) { workbench.close(workspace: created) }
         workbench.select(workspace: space)
         _ = await PerfWait.until(2000) { self.focused(self.main) }

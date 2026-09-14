@@ -18,6 +18,11 @@ final class DocumentSyntax {
     /// How long an edit waits for a line another document's or the background's is tokenizing (with the
     /// same tokenizer) before leaving its own lines to the background.
     static let lockWait = 0.001
+    /// The longest line an edit tokenizes here, in UTF-16 units. A search's time limit holds only between
+    /// matches, and one search can scan a line from every position, so its cost grows with the square of
+    /// the line (a C++ line of 2,000 spaces takes 20 ms, of 500 about 1 ms): longer lines go to the
+    /// background, where a slow line stalls nothing. Lines of code are far shorter.
+    static let editLineLimit = 500
 
     private(set) var language: CodeLanguage
     /// The language's tokenizer, shared with other documents in it; nil until its grammar is compiled.
@@ -95,7 +100,9 @@ final class DocumentSyntax {
             let start = DispatchTime.now().uptimeNanoseconds
             let (text, lines) = text()
             done = states.advance(using: tokenizer, deadline: start + Self.editBudget, lineTimeLimit: Double(Self.editBudget) / 1e9,
-                                  keepsStoppedLines: false, lockWait: Self.lockWait) { TextSnapshot.units(of: text, lines: lines, line: $0) }
+                                  keepsStoppedLines: false, lockWait: Self.lockWait, longestLine: Self.editLineLimit) {
+                TextSnapshot.units(of: text, lines: lines, line: $0)
+            }
         }
         if !states.isComplete { handToBackground() }
         return done

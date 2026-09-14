@@ -12,10 +12,36 @@ struct StatusBar: View {
     @Environment(\.controlActiveState) private var activeState
 
     var body: some View {
+        // Short of room, the bar lets go of what is found elsewhere first, rather than cutting every item
+        // short: the two keys (the top bar's search field says ⌘P too), then the folder (the tab and the
+        // prompt show it). The branch, the Claudes, who needs you and the file's details stay whole.
+        ViewThatFits(in: .horizontal) {
+            items(showsKeys: true, showsFolder: true)
+            items(showsKeys: false, showsFolder: true)
+            items(showsKeys: false, showsFolder: false)
+        }
+        .labelStyle(StatusLabelStyle())
+        .font(.system(size: 11))
+        .foregroundStyle(Color.ink2)
+        // Not the window in use: quieter, as the top bar.
+        .opacity(activeState.inUse ? 1 : 0.7)
+        .padding(.horizontal, Look.Space.s)
+        .frame(maxWidth: .infinity, minHeight: Look.Height.statusBar, maxHeight: Look.Height.statusBar)
+        .chromeBackground()
+        .overlay(alignment: .top) { Color.line.frame(height: 1).allowsHitTesting(false) }
+        // In a window that is not the one in use, the first click acts as well as bringing it forward, as
+        // in the top bar and the tab row.
+        .allowsWindowActivationEvents()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(String(localized: "Status", comment: "Accessibility label of the status bar"))
+    }
+
+    /// The bar's items, with or without the keys at its end and the folder.
+    private func items(showsKeys: Bool, showsFolder: Bool) -> some View {
         let workspace = workbench.selectedWorkspace
         let folder = workspace.map { workbench.focusedPane?.currentFolder ?? $0.liveFolder }
         let summary = StatusSummary(statuses: workbench.agentRows.map(\.status))
-        HStack(spacing: 0) {
+        return HStack(spacing: 0) {
             if let branch = workspace?.branch {
                 Button {
                     NSApp.sendAction(#selector(MainWindowController.showChangesPanel(_:)), to: nil, from: nil)
@@ -29,7 +55,7 @@ struct StatusBar: View {
                 .help(String(localized: "Branch \(branch): show Changes (⇧⌘C)", comment: "Status bar: the git branch's tooltip"))
                 Separator()
             }
-            if let folder {
+            if showsFolder, let folder {
                 Label(Places.short(folder, home: FileManager.default.homeDirectoryForCurrentUser.path), systemImage: "folder")
                     .lineLimit(1)
                     .truncationMode(.head)
@@ -67,25 +93,13 @@ struct StatusBar: View {
             if let document = workbench.focusedDocument, document.isText {
                 FileStatus(document: document)
                     .statusItem()
-                Separator()
+                if showsKeys { Separator() }
             }
-            KeyHint(key: "⌘P", label: String(localized: "Go to"), action: #selector(MainWindowController.goTo(_:)))
-            KeyHint(key: "⇧⌘P", label: String(localized: "Commands"), action: #selector(MainWindowController.showCommandPalette(_:)))
+            if showsKeys {
+                KeyHint(key: "⌘P", label: String(localized: "Go to"), action: #selector(MainWindowController.goTo(_:)))
+                KeyHint(key: "⇧⌘P", label: String(localized: "Commands"), action: #selector(MainWindowController.showCommandPalette(_:)))
+            }
         }
-        .labelStyle(StatusLabelStyle())
-        .font(.system(size: 11))
-        .foregroundStyle(Color.ink2)
-        // Not the window in use: quieter, as the top bar.
-        .opacity(activeState.inUse ? 1 : 0.7)
-        .padding(.horizontal, Look.Space.s)
-        .frame(maxWidth: .infinity, minHeight: Look.Height.statusBar, maxHeight: Look.Height.statusBar)
-        .chromeBackground()
-        .overlay(alignment: .top) { Color.line.frame(height: 1).allowsHitTesting(false) }
-        // In a window that is not the one in use, the first click acts as well as bringing it forward, as
-        // in the top bar and the tab row.
-        .allowsWindowActivationEvents()
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(String(localized: "Status", comment: "Accessibility label of the status bar"))
     }
 }
 

@@ -209,7 +209,7 @@ struct HomePage: View {
             // A recent folder may have gone since: it is checked when chosen, and dropped if so.
             guard (try? Discovery.validateFolder(path, home: URL(fileURLWithPath: Self.home)).get()) != nil else {
                 workbench.forget(folder: path)
-                NSSound.beep()
+                AlertCenter.beep()
                 return
             }
             workbench.open(folder: path)

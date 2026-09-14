@@ -47,5 +47,6 @@ jobs:
       - name: Meadow scene tests
         run: make test-scene SCRATCH="$RUNNER_TEMP/whiskr"
 
+      # Debug: it compiles everything Release does and the test harness besides (`make build` is Release).
       - name: Build the app (Debug)
-        run: make build DERIVED="$RUNNER_TEMP/derived"
+        run: make debug DERIVED="$RUNNER_TEMP/derived"

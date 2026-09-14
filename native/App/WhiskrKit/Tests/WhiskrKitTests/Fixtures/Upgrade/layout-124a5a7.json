@@ -1,0 +1,140 @@
+{
+  "selectedWorkspace" : "11111111-0000-0000-0000-000000000002",
+  "version" : 1,
+  "workspaces" : [
+    {
+      "color" : 3,
+      "folder" : "\/Users\/someone\/Projects\/alpha",
+      "id" : "11111111-0000-0000-0000-000000000001",
+      "name" : "Alpha",
+      "panel" : {
+        "mode" : "changes",
+        "shown" : true,
+        "width" : 333
+      },
+      "selectedTab" : "22222222-0000-0000-0000-000000000002",
+      "tabs" : [
+        {
+          "focusedPane" : "33333333-0000-0000-0000-000000000002",
+          "id" : "22222222-0000-0000-0000-000000000001",
+          "name" : "build",
+          "pages" : [
+            {
+              "id" : "44444444-0000-0000-0000-000000000001",
+              "kind" : "file",
+              "path" : "\/Users\/someone\/Projects\/alpha\/README.md"
+            }
+          ],
+          "panes" : [
+            {
+              "accountConfigDir" : "\/Users\/someone\/Projects\/.claude-work",
+              "claudeSessionID" : "sess-1",
+              "claudeSessionTitle" : "Fix the cart",
+              "folder" : "\/Users\/someone\/Projects\/alpha",
+              "id" : "33333333-0000-0000-0000-000000000001",
+              "isClaude" : true,
+              "pinned" : true
+            },
+            {
+              "folder" : "\/Users\/someone\/Projects\/alpha\/src",
+              "id" : "33333333-0000-0000-0000-000000000002",
+              "isClaude" : false
+            }
+          ],
+          "tree" : {
+            "split" : {
+              "_0" : {
+                "axis" : "horizontal",
+                "first" : {
+                  "pane" : {
+                    "_0" : "33333333-0000-0000-0000-000000000001"
+                  }
+                },
+                "ratio" : 0.62,
+                "second" : {
+                  "split" : {
+                    "_0" : {
+                      "axis" : "vertical",
+                      "first" : {
+                        "pane" : {
+                          "_0" : "33333333-0000-0000-0000-000000000002"
+                        }
+                      },
+                      "ratio" : 0.4,
+                      "second" : {
+                        "pane" : {
+                          "_0" : "44444444-0000-0000-0000-000000000001"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "focusedPane" : "33333333-0000-0000-0000-000000000003",
+          "id" : "22222222-0000-0000-0000-000000000002",
+          "pages" : [
+            {
+              "id" : "44444444-0000-0000-0000-000000000002",
+              "kind" : "changes",
+              "path" : "\/Users\/someone\/Projects\/alpha\/main.swift"
+            }
+          ],
+          "panes" : [
+            {
+              "folder" : "\/Users\/someone\/Projects\/alpha",
+              "id" : "33333333-0000-0000-0000-000000000003",
+              "isClaude" : false
+            }
+          ],
+          "tree" : {
+            "split" : {
+              "_0" : {
+                "axis" : "vertical",
+                "first" : {
+                  "pane" : {
+                    "_0" : "33333333-0000-0000-0000-000000000003"
+                  }
+                },
+                "ratio" : 0.5,
+                "second" : {
+                  "pane" : {
+                    "_0" : "44444444-0000-0000-0000-000000000002"
+                  }
+                }
+              }
+            }
+          },
+          "zoomedPane" : "33333333-0000-0000-0000-000000000003"
+        }
+      ]
+    },
+    {
+      "folder" : "\/Users\/someone\/Projects\/beta",
+      "id" : "11111111-0000-0000-0000-000000000002",
+      "selectedTab" : "22222222-0000-0000-0000-000000000003",
+      "tabs" : [
+        {
+          "focusedPane" : "33333333-0000-0000-0000-000000000004",
+          "id" : "22222222-0000-0000-0000-000000000003",
+          "name" : "日本語のタブ",
+          "panes" : [
+            {
+              "folder" : "\/Users\/someone\/Projects\/beta",
+              "id" : "33333333-0000-0000-0000-000000000004",
+              "isClaude" : false
+            }
+          ],
+          "tree" : {
+            "pane" : {
+              "_0" : "33333333-0000-0000-0000-000000000004"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

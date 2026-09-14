@@ -25,6 +25,17 @@ struct AutoClosingTests {
         #expect(typing("a", before: "") == nil)
     }
 
+    @Test("a pair with an empty side is left out of a language, and never hangs the balance check")
+    func emptyPairs() {
+        let language = LanguageConfiguration(json: ["brackets": [["(", ""], ["[", "]"]], "autoClosingPairs": [["{", ""], ["", "}"], ["\"", "\""]],
+                                                         "surroundingPairs": [["<", ""]]])
+        #expect(language.brackets == [EditingPairs.Pair("[", "]")])
+        #expect(language.autoClosingPairs == [EditingPairs.AutoClosingPair("\"", "\"")])
+        #expect(language.surroundingPairs.isEmpty == false)
+        #expect(!language.surroundingPairs.contains { $0.open.isEmpty || $0.close.isEmpty })
+        #expect(!AutoClosing.hasUnmatchedClosing(after: "foo", "bar", pair: EditingPairs.AutoClosingPair("(", "")))
+    }
+
     @Test("a bracket the line already closes, unmatched, is not closed again")
     func balance() {
         #expect(typing("(", before: "foo", after: ")") == nil)
@@ -169,6 +180,17 @@ struct LineMovesTests {
         #expect(apply(LineMoves.move(ending as NSString, selection: NSRange(location: 2, length: 0), up: false), to: ending)?.0 == "a\n\nb")
     }
 
+    @Test("a line holding U+2028, U+2029, U+0085 or a lone \\r is one line, and moving it keeps it as it was")
+    func unusualSeparators() {
+        for separator in ["\u{2028}", "\u{2029}", "\u{85}", "\r"] {
+            let text = "one\ntw" + separator + "o\nthree"
+            let up = apply(LineMoves.move(text as NSString, selection: NSRange(location: 5, length: 0), up: true), to: text)
+            #expect(up?.0 == "tw" + separator + "o\none\nthree", "\(separator.unicodeScalars.first!.value)")
+            let deleted = apply(LineMoves.delete(text as NSString, selection: NSRange(location: 7, length: 0)), to: text)
+            #expect(deleted?.0 == "one\nthree", "\(separator.unicodeScalars.first!.value)")
+        }
+    }
+
     @Test("Copy Line Up and Down double the lines; Down selects the lower copy")
     func copy() {
         let text = "one\ntwo"
@@ -282,6 +304,12 @@ struct SaveFixesTests {
         var result = text as NSString
         for edit in edits.reversed() { result = result.replacingCharacters(in: edit.range, with: edit.text) as NSString }
         return result as String
+    }
+
+    @Test("lines end at \\n only: spaces before a U+2028 inside a line are its text")
+    func unusualSeparators() {
+        #expect(apply("a \u{2028}b  \nc", trim: true, newline: true) == "a \u{2028}b\nc\n")
+        #expect(apply("a\u{85}  ", trim: true, newline: true) == "a\u{85}\n")
     }
 
     @Test("trailing spaces and tabs go from every line; nothing else changes")

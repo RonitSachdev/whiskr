@@ -12,6 +12,8 @@ final class CodeTextView: NSTextView {
     weak var document: FileDocument?
     /// Go to Line (⌘L, ⌃G) asks the page to show its field.
     var onGoToLine: (() -> Void)?
+    /// The editor took the keyboard (its tab shown again, a click): the status bar shows its caret.
+    var onFocus: (() -> Void)?
     private lazy var decorations = EditorDecorations(textView: self)
     /// Closings the editor added as their openings were typed, while the cursor stays inside the pair.
     private var addedClosings = AutoClosing.Added()
@@ -46,6 +48,12 @@ final class CodeTextView: NSTextView {
 
     required init?(coder: NSCoder) {
         fatalError("CodeTextView is created in code")
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { onFocus?() }
+        return became
     }
 
     // MARK: Look

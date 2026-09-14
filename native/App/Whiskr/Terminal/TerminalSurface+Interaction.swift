@@ -74,11 +74,11 @@ extension TerminalSurface {
     /// ⌘G and ⇧⌘G, Return and ⇧Return in the bar: the next or previous match, with the bar open or not.
     func stepFind(forward: Bool) {
         let text = isFindShown ? findBar?.text ?? "" : Self.findPasteboardText ?? ""
-        guard !text.isEmpty else { return NSSound.beep() }
+        guard !text.isEmpty else { return AlertCenter.beep() }
         Self.findPasteboardText = text
         let found = forward ? findNext(text) : findPrevious(text)
         if isFindShown { findBar?.showCount(searchMatchSummary(text)) }
-        if !found { NSSound.beep() }
+        if !found { AlertCenter.beep() }
     }
 
     /// ⌘E: the selection becomes what Find looks for, here and in every other app.
@@ -106,13 +106,13 @@ extension TerminalSurface {
 
     /// Go › Previous Command (⌘↑): the prompt before the top of the view scrolls to the top.
     @objc func jumpToPreviousCommand(_ sender: Any?) {
-        guard let row = previousSemanticPromptRow() else { return NSSound.beep() }
+        guard let row = previousSemanticPromptRow() else { return AlertCenter.beep() }
         scrollTo(row: row)
     }
 
     /// Go › Next Command (⌘↓).
     @objc func jumpToNextCommand(_ sender: Any?) {
-        guard let row = nextSemanticPromptRow() else { return NSSound.beep() }
+        guard let row = nextSemanticPromptRow() else { return AlertCenter.beep() }
         scrollTo(row: row)
     }
 
@@ -123,7 +123,7 @@ extension TerminalSurface {
     @objc func selectNextCommandOutput(_ sender: Any?) { selectCommandOutput(backward: false) }
 
     private func selectCommandOutput(backward: Bool) {
-        guard let reach else { return NSSound.beep() }
+        guard let reach else { return AlertCenter.beep() }
         // The cursor's row, counted as `terminalContentSnapshot` counts (from the first line ever kept).
         let cursor = terminalContentSnapshot(region: .viewport)?.cursorRow ?? 0
         let selected = selectedCommandPrompt
@@ -146,7 +146,7 @@ extension TerminalSurface {
         }
         guard let command else {
             selectedCommandPrompt = nil
-            return NSSound.beep()
+            return AlertCenter.beep()
         }
         selectedCommandPrompt = command.prompt
         // Its output's first row in view, with the prompt above it.
@@ -370,8 +370,11 @@ extension TerminalSurface {
     /// The terminal's own commands, and Find without a replace field; nil for anything else.
     func validateOwnItem(_ item: NSValidatedUserInterfaceItem) -> Bool? {
         switch item.action {
-        case #selector(jumpToPreviousCommand(_:)), #selector(jumpToNextCommand(_:)),
-             #selector(selectPreviousCommandOutput(_:)), #selector(selectNextCommandOutput(_:)):
+        // Previous and Next Command use SwiftTerm's own prompt rows; only selecting a command's output
+        // reaches into the terminal (`TerminalReach`), and dims when that cannot.
+        case #selector(jumpToPreviousCommand(_:)), #selector(jumpToNextCommand(_:)):
+            return true
+        case #selector(selectPreviousCommandOutput(_:)), #selector(selectNextCommandOutput(_:)):
             return reach != nil
         case #selector(performTextFinderAction(_:)):
             switch NSTextFinder.Action(rawValue: item.tag) {

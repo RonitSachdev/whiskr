@@ -3,6 +3,10 @@ Copyright 2026 Whiskr contributors
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
 
+The app carries this file and LICENSE in Whiskr.app/Contents/Resources. The licence texts of the
+grammars, file icons and themes are also beside them, in
+Whiskr.app/Contents/Resources/WhiskrKit_WhiskrKit.bundle/Contents/Resources/*/ThirdParty.
+
 The name "Whiskr", the app icon (docs/logo.svg and the icon images made from it) and the cat character are
 used to identify this project. Apache License 2.0, section 6, grants no permission to use them as trade
 names, trademarks or product names, except as needed to describe the origin of the work.
@@ -41,6 +45,9 @@ Licence: MIT
   OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+The app also carries SwiftTerm's Metal shader source unchanged (Contents/Resources/SwiftTermShaders.metal,
+from Sources/SwiftTerm/Apple/Metal/Shaders.metal), compiled at launch; it is under the licence above.
+
 SwiftTerm's package also names swift-argument-parser (used only by its Termcast tool) and swift-png
 (used only on Linux, Windows, WASI and Android). Neither is built into Whiskr.
 
@@ -68,8 +75,8 @@ Code translated from other projects (behaviour ported to Swift, attributed in a 
 
 - vscode-textmate v9.3.2, https://github.com/microsoft/vscode-textmate @
   25b68dad91920b1ed79d357534b8c4582f62d80d, MIT, Copyright (c) Microsoft Corporation: rule.ts, grammar.ts,
-  tokenizeString.ts, matcher.ts and theme.ts, in TextMateGrammar.swift, TextMateTokenizer.swift,
-  ScopeSelector.swift and SyntaxTheme.swift.
+  grammarDependencies.ts, tokenizeString.ts, matcher.ts and theme.ts, in TextMateGrammar.swift,
+  TextMateTokenizer.swift, ScopeSelector.swift and SyntaxTheme.swift.
 - vscode-oniguruma, https://github.com/microsoft/vscode-oniguruma @ 1e38f9612a2599529cfa54283dd419bad697de23,
   MIT, Copyright (c) Microsoft Corporation: the scanner's search cache and its use of Oniguruma's RegSet, in
   TextMateRegex.swift.

@@ -83,6 +83,9 @@ public struct WorldSettings: Equatable, Sendable, Codable {
     }
 
     public func write(to defaults: UserDefaults) {
-        if let data = try? JSONEncoder().encode(self) { defaults.set(data, forKey: Self.defaultsKey) }
+        // Keys in a fixed order, so the same settings are always the same bytes.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        if let data = try? encoder.encode(self) { defaults.set(data, forKey: Self.defaultsKey) }
     }
 }

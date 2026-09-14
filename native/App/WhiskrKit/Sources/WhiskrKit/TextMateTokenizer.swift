@@ -273,7 +273,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
     }
 
     private func tokenizeString(_ line: RegexLine, isFirstLine firstLine: Bool, position start: Int, stack initial: StateStack, tokens: inout LineTokens,
-                                checkWhile: Bool, deadline: UInt64?) -> Scan {
+                                checkWhile: Bool, deadline: UInt64?, depth: Int = 0) -> Scan {
         let lineLength = line.count
         let current = lineCounter
         var stack = initial
@@ -282,7 +282,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
         var anchorPosition = -1
 
         if checkWhile {
-            let result = checkWhileConditions(line, isFirstLine: isFirstLine, position: position, stack: stack, tokens: &tokens)
+            let result = checkWhileConditions(line, isFirstLine: isFirstLine, position: position, stack: stack, tokens: &tokens, deadline: deadline)
             stack = result.stack
             position = result.position
             isFirstLine = result.isFirstLine
@@ -304,7 +304,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
                 guard case .beginEnd(_, _, _, let endCaptures, _, _) = grammar.rule(stack.ruleID).kind else { break }
                 tokens.produce(stack.contentScopes, captures[0].start)
                 stack = stack.with(contentScopes: stack.nameScopes)
-                handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: endCaptures, indices: captures)
+                handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: endCaptures, indices: captures, deadline: deadline, depth: depth)
                 tokens.produce(stack.contentScopes, captures[0].end)
 
                 let popped = stack
@@ -327,7 +327,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
 
                 switch rule.kind {
                 case .beginEnd(_, let beginCaptures, let end, _, _, _):
-                    handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: beginCaptures, indices: captures)
+                    handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: beginCaptures, indices: captures, deadline: deadline, depth: depth)
                     tokens.produce(stack.contentScopes, captures[0].end)
                     anchorPosition = captures[0].end
                     stack = stack.with(contentScopes: push(nameScopes, rule.contentName?.resolve(line, captures)))
@@ -339,7 +339,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
                         return Scan(stack: stack, stoppedEarly: false)
                     }
                 case .beginWhile(_, let beginCaptures, let whileSource, _, _):
-                    handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: beginCaptures, indices: captures)
+                    handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: beginCaptures, indices: captures, deadline: deadline, depth: depth)
                     tokens.produce(stack.contentScopes, captures[0].end)
                     anchorPosition = captures[0].end
                     stack = stack.with(contentScopes: push(nameScopes, rule.contentName?.resolve(line, captures)))
@@ -351,7 +351,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
                     }
                 default:
                     if case .match(_, let matchCaptures) = rule.kind {
-                        handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: matchCaptures, indices: captures)
+                        handleCaptures(line, isFirstLine: isFirstLine, stack: stack, tokens: &tokens, captures: matchCaptures, indices: captures, deadline: deadline, depth: depth)
                     }
                     tokens.produce(stack.contentScopes, captures[0].end)
                     // A match is left at once.
@@ -383,7 +383,8 @@ public final class TextMateTokenizer: @unchecked Sendable {
 
     /// From the bottom of the stack up, each `while` region must match at the line's start, or it and
     /// everything above it ends. A `while` may consume text.
-    private func checkWhileConditions(_ line: RegexLine, isFirstLine firstLine: Bool, position start: Int, stack initial: StateStack, tokens: inout LineTokens) -> WhileResult {
+    private func checkWhileConditions(_ line: RegexLine, isFirstLine firstLine: Bool, position start: Int, stack initial: StateStack, tokens: inout LineTokens,
+                                      deadline: UInt64?) -> WhileResult {
         var stack = initial
         var position = start
         var isFirstLine = firstLine
@@ -409,7 +410,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
             let captures = match.captures
             if !captures.isEmpty {
                 tokens.produce(element.contentScopes, captures[0].start)
-                handleCaptures(line, isFirstLine: isFirstLine, stack: element, tokens: &tokens, captures: whileCaptures, indices: captures)
+                handleCaptures(line, isFirstLine: isFirstLine, stack: element, tokens: &tokens, captures: whileCaptures, indices: captures, deadline: deadline, depth: 0)
                 tokens.produce(element.contentScopes, captures[0].end)
                 anchorPosition = captures[0].end
                 if captures[0].end > position {
@@ -461,7 +462,13 @@ public final class TextMateTokenizer: @unchecked Sendable {
 
     // MARK: Captures
 
-    private func handleCaptures(_ line: RegexLine, isFirstLine: Bool, stack: StateStack, tokens: inout LineTokens, captures: [Rule?], indices: [CaptureRange]) {
+    /// How deep captures may be tokenized again inside captures. A capture whose patterns include its own
+    /// rule matches the same text again forever (vscode-textmate stops only when JavaScript's stack runs
+    /// out); real grammars nest a few levels at most. Deeper, a capture only takes its name.
+    static let captureDepthLimit = 16
+
+    private func handleCaptures(_ line: RegexLine, isFirstLine: Bool, stack: StateStack, tokens: inout LineTokens, captures: [Rule?], indices: [CaptureRange],
+                                deadline: UInt64?, depth: Int) {
         guard !captures.isEmpty else { return }
         let count = min(captures.count, indices.count)
         var local: [(scopes: ScopeStack, end: Int)] = []
@@ -483,7 +490,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
                 tokens.produce(stack.contentScopes, range.start)
             }
 
-            if case .capture(let retokenize?) = capture.kind {
+            if case .capture(let retokenize?) = capture.kind, depth < Self.captureDepthLimit {
                 // The captured text is tokenized again, with the capture's own patterns.
                 let nameScopes = push(stack.contentScopes, capture.name?.resolve(line, indices))
                 let contentScopes = push(nameScopes, capture.contentName?.resolve(line, indices))
@@ -491,7 +498,7 @@ public final class TextMateTokenizer: @unchecked Sendable {
                                        endRule: nil, nameScopes: nameScopes, contentScopes: contentScopes)
                 let substring = RegexLine(prefixOf: line, length: range.end, id: nextStringID())
                 _ = tokenizeString(substring, isFirstLine: isFirstLine && range.start == 0, position: range.start, stack: inner, tokens: &tokens,
-                                   checkWhile: false, deadline: nil)
+                                   checkWhile: false, deadline: deadline, depth: depth + 1)
                 continue
             }
 

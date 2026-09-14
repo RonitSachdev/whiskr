@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import WhiskrKit
 
 /// What a tab can show besides terminals. A page takes a terminal's place in its tab's tree (its id is
@@ -49,6 +49,23 @@ extension Workbench {
     }
 
     var isHome: Bool { selectedWorkspace == nil }
+
+    /// An edit in the tab row (a rename) has ended and its field has gone: if it took the keyboard with it
+    /// (the window itself, or the gone field's editor, has it now), the keyboard goes back to what is
+    /// shown: the tab's focused terminal or file, else Home. Anywhere else (a click went there) it stays.
+    func returnKeyboardIfLost(again: Bool = true) {
+        // Looked at again once SwiftUI has finished taking the field away (it can let the keyboard go after).
+        if again { DispatchQueue.main.async { [weak self] in self?.returnKeyboardIfLost(again: false) } }
+        guard let window = files.window, window.firstResponder === window || window.firstResponder == nil
+                || (window.firstResponder as? NSText).map({ $0.delegate == nil || ($0.delegate as? NSView)?.window == nil }) == true else { return }
+        if let pane = focusedPane {
+            onFocusPane?(pane)
+        } else if let page = focusedPageID {
+            files.onFocusPage?(page)
+        } else if isHome {
+            onFocusHome?()
+        }
+    }
 
     /// The open workspaces as the Home page lists them (`HomeList`).
     var homeRows: [HomeList.Row] {

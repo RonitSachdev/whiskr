@@ -24,6 +24,12 @@ for executable in "$app"/Contents/MacOS/*; do
     codesign -dv "$executable" 2>&1 | grep -q 'flags=.*linker-signed' || { echo "package.sh: $executable is not linker-signed" >&2; exit 1; }
 done
 
+# The licence and the third-party notices must travel with the download (project.yml puts them in the
+# app's resources): SwiftTerm's and Oniguruma's licences ask for it, and Apache 2.0 for NOTICE.
+for file in LICENSE NOTICE; do
+    [ -s "$app/Contents/Resources/$file" ] || { echo "package.sh: $app has no Contents/Resources/$file" >&2; exit 1; }
+done
+
 mkdir -p "$out"
 rm -f "$out/$name" "$out/$name.sha256"
 ditto -c -k --keepParent --sequesterRsrc "$app" "$out/$name"

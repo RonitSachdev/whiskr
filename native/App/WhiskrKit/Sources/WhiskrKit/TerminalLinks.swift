@@ -86,6 +86,10 @@ private struct LinkScan {
     var found: [TerminalLink] = []
     /// Which characters a link already holds.
     var taken: [Bool]
+    /// Brackets that are a folder's or file's own name, as web frameworks name routes ("app/[id]/page.tsx",
+    /// "app/(shop)/x.tsx"): a pair opened right after a "/" and closed right before a "/" or a ".". Any
+    /// other bracket ends a path, as tools put them round one ("[x.ts:12]").
+    var nameBrackets: [Bool]
 
     /// A letter or digit beyond ASCII ("資料/メモ.txt").
     static let wideLetter: UInt8 = 0x80
@@ -114,6 +118,22 @@ private struct LinkScan {
             }
         }
         taken = [Bool](repeating: false, count: codes.count)
+        nameBrackets = Self.nameBrackets(in: codes)
+    }
+
+    private static func nameBrackets(in codes: [UInt8]) -> [Bool] {
+        var marked = [Bool](repeating: false, count: codes.count)
+        let slash = UInt8(ascii: "/"), dot = UInt8(ascii: ".")
+        for index in codes.indices where index > 0 && codes[index - 1] == slash {
+            let open = codes[index]
+            guard let close: UInt8 = open == UInt8(ascii: "[") ? UInt8(ascii: "]") : open == UInt8(ascii: "(") ? UInt8(ascii: ")") : nil else { continue }
+            var end = index + 1
+            while end < codes.count, codes[end] != close, !isSpace(codes[end]), !isStop(codes[end]) || codes[end] == UInt8(ascii: "*") { end += 1 }
+            guard end < codes.count, codes[end] == close, end > index + 1, end + 1 < codes.count, codes[end + 1] == slash || codes[end + 1] == dot else { continue }
+            marked[index] = true
+            marked[end] = true
+        }
+        return marked
     }
 
     func text(_ range: Range<Int>) -> String {
@@ -280,7 +300,7 @@ private struct LinkScan {
     }
 
     func isPathCharacter(_ index: Int) -> Bool {
-        !taken[index] && !Self.isSpace(codes[index]) && !Self.isStop(codes[index])
+        !taken[index] && !Self.isSpace(codes[index]) && (!Self.isStop(codes[index]) || nameBrackets[index])
     }
 
     /// Adds the paths in one run of path characters; returns where the last one (with its line) ends.

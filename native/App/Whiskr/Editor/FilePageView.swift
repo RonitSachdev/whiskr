@@ -63,7 +63,9 @@ final class FilePageView: NSView {
             // Typing in a preview tab keeps it.
             if self.document.isEdited { self.workbench.keep(page: self.pageID) }
         })
-        NotificationCenter.default.addObserver(self, selector: #selector(revealRequested(_:)), name: FilesCenter.revealLine, object: pageID)
+        // Every page hears it and looks for its own id: an observer filtered by `object` matches by identity,
+        // and a UUID reaches it as a new object each time, so a page already open never heard its line.
+        NotificationCenter.default.addObserver(self, selector: #selector(revealRequested(_:)), name: FilesCenter.revealLine, object: nil)
         setAccessibilityElement(false)
         observers.append(PageDimming.attach(to: self, page: pageID, workbench: workbench))
     }
@@ -177,7 +179,7 @@ final class FilePageView: NSView {
     private func makePreview() -> NSView {
         let host: NSView
         if document.language == .markdown {
-            host = NSHostingView(rootView: PreviewHost(document: document, state: state) { [weak self] url in self?.open(url) })
+            host = NSHostingView(rootView: PreviewHost(document: document, state: state) { [weak self] url in self?.openLink(url) })
         } else {
             // SVG: the picture, drawn again as the text changes.
             host = NSHostingView(rootView: SVGPreview(document: document))
@@ -187,7 +189,7 @@ final class FilePageView: NSView {
     }
 
     /// A link in the preview: a file beside it opens here (Markdown in its preview), the web in the browser.
-    private func open(_ url: URL) {
+    func openLink(_ url: URL) {
         if let scheme = url.scheme, scheme != "file" {
             NSWorkspace.shared.open(url)
             return
@@ -196,7 +198,7 @@ final class FilePageView: NSView {
         let path = url.isFileURL ? url.path : (url.relativeString.removingPercentEncoding ?? url.relativeString).components(separatedBy: "#")[0]
         let target = path.hasPrefix("/") ? URL(fileURLWithPath: path) : base.appendingPathComponent(path)
         var isFolder: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: target.path, isDirectory: &isFolder) else { return NSSound.beep() }
+        guard FileManager.default.fileExists(atPath: target.path, isDirectory: &isFolder) else { return AlertCenter.beep() }
         if isFolder.boolValue {
             NSWorkspace.shared.activateFileViewerSelecting([target])
         } else {
@@ -207,7 +209,7 @@ final class FilePageView: NSView {
     // MARK: Go to Line
 
     @objc private func revealRequested(_ notification: Notification) {
-        guard let reveal = workbench.files.takeReveal(page: pageID) else { return }
+        guard notification.object as? UUID == pageID, let reveal = workbench.files.takeReveal(page: pageID) else { return }
         if state.previewable && state.mode == .preview { state.mode = .source }
         DispatchQueue.main.async { [weak self] in self?.editor?.textView.show(line: reveal.line, column: reveal.column) }
     }

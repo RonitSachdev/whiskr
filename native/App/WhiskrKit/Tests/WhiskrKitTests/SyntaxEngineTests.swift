@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import WhiskrKit
 
@@ -17,6 +18,22 @@ private struct TestGrammars: GrammarProvider {
 
 private func grammar(_ json: String) throws -> RawGrammar {
     try RawGrammar(data: Data(json.utf8))
+}
+
+/// What `body` gives, run on a thread with the 512 KB stack of the app's background work (the tokenizer's
+/// queue, tasks), where a deep recursion overflows first.
+private func onSmallStack<T: Sendable>(_ body: @escaping @Sendable () -> T) -> T {
+    let result = Mutex<T?>(nil)
+    let done = DispatchSemaphore(value: 0)
+    let thread = Thread {
+        let value = body()
+        result.withLock { $0 = value }
+        done.signal()
+    }
+    thread.stackSize = 512 * 1024
+    thread.start()
+    done.wait()
+    return result.withLock { $0! }
 }
 
 /// Each line's tokens as "text:innermost scope" (scopes past the grammar's own), for short expectations.
@@ -203,6 +220,28 @@ struct TextMateEngineTests {
         let second = tokenizer.tokenize("ay", state: first.end)
         #expect(first.tokens.map(\.range) == [0..<1, 1..<2])
         #expect(second.tokens.last?.range.upperBound == 2)
+    }
+
+    @Test("a capture whose patterns include its own rule stops nesting instead of overflowing the stack")
+    func selfIncludingCapture() throws {
+        let raw = try grammar(#"""
+        { "scopeName": "source.rec", "patterns": [ { "include": "#a" } ], "repository": {
+            "a": { "match": "(\\w+)", "name": "word.rec", "captures": { "1": { "patterns": [ { "include": "#a" } ] } } } } }
+        """#)
+        let tokenizer = TextMateTokenizer(grammar: TextMateGrammar(raw))
+        // On a stack the size of the background tokenizer's, where unbounded recursion crashed the app.
+        let tokens = onSmallStack { tokenizer.tokenize("hello world", state: nil, timeLimit: 0.5).tokens }
+        #expect(tokens.last?.range.upperBound == 11)
+        #expect(tokens.first?.scopes.scopes.contains("word.rec") == true)
+    }
+
+    @Test("an expression nested past the parse limit does not compile, and the rest of the grammar still works")
+    func deeplyNestedExpression() throws {
+        let deep = String(repeating: "(", count: 800) + "x" + String(repeating: ")", count: 800)
+        let raw = try grammar(#"{ "scopeName": "source.deep", "patterns": [ { "match": "\#(deep)", "name": "deep.d" }, { "match": "y", "name": "y.d" } ] }"#)
+        let tokenizer = TextMateTokenizer(grammar: TextMateGrammar(raw))
+        let tokens = onSmallStack { tokenizer.tokenize("xy", state: nil).tokens }
+        #expect(tokens.map { $0.scopes.scope } == ["source.deep", "y.d"])
     }
 
     @Test("a line past the length limit is left plain and the state carries over")
@@ -415,6 +454,40 @@ struct SyntaxStatesTests {
         states.advance(using: tokenizer, units: units(source))
         #expect(states.lineCount == source.count)
         #expect(all(states) == fresh(source))
+    }
+
+    @Test("an edit leaves a line longer than the main thread's limit to the background")
+    func longLinesLeftToTheBackground() {
+        let source = ["let a = 1", "let b = \"" + String(repeating: " ", count: 5_000) + "\"", "let c = 3"]
+        var states = SyntaxStates(lineCount: source.count)
+        let tokenizer = TextMateTokenizer(grammar: Self.swift)
+        #expect(states.advance(using: tokenizer, longestLine: 1_000, units: units(source)) == 0..<1)
+        #expect(states.valid == 1)
+        #expect(states.advance(using: tokenizer, units: units(source)) == 1..<3)
+    }
+
+    @Test("guessed tokens fill only lines with none: a line's last known tokens stay, and are right when the state comes back")
+    func provisionalTokensKeepKnownOnes() {
+        var source = (0..<400).map { "let v\($0) = \"x\"" }
+        let tokenizer = TextMateTokenizer(grammar: Self.swift)
+        var states = SyntaxStates(lineCount: source.count)
+        states.advance(using: tokenizer, units: units(source))
+        let right = all(states)
+        // A comment opened near the top, then closed again before the pass reaches line 300.
+        source[2] = "/* open"
+        states.replaceLines(2..<3, with: 1)
+        states.advance(using: tokenizer, lines: 5, units: units(source))
+        let plain = [SyntaxToken(range: 0..<5, scopes: ScopeStack.root("guess"))]
+        #expect(states.takeProvisional(Array(repeating: plain, count: 50), from: 300).isEmpty)
+        #expect(states.tokens(line: 300) == right[300])
+        source[2] = "let v2 = \"x\""
+        states.replaceLines(2..<3, with: 1)
+        states.advance(using: tokenizer, units: units(source))
+        #expect(all(states) == right)
+        // A line with no tokens yet takes the guess.
+        var unknown = SyntaxStates(lineCount: 400)
+        #expect(unknown.takeProvisional(Array(repeating: plain, count: 10), from: 300) == 300..<310)
+        #expect(unknown.tokens(line: 305) == plain)
     }
 
     @Test("work done on a copy is taken in by the value it was copied from")

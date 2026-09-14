@@ -60,6 +60,13 @@ enum DebugScenario {
 
     /// Before anything reads settings: `--isolated`.
     static func prepareProcess() {
+        // Every option here drives the app as a test does (closing tabs, importing themes, quitting and
+        // stopping terminals): never against the real app's settings and session host. Without a folder of
+        // its own the run does nothing at all.
+        if arguments.dropFirst().contains(where: { $0.hasPrefix("--") }), value("--isolated").map({ $0.hasPrefix("-") || $0.isEmpty }) ?? true {
+            FileHandle.standardError.write(Data("Whiskr: the Debug options need --isolated <folder>; nothing was run.\n".utf8))
+            exit(64)
+        }
         if let folder = value("--isolated") {
             AppPlaces.isolate(in: URL(fileURLWithPath: folder, isDirectory: true), keepingSettings: has("--keep-settings"))
             exitQuietlyOnCrash()
@@ -257,6 +264,21 @@ enum DebugScenario {
                 context.fill(CGRect(x: full.minX * scale, y: full.minY * scale, width: full.width * scale, height: full.height * scale))
                 context.draw(picture, in: CGRect(x: full.minX * scale, y: full.minY * scale, width: full.width * scale, height: full.height * scale))
                 context.restoreGState()
+            }
+            // What lies over the terminal (the zoom note, "Closed · Undo ⌘Z", a reload bar) goes back on
+            // top of it: every view above one of the terminal's ancestors among its siblings.
+            var view: NSView = surface
+            while let parent = view.superview, view !== frameView {
+                let above = parent.subviews.drop { $0 !== view }.dropFirst()
+                for over in above where !over.isHidden && over.alphaValue > 0 && over.convert(over.bounds, to: frameView).intersects(box) {
+                    guard let overRep = over.bitmapImageRepForCachingDisplay(in: over.bounds) else { continue }
+                    over.cacheDisplay(in: over.bounds, to: overRep)
+                    let place = over.convert(over.bounds, to: frameView)
+                    if let picture = overRep.cgImage {
+                        context.draw(picture, in: CGRect(x: place.minX * scale, y: place.minY * scale, width: place.width * scale, height: place.height * scale))
+                    }
+                }
+                view = parent
             }
         }
         let meadow = controller.navigator.meadow

@@ -217,6 +217,8 @@ public struct AgentWorld: Sendable {
             sessions[s].turnActive = true
             sessions[s].failed = false
             sessions[s].agents[a].needsYou = false
+            // A new turn: the last one's error has had its moment.
+            sessions[s].agents[a].errorUntil = .distantPast
         case "PreToolUse":
             let tool = payload["tool_name"].text.isEmpty ? "tool" : payload["tool_name"].text
             let input = payload["tool_input"].fields
@@ -501,6 +503,10 @@ public struct AgentWorld: Sendable {
         if session.agents.contains(where: { $0.activity == .asking }) || session.failed { return .blocked }
         switch session.agents[0].activity {
         case .awake, .napping:
+            return session.turns > session.seenTurns ? .done : .idle
+        // The error's flash on a turn that has ended is its last look, not more work: once the error is
+        // seen the Claude is idle at once, not "working" until the flash is over.
+        case .error where !session.turnActive:
             return session.turns > session.seenTurns ? .done : .idle
         default:
             return .working

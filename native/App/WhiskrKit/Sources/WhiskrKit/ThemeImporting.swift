@@ -23,11 +23,7 @@ extension ThemeImport {
         if ext == "vsix" {
             let unpacked = fileManager.temporaryDirectory.appendingPathComponent("whiskr-vsix-\(UUID().uuidString)", isDirectory: true)
             defer { try? fileManager.removeItem(at: unpacked) }
-            do {
-                return try extensionThemes(in: ExtensionManifest.unpack(vsix: url, into: unpacked), originals: originals)
-            } catch is ExtensionManifest.Failure {
-                throw ThemeImportError.unreadable(String(localized: "This .vsix could not be unpacked.", bundle: .module, comment: "Importing a theme: why it could not be read"))
-            }
+            return try extensionThemes(in: unpack(vsix: url, into: unpacked), originals: originals)
         }
         if url.lastPathComponent == "package.json" { return try extensionThemes(in: url.deletingLastPathComponent(), originals: originals) }
         if vsCodeThemeExtensions.contains(ext) { return [try vsCodeTheme(at: url, originals: originals)] }
@@ -37,6 +33,16 @@ extension ThemeImport {
             theme.dark = theme.dark?.meetingGuarantees().variant
         }
         return [theme]
+    }
+
+    /// Unpacks a `.vsix` into `folder` (`ExtensionManifest.unpack`: its size checked first), so that its
+    /// themes and languages can both be read from the folder. Slow: not on the main thread.
+    public static func unpack(vsix url: URL, into folder: URL) throws -> URL {
+        do {
+            return try ExtensionManifest.unpack(vsix: url, into: folder)
+        } catch {
+            throw ThemeImportError.unreadable(String(localized: "This .vsix could not be unpacked.", bundle: .module, comment: "Importing a theme: why it could not be read"))
+        }
     }
 
     /// One VS Code colour theme file (and what it includes, from its own folder).

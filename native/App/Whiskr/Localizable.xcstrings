@@ -4690,17 +4690,6 @@
         }
       }
     },
-    "Sessions keep running": {
-      "comment": "Help page heading",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "セッションは動き続けます"
-          }
-        }
-      }
-    },
     "Settings": {
       "localizations": {
         "ja": {
@@ -5473,6 +5462,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "terminal.integrated.fontFamily（このMacにないフォント）"
+          }
+        }
+      }
+    },
+    "Terminals keep running": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルは動き続けます"
           }
         }
       }
@@ -6325,17 +6325,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "長い行を折り返す"
-          }
-        }
-      }
-    },
-    "Wrap long lines, or not.": {
-      "comment": "Help page: wrap lines",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "長い行を折り返すかどうかを切り替えます。"
           }
         }
       }

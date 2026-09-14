@@ -193,7 +193,10 @@ extension Workbench {
     /// Close Other Tabs, asking once about all their unsaved files.
     func requestClose(tabs: [Tab]) {
         confirmClosing(tabs.flatMap(documents(in:))) { [weak self] in
+            // One ⌘Z brings them all back.
+            self?.undoManager?.beginUndoGrouping()
             for tab in tabs { self?.close(tab: tab) }
+            self?.undoManager?.endUndoGrouping()
             self?.pruneSoon()
         }
     }
@@ -231,6 +234,11 @@ extension Workbench {
                 proceed()
             case .alertThirdButtonReturn:
                 proceed()
+                // Not saved is not kept. A closed tab's document lingers while ⌘Z can bring the tab back,
+                // and a file opened again meanwhile would still hold the changes you chose not to save.
+                guard let self else { return }
+                let shown = Set(self.workspaces.flatMap(\.tabs).flatMap(\.tree.panes).compactMap { self.pages[$0]?.path })
+                for document in edited where !shown.contains(document.url.standardizedFileURL.path) { document.revert() }
             default:
                 cancelled?()
             }
@@ -320,10 +328,10 @@ extension Workbench {
         let location = FileLocation(link, folder: folder)
         var isFolder: ObjCBool = false
         guard let location, FileManager.default.fileExists(atPath: location.path, isDirectory: &isFolder) else {
-            // Not a file after all ("c:…", "name.x:…"): a link to some app.
+            // Not a file after all ("c:…", "name.x:…"): a link to some app, which asks first. Nothing is
+            // handed to the system to open as it likes: a "file:" link to a script or an app would run it.
             if let url, url.scheme != nil { return openTerminalURL(url) }
-            TerminalView.openDefaultLink(link)
-            return
+            return AlertCenter.beep()
         }
         if isFolder.boolValue {
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: location.path)])
@@ -345,7 +353,7 @@ extension Workbench {
             let resolved = existingPath(of: path, folder: folder)
             switch action {
             case .open:
-                guard let resolved else { return NSSound.beep() }
+                guard let resolved else { return AlertCenter.beep() }
                 var isFolder: ObjCBool = false
                 FileManager.default.fileExists(atPath: resolved, isDirectory: &isFolder)
                 if isFolder.boolValue {
@@ -354,7 +362,7 @@ extension Workbench {
                     open(file: resolved, mode: .keep, line: line, column: column)
                 }
             case .reveal:
-                guard let resolved else { return NSSound.beep() }
+                guard let resolved else { return AlertCenter.beep() }
                 revealInFiles(path: resolved)
             case .copy:
                 copyToPasteboard(resolved ?? path)
@@ -372,7 +380,7 @@ extension Workbench {
             NSWorkspace.shared.open(url)
             return
         }
-        guard let application = NSWorkspace.shared.urlForApplication(toOpen: url) else { return NSSound.beep() }
+        guard let application = NSWorkspace.shared.urlForApplication(toOpen: url) else { return AlertCenter.beep() }
         guard let window = files.window else { return }
         let name = FileManager.default.displayName(atPath: application.path)
         let alert = NSAlert()

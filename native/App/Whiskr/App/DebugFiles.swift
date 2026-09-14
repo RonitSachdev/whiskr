@@ -357,30 +357,43 @@ enum DebugFiles {
     }
 
     /// The longest gap between turns of the main run loop while it runs.
-    @MainActor
-    private final class HoldWatch {
-        private var last = DispatchTime.now()
+    /// The longest the main thread kept work waiting: a thread of its own asks it for something every 2 ms
+    /// and times the answer, as `MainPinger` does for the rest of `make perf`. (A main-thread timer's lateness
+    /// was measured before: in a run whose window is never seen, macOS fires timers late on purpose, and
+    /// stacks taken at those moments showed the main thread asleep, waiting for nothing.)
+    nonisolated private final class HoldWatch: @unchecked Sendable {
+        private let lock = NSLock()
         private var worst = 0.0
-        private var timer: Timer?
+        private var running = true
 
         init() {
-            let timer = Timer(timeInterval: 0.001, repeats: true) { _ in
-                MainActor.assumeIsolated { [weak self] in self?.tick() }
+            let thread = Thread { [self] in
+                while lock.withLock({ running }) {
+                    let sent = DispatchTime.now()
+                    let answered = DispatchSemaphore(value: 0)
+                    DispatchQueue.main.async {
+                        let waited = HoldWatch.milliseconds(since: sent)
+                        self.lock.withLock { self.worst = max(self.worst, waited) }
+                        answered.signal()
+                    }
+                    answered.wait()
+                    usleep(2000)
+                }
             }
-            RunLoop.main.add(timer, forMode: .common)
-            self.timer = timer
-        }
-
-        private func tick() {
-            let now = DispatchTime.now()
-            worst = max(worst, Double(now.uptimeNanoseconds - last.uptimeNanoseconds) / 1e6)
-            last = now
+            thread.qualityOfService = .userInteractive
+            thread.start()
         }
 
         func finish(after delay: Int) async -> Double {
             try? await Task.sleep(for: .milliseconds(delay))
-            timer?.invalidate()
-            return worst
+            return lock.withLock {
+                running = false
+                return worst
+            }
+        }
+
+        private static func milliseconds(since start: DispatchTime) -> Double {
+            Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6
         }
     }
 

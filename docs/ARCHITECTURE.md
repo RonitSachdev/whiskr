@@ -32,7 +32,7 @@ keeps on disk. For what the app should look and feel like, see [DESIGN.md](DESIG
 | Module | Where | Depends on | Holds |
 |---|---|---|---|
 | `Whiskr` (app target) | `native/App/Whiskr` | everything below, SwiftTerm | AppKit/SwiftUI window, menus, panes, files and editor views, the hook listener, notifications, the `Workbench` model |
-| `WhiskrKit` | `native/App/WhiskrKit/Sources/WhiskrKit` | Foundation | Logic with no UI: agent states from hook events, the story of a helper, layout and its saved form, themes and VS Code theme import, the TextMate grammar engine and language registry, EditorConfig, the key table, file icons' mapping, Markdown parser, diffs and their folds and one-change patches, git status and worktrees, the host protocol, fuzzy ranking and Go to's queries, ⌃Tab's order, command marks, links in terminal output, `LegacyMigration` |
+| `WhiskrKit` | `native/App/WhiskrKit/Sources/WhiskrKit` | Foundation, COniguruma | Logic with no UI: agent states from hook events, the story of a helper, layout and its saved form, themes and VS Code theme import, the TextMate grammar engine and language registry, EditorConfig, the key table, file icons' mapping, Markdown parser, diffs and their folds and one-change patches, git status and worktrees, the host protocol, fuzzy ranking and Go to's queries, ⌃Tab's order, command marks, links in terminal output, `LegacyMigration` |
 | `TerminalHost` | `…/Sources/TerminalHost` | WhiskrKit | The host server, pseudo-terminals, the client connection, the launcher |
 | `Paw` / `PawTool` | `…/Sources/Paw`, `…/Sources/PawTool` | TerminalHost | The `paw` command-line tool and its `main` |
 | `WhiskrMeadow` | `…/Sources/WhiskrMeadow` | WhiskrKit, MeadowScene | Maps the app's snapshot of workspaces and Claudes to the scene's world |
@@ -130,10 +130,10 @@ bytes, never inside JSON.
 
 | Where | What | Notes |
 |---|---|---|
-| `~/Library/Application Support/Whiskr/layout.json` | Workspaces, tabs, panes, their folders, the host terminal each pane shows | Written on changes and on quit. Which workspace was selected is not kept: a launch lands on Home |
+| `~/Library/Application Support/Whiskr/layout.json` | Workspaces, tabs, panes, their folders, the host terminal each pane shows | Written on changes and on quit. Which workspace was selected is not kept: a launch lands on Home. One a launch cannot read is kept as `layout-unreadable-<time>.json` |
 | `…/Whiskr/agents.json` | The Claudes' last known state | So cats come back as they were after a relaunch |
 | `…/Whiskr/Themes/*.whiskrtheme` | The user's own and imported themes (plain JSON) | An imported VS Code theme is stored in Whiskr's form, with its `tokenColors` |
-| `…/Whiskr/Themes/Originals/<source>/` | The files an imported theme was read from (theme JSON and what it includes, or an extension's `package.json` and theme files) | Kept so a later version can import them again; removed with the last theme made from them |
+| `…/Whiskr/Themes/Originals/<source>/` | The files an imported theme was read from (theme JSON and what it includes, or an extension's `package.json` and theme files) | Kept so a later version can import them again; moved to the Trash with the last theme made from them (only a folder directly in `Originals`: a theme file names its folder, and anyone can write one) |
 | `…/Whiskr/Languages/<set>/` | Languages and grammars the user added: an `index.json` and the grammar and configuration files, copied as data | Loaded at launch over the bundled ones (`LanguageRegistry.loadInstalled`); nothing in them is ever run |
 | `…/Whiskr/shell/` | The shim, zsh, bash and fish integration | Rewritten at every launch |
 | `…/Whiskr/hooks/` | The hooks settings and each pane's listener address | Mode 0700, files 0600; rewritten at every launch |
@@ -163,13 +163,15 @@ Code does.
   begin/while, captures with patterns, back-references, `\G`, the endless-loop guards) over Oniguruma, searched
   in UTF-8 as VS Code does, with offsets given back in UTF-16. A line's end state is an immutable rule stack,
   cheap to compare. Lines longer than 20,000 UTF-16 units are not tokenised (their state carries over), and
-  each line has a time and backtracking limit.
+  each line has a time and backtracking limit. Captures tokenised again nest at most 16 deep, and an
+  expression's groups at most 200 (Oniguruma parses recursively, on 512 KB background stacks).
 - **Incremental, off the main thread** (`SyntaxStates`, `BackgroundTokenizer`, `DocumentSyntax`). Each line
   keeps the state it starts in and its tokens. An edit is tokenised on the main thread for at most 3 ms,
-  from its first line until a line ends in the state it ended in before; the rest goes to a serial queue that
-  hands back 8 ms stretches. Lines keep their old colours until new ones arrive, and lines shown far ahead of
-  the background pass get a provisional pass from a guessed start first. The main thread never waits for
-  tokens.
+  from its first line until a line ends in the state it ended in before, and only lines of up to 500 units
+  (one search's cost grows with the square of its line, and the time limit holds only between searches);
+  the rest goes to a serial queue that hands back 8 ms stretches. Lines keep their old colours until new
+  ones arrive, and lines shown far ahead of the background pass with no colours yet get a provisional pass
+  from a guessed start first. The main thread never waits for tokens.
 - **Colours** (`SyntaxTheme`, a translation of vscode-textmate's theme). A token is its range and an interned
   scope stack; its style (foreground, background, italic, bold, underline, strikethrough) comes from the
   theme's scope rules by TextMate's selector matching with specificity and parent scopes, cached per stack, so
@@ -207,7 +209,7 @@ Code does.
 
 ## Themes, icons, keys and EditorConfig from VS Code
 
-- **Themes** (`VSCodeTheme`, `ThemeImporting`, `ThemeGuarantees`). A VS Code colour theme (`.json`/`.jsonc`,
+- **Themes** (`VSCodeTheme`, `ThemeImport`, `ThemeGuarantees`). A VS Code colour theme (`.json`/`.jsonc`,
   a legacy `.tmTheme`, or the themes an extension folder or `.vsix` contributes) is read as VS Code reads it:
   `include` chains, `colors` merged child over parent, `tokenColors` parent first, "default" values, colours
   with alpha blended over the layer they are drawn on. Its workbench colours map to Whiskr's keys (content from
@@ -243,7 +245,7 @@ Code does.
 | `paw` | `app.whiskr.Whiskr.paw` |
 | Theme file type | `app.whiskr.theme` (`.whiskrtheme`) |
 | Dragged tab type | `app.whiskr.tab` |
-| Pane environment | `WHISKR_PANE`, `WHISKR_BIN`, `WHISKR_HOOKS`, `WHISKR_ZDOTDIR`, `WHISKR_XDG_DATA_DIRS`, `PAW_ID`, `PAW_SOCKET`, `PAW_PARENT`, `PAW_NAME`, `PAW_WORKTREES`; `TERM_PROGRAM=Whiskr` |
+| Pane environment | `WHISKR_PANE`, `WHISKR_BIN`, `WHISKR_HOOKS`, `WHISKR_ZDOTDIR`, `WHISKR_XDG_DATA_DIRS`, `PAW_ID`, `PAW_SOCKET`, `PAW_PARENT`, `PAW_NAME`, `PAW_WORKTREES`, `PAW_TASK` (a `paw run` task on its way to Claude); `TERM_PROGRAM=Whiskr` |
 
 ## git
 
@@ -311,8 +313,9 @@ stop drawing when nothing moves.
   time). Input brings the full rate back at once. A change in the world (`world`, `settings`, the
   selection, a note) ends the rest but is not input: it draws at 30 Hz unless something in the scene moves
   fast (`Stage.restful`), and rests again 5 s later. Hidden or covered, it draws nothing. The rule is
-  tested frame by frame on a clock of the test's own (`RestTests`), by day and by night. While keys are typed into a terminal it draws at most 30
-  times a second, at the same pace, and full rate returns 1.5 s after the last key (`yieldFrames`).
+  tested frame by frame on a clock of the test's own (`RestTests`), by day and by night. While keys are
+  typed into a terminal it draws at most 30 times a second, at the same pace, and full rate returns 1.5 s
+  after the last key (`yieldFrames`).
   With Animate Meadow off (`MeadowView.animatesAmbient`), the display link pauses 3 s after the scene
   stands still and wakes for the next change.
 - Terminals draw with SwiftTerm's Metal renderer (`TerminalSurface.drawsWithMetal`), each on a render
@@ -332,16 +335,24 @@ stop drawing when nothing moves.
 ## Measuring
 
 `make perf` runs the profile build invisibly (`--isolated … --background --perf`, `DebugPerf.swift`) and
-prints what a person at the window would get. The run's window is never on screen, so three things stand in
+prints what a person at the window would get. The run's window is never on screen, so four things stand in
 for being in front: the meadow draws as if on screen and key; terminals tick on Core Video's display link
 (`SWIFTTERM_FORCE_CVDISPLAYLINK`), which keeps the display's rate for a covered window, instead of the
-view's own link, which stops; and the window counts as the key window of the active app. Every key and
+view's own link, which stops; the window counts as the key window of the active app; and the run holds off
+App Nap, as a window in front is never napped. Every key and
 click goes through `NSApplication.sendEvent`, to whatever the window's views say is under the pointer
 or has the keyboard. A frame counts as drawn when SwiftTerm reports it drawn (`TerminalView.onFramePresented`)
 or, for the window's own views, once Core Animation has committed it; the compositor's last step to the
-glass (about one refresh) is not seen. Main-thread stalls are a ping every 4 ms from a thread of its own.
-It also clicks every part of every tab, closes tabs every way there is, and checks every pane's size
-against what its program was told.
+glass (about one refresh) is not seen. Main-thread stalls are a ping every 4 ms from a thread of its own
+(the editor's runs ping every 2 ms), never a main-thread timer's lateness: macOS fires an unseen app's
+timers late on purpose, and stacks taken at such moments showed the main thread asleep. Memory is the
+app's footprint with one tab and with 24, and again once the hidden tabs have given back their renderers.
+
+Before the measurements come the checks, each an invisible run of its own (`--perf-flows`): closing, sizes
+and interactions; the first five minutes (`journey`: Home, a folder, a terminal, a Claude through every
+state, tabs, splits, workspaces; three runs on one folder, across ⌘Q and ⌥⌘Q); files, the editor, diffs
+and Changes (`files`); the window's regions, sizes, themes and Settings (`layout`); and abuse (`robust`:
+floods, binary and wide text, pastes, resize storms, the session host going away).
 
 Nothing in `make perf` depends on when it runs: the runs show the meadow by day (`--time day`), and the
 idle flow sets the time of day itself, measuring by day and by night. Idle is measured once nothing is due

@@ -12,6 +12,17 @@
         }
       }
     },
+    "%@ includes too many files.": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ が読み込むファイルが多すぎます。"
+          }
+        }
+      }
+    },
     "%@ is idle": {
       "localizations": {
         "ja": {
@@ -62,6 +73,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ はテーマのフォルダの外にあります。"
+          }
+        }
+      }
+    },
+    "%@ is too large to be a colour theme.": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ はカラーテーマにしては大きすぎます。"
           }
         }
       }

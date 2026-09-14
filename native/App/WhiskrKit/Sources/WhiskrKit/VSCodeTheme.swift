@@ -30,6 +30,44 @@ public struct ThemeOrigin: Hashable, Sendable, Codable {
         self.file = file
         self.uiTheme = uiTheme
     }
+
+    private enum Keys: String, CodingKey { case name, folder, file, uiTheme }
+
+    /// A theme file is anyone's to write, and removing a theme removes its `folder`: one that is not a
+    /// plain name inside `Originals` ("../../Documents", "", ".") is dropped as it is read, as is a `file`
+    /// that would lead out of its folder.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: Keys.self)
+        name = try container.decode(String.self, forKey: .name)
+        folder = try container.decodeIfPresent(String.self, forKey: .folder).flatMap { Self.isPlainName($0) ? $0 : nil }
+        file = try container.decodeIfPresent(String.self, forKey: .file).flatMap { Self.isInsideFolder($0) ? $0 : nil }
+        uiTheme = try container.decodeIfPresent(String.self, forKey: .uiTheme)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: Keys.self)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(folder, forKey: .folder)
+        try container.encodeIfPresent(file, forKey: .file)
+        try container.encodeIfPresent(uiTheme, forKey: .uiTheme)
+    }
+
+    /// The copy of the original files inside `originals`, only when `folder` names a folder directly in it.
+    public func originalsFolder(in originals: URL) -> URL? {
+        guard let folder, Self.isPlainName(folder) else { return nil }
+        let url = originals.appendingPathComponent(folder, isDirectory: true).standardizedFileURL
+        return url.deletingLastPathComponent().path == originals.standardizedFileURL.path ? url : nil
+    }
+
+    /// One file or folder name: not empty, not "." or "..", no "/" (or ":", which Finder shows as one).
+    static func isPlainName(_ name: String) -> Bool {
+        !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains(":") && !name.contains("\0")
+    }
+
+    /// A relative path of plain names ("themes/dark.json").
+    static func isInsideFolder(_ path: String) -> Bool {
+        !path.hasPrefix("/") && path.split(separator: "/", omittingEmptySubsequences: false).allSatisfy { isPlainName(String($0)) }
+    }
 }
 
 /// What kind of theme VS Code takes a theme for: its `uiTheme` in an extension, or its own `type`.
@@ -104,26 +142,52 @@ public struct VSCodeThemeDocument: Sendable {
     /// Every file read: the theme, what it includes, a `.tmTheme` it takes its rules from.
     public var files: [URL] = []
 
+    /// Limits on what one theme may read: how deep includes go, how many files are read in all (a file
+    /// that both includes the next and takes its rules from it reads every level twice, so a chain of 30
+    /// would be read a billion times), and how large one file may be. Real themes include one or two.
+    static let includeDepthLimit = 16
+    static let readLimit = 64
+    static let fileSizeLimit = 8 * 1024 * 1024
+
+    /// What reading one theme has seen: the files being read (an include must not lead back to one), each
+    /// file's contents (read once however often it is included), and how many reads there have been.
+    private struct Reading {
+        var stack: [URL] = []
+        var contents: [URL: Data] = [:]
+        var reads = 0
+    }
+
     /// Reads a theme file (`.json`, JSON with comments, or a TextMate `.tmTheme`) and what it includes.
     /// An include must stay inside `root` (the extension's folder, or the theme file's own) and must not
     /// lead back to a file already being read.
     public static func read(_ url: URL, root: URL) throws -> VSCodeThemeDocument {
         var document = VSCodeThemeDocument()
-        var reading: [URL] = []
+        var reading = Reading()
         try document.load(url, root: root.standardizedFileURL.resolvingSymlinksInPath(), reading: &reading)
         return document
     }
 
-    private mutating func load(_ url: URL, root: URL, reading: inout [URL]) throws {
+    private mutating func load(_ url: URL, root: URL, reading: inout Reading) throws {
         let file = url.standardizedFileURL.resolvingSymlinksInPath()
         let shown = file.lastPathComponent
         guard file.path.hasPrefix(root.path.hasSuffix("/") ? root.path : root.path + "/") else {
             throw ThemeImportError.unreadable(String(localized: "\(shown) is outside the theme's folder.", bundle: .module, comment: "Importing a theme: why it could not be read"))
         }
-        guard !reading.contains(file) else { throw ThemeImportError.unreadable(String(localized: "\(shown) includes itself.", bundle: .module, comment: "Importing a theme: why it could not be read")) }
-        guard let data = try? Data(contentsOf: file) else { throw ThemeImportError.unreadable(String(localized: "\(shown) is missing or cannot be read.", bundle: .module, comment: "Importing a theme: why it could not be read")) }
-        reading.append(file)
-        defer { reading.removeLast() }
+        guard !reading.stack.contains(file) else { throw ThemeImportError.unreadable(String(localized: "\(shown) includes itself.", bundle: .module, comment: "Importing a theme: why it could not be read")) }
+        reading.reads += 1
+        guard reading.stack.count < Self.includeDepthLimit, reading.reads <= Self.readLimit else {
+            throw ThemeImportError.unreadable(String(localized: "\(shown) includes too many files.", bundle: .module, comment: "Importing a theme: why it could not be read"))
+        }
+        if reading.contents[file] == nil {
+            let size = (try? FileManager.default.attributesOfItem(atPath: file.path))?[.size] as? Int ?? 0
+            guard size <= Self.fileSizeLimit else {
+                throw ThemeImportError.unreadable(String(localized: "\(shown) is too large to be a colour theme.", bundle: .module, comment: "Importing a theme: why it could not be read"))
+            }
+            reading.contents[file] = try? Data(contentsOf: file)
+        }
+        guard let data = reading.contents[file] else { throw ThemeImportError.unreadable(String(localized: "\(shown) is missing or cannot be read.", bundle: .module, comment: "Importing a theme: why it could not be read")) }
+        reading.stack.append(file)
+        defer { reading.stack.removeLast() }
         if !files.contains(file) { files.append(file) }
 
         let ext = file.pathExtension.lowercased()

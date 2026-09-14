@@ -82,11 +82,14 @@ public struct SyntaxStates: Sendable {
     /// nanoseconds) or `lines` have been tokenized. `units` gives a line's UTF-16 units ending in "\n".
     /// A line that gives up (`TokenizedLine.stoppedEarly`) because it ran past `lineTimeLimit` is kept as
     /// far as it got when `keepsStoppedLines` (the background's long limit), else left for the background,
-    /// as is a line the tokenizer is not free for within `lockWait` seconds, when given (the main thread's).
+    /// as is a line the tokenizer is not free for within `lockWait` seconds, when given (the main thread's),
+    /// and a line longer than `longestLine` units: the time limit is checked only between matches, and one
+    /// search in a long line can scan it from every position, so only the line's length bounds its cost.
     /// Returns the lines tokenized (with, between them, any whose old tokens turned out right again).
     @discardableResult
     public mutating func advance(using tokenizer: TextMateTokenizer, deadline: UInt64 = .max, lines: Int = .max, lineTimeLimit: Double? = nil,
-                                 keepsStoppedLines: Bool = true, lockWait: Double? = nil, units: (Int) -> [UInt16]) -> Range<Int> {
+                                 keepsStoppedLines: Bool = true, lockWait: Double? = nil, longestLine: Int = .max,
+                                 units: (Int) -> [UInt16]) -> Range<Int> {
         let first = valid
         var last = valid
         var done = 0
@@ -94,6 +97,7 @@ public struct SyntaxStates: Sendable {
             if done > 0, DispatchTime.now().uptimeNanoseconds >= deadline { break }
             let line = valid
             let text = units(line)
+            if text.count - 1 > longestLine { break }
             let state = line == 0 ? nil : starts[line]
             let tokenized = lockWait.map { tokenizer.tokenize(units: text, state: state, timeLimit: lineTimeLimit, waitingAtMost: $0) }
                 ?? tokenizer.tokenize(units: text, state: state, timeLimit: lineTimeLimit)
@@ -130,12 +134,18 @@ public struct SyntaxStates: Sendable {
     }
 
     /// Tokens for lines not reached yet, worked out from a guessed start (`BackgroundTokenizer`'s view of
-    /// a far part of a file): shown until the right ones come. Lines already right are left as they are.
+    /// a far part of a file): shown until the right ones come. Only lines with no tokens take them: lines
+    /// already right are left as they are, and so are a line's last known tokens, which may turn out right
+    /// again when tokenizing meets their old start state (`advance` then keeps them, and would keep a guess).
     public mutating func takeProvisional(_ provisional: [[SyntaxToken]], from line: Int) -> Range<Int> {
         let lower = max(line, valid), upper = min(line + provisional.count, tokens.count)
         guard lower < upper else { return lower..<lower }
-        for index in lower..<upper { tokens[index] = provisional[index - line] }
-        return lower..<upper
+        var changed: Range<Int>?
+        for index in lower..<upper where tokens[index] == nil {
+            tokens[index] = provisional[index - line]
+            changed = (changed?.lowerBound ?? index)..<(index + 1)
+        }
+        return changed ?? lower..<lower
     }
 
     // MARK: Work done elsewhere

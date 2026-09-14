@@ -21,7 +21,10 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private var lastLayout: EditorPreferences.DiffLayout?
     /// Revert Change and Stage Change, over the change under the pointer.
     private let actions: NSHostingView<ChangeActions>
-    private var hoveredBlock: ClosedRange<Int>?
+    /// The change under the pointer: its rows, and what they held when the actions appeared. The diff
+    /// follows the disk while Claude edits, so other rows may sit there by the time of a click; the actions
+    /// act only on the change they were shown for.
+    private var hoveredBlock: (rows: ClosedRange<Int>, content: [DiffRow])?
 
     init(pageID: UUID, path: String, staged: Bool, workbench: Workbench) {
         self.pageID = pageID
@@ -115,8 +118,17 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         empty.isHidden = !model.rows.isEmpty || !model.loaded
         scrollView.isHidden = model.rows.isEmpty
         model.textCache.removeAll()
-        measure(force: true)
+        // The table takes the new rows before their heights: told of heights first, it asked for rows the
+        // model no longer had (a diff going from inline to side by side as its pane widened crashed).
         table.reloadData()
+        measure(force: true)
+        // Other rows under the pointer now: the actions go, and come back for them when the pointer moves.
+        if !hoveredBlockIsCurrent { hideActions() }
+    }
+
+    private var hoveredBlockIsCurrent: Bool {
+        guard let (block, content) = hoveredBlock else { return true }
+        return block.upperBound < model.rows.count && Array(model.rows[block]) == content
     }
 
     override func layout() {
@@ -149,13 +161,13 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             let lines = max(1, (longest + perLine - 1) / perLine)
             return CGFloat(lines) * metrics.line + 4
         }
-        table.noteHeightOfRows(withIndexesChanged: IndexSet(integersIn: 0..<heights.count))
+        table.noteHeightOfRows(withIndexesChanged: IndexSet(integersIn: 0..<min(heights.count, table.numberOfRows)))
     }
 
     /// Next or previous change: the row where the following change begins scrolls to the upper third.
     private func step(_ direction: Int) {
         let starts = DiffLayout.changeStarts(model.rows)
-        guard !starts.isEmpty else { return NSSound.beep() }
+        guard !starts.isEmpty else { return AlertCenter.beep() }
         let visible = table.rows(in: scrollView.contentView.bounds)
         let top = visible.location + 2
         let target = direction > 0 ? starts.first { $0 > top } ?? starts.last! : starts.last { $0 < top - 1 } ?? starts.first!
@@ -182,7 +194,7 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         guard let point, model.actsOnChanges else { return hideActions() }
         let row = table.row(at: point)
         guard let block = DiffLayout.changeBlocks(model.rows).first(where: { $0.contains(row) }) else { return hideActions() }
-        hoveredBlock = block
+        hoveredBlock = (block, Array(model.rows[block]))
         let first = table.convert(table.rect(ofRow: block.lowerBound), to: self)
         let size = actions.fittingSize
         actions.frame = NSRect(x: bounds.width - size.width - Look.Space.xl, y: first.maxY - size.height - 1, width: size.width, height: size.height)
@@ -197,7 +209,11 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     @objc private func scrolled() { hideActions() }
 
     private func perform(_ action: ChangeActions.Action) {
-        guard let block = hoveredBlock else { return }
+        guard let block = hoveredBlock?.rows else { return }
+        guard hoveredBlockIsCurrent else {
+            hideActions()
+            return AlertCenter.beep()
+        }
         switch action {
         case .revert: revertChange(rows: block)
         case .stage: stageChange(rows: block)
@@ -208,39 +224,86 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     /// Stage Change (Unstage Change in a staged diff): this change alone into (or out of) the index.
     func stageChange(rows: ClosedRange<Int>) {
         guard let repository = workbench.files.repository(containing: URL(fileURLWithPath: path)),
-              let patch = model.patch(for: rows, direction: staged ? .fromNew : .toOld) else { return NSSound.beep() }
-        repository.apply(patch, cached: true, reverse: staged) { if !$0 { NSSound.beep() } }
+              let patch = model.patch(for: rows, direction: staged ? .fromNew : .toOld) else { return AlertCenter.beep() }
+        repository.apply(patch, cached: true, reverse: staged) { if !$0 { AlertCenter.beep() } }
     }
 
     /// Revert Change: the working file loses this change alone. Undoable (Edit › Undo Revert Change, or the
     /// note's Undo); never over unsaved edits to the file, which would be lost.
     func revertChange(rows: ClosedRange<Int>) {
         guard !staged, let repository = workbench.files.repository(containing: URL(fileURLWithPath: path)),
-              let patch = model.patch(for: rows, direction: .fromNew) else { return NSSound.beep() }
+              let patch = model.patch(for: rows, direction: .fromNew) else { return AlertCenter.beep() }
         if workbench.files.documents[path]?.isEdited == true {
             model.note = .unsaved
             return
         }
-        repository.apply(patch, cached: false, reverse: true) { [weak self] done in
-            guard let self, done else { return NSSound.beep() }
-            self.model.note = .reverted
-            self.registerUndoRevert(patch, repository: repository)
+        // Registered once git has applied it, whether or not this page is still open: the undo belongs to
+        // the change, not to the page (a preview tab is replaced by the next file chosen in Changes).
+        let step = RevertStep(patch: patch, repository: repository, path: path, workbench: workbench, model: model)
+        repository.apply(patch, cached: false, reverse: true) { done in
+            guard done else { return AlertCenter.beep() }
+            step.model?.note = .reverted
+            Self.registerUndo(of: step, out: true)
+            // The note's Undo is this revert's, whatever else the window's Undo would take back first.
+            step.model?.undo = { [weak undo = step.workbench.undoManager] in
+                guard step.mayChangeFile else { return }
+                undo?.removeAllActions(withTarget: step)
+                Self.redo(step, out: false, registering: false)
+            }
         }
     }
 
-    /// Undo puts the change back; Redo takes it away again.
-    private func registerUndoRevert(_ patch: String, repository: Repository) {
-        guard let undo = workbench.undoManager else { return }
-        undo.registerUndo(withTarget: repository) { [weak self] repository in
-            repository.apply(patch, cached: false, reverse: false) { done in if !done { NSSound.beep() } }
-            self?.model.note = nil
-            undo.registerUndo(withTarget: repository) { repository in
-                repository.apply(patch, cached: false, reverse: true) { _ in }
+    /// One Revert Change, as the target of its Undo and Redo (so it can be taken off the window's undo
+    /// stack on its own). It holds what the undo needs without the page, which may be gone by then; its
+    /// handlers hold it (the undo manager does not hold its targets).
+    private final class RevertStep {
+        let patch: String
+        let repository: Repository
+        let path: String
+        let workbench: Workbench
+        /// The page's model while the page is open: its note says what happened.
+        weak var model: DiffModel?
+        init(patch: String, repository: Repository, path: String, workbench: Workbench, model: DiffModel) {
+            self.patch = patch
+            self.repository = repository
+            self.path = path
+            self.workbench = workbench
+            self.model = model
+        }
+
+        /// Never over unsaved edits to the file, which reloading it would put in question.
+        @MainActor var mayChangeFile: Bool {
+            guard workbench.files.documents[path]?.isEdited == true else { return true }
+            model?.note = .unsaved
+            AlertCenter.beep()
+            return false
+        }
+    }
+
+    /// Registers what undoes `step`: with the change taken out of the file (`out`), putting it back; else
+    /// taking it out again (Redo). Each registers its own inverse, so Undo and Redo alternate as often as
+    /// asked.
+    private static func registerUndo(of step: RevertStep, out: Bool) {
+        guard let undo = step.workbench.undoManager else { return }
+        undo.registerUndo(withTarget: step) { [weak undo] _ in
+            MainActor.assumeIsolated {
+                // `step`, not the handler's argument: held here, so the target outlives the page.
+                guard step.mayChangeFile else {
+                    // An Undo stays available for after saving; a refused Redo is dropped (its file is as before).
+                    if undo?.isUndoing == true { DispatchQueue.main.async { registerUndo(of: step, out: out) } }
+                    return
+                }
+                redo(step, out: !out)
             }
-            undo.setActionName(String(localized: "Revert Change"))
         }
         undo.setActionName(String(localized: "Revert Change"))
-        model.undo = { [weak undo] in undo?.undo() }
+    }
+
+    /// Takes the change out of the working file (`out`) or puts it back, and registers the inverse.
+    private static func redo(_ step: RevertStep, out: Bool, registering: Bool = true) {
+        step.repository.apply(step.patch, cached: false, reverse: out) { done in if !done { AlertCenter.beep() } }
+        step.model?.note = out ? .reverted : nil
+        if registering { registerUndo(of: step, out: out) }
     }
 
     // MARK: Table
@@ -412,7 +475,8 @@ final class DiffModel {
                 }
                 let lines = (staged ? index : disk).map(DiffModel.lines)
                 if let text { return (UnifiedDiff.parse(text).first, lines) }
-                guard let disk else { return (nil, nil) }
+                // A new file that is not text (a picture): binary, not "No changes".
+                guard let disk else { return (FileManager.default.fileExists(atPath: path) ? FileDiff(oldPath: nil, newPath: relative, isBinary: true) : nil, nil) }
                 return (UnifiedDiff.addedFile(path: relative, text: disk), lines)
             }.value
             guard let self, !Task.isCancelled else { return }
@@ -505,8 +569,8 @@ final class DiffModel {
     }
 
     /// One change can be staged, unstaged or reverted on its own: a text file git already tracks, not in
-    /// conflict.
-    var actsOnChanges: Bool { diff != nil && !isNewFile && !isConflicted && !isBinary }
+    /// conflict, neither added, deleted nor renamed (`FileDiff.acceptsChangePatches`).
+    var actsOnChanges: Bool { diff?.acceptsChangePatches == true && !isNewFile && !isConflicted }
 
     /// The patch of the change in `rows` (`DiffPatch`).
     func patch(for rows: ClosedRange<Int>, direction: DiffPatch.Direction) -> String? {
@@ -517,7 +581,7 @@ final class DiffModel {
 
     /// A text's lines as git counts them: no line breaks, none after a final one.
     nonisolated static func lines(_ text: String) -> [String] {
-        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map { $0.hasSuffix("\r") ? String($0.dropLast()) : String($0) }
+        var lines = UnifiedDiff.lineSlices(text).map { $0.hasSuffix("\r") ? String($0.dropLast()) : String($0) }
         if lines.last == "" { lines.removeLast() }
         return lines
     }
@@ -727,7 +791,7 @@ private struct DiffHeader: View {
             }
             Spacer(minLength: 12)
             if let note = model.note {
-                ChangeNote(note: note, undo: { model.undo?(); model.note = nil }, close: { model.note = nil })
+                ChangeNote(note: note, undo: { model.undo?() }, close: { model.note = nil })
             }
             HeaderButton(symbol: "chevron.up", help: String(localized: "Previous Change")) { model.onStep?(-1) }
             HeaderButton(symbol: "chevron.down", help: String(localized: "Next Change")) { model.onStep?(1) }

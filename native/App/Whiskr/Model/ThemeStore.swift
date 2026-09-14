@@ -132,9 +132,12 @@ final class ThemeStore {
     /// other theme came from them.
     func remove(userTheme theme: Theme) {
         delete(userTheme: theme)
-        let used = Set(userThemes.flatMap { [$0.light?.origin?.folder, $0.dark?.origin?.folder] }.compactMap { $0 })
-        for folder in Set([theme.light?.origin?.folder, theme.dark?.origin?.folder].compactMap { $0 }) where !used.contains(folder) {
-            try? FileManager.default.removeItem(at: Self.originalsFolder.appendingPathComponent(folder, isDirectory: true))
+        // Only a folder directly inside Originals (`ThemeOrigin.originalsFolder(in:)`), and to the Trash:
+        // the name comes from a file anyone could have written.
+        let originals = Self.originalsFolder
+        let used = Set(userThemes.flatMap { [$0.light?.origin, $0.dark?.origin] }.compactMap { $0?.originalsFolder(in: originals) })
+        for folder in Set([theme.light?.origin, theme.dark?.origin].compactMap { $0?.originalsFolder(in: originals) }) where !used.contains(folder) {
+            try? FileManager.default.trashItem(at: folder, resultingItemURL: nil)
         }
     }
 
@@ -143,8 +146,15 @@ final class ThemeStore {
     /// `originalsFolder`) and selects the first. Gives what was added; none for an extension without themes.
     @discardableResult
     func importThemes(at url: URL) throws -> [Theme] {
+        try add(imported: ThemeImport.themes(at: url, originals: Self.originalsFolder))
+    }
+
+    /// Keeps themes read for an import (`ThemeImport.themes`) with your themes and selects the first.
+    /// Gives what was added.
+    @discardableResult
+    func add(imported: [Theme]) throws -> [Theme] {
         var added: [Theme] = []
-        for var theme in try ThemeImport.themes(at: url, originals: Self.originalsFolder) {
+        for var theme in imported {
             // A theme that is already here (Monokai imported from VS Code is the built-in one) is chosen, not
             // added twice; another of the same name is told apart by a number, as its file is.
             if let existing = themes.first(where: { $0.name == theme.name && $0.hasSameColors(as: theme) }) {
@@ -202,11 +212,7 @@ final class ThemeStore {
     }
 
     func uniqueID(for id: String) -> String {
-        let taken = Set(themes.map(\.id))
-        guard taken.contains(id) else { return id }
-        var number = 2
-        while taken.contains("\(id)-\(number)") { number += 1 }
-        return "\(id)-\(number)"
+        Theme.uniqueID(for: id, taken: themes.map(\.id))
     }
 
     func showThemesFolder() {
@@ -222,11 +228,29 @@ final class ThemeStore {
 
     private func loadUserThemes() {
         let files = (try? FileManager.default.contentsOfDirectory(at: Self.themesFolder, includingPropertiesForKeys: nil)) ?? []
-        userThemes = files.filter { $0.pathExtension == Theme.fileExtension }.compactMap { url in
-            guard var theme = try? Theme.read(Data(contentsOf: url)), !BuiltInThemes.all.contains(where: { $0.id == theme.id }) else { return nil }
-            theme.isBuiltIn = false
-            return theme
-        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        // Ids are slugs, as the files are named (`Theme.uniqueID`). Of two files whose ids come to the same
+        // slug, the one named by it is the theme and the other is left out, so deleting the theme removes
+        // its own file.
+        var taken = Set(BuiltInThemes.all.map(\.id))
+        let read: [(url: URL, theme: Theme)] = files.filter { $0.pathExtension == Theme.fileExtension }.compactMap { url in
+            (try? Theme.read(Data(contentsOf: url))).map { (url, $0) }
+        }
+        func order(_ entry: (url: URL, theme: Theme)) -> (Int, String) {
+            (entry.url.lastPathComponent == file(for: entry.theme.id).lastPathComponent ? 0 : 1, entry.url.lastPathComponent)
+        }
+        userThemes = read
+            .sorted { order($0) < order($1) }
+            .compactMap { _, theme in
+                var theme = theme
+                guard !taken.contains(Theme.slug(theme.id)) else { return nil }
+                if theme.id != Theme.slug(theme.id) {
+                    if themeID == theme.id { themeID = Theme.slug(theme.id) }
+                    theme.id = Theme.slug(theme.id)
+                }
+                taken.insert(theme.id)
+                theme.isBuiltIn = false
+                return theme
+            }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     private func rebuild() {

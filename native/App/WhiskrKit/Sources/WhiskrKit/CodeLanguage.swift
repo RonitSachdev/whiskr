@@ -160,8 +160,10 @@ public struct LanguageConfiguration: Hashable, Sendable {
 
     /// The configuration in a parsed `language-configuration.json`.
     public init(json: [String: Any]) {
+        // A pair with an empty side is no pair (nothing could be typed or found for it), and is left out.
         func pair(_ value: Any?) -> EditingPairs.Pair? {
-            guard let strings = value as? [Any], strings.count == 2, let open = strings[0] as? String, let close = strings[1] as? String else { return nil }
+            guard let strings = value as? [Any], strings.count == 2, let open = strings[0] as? String, let close = strings[1] as? String,
+                  !open.isEmpty, !close.isEmpty else { return nil }
             return EditingPairs.Pair(open, close)
         }
         func stringList(_ value: Any?) -> [String]? {
@@ -185,7 +187,8 @@ public struct LanguageConfiguration: Hashable, Sendable {
 
         let closing: [EditingPairs.AutoClosingPair]? = nonEmpty((json["autoClosingPairs"] as? [Any] ?? []).compactMap { entry in
             if let simple = pair(entry) { return EditingPairs.AutoClosingPair(simple.open, simple.close) }
-            guard let object = entry as? [String: Any], let open = object["open"] as? String, let close = object["close"] as? String else { return nil }
+            guard let object = entry as? [String: Any], let open = object["open"] as? String, let close = object["close"] as? String,
+                  !open.isEmpty, !close.isEmpty else { return nil }
             var notIn: Set<TokenContext> = []
             if object["notIn"] != nil {
                 guard let names = stringList(object["notIn"]) else { return nil }
@@ -204,7 +207,8 @@ public struct LanguageConfiguration: Hashable, Sendable {
 
         let surrounding: [EditingPairs.Pair]? = nonEmpty((json["surroundingPairs"] as? [Any] ?? []).compactMap { entry in
             if let simple = pair(entry) { return simple }
-            guard let object = entry as? [String: Any], let open = object["open"] as? String, let close = object["close"] as? String else { return nil }
+            guard let object = entry as? [String: Any], let open = object["open"] as? String, let close = object["close"] as? String,
+                  !open.isEmpty, !close.isEmpty else { return nil }
             return EditingPairs.Pair(open, close)
         })
         surroundingPairs = surrounding ?? autoClosingPairs.map { EditingPairs.Pair($0.open, $0.close) }

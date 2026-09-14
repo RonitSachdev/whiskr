@@ -101,9 +101,22 @@ public struct ExtensionManifest: Sendable, Equatable {
     public var languages: [LanguageContribution]
     public var grammars: [GrammarContribution]
 
+    /// The most a `.vsix` may hold unpacked, and its most files. Theme and language extensions hold a few
+    /// megabytes; one that says it is past these is not unpacked at all, and one that
+    /// understates it is stopped once that much has reached the disk, so an archive that inflates to
+    /// gigabytes (a "zip bomb") never fills it.
+    public static let largestUnpacked: UInt64 = 256 * 1024 * 1024
+    public static let mostEntries = 20_000
+
     /// Unpacks a `.vsix` (a zip archive) into `folder`, with the system's `ditto`, and gives the folder to
-    /// read with `read(folder:)`. Nothing in it is run.
+    /// read with `read(folder:)`. Nothing in it is run. The archive's own list of contents is read first,
+    /// and one larger than `largestUnpacked` or with more than `mostEntries` files is refused. `ditto`
+    /// keeps every entry inside `folder` (a "../" or absolute name, or a link, lands inside it). Slow: not
+    /// on the main thread.
     public static func unpack(vsix: URL, into folder: URL) throws -> URL {
+        guard let contents = ZipDirectory.contents(of: vsix), contents.entries <= mostEntries, contents.bytes <= largestUnpacked else {
+            throw Failure.notAnExtension("The extension could not be unpacked.")
+        }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
@@ -119,14 +132,30 @@ public struct ExtensionManifest: Sendable, Equatable {
         } catch {
             throw Failure.notAnExtension("The extension could not be unpacked.")
         }
-        // An archive that takes longer than this to unpack is not an extension anyone wrote by hand.
-        if exited.wait(timeout: .now() + 60) == .timedOut {
-            process.terminate()
-            exited.wait()
-            throw Failure.notAnExtension("The extension could not be unpacked.")
+        // The archive's list can understate what its data inflates to, so what lands on the disk is
+        // watched too: past the limit (or after a minute, longer than any extension written by hand takes)
+        // the unpacking stops.
+        let deadline = Date(timeIntervalSinceNow: 60)
+        while exited.wait(timeout: .now() + 0.25) == .timedOut {
+            guard Date() < deadline, unpackedSize(of: folder) <= largestUnpacked else {
+                process.terminate()
+                exited.wait()
+                throw Failure.notAnExtension("The extension could not be unpacked.")
+            }
         }
+        guard unpackedSize(of: folder) <= largestUnpacked else { throw Failure.notAnExtension("The extension could not be unpacked.") }
         guard process.terminationStatus == 0 else { throw Failure.notAnExtension("The extension could not be unpacked.") }
         return folder
+    }
+
+    /// The bytes of the files under `folder`, as far as `largestUnpacked` and a little past it.
+    private static func unpackedSize(of folder: URL) -> UInt64 {
+        var total: UInt64 = 0
+        let files = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: [.fileSizeKey], options: [])
+        while let file = files?.nextObject() as? URL, total <= largestUnpacked {
+            total += UInt64((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+        return total
     }
 
     /// Reads the extension in `folder` (the folder holding `package.json`; a `.vsix` unpacks to an
@@ -193,5 +222,85 @@ public struct ExtensionManifest: Sendable, Equatable {
                                  license: json["license"] as? String,
                                  folder: root,
                                  themes: themes, languages: languages, grammars: grammars)
+    }
+}
+
+/// A zip archive's central directory, read without unpacking anything: how many entries it lists and how
+/// large they are unpacked, as the archive declares them (ZIP64 included).
+enum ZipDirectory {
+    /// nil when `url` is not a zip archive this can read.
+    static func contents(of url: URL) -> (entries: Int, bytes: UInt64)? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        guard let size = try? handle.seekToEnd(), size >= 22 else { return nil }
+        // The end record is in the last 64 KB and 22 bytes (its comment is at most 65,535 bytes).
+        let tailStart = size - min(size, 65_557)
+        guard (try? handle.seek(toOffset: tailStart)) != nil, let tail = try? handle.readToEnd(), tail.count >= 22 else { return nil }
+        let bytes = [UInt8](tail)
+        guard let end = stride(from: bytes.count - 22, through: 0, by: -1).first(where: { read32(bytes, $0) == 0x0605_4b50 }) else { return nil }
+        var entries = UInt64(read16(bytes, end + 10))
+        var directorySize = UInt64(read32(bytes, end + 12))
+        var directoryOffset = UInt64(read32(bytes, end + 16))
+        if entries == 0xFFFF || directorySize == 0xFFFF_FFFF || directoryOffset == 0xFFFF_FFFF {
+            // ZIP64: a locator just before the end record says where the larger end record is.
+            let locator = end - 20
+            guard locator >= 0, read32(bytes, locator) == 0x0706_4b50 else { return nil }
+            let recordOffset = read64(bytes, locator + 8)
+            guard (try? handle.seek(toOffset: recordOffset)) != nil, let record = try? handle.read(upToCount: 56), record.count == 56 else { return nil }
+            let fields = [UInt8](record)
+            guard read32(fields, 0) == 0x0606_4b50 else { return nil }
+            entries = read64(fields, 32)
+            directorySize = read64(fields, 40)
+            directoryOffset = read64(fields, 48)
+        }
+        // A directory larger than this lists far more than `mostEntries` anyway.
+        guard directorySize <= 64 * 1024 * 1024, directoryOffset <= size, directorySize <= size - directoryOffset,
+              (try? handle.seek(toOffset: directoryOffset)) != nil,
+              let directoryData = try? handle.read(upToCount: Int(directorySize)), directoryData.count == Int(directorySize) else { return nil }
+        let directory = [UInt8](directoryData)
+        var position = 0, count = 0
+        var total: UInt64 = 0
+        while position + 46 <= directory.count {
+            guard read32(directory, position) == 0x0201_4b50 else { return nil }
+            var unpacked = UInt64(read32(directory, position + 24))
+            let nameLength = Int(read16(directory, position + 28)), extraLength = Int(read16(directory, position + 30))
+            let commentLength = Int(read16(directory, position + 32))
+            let extraStart = position + 46 + nameLength
+            guard extraStart + extraLength + commentLength <= directory.count else { return nil }
+            if unpacked == 0xFFFF_FFFF {
+                // The real size is the first field of the ZIP64 extra block.
+                var field = extraStart
+                var found = false
+                while field + 4 <= extraStart + extraLength {
+                    let id = read16(directory, field), length = Int(read16(directory, field + 2))
+                    if id == 0x0001, length >= 8, field + 12 <= directory.count {
+                        unpacked = read64(directory, field + 4)
+                        found = true
+                        break
+                    }
+                    field += 4 + length
+                }
+                guard found else { return nil }
+            }
+            let (sum, overflow) = total.addingReportingOverflow(unpacked)
+            guard !overflow else { return nil }
+            total = sum
+            count += 1
+            position = extraStart + extraLength + commentLength
+        }
+        guard UInt64(count) == entries else { return nil }
+        return (count, total)
+    }
+
+    private static func read16(_ bytes: [UInt8], _ at: Int) -> UInt16 {
+        UInt16(bytes[at]) | UInt16(bytes[at + 1]) << 8
+    }
+
+    private static func read32(_ bytes: [UInt8], _ at: Int) -> UInt32 {
+        UInt32(read16(bytes, at)) | UInt32(read16(bytes, at + 2)) << 16
+    }
+
+    private static func read64(_ bytes: [UInt8], _ at: Int) -> UInt64 {
+        UInt64(read32(bytes, at)) | UInt64(read32(bytes, at + 4)) << 32
     }
 }

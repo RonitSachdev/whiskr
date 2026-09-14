@@ -79,6 +79,8 @@ final class FileDocument {
     @ObservationIgnored private var fontSignatures: [Int] = [-1]
     /// The bytes last read or written: the disk holding these again is our own save, not a change.
     @ObservationIgnored private var known = Data()
+    /// The disk's bytes the bar is asking about (Reload or Keep Mine).
+    @ObservationIgnored private var askedAbout: Data?
     @ObservationIgnored private var savedText: NSString = ""
     @ObservationIgnored private var checkScheduled = false
     @ObservationIgnored private var editors: [ObjectIdentifier: Editing] = [:]
@@ -236,6 +238,7 @@ final class FileDocument {
             content = kind
         }
         diskChange = nil
+        askedAbout = nil
     }
 
     /// The whole text from the disk: the editors keep their place, and undo starts afresh.
@@ -415,7 +418,14 @@ final class FileDocument {
     static func languagesChanged() {
         GrammarStore.shared.reset()
         for document in SyntaxParagraphs.shared.documents.values.compactMap(\.document) where document.isText {
-            let detected = LanguageRegistry.shared.detect(fileName: document.url.lastPathComponent, firstLine: document.lineText(0))
+            // A language chosen in the status bar stays, found again by its id (it may have been replaced);
+            // only when it is gone does the file go back to what it is detected as.
+            let chosen = Self.chosenLanguages[document.url.path].flatMap { LanguageRegistry.shared.language(id: $0) }
+            if chosen == nil, document.languageIsChosen {
+                Self.chosenLanguages[document.url.path] = nil
+                document.languageIsChosen = false
+            }
+            let detected = chosen ?? LanguageRegistry.shared.detect(fileName: document.url.lastPathComponent, firstLine: document.lineText(0))
             document.language = detected
             document.syntax.reload(detected)
             document.version += 1
@@ -476,16 +486,20 @@ final class FileDocument {
         let editorConfig = EditorConfig.properties(forFileAt: url.path)
         if editorConfig != self.editorConfig { self.editorConfig = editorConfig }
         let preferences = EditorPreferences.shared
-        applyUndoably(SaveFixes.edits(in: storage.string as NSString,
-                                      trimTrailingWhitespace: editorConfig.trimTrailingWhitespace ?? preferences.trimTrailingWhitespace,
-                                      insertFinalNewline: editorConfig.insertFinalNewline ?? preferences.insertFinalNewline),
-                      named: String(localized: "Tidy on Save", comment: "Undo menu: what saving trimmed or added"))
+        // The tidied text and the format are worked out first and taken on only once the file is written:
+        // a failed write leaves the buffer and its line breaks and encoding as they were.
+        let edits = SaveFixes.edits(in: storage.string as NSString,
+                                    trimTrailingWhitespace: editorConfig.trimTrailingWhitespace ?? preferences.trimTrailingWhitespace,
+                                    insertFinalNewline: editorConfig.insertFinalNewline ?? preferences.insertFinalNewline)
+        let tidied = NSMutableString(string: storage.string)
+        for edit in edits.reversed() { tidied.replaceCharacters(in: edit.range, with: edit.text) }
+        var format = format
         if let ending = editorConfig.endOfLine, ending != format.lineEnding {
             format.lineEnding = ending
             format.hadMixedLineEndings = false
         }
         if let charset = editorConfig.charset { format.encoding = charset }
-        let text = storage.string
+        let text = tidied as String
         format.encoding = format.encodingNeeded(for: text)
         let data = format.data(for: text)
         let target = url.resolvingSymlinksInPath()
@@ -496,11 +510,14 @@ final class FileDocument {
         } catch {
             throw SaveError.writing(error.localizedDescription)
         }
+        applyUndoably(edits, named: String(localized: "Tidy on Save", comment: "Undo menu: what saving trimmed or added"))
+        format.hadMixedLineEndings = false
+        self.format = format
         known = data
         savedText = NSString(string: text)
-        format.hadMixedLineEndings = false
         isEdited = false
         diskChange = nil
+        askedAbout = nil
     }
 
     /// Edits made outside any text view (saving's tidying), as one change the editors' Undo takes back.
@@ -551,8 +568,11 @@ final class FileDocument {
         }
     }
 
-    /// The bar's Keep Mine: your version stays; the next save writes it over the disk's.
+    /// The bar's Keep Mine: your version stays; the next save writes it over the disk's. The disk's version
+    /// it was asked about counts as seen, so only a further change asks again (not every event in its folder).
     func keepMine() {
+        if let askedAbout { known = askedAbout }
+        askedAbout = nil
         diskChange = nil
         isEdited = true
     }
@@ -580,10 +600,17 @@ final class FileDocument {
             switch self.content {
             case .text:
                 switch FileSync.respond(disk: disk, known: self.known, edited: self.isEdited) {
-                case .nothing: break
-                case .reload: self.revert()
-                case .ask: self.diskChange = .changed
-                case .deleted: self.diskChange = .deleted
+                case .nothing:
+                    // Back as it was (a branch switched away and back): nothing went after all.
+                    if self.diskChange == .deleted { self.diskChange = nil }
+                case .reload:
+                    self.diskChange = nil
+                    self.revert()
+                case .ask:
+                    self.askedAbout = disk
+                    self.diskChange = .changed
+                case .deleted:
+                    self.diskChange = .deleted
                 }
             case .loading:
                 break

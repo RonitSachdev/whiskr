@@ -17,7 +17,8 @@ SwiftTerm for terminals. No web view, no Node.
 | `native/App/project.yml` | The Xcode project's source. `Whiskr.xcodeproj` is generated from it (`make project`); never edit the project by hand |
 | `native/App/Makefile` | Every build, test and packaging command |
 | `native/App/Whiskr/` | The app target: `App/` (launch, menus, debug runs), `UI/`, `Model/` (the `Workbench`), `Terminal/`, `Files/`, `Editor/`, `Agents/` (hook listener, notifications) |
-| `native/App/WhiskrKit/Sources/WhiskrKit` | Logic without AppKit: agent states from hooks, layout, themes, syntax lexer, diffs, git, the host protocol, the migration from the old name |
+| `native/App/WhiskrKit/Sources/WhiskrKit` | Logic without AppKit: agent states from hooks, layout, themes, TextMate syntax colouring and the bundled languages, the key table, diffs, git, the host protocol, the migration from the old name |
+| `native/App/WhiskrKit/Sources/COniguruma` | Oniguruma, vendored unchanged: the regular expressions TextMate grammars use |
 | `native/App/WhiskrKit/Sources/TerminalHost` | The session host (owns every pseudo-terminal) and the client the app uses |
 | `native/App/WhiskrKit/Sources/Paw`, `PawTool` | The `paw` command-line tool |
 | `native/App/WhiskrKit/Sources/WhiskrMeadow` | Maps the app's model to the scene's world |
@@ -55,7 +56,9 @@ Point builds at your own folders when you work beside someone's running copy, fo
    or change the user's. Use `--snapshot <png>` to see the window, `--script` (see
    `Whiskr/App/DebugScript.swift`) to drive menus and keys, and `--perf` (`Whiskr/App/DebugPerf.swift`,
    `make perf`) to measure what a visible window would show. An isolated run exits with status 70 when it
-   crashes: that is a bug to fix, not noise.
+   crashes: that is a bug to fix, not noise. A Debug build refuses every one of these options without
+   `--isolated <folder>`, and an isolated run starts no real Claude Code, plays none of the app's sounds
+   or beeps, and keeps its shells' history to itself.
 3. **Never disturb the user's own Whiskr.** Their sessions may be running inside it. Do not build into
    the DerivedData folder their copy runs from. Do not quit, relaunch or signal it, its session host
    (`whiskr-host`) or any process you did not start. Stop what you started by its own PID, never by port

@@ -4,7 +4,7 @@ import WhiskrKit
 /// The menu bar (docs/DESIGN.md): every command, with its key, in the app's own words. Every app
 /// shortcut uses ⌘; Esc, bare ⌃-letters, ⇧Tab and ⌥-letters always reach the program in the terminal
 /// (⌃Tab and ⌃⇧Tab, for tabs, are the one exception, as in Terminal). The editor's keys without ⌘ (VS Code's
-/// ⌥↑ ⌥↓ line moves, ⌥Z, ⌃G) count only while it has the keyboard (`ScopedKeyItem`). `KeyTable` holds
+/// ⌥↑ ⌥↓ line moves, ⌃G) count only while it has the keyboard (`ScopedKeyItem`). `KeyTable` holds
 /// every key and the test that no two collide; keep it in step with this file.
 enum MainMenu {
     /// File › Open Recent, filled when it opens.
@@ -235,7 +235,8 @@ enum MainMenu {
             endings.addItem(item(ending.label, #selector(MainWindowController.setLineEnding(_:)), tag: index))
         }
         menu.addItem(submenu(endings))
-        menu.addItem(scoped(String(localized: "Wrap Lines"), #selector(MainWindowController.toggleWrapLines(_:)), "z", .option, in: .editor))
+        // No key: VS Code's ⌥Z types a letter on some keyboards ("ż" on a Polish one), which the menu would take.
+        menu.addItem(item(String(localized: "Wrap Lines"), #selector(MainWindowController.toggleWrapLines(_:))))
         menu.addItem(item(String(localized: "Show Invisibles"), #selector(MainWindowController.toggleInvisibles(_:))))
         menu.addItem(.separator())
         menu.addItem(item(String(localized: "Compare with HEAD"), #selector(MainWindowController.compareWithHEAD(_:))))

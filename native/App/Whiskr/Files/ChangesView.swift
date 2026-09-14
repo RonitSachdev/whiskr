@@ -7,7 +7,7 @@ import WhiskrKit
 /// hovering offers stage, unstage and discard (always confirmed); a message box and Commit at the bottom.
 struct ChangesView: View {
     let workbench: Workbench
-    @FocusState private var messageFocused: Bool
+    @State private var messageFocused = false
 
     var body: some View {
         if let repository = workbench.selectedRepository {
@@ -290,7 +290,7 @@ private struct RowAction: View {
 private struct CommitBox: View {
     @Bindable var repository: Repository
     let status: GitStatus
-    var focused: FocusState<Bool>.Binding
+    @Binding var focused: Bool
 
     private var message: String { repository.commitMessage }
 
@@ -309,16 +309,13 @@ private struct CommitBox: View {
                         .padding(.vertical, 1)
                         .allowsHitTesting(false)
                 }
-                TextEditor(text: $repository.commitMessage)
-                    .font(.system(size: 12.5))
-                    .scrollContentBackground(.hidden)
-                    .focused(focused)
+                CommitMessageField(text: $repository.commitMessage, focused: $focused)
                     .accessibilityLabel(String(localized: "Commit message"))
             }
             .padding(6)
             .frame(minHeight: 58, maxHeight: 110)
             .background(RoundedRectangle(cornerRadius: 7).fill(Color(nsColor: Colors.terminalBackground)))
-            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(focused.wrappedValue ? Color.accent.opacity(0.6) : Color.line))
+            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(focused ? Color.accent.opacity(0.6) : Color.line))
             Button {
                 repository.commit(message: message) { done in if done { repository.commitMessage = "" } }
             } label: {
@@ -330,7 +327,7 @@ private struct CommitBox: View {
             .buttonStyle(.borderedProminent)
             .disabled(!canCommit)
             // Only from the message: a window-wide ⌘↩ would commit from a terminal or the editor.
-            .keyboardShortcut(focused.wrappedValue ? KeyboardShortcut(.return, modifiers: .command) : nil)
+            .keyboardShortcut(focused ? KeyboardShortcut(.return, modifiers: .command) : nil)
             .help(status.staged.isEmpty ? String(localized: "Stage changes to commit them") : String(localized: "Commit the staged changes (⌘↩)"))
             if let error = repository.lastError {
                 Text(error)
@@ -349,6 +346,84 @@ private struct CommitBox: View {
         if repository.isCommitting { return String(localized: "Committing…") }
         let count = status.staged.count
         return count == 0 ? String(localized: "Commit") : String(localized: "Commit \(count) Files", comment: "Commit button with the number of staged files")
+    }
+}
+
+/// The commit message: a plain text view with an undo of its own. SwiftUI's TextEditor put its typing on
+/// the window's undo stack, where it outlived the message: once a commit had cleared the field, ⌘Z in a
+/// terminal or a diff reached into the emptied text and crashed the app. Here the field's undo is its own,
+/// and goes when the message is replaced from outside (a commit clearing it).
+private struct CommitMessageField: NSViewRepresentable {
+    @Binding var text: String
+    @Binding var focused: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(text: $text) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let textView = MessageTextView(frame: NSRect(x: 0, y: 0, width: 200, height: 40))
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.drawsBackground = false
+        textView.font = .systemFont(ofSize: 12.5)
+        textView.textContainerInset = .zero
+        textView.textContainer?.lineFragmentPadding = 5
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.string = text
+        textView.delegate = context.coordinator
+        let focused = $focused
+        textView.onFocus = { has in DispatchQueue.main.async { if focused.wrappedValue != has { focused.wrappedValue = has } } }
+        let scroll = NSScrollView()
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.documentView = textView
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let textView = scroll.documentView as? NSTextView else { return }
+        context.coordinator.text = $text
+        textView.textColor = Colors.text
+        textView.insertionPointColor = Colors.text
+        if textView.string != text {
+            textView.string = text
+            context.coordinator.undo.removeAllActions()
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var text: Binding<String>
+        let undo = UndoManager()
+
+        init(text: Binding<String>) { self.text = text }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView, text.wrappedValue != textView.string else { return }
+            text.wrappedValue = textView.string
+        }
+
+        func undoManager(for view: NSTextView) -> UndoManager? { undo }
+    }
+}
+
+/// Says when it takes and gives up the keyboard (⌘↩ commits only while it has it).
+private final class MessageTextView: NSTextView {
+    var onFocus: ((Bool) -> Void)?
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { onFocus?(true) }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { onFocus?(false) }
+        return resigned
     }
 }
 

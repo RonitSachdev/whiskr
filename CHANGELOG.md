@@ -27,8 +27,8 @@ Nothing has been released yet. This is what the first release will contain.
   answers a request without going to its terminal. No agent event ever moves the window, focus, tab or
   camera.
 - Go to (⌘P) for workspaces, tabs, Claudes, helpers and files, and a command palette (⇧⌘P).
-- Files and Changes beside the terminals. A light editor with find and replace and Go to Line. Markdown, image and PDF previews. Diffs side by side or inline. Staging,
-  discarding and committing.
+- Files and Changes beside the terminals. A light editor with find and replace and Go to Line. Markdown,
+  image and PDF previews. Diffs side by side or inline. Staging, discarding and committing.
 - Git worktrees as workspaces of their own, joined to their repository's blanket in the meadow.
 - `paw`, a command-line tool on every terminal's PATH for starting and steering helper terminals (`run`,
   `send`, `wait`, `read`, `keys`, `interrupt`, `ls`, `kill`).
@@ -48,8 +48,8 @@ Nothing has been released yet. This is what the first release will contain.
 - Tabs as in Cursor and VS Code: the selected tab joins its terminal, with an accent line along its top;
   a close button at each tab's end (always on the selected tab, on the others under the pointer); a
   middle click closes; with more tabs than fit, the row shows those around the selected one and a menu
-  lists them all, and "+" stays in reach. The tab
-  row begins with the workspace's colour and name, whose menu lists every workspace.
+  lists them all, and "+" stays in reach. The tab row begins with the workspace's colour and name, whose
+  menu lists every workspace.
 - In a split, the pane that takes your typing has an accent border and the others fade slightly.
 - The bars behave as a Mac title bar: drag them to move the window, double-click to zoom (following
   Desktop & Dock's setting). A click on the empty tab row no longer opens a tab; "+" and ⌘T do.
@@ -126,8 +126,8 @@ Nothing has been released yet. This is what the first release will contain.
   applied.
 - File icons people know from VS Code (Seti) in Files, tabs, Go to and Changes, in one colour.
 - VS Code's keys where they suit a Mac: ⌘B hides the meadow, ⌘\ splits, ⇧⌘V previews Markdown, and in the
-  editor ⌥↑ ⌥↓ move lines, ⇧⌥↑ ⇧⌥↓ copy them, ⇧⌘K deletes them, ⇧⌘\ goes to the matching bracket, ⌥Z
-  wraps lines and ⌃G goes to a line. File › Save All (⌥⌘S). Terminals still receive these keys.
+  editor ⌥↑ ⌥↓ move lines, ⇧⌥↑ ⇧⌥↓ copy them, ⇧⌘K deletes them, ⇧⌘\ goes to the matching bracket and
+  ⌃G goes to a line. File › Save All (⌥⌘S). Terminals still receive these keys.
 - The editor closes brackets and quotes as VS Code does (and types over them, and wraps a selection), boxes
   the matching bracket, shows indent guides and tints other occurrences of the word at the cursor.
   Settings › Editor: indent with spaces or tabs, and trim trailing whitespace and insert a final newline on
@@ -140,6 +140,85 @@ Nothing has been released yet. This is what the first release will contain.
 
 ### Fixed
 
+- Undo Revert Change works after its diff has closed or been replaced (a preview tab gives way to the next
+  file chosen in Changes); it did nothing, and the reverted lines were lost.
+- A file opened through a link (`CLAUDE.md` pointing at `AGENTS.md`) reloads when Claude edits it.
+- A damaged `.vsix` can no longer quit the app, and one that unpacks to far more than it says is stopped.
+- A repository's `.editorconfig` with braces nested very deep no longer quits the app on opening a file.
+- Deleting a theme removes only its own copy of the files it was imported from, to the Trash; a shared
+  theme file can no longer name another folder to be deleted.
+- A theme whose id differs from another's only in case or spaces no longer replaces that theme's file.
+- A grammar whose capture includes itself, or with an expression nested hundreds deep, no longer quits
+  the app (and the files that reopen at launch with it).
+- Files with Windows line breaks (CRLF) show their diffs line by line, and Stage, Unstage and Revert Change
+  work on them.
+- Stage and Revert Change put the change in its place whatever your git settings (`diff.context=0`,
+  `diff.mnemonicPrefix`); added, deleted, renamed and submodule files are staged or reverted whole, from
+  Changes.
+- Stage and Revert Change act only on the change they were shown for, even after the diff reloads under
+  the pointer; Undo Revert Change can be redone and undone again, and the note's Undo undoes that revert.
+- A `file:` link in a terminal opens in the editor (or beeps), and is never handed to macOS to run.
+- Wrap Lines no longer has ⌥Z: it took "Ω" and, on a Polish keyboard, "ż" from typing in the editor.
+- A language's bracket pair with an empty side no longer freezes typing.
+- Typing in a line longer than 500 characters leaves its colours to the background, instead of stalling
+  the window in some grammars.
+- Colours guessed for a far part of a file no longer stay after an edit above it.
+- Importing a theme that includes the same files over and over, or a .vsix, no longer freezes the window:
+  a .vsix is unpacked once, off the main thread, and one that would unpack to more than 256 MB is refused.
+- An `.editorconfig` section with many `*` no longer freezes saving.
+- Import Settings no longer quits on a tab size or font size such as `1e300` or `"nan"`.
+- A folder with "#" or "?" in its name is followed correctly by the terminal (bash, zsh and fish), and
+  bash with `set -u` no longer complains at every command.
+- A refused patch can no longer end the app while git is reading it.
+- Previous and Next Command stay available in every terminal.
+- Move Line, Delete Line and Tidy on Save treat a line holding U+2028 or U+0085 as one line.
+- A language chosen in the status bar stays when languages are added or removed.
+- A save that fails leaves the text untidied, as it was.
+- Files and editing: ⌘-click on a path, or Go to with a line (`:42`, `name:42`), now goes to the line in a
+  file that is already open; it only worked when the file was opened anew. A file deleted outside the app
+  says so in a repository under a linked folder (`/tmp`) too, and the bar goes again if the file comes
+  back as it was. After Keep Mine, the bar comes back only for a further change to the file, not for any
+  change in its folder. Don't Save no longer leaves the discarded changes waiting in the file opened
+  again. The status bar's line and column follow the tab shown. Show Preview (⌥⌘P, ⇧⌘V) from side by
+  side shows the preview, as it says, not the source.
+- Diffs and Changes: a diff no longer crashes the app when its pane widens enough to go from inline to
+  side by side. ⌘Z after a commit no longer reaches into the cleared message field (it could crash the
+  app); the message keeps an undo of its own. After Redo of Revert Change, Undo puts the change back
+  again. A new picture's diff says it is binary rather than "No changes".
+- A path whose folders have brackets, as web frameworks name routes (`app/[id]/page.tsx`,
+  `app/(shop)/page.tsx`), is a link in the terminal. A picture a Markdown file names before it exists
+  shows once it is made.
+- Resting the pointer on a tab's close button could quit the app when its tooltip came up.
+- ⌘Z brings back the one tab closed last. After a closed tab's ten seconds ran out, the next ⌘Z brought
+  back every tab closed lately at once, and showed the wrong one.
+- Closing the tab of a Claude that was waiting on you takes its count off the Dock badge.
+- After renaming a tab or a workspace (Return or Esc), the keyboard is back in the terminal, and a second
+  rename takes the keyboard as the first did.
+- Clicks on the cats and blankets reach them anywhere in the meadow: the "↓ 1 need you" capsules no
+  longer lie over the whole meadow, and clicking one leaves the keyboard in the terminal.
+- A Claude whose error you have looked at shows as idle at once, not working for a moment more; a prompt
+  typed straight after an error shows it thinking.
+- ⌘J at the only request goes back where you were, instead of staying put.
+- Notifications are asked for when a Claude first gets to work in one of the app's terminals. They were
+  never asked for, so requests' notifications with Allow and Deny never appeared.
+
+- Files and Changes no longer vanish when switched quickly: showing the panel again while it was still
+  sliding shut (⇧⌘E, then ⇧⌘C at once) left it hidden though its button said it was open.
+- In a narrow window the status bar lets go of the ⌘P and ⇧⌘P hints, then the folder, instead of cutting
+  every item short ("fe…ut", "5 Claud…").
+- A flag short of room shows a branch's own name, "…/checkout", rather than cutting it in the middle.
+- Show Workspaces as List draws in the theme's colours, with each workspace's name stronger than its
+  folder (the names were the fainter of the two).
+- Help: "Terminals keep running" (the page said "sessions"), and the states without a mark line up with
+  the others.
+- The changed-files count on the panel button stays inside the button, clear of Settings.
+- A saved layout the app cannot read (damaged, cut short, or written by a newer version) is no longer
+  replaced by the next launch's: it is kept beside it as `layout-unreadable-<time>.json`.
+- Closed tabs no longer stay in memory after their ten seconds of ⌘Z: the last ten were kept whole, with
+  their terminals' views and scrollback, though Reopen Closed Tab needs only their folders.
+- `paw run` on a busy Mac no longer hands a helper its task before the program has had its say: a
+  program slow to start, or a report not yet read, could be taken for ready, and the task typed into a
+  question it was asking.
 - The meadow at rest costs less: a change in it (a cat dozing off, a lantern going out) no longer draws
   at the display's full rate for the next few seconds as if you had touched it; it is drawn at a calm
   30 frames a second when nothing in it moves fast, and it goes back to its slow resting tick sooner.

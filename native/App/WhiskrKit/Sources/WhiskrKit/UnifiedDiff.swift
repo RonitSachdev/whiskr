@@ -11,14 +11,25 @@ public struct FileDiff: Sendable, Equatable {
     /// A combined diff (`diff --cc`): a file in conflict, or a merge. Its hunks are read against the first
     /// side (yours, during a merge), so the conflict markers and the other side's lines show as added.
     public var isCombined: Bool
+    /// A submodule's commit (mode 160000): its "lines" are commit ids, not a file's.
+    public var isSubmodule: Bool
     public var hunks: [DiffHunk]
 
-    public init(oldPath: String?, newPath: String?, isBinary: Bool = false, isCombined: Bool = false, hunks: [DiffHunk] = []) {
+    public init(oldPath: String?, newPath: String?, isBinary: Bool = false, isCombined: Bool = false, isSubmodule: Bool = false, hunks: [DiffHunk] = []) {
         self.oldPath = oldPath
         self.newPath = newPath
         self.isBinary = isBinary
         self.isCombined = isCombined
+        self.isSubmodule = isSubmodule
         self.hunks = hunks
+    }
+
+    /// One change of it can be staged, unstaged or reverted on its own (`DiffPatch`): a text file, the
+    /// same path on both sides. A patch of part of an added or deleted file, or of a rename, needs headers
+    /// a single change cannot carry (applied without them it leaves an empty file in the index, or fails);
+    /// the whole file is staged or reverted from the Changes list instead.
+    public var acceptsChangePatches: Bool {
+        oldPath != nil && oldPath == newPath && !isBinary && !isCombined && !isSubmodule
     }
 }
 
@@ -58,13 +69,17 @@ public struct DiffLine: Sendable, Equatable {
     public var newNumber: Int?
     /// "\ No newline at end of file" followed this line.
     public var noNewlineAtEnd: Bool
+    /// The line ends in "\r\n" (a Windows file): kept out of `text`, and put back in a patch, which must
+    /// match the file byte for byte.
+    public var carriageReturn: Bool
 
-    public init(kind: Kind, text: String, oldNumber: Int?, newNumber: Int?, noNewlineAtEnd: Bool = false) {
+    public init(kind: Kind, text: String, oldNumber: Int?, newNumber: Int?, noNewlineAtEnd: Bool = false, carriageReturn: Bool = false) {
         self.kind = kind
         self.text = text
         self.oldNumber = oldNumber
         self.newNumber = newNumber
         self.noNewlineAtEnd = noNewlineAtEnd
+        self.carriageReturn = carriageReturn
     }
 }
 
@@ -93,8 +108,9 @@ public enum UnifiedDiff {
             inHunks = false
         }
 
-        for raw in text.split(separator: "\n", omittingEmptySubsequences: false) {
-            let line = raw.hasSuffix("\r") ? raw.dropLast() : raw
+        for raw in lineSlices(text) {
+            let carriageReturn = raw.hasSuffix("\r")
+            let line = carriageReturn ? raw.dropLast() : raw
             // A combined diff's hunk: a column per side before each line.
             if hunk != nil, !parentsLeft.isEmpty, parentsLeft.contains(where: { $0 > 0 }) || newLeft > 0 || line.hasPrefix("\\") {
                 if line.hasPrefix("\\") {
@@ -110,13 +126,13 @@ public enum UnifiedDiff {
                 for (side, mark) in marks.enumerated() where mark == "-" || (inResult && mark == " ") { parentsLeft[side] -= 1 }
                 if inResult { newLeft -= 1 }
                 if marks[0] == "-" {
-                    hunk?.lines.append(DiffLine(kind: .removed, text: body, oldNumber: oldLine, newNumber: nil))
+                    hunk?.lines.append(DiffLine(kind: .removed, text: body, oldNumber: oldLine, newNumber: nil, carriageReturn: carriageReturn))
                     oldLine += 1
                 } else if inResult, marks[0] == "+" {
-                    hunk?.lines.append(DiffLine(kind: .added, text: body, oldNumber: nil, newNumber: newLine))
+                    hunk?.lines.append(DiffLine(kind: .added, text: body, oldNumber: nil, newNumber: newLine, carriageReturn: carriageReturn))
                     newLine += 1
                 } else if inResult {
-                    hunk?.lines.append(DiffLine(kind: .context, text: body, oldNumber: oldLine, newNumber: newLine))
+                    hunk?.lines.append(DiffLine(kind: .context, text: body, oldNumber: oldLine, newNumber: newLine, carriageReturn: carriageReturn))
                     oldLine += 1; newLine += 1
                 }
                 // Otherwise the line is only on another side: not shown against the first.
@@ -128,15 +144,15 @@ public enum UnifiedDiff {
                     let body = String(line.dropFirst())
                     switch marker {
                     case " ":
-                        hunk?.lines.append(DiffLine(kind: .context, text: body, oldNumber: oldLine, newNumber: newLine))
+                        hunk?.lines.append(DiffLine(kind: .context, text: body, oldNumber: oldLine, newNumber: newLine, carriageReturn: carriageReturn))
                         oldLine += 1; newLine += 1; oldLeft -= 1; newLeft -= 1
                         continue
                     case "-":
-                        hunk?.lines.append(DiffLine(kind: .removed, text: body, oldNumber: oldLine, newNumber: nil))
+                        hunk?.lines.append(DiffLine(kind: .removed, text: body, oldNumber: oldLine, newNumber: nil, carriageReturn: carriageReturn))
                         oldLine += 1; oldLeft -= 1
                         continue
                     case "+":
-                        hunk?.lines.append(DiffLine(kind: .added, text: body, oldNumber: nil, newNumber: newLine))
+                        hunk?.lines.append(DiffLine(kind: .added, text: body, oldNumber: nil, newNumber: newLine, carriageReturn: carriageReturn))
                         newLine += 1; newLeft -= 1
                         continue
                     case "\\":
@@ -147,7 +163,7 @@ public enum UnifiedDiff {
                     }
                 } else {
                     // An empty line inside a hunk is an empty context line whose space was trimmed away.
-                    hunk?.lines.append(DiffLine(kind: .context, text: "", oldNumber: oldLine, newNumber: newLine))
+                    hunk?.lines.append(DiffLine(kind: .context, text: "", oldNumber: oldLine, newNumber: newLine, carriageReturn: carriageReturn))
                     oldLine += 1; newLine += 1; oldLeft -= 1; newLeft -= 1
                     continue
                 }
@@ -187,6 +203,9 @@ public enum UnifiedDiff {
                 oldLine = header.oldStart; newLine = header.newStart
                 oldLeft = 0; newLeft = header.newCount
             } else if current != nil, !inHunks {
+                if line.hasSuffix(" 160000"), line.hasPrefix("index ") || line.hasSuffix("mode 160000") {
+                    current?.isSubmodule = true
+                }
                 if line.hasPrefix("new file mode") {
                     current?.oldPath = nil
                 } else if line.hasPrefix("deleted file mode") {
@@ -208,16 +227,26 @@ public enum UnifiedDiff {
     /// A diff showing every line of a file as added: an untracked file has nothing to compare against.
     public static func addedFile(path: String, text: String) -> FileDiff {
         guard !text.isEmpty else { return FileDiff(oldPath: nil, newPath: path) }
-        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map { $0.hasSuffix("\r") ? String($0.dropLast()) : String($0) }
-        let endsWithNewline = text.hasSuffix("\n")
+        var lines = lineSlices(text)
+        let endsWithNewline = text.unicodeScalars.last == "\n"
         if endsWithNewline { lines.removeLast() }
         guard !lines.isEmpty else { return FileDiff(oldPath: nil, newPath: path) }
-        var diffLines = lines.enumerated().map { DiffLine(kind: .added, text: $1, oldNumber: nil, newNumber: $0 + 1) }
+        var diffLines = lines.enumerated().map { number, line in
+            let carriageReturn = line.hasSuffix("\r")
+            return DiffLine(kind: .added, text: String(carriageReturn ? line.dropLast() : line), oldNumber: nil, newNumber: number + 1, carriageReturn: carriageReturn)
+        }
         if !endsWithNewline { diffLines[diffLines.count - 1].noNewlineAtEnd = true }
         return FileDiff(oldPath: nil, newPath: path, hunks: [DiffHunk(oldStart: 0, oldCount: 0, newStart: 1, newCount: lines.count, lines: diffLines)])
     }
 
     // MARK: Pieces
+
+    /// A text's lines, split at each "\n" with any "\r" before it left on the line. Not `split(separator:)`
+    /// on the text's characters: to Swift "\r\n" is one character, not a "\n", so a Windows file's lines
+    /// would never come apart.
+    public static func lineSlices(_ text: String) -> [Substring] {
+        text.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false).map(Substring.init)
+    }
 
     /// "@@ -12,7 +12,9 @@ func foo()": the counts default to 1 when left out. Combined diffs' "@@@" are `combinedHunkHeader`'s.
     static func hunkHeader(_ line: Substring) -> DiffHunk? {

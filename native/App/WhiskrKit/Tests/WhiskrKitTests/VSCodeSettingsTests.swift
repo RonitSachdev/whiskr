@@ -54,6 +54,14 @@ struct VSCodeSettingsTests {
         #expect(throws: ThemeImportError.self) { try OtherEditorSettings(settingsJSON: Data("not json".utf8)) }
     }
 
+    @Test("sizes that are not finite numbers are no sizes, and never trap")
+    func strangeNumbers() throws {
+        let settings = try OtherEditorSettings(settingsJSON: Data(##"{ "editor.tabSize": 1e300, "editor.fontSize": "nan", "terminal.integrated.fontSize": "inf" }"##.utf8))
+        #expect(settings.tabSize == nil && settings.editorFontSize == nil && settings.terminalFontSize == nil)
+        #expect(try OtherEditorSettings(settingsJSON: Data(##"{ "editor.tabSize": "-inf" }"##.utf8)).tabSize == nil)
+        #expect(try OtherEditorSettings(settingsJSON: Data(##"{ "editor.tabSize": 2.0 }"##.utf8)).tabSize == 2)
+    }
+
     @Test("a CSS font list gives its families in order, and the first installed one is chosen")
     func fonts() {
         #expect(OtherEditorSettings.fontFamilies("Menlo, Monaco, 'Courier New', monospace") == ["Menlo", "Monaco", "Courier New"])

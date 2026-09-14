@@ -21,7 +21,7 @@ final class NavigatorController: NSViewController {
     private lazy var answerCard = AnswerCardController(workbench: workbench)
     /// The "↑ 1 needs you" capsules at the meadow's edges.
     private let edges = MeadowEdges()
-    private var capsules: NSHostingView<EdgeCapsules>?
+    private var capsules: [NSHostingView<EdgeCapsule>] = []
     /// The workspace last shown, so a change of workspace (always yours) brings its blanket into view.
     private var shownWorkspace: UUID?
 
@@ -82,13 +82,17 @@ final class NavigatorController: NSViewController {
             part.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(part)
         }
-        let capsules = NSHostingView(rootView: EdgeCapsules(edges: edges) { [weak self] id in
-            self?.meadow.reveal(.blanket(id.uuidString))
-        })
-        capsules.translatesAutoresizingMaskIntoConstraints = false
-        capsules.sizingOptions = []
-        container.addSubview(capsules)
-        self.capsules = capsules
+        // Each capsule in a view of its own size at its edge: one view over the whole meadow took every click
+        // meant for a cat or a blanket there (and the keyboard with it).
+        let reveal: @MainActor (UUID) -> Void = { [weak self] id in self?.meadow.reveal(.blanket(id.uuidString)) }
+        let top = NSHostingView(rootView: EdgeCapsule(edges: edges, edge: .top, reveal: reveal))
+        let bottom = NSHostingView(rootView: EdgeCapsule(edges: edges, edge: .bottom, reveal: reveal))
+        for capsule in [top, bottom] {
+            capsule.translatesAutoresizingMaskIntoConstraints = false
+            capsule.sizingOptions = [.intrinsicContentSize]
+            container.addSubview(capsule)
+        }
+        capsules = [top, bottom]
         container.addSubview(note)
         NSLayoutConstraint.activate([
             meadow.topAnchor.constraint(equalTo: container.topAnchor),
@@ -102,10 +106,10 @@ final class NavigatorController: NSViewController {
             pill.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             pill.widthAnchor.constraint(lessThanOrEqualTo: container.widthAnchor, constant: -32),
             pill.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -18),
-            capsules.topAnchor.constraint(equalTo: container.topAnchor),
-            capsules.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            capsules.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            capsules.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            top.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
+            top.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            bottom.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -16),
+            bottom.centerXAnchor.constraint(equalTo: container.centerXAnchor),
         ])
         container.registerForDraggedTypes([.fileURL, TabDrag.pasteboardType])
         view = container
@@ -658,28 +662,26 @@ final class MeadowEdges {
 }
 
 /// "↑ 1 needs you" at the top edge, "↓ 2 need you" at the bottom (§4.1): vermillion text on the surface,
-/// only while a blanket with a request is out of view; a click scrolls to the nearest.
-struct EdgeCapsules: View {
+/// only while a blanket with a request is out of view; a click scrolls to the nearest. One for each edge,
+/// each as large as itself, so the meadow around it keeps its clicks.
+struct EdgeCapsule: View {
+    enum Edge { case top, bottom }
+
     let edges: MeadowEdges
+    let edge: Edge
     let reveal: (UUID) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack {
-            if let nearest = edges.above.last {
-                capsule(arrow: "arrow.up", count: edges.above.count) { reveal(nearest) }
-                    .padding(.top, 12)
-                    .transition(.opacity)
-            }
-            Spacer()
-            if let nearest = edges.below.first {
-                capsule(arrow: "arrow.down", count: edges.below.count) { reveal(nearest) }
-                    .padding(.bottom, 16)
+        let waiting = edge == .top ? edges.above : edges.below
+        ZStack {
+            // The nearest: the lowest of those above, the highest of those below.
+            if let nearest = edge == .top ? waiting.last : waiting.first {
+                capsule(arrow: edge == .top ? "arrow.up" : "arrow.down", count: waiting.count) { reveal(nearest) }
                     .transition(.opacity)
             }
         }
-        .frame(maxWidth: .infinity)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: edges.above.count + edges.below.count * 100)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: waiting.count)
     }
 
     private func capsule(arrow: String, count: Int, action: @escaping () -> Void) -> some View {
@@ -696,6 +698,8 @@ struct EdgeCapsules: View {
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        // A click scrolls the meadow and leaves the keyboard where it was (in the terminal); ⌘J is the key.
+        .focusable(false)
         .help(String(localized: "Scroll to it"))
     }
 }

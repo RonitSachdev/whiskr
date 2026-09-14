@@ -171,4 +171,45 @@ struct ThemingTests {
         variant.app[.text] = RGBColor(0xdddddd)
         #expect(variant.readabilityWarnings.map(\.what).contains("Text on the surface"))
     }
+
+    @Test("a theme file's origin cannot name a folder outside Originals, and an imported file keeps none")
+    func originFolderStaysInside() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("whiskr-origins-\(UUID().uuidString)")
+        let originals = folder.appendingPathComponent("Originals", isDirectory: true)
+        try FileManager.default.createDirectory(at: originals, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        func origin(folder: String, file: String = "themes/x.json") throws -> ThemeOrigin {
+            let json = #"{"name": "x", "folder": \#(String(data: try JSONEncoder().encode(folder), encoding: .utf8)!), "file": \#(String(data: try JSONEncoder().encode(file), encoding: .utf8)!)}"#
+            return try JSONDecoder().decode(ThemeOrigin.self, from: Data(json.utf8))
+        }
+        for hostile in ["../../../../../Documents", "..", ".", "", "a/b", "/Users", "a:b"] {
+            let read = try origin(folder: hostile)
+            #expect(read.folder == nil, "\(hostile)")
+            #expect(read.originalsFolder(in: originals) == nil, "\(hostile)")
+        }
+        let plain = try origin(folder: "dracula-theme")
+        #expect(plain.originalsFolder(in: originals)?.lastPathComponent == "dracula-theme")
+        #expect(plain.originalsFolder(in: originals)?.deletingLastPathComponent().path == originals.standardizedFileURL.path)
+        #expect(plain.file == "themes/x.json")
+        #expect(try origin(folder: "x", file: "../../etc/passwd").file == nil)
+        #expect(try origin(folder: "x", file: "/etc/passwd").file == nil)
+        // Made directly (not read), a bad name still finds no folder.
+        #expect(ThemeOrigin(name: "x", folder: "../x").originalsFolder(in: originals) == nil)
+
+        // A theme file brought in keeps the names, not the folder: its originals did not come with it.
+        var theme = BuiltInThemes.theme(id: "gruvbox")!
+        theme.dark?.origin = ThemeOrigin(name: "Gruvbox Dark", folder: "someone-elses", file: "t.json", uiTheme: "vs-dark")
+        let file = folder.appendingPathComponent("Shared.whiskrtheme")
+        try theme.fileData().write(to: file)
+        let imported = try ThemeImport.file(at: file)
+        #expect(imported.dark?.origin == ThemeOrigin(name: "Gruvbox Dark", uiTheme: "vs-dark"))
+    }
+
+    @Test("a theme's id is its slug, numbered when another's comes to the same file name")
+    func uniqueIDs() {
+        #expect(Theme.uniqueID(for: "Nord Dark", taken: ["nord-dark"]) == "nord-dark-2")
+        #expect(Theme.uniqueID(for: "nord-dark", taken: ["Nord Dark", "nord-dark-2"]) == "nord-dark-3")
+        #expect(Theme.uniqueID(for: "Paper", taken: ["nord"]) == "paper")
+        #expect(Theme.uniqueID(for: "../x", taken: []) == "x")
+    }
 }

@@ -45,6 +45,10 @@ public struct ShellIntegration: Sendable, Equatable {
         public static let userDataDirs = "WHISKR_XDG_DATA_DIRS"
         /// Where `paw run --worktree` makes checkouts (Settings › General).
         public static let worktrees = "PAW_WORKTREES"
+        /// Set only by the Debug harness's isolated runs: the shim runs no `claude` outside this folder (a
+        /// test's stand-in inside it still runs), so a check that types `claude` (or a relaunch typing
+        /// `claude --resume`) can never start the real Claude Code with the account of whoever is at the Mac.
+        public static let claudeOnlyUnder = "WHISKR_TEST_CLAUDE_UNDER"
     }
 
     /// A file beside the shim, so one shim never runs another (two copies of the app, say): a folder
@@ -130,6 +134,13 @@ public struct ShellIntegration: Sendable, Equatable {
       echo "claude: command not found" >&2
       exit 127
     fi
+    only=$\(Key.claudeOnlyUnder)
+    if [ -n "$only" ]; then
+      case $real in
+        "$only"/*) ;;
+        *) echo "claude: a test run of Whiskr starts no Claude Code ($real)" >&2; exit 126 ;;
+      esac
+    fi
     hooks=$\(Key.hooks)
     if [ -n "$hooks" ] && [ -r "$hooks" ]; then
       own=
@@ -211,7 +222,8 @@ public struct ShellIntegration: Sendable, Equatable {
         local s=$?
         [[ "${path[1]}" == "$\(Key.bin)" ]] || path=("$\(Key.bin)" ${path:#${(b)\(Key.bin)}})
         # Where the shell is, and that its prompt is up (OSC 7, as Terminal uses it).
-        builtin printf '\\e]7;file://%s%s\\a' "${HOST}" "${${PWD//\\%/%25}// /%20}"
+        # The folder as a URL's path: "%", spaces, "#" and "?" encoded, or a folder "C#" would end at "C".
+        builtin printf '\\e]7;file://%s%s\\a' "${HOST}" "${${${${PWD//\\%/%25}// /%20}//\\#/%23}//\\?/%3F}"
         if __whiskr_marks; then
           [[ -n $__whiskr_ran ]] && builtin printf '\\e]133;D;%s\\a' $s
           builtin printf '\\e]133;A\\a'
@@ -255,7 +267,7 @@ public struct ShellIntegration: Sendable, Equatable {
         if set -q \(Key.bin); and test "$PATH[1]" != "$\(Key.bin)"
             set -gx PATH $\(Key.bin) (string match -v -- $\(Key.bin) $PATH)
         end
-        printf '\\e]7;file://%s%s\\a' $hostname (string replace -a ' ' '%20' -- (string replace -a '%' '%25' -- $PWD))
+        printf '\\e]7;file://%s%s\\a' $hostname (string replace -a '?' '%3F' -- (string replace -a '#' '%23' -- (string replace -a ' ' '%20' -- (string replace -a '%' '%25' -- $PWD))))
     end
     if status is-interactive; and string match -qr '^[0-3]\\.' -- $version; and not set -q ITERM_SHELL_INTEGRATION_INSTALLED
         function __whiskr_prompt_mark --on-event fish_prompt
@@ -287,8 +299,11 @@ public struct ShellIntegration: Sendable, Equatable {
       local s=${__whiskr_status:-0}
       case "$PATH" in "$WHISKR_BIN":*) ;; *) PATH="$WHISKR_BIN:${PATH//"$WHISKR_BIN":/}" ;; esac
       case $- in *i*) ;; *) return $s ;; esac
+      # The folder as a URL's path: "%", spaces, "#" and "?" encoded, or a folder "C#" would end at "C".
       local here=${PWD//\%/%25}
-      printf '\e]7;file://%s%s\a' "$HOSTNAME" "${here// /%20}"
+      here=${here// /%20}
+      here=${here//[#]/%23}
+      printf '\e]7;file://%s%s\a' "$HOSTNAME" "${here//\?/%3F}"
       if [ -z "${ITERM_SHELL_INTEGRATION_INSTALLED-}" ] && [[ "${PS1-}" != *']133;A'* ]]; then
         [ -n "$__whiskr_ran" ] && printf '\e]133;D;%s\a' "$s"
         printf '\e]133;A\a'
@@ -296,9 +311,9 @@ public struct ShellIntegration: Sendable, Equatable {
         # prompt: the terminal then knows the command's output from the line you typed.
         case "${PS1-}" in *']133;B'*) ;; *) PS1="${PS1-}"'\[\e]133;B\a\]' ;; esac
         # PS0 (bash 4.4) is printed as a command starts: it marks it, and notes that one ran (the
-        # subscript is arithmetic, so it sets the flag and prints nothing).
+        # subscript is arithmetic, so it sets the flag and prints nothing; "-" keeps `set -u` quiet).
         if (( BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4) )); then
-          case "${PS0-}" in *']133;C'*) ;; *) PS0="${PS0-}"'${__whiskr_none[__whiskr_ran=1]}'$'\e]133;C\a' ;; esac
+          case "${PS0-}" in *']133;C'*) ;; *) PS0="${PS0-}"'${__whiskr_none[__whiskr_ran=1]-}'$'\e]133;C\a' ;; esac
         fi
       fi
       __whiskr_ran=

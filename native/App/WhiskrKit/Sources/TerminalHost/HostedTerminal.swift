@@ -142,6 +142,14 @@ final class HostedTerminal: @unchecked Sendable {
         }
     }
 
+    /// Takes in what the program has printed and the queue has not read yet, as a judgement about its
+    /// quiet is about to be made (`AgentDesk`): the clock and the reading share the host's queue in no
+    /// set order, and a report waiting unread is not quiet. Never while a viewer holds the reading back.
+    func catchUp() {
+        guard reading != nil, !readingPaused else { return }
+        read()
+    }
+
     private func take(_ finding: ProgramStatusScanner.Finding) {
         switch finding {
         case .probe(let reply):

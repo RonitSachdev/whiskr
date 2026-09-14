@@ -76,6 +76,16 @@ final class AlertCenter: NSObject {
         player?.play()
     }
 
+    /// The system's beep (a refused action, a terminal's bell in sight). Every beep goes through here, so
+    /// a run against scratch settings (Debug) never makes one on your Mac either.
+    nonisolated static func beep() {
+#if DEBUG
+        // From any thread, so read from the arguments that make a run isolated (`AppPlaces.isolate`).
+        guard !ProcessInfo.processInfo.arguments.contains("--isolated") else { return }
+#endif
+        NSSound.beep()
+    }
+
     /// When a key was last typed into a terminal (kept by the window's key monitor).
     var lastKeystroke: () -> Date? = { nil }
 

@@ -16,10 +16,23 @@ public enum LineMoves {
     static func block(_ text: NSString, _ selection: NSRange) -> (start: Int, end: Int) {
         var last = NSMaxRange(selection)
         if selection.length > 0, last > selection.location, text.character(at: last - 1) == 0x0A { last -= 1 }
-        let start = text.lineRange(for: NSRange(location: selection.location, length: 0)).location
-        var lineEnd = 0, contentsEnd = 0
-        text.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: max(start, last), length: 0))
-        return (start, contentsEnd)
+        let start = lineStart(text, selection.location)
+        return (start, contentsEnd(text, max(start, last)))
+    }
+
+    /// Where the line holding `location` starts, and where its text ends: lines end at "\n" only, as the
+    /// document's (`LineIndex`), not also at "\r", U+2028, U+2029 or U+0085 as NSString's line methods do,
+    /// which would split a line holding one and write the split back as "\n".
+    static func lineStart(_ text: NSString, _ location: Int) -> Int {
+        var index = min(location, text.length)
+        while index > 0, text.character(at: index - 1) != 0x0A { index -= 1 }
+        return index
+    }
+
+    static func contentsEnd(_ text: NSString, _ location: Int) -> Int {
+        var index = max(0, location)
+        while index < text.length, text.character(at: index) != 0x0A { index += 1 }
+        return index
     }
 
     /// The block swapped with the line above (`up`) or below; nil at the top or the bottom.
@@ -28,18 +41,17 @@ public enum LineMoves {
         let body = text.substring(with: NSRange(location: start, length: end - start))
         if up {
             guard start > 0 else { return nil }
-            let above = text.lineRange(for: NSRange(location: start - 1, length: 0))
-            let line = text.substring(with: NSRange(location: above.location, length: start - 1 - above.location))
+            let above = lineStart(text, start - 1)
+            let line = text.substring(with: NSRange(location: above, length: start - 1 - above))
             let shift = (line as NSString).length + 1
-            return Edit(range: NSRange(location: above.location, length: end - above.location), text: body + "\n" + line,
+            return Edit(range: NSRange(location: above, length: end - above), text: body + "\n" + line,
                         selection: NSRange(location: selection.location - shift, length: selection.length))
         }
         guard end < text.length else { return nil }
-        var lineEnd = 0, contentsEnd = 0
-        text.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: end + 1, length: 0))
-        let line = text.substring(with: NSRange(location: end + 1, length: contentsEnd - end - 1))
+        let below = contentsEnd(text, end + 1)
+        let line = text.substring(with: NSRange(location: end + 1, length: below - end - 1))
         let shift = (line as NSString).length + 1
-        return Edit(range: NSRange(location: start, length: contentsEnd - start), text: line + "\n" + body,
+        return Edit(range: NSRange(location: start, length: below - start), text: line + "\n" + body,
                     selection: NSRange(location: selection.location + shift, length: selection.length))
     }
 
@@ -65,12 +77,10 @@ public enum LineMoves {
         } else if start > 0 {
             // The last lines: the break before them goes instead, and the cursor goes up a line.
             range = NSRange(location: start - 1, length: end - start + 1)
-            lineStart = text.lineRange(for: NSRange(location: start - 1, length: 0)).location
+            lineStart = Self.lineStart(text, start - 1)
         }
         let after = text.replacingCharacters(in: range, with: "") as NSString
-        var lineEnd = 0, contentsEnd = 0
-        after.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: lineStart, length: 0))
-        let caret = lineStart + min(column, contentsEnd - lineStart)
+        let caret = lineStart + min(column, contentsEnd(after, lineStart) - lineStart)
         return Edit(range: range, text: "", selection: NSRange(location: caret, length: 0))
     }
 }

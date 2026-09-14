@@ -58,6 +58,10 @@ struct TerminalLinksTests {
         Case("\"/abs/path.go:10:\"", "/abs/path.go:10", "/abs/path.go", 10),
         // Brackets and punctuation round it.
         Case("[foo.ts:12]", "foo.ts:12", "foo.ts", 12),
+        Case("app/[id]/page.tsx:2", "app/[id]/page.tsx:2", "app/[id]/page.tsx", 2),
+        Case("see app/(shop)/[...slug]/page.tsx now", "app/(shop)/[...slug]/page.tsx", "app/(shop)/[...slug]/page.tsx"),
+        Case("pages/[id].tsx(4,5): error", "pages/[id].tsx(4,5)", "pages/[id].tsx", 4, 5),
+        Case("(see src/x.ts)", "src/x.ts", "src/x.ts"),
         Case("(foo.ts:12)", "foo.ts:12", "foo.ts", 12),
         Case("<foo.ts:12>", "foo.ts:12", "foo.ts", 12),
         Case("see foo.ts:12.", "foo.ts:12", "foo.ts", 12),

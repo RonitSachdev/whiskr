@@ -327,7 +327,8 @@ struct PanelButton: View {
                             .frame(minWidth: 14, minHeight: 14)
                             .background(Capsule().fill(Color.content))
                             .overlay(Capsule().strokeBorder(Color.lineStrong))
-                            .offset(x: 4, y: -2)
+                            // Inside the button's own 28 pt: past it, the count crowded Settings beside it.
+                            .offset(x: 1, y: -1)
                     }
                 }
         }

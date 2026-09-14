@@ -20,10 +20,11 @@ public enum SaveFixes {
         var edits: [Edit] = []
         let length = text.length
         if trimTrailingWhitespace {
+            // Lines end at "\n" only (`LineMoves.contentsEnd`): a U+2028 or "\r" inside a line is its text.
             var lineStart = 0
             while lineStart < length {
-                var lineEnd = 0, contentsEnd = 0
-                text.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: lineStart, length: 0))
+                let contentsEnd = LineMoves.contentsEnd(text, lineStart)
+                let lineEnd = contentsEnd + 1
                 var trimmed = contentsEnd
                 while trimmed > lineStart, text.character(at: trimmed - 1) == 0x20 || text.character(at: trimmed - 1) == 0x09 { trimmed -= 1 }
                 if trimmed < contentsEnd { edits.append(Edit(range: NSRange(location: trimmed, length: contentsEnd - trimmed), text: "")) }
@@ -32,7 +33,7 @@ public enum SaveFixes {
         }
         if insertFinalNewline, length > 0, text.character(at: length - 1) != 0x0A {
             // Not after a last line that trimming leaves empty (VS Code trims first, then looks).
-            let last = text.lineRange(for: NSRange(location: length - 1, length: 0)).location
+            let last = LineMoves.lineStart(text, length - 1)
             let blank = (last..<length).allSatisfy { text.character(at: $0) == 0x20 || text.character(at: $0) == 0x09 }
             if !(trimTrailingWhitespace && blank) { edits.append(Edit(range: NSRange(location: length, length: 0), text: "\n")) }
         }

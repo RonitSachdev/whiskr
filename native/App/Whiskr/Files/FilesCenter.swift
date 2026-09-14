@@ -128,12 +128,25 @@ final class FilesCenter {
 
     /// Changes on disk reach the documents for those paths (and the documents inside a folder that moved).
     private func pathsChanged(_ paths: [String]) {
-        // FSEvents names paths with links resolved (/private/tmp for /tmp).
-        let changed = Set(paths.map { URL(fileURLWithPath: $0).standardizedFileURL.path })
+        let changed = Set(paths.map(Self.comparable))
         for document in documents.values {
-            let real = document.url.resolvingSymlinksInPath().path
-            if changed.contains(real) || changed.contains((real as NSString).deletingLastPathComponent) { document.diskMayHaveChanged() }
+            // A document opened through a link (`CLAUDE.md` → `AGENTS.md`) changes where the link leads,
+            // which is what FSEvents names.
+            let target = Self.comparable(document.url.resolvingSymlinksInPath().path)
+            for path in Set([Self.comparable(document.url.path), target]) where changed.contains(path) || changed.contains((path as NSString).deletingLastPathComponent) {
+                document.diskMayHaveChanged()
+                break
+            }
         }
+    }
+
+    /// A path as both FSEvents and the documents can name it: its folder's links resolved and `/private`
+    /// taken off as `standardizedFileURL` takes it off (FSEvents says `/private/tmp`, a document `/tmp`).
+    /// Done on the folder, which is still there: for a file just deleted, Foundation can resolve nothing
+    /// and kept `/private`, so a deletion never reached its document.
+    private static func comparable(_ path: String) -> String {
+        let folder = URL(fileURLWithPath: (path as NSString).deletingLastPathComponent, isDirectory: true).resolvingSymlinksInPath().standardizedFileURL.path
+        return (folder as NSString).appendingPathComponent((path as NSString).lastPathComponent)
     }
 
     /// The app came back to the front: every open document looks at the disk once (a change made while

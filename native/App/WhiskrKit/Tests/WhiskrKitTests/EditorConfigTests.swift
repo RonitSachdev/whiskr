@@ -50,6 +50,34 @@ struct EditorConfigTests {
         }
     }
 
+    @Test("a glob of many stars is matched in time in proportion to the path, not by backtracking")
+    func globsDoNotBacktrack() {
+        let name = String(repeating: "a", count: 60) + ".b"
+        var matched = true
+        let took = threadTime {
+            matched = EditorConfig.matches("*a*a*a*a*a*a*a*a*c", path: name)
+        }
+        #expect(!matched)
+        // A regular expression of the same glob took longer than 40 seconds.
+        #expect(took < .milliseconds(500), "took \(took)")
+        #expect(EditorConfig.matches("*a*a*a*a*a*a*b", path: name))
+        #expect(EditorConfig.matches("{**/x,*a*a*a*a*.{b,c}}", path: name))
+        #expect(EditorConfig.matches("{**/x,*a*a*a*a*.{b,c}}", path: "dir/x"))
+    }
+
+    @Test("braces nested two thousand deep are read without running a small stack out")
+    func deepBraces() async {
+        let glob = String(repeating: "{a,", count: 2000) + "b" + String(repeating: "}", count: 2000)
+        let matched = await withCheckedContinuation { (done: CheckedContinuation<Bool, Never>) in
+            // The 512 KB of a secondary thread, as a file opening off the main thread has.
+            let thread = Thread { done.resume(returning: EditorConfig.matches(glob, path: "a")) }
+            thread.stackSize = 512 * 1024
+            thread.start()
+        }
+        #expect(matched)
+        #expect(EditorConfig.matches("{x,{y,z}}.txt", path: "z.txt"))
+    }
+
     @Test("the nearest file wins, later sections win, `root` stops the search, `unset` takes a value back")
     func resolution() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("editorconfig-\(UUID().uuidString)")
@@ -150,7 +178,7 @@ struct KeyTableTests {
     func terminalKeepsItsKeys() {
         let unscoped = KeyTable.menu.filter { ($0.context == .menu || $0.context == .menuInTerminal) && KeyTable.isTerminals($0.chord) }
         #expect(Set(unscoped.map(\.chord)) == KeyTable.terminalExceptions)
-        for chord in ["⌥↑", "⌥↓", "⇧⌥↑", "⇧⌥↓", "⌥Z", "⌃G"] {
+        for chord in ["⌥↑", "⌥↓", "⇧⌥↑", "⇧⌥↓", "⌃G"] {
             #expect(KeyTable.menu.first { $0.chord == KeyChord(chord) }?.context == .menuInEditor, "\(chord)")
         }
         // The text editing keys the editor takes over are written down as such, and nothing else is.
@@ -159,10 +187,13 @@ struct KeyTableTests {
         #expect(replaced.isSubset(of: scoped))
     }
 
-    @Test("the rules catch a menu key taken from the terminal, a shared key and an unwritten replacement")
+    @Test("the rules catch a menu key taken from the terminal, a shared key, an unwritten replacement and a typed character")
     func catches() {
         let table = [
             KeyBinding("⌥X", "something:", .menu),
+            // Wrap Lines had ⌥Z, VS Code's key: "Ω" on a US keyboard and "ż" on a Polish one could not be typed.
+            KeyBinding("⌥Z", "toggleWrapLines:", .menuInEditor),
+            KeyBinding("⇧⌥2", "other:", .menuInEditor),
             KeyBinding("⌘K", "clear:", .menu),
             KeyBinding("⌘K", "other:", .menuInEditor),
             KeyBinding("⌃A", "lineStart:", .menuInEditor),
@@ -173,8 +204,12 @@ struct KeyTableTests {
             KeyBinding("⌘Space", "Spotlight", .system),
         ]
         let found = KeyTable.collisions(in: table).map(\.description)
-        #expect(found.count == 4, "\(found)")
-        #expect(found.contains { $0.hasPrefix("⌥X") })
+        #expect(found.count == 7, "\(found)")
+        #expect(found.filter { $0.hasPrefix("⌥X") }.count == 2)
+        #expect(found.contains { $0.hasPrefix("⌥Z") && $0.contains("a typed character") })
+        #expect(found.contains { $0.hasPrefix("⌥⇧2") && $0.contains("a typed character") })
+        // ⌥ arrows and ⌥⌘ letters type nothing.
+        #expect(!KeyTable.typesCharacter(KeyChord("⌥↑")) && !KeyTable.typesCharacter(KeyChord("⌥⌘S")))
         #expect(found.contains { $0.hasPrefix("⌘K") })
         #expect(found.contains { $0.hasPrefix("⌃A") })
         #expect(found.contains { $0.hasPrefix("⌘SPACE") || $0.hasPrefix("⌘Space") })

@@ -54,14 +54,14 @@ private struct HelpPage: View {
                              text: String(localized: "The cat sits with its ears back. Claude's turn stopped on an error."))
                     HelpMark(mark: AnyView(StateMark(status: .done)), title: String(localized: "Finished"),
                              text: String(localized: "The cat sits still, facing you. Claude finished while you were elsewhere; the mark clears once you have looked."))
-                    HelpMark(mark: AnyView(EmptyView()), title: String(localized: "Working"),
+                    HelpMark(mark: nil, title: String(localized: "Working"),
                              text: String(localized: "Head down at a book, a laptop or a lever: no mark, nothing to do."))
-                    HelpMark(mark: AnyView(EmptyView()), title: String(localized: "Idle"),
+                    HelpMark(mark: nil, title: String(localized: "Idle"),
                              text: String(localized: "A loaf, then curled up asleep after ten minutes."))
-                    HelpMark(mark: AnyView(EmptyView()), title: String(localized: "Helpers", comment: "Help page: what the small cats are"),
+                    HelpMark(mark: nil, title: String(localized: "Helpers", comment: "Help page: what the small cats are"),
                              text: String(localized: "Small cats beside a Claude are its helpers. Click one to see its terminal or its story.", comment: "Help page: helpers"))
                 }
-                HelpSection(title: String(localized: "Sessions keep running", comment: "Help page heading")) {
+                HelpSection(title: String(localized: "Terminals keep running", comment: "Help page heading")) {
                     Text(String(localized: "Quitting (⌘Q) leaves every terminal running, Claude included; the next launch puts them back as they were. To stop everything, hold Option and choose Quit and Stop All Terminals (⌥⌘Q).", comment: "Help page: what quitting does"))
                 }
                 HelpSection(title: String(localized: "Files and changes", comment: "Help page heading")) {
@@ -73,7 +73,6 @@ private struct HelpPage: View {
                     HelpKey(keys: "⌥↑ ↓", text: String(localized: "Move the line, or the selected lines, up or down. With ⇧, copy them up or down; ⇧⌘K deletes them.", comment: "Help page: moving, copying and deleting lines"))
                     HelpKey(keys: "⇧⌘\\", text: String(localized: "Go to the bracket that matches the one at the cursor. Brackets and quotes close themselves, and typing the closing one steps over it.", comment: "Help page: brackets"))
                     HelpKey(keys: "⌘/", text: String(localized: "Comment or uncomment the selected lines.", comment: "Help page: toggle comment"))
-                    HelpKey(keys: "⌥Z", text: String(localized: "Wrap long lines, or not.", comment: "Help page: wrap lines"))
                     Text(String(localized: "The language in the status bar is a menu: colour this file as another language, or as its name says. A repository's .editorconfig decides indentation, line endings and what saving tidies.", comment: "Help page: the language menu and EditorConfig"))
                 }
                 HelpSection(title: String(localized: "From VS Code", comment: "Help page heading")) {
@@ -129,13 +128,14 @@ private struct HelpSection<Content: View>: View {
 }
 
 private struct HelpMark: View {
-    let mark: AnyView
+    /// The state's mark; nil for a state that has none, whose title still lines up with the others.
+    let mark: AnyView?
     let title: String
     let text: String
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            mark.frame(width: 16)
+            (mark ?? AnyView(Color.clear.frame(height: 1))).frame(width: 16)
             VStack(alignment: .leading, spacing: Look.Space.xxs) {
                 Text(title).fontWeight(.medium)
                 Text(text).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

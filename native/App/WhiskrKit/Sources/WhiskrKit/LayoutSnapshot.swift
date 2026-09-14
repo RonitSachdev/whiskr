@@ -160,6 +160,19 @@ public struct LayoutSnapshot: Sendable, Equatable, Codable {
         return snapshot.repaired
     }
 
+    /// The saved layout as a launch takes it. A file that is there but cannot be used (damaged, cut
+    /// short, or written by a newer version) is first renamed aside, to `layout-unreadable-<time>.json`
+    /// beside it: the launch starts fresh and saves its own layout, which must not replace the only copy
+    /// of yours. `setAside` is the name it was given, when one was.
+    public static func launchRead(from url: URL, now: Date = Date()) -> (layout: LayoutSnapshot?, setAside: URL?) {
+        if let layout = read(from: url) { return (layout, nil) }
+        guard FileManager.default.fileExists(atPath: url.path) else { return (nil, nil) }
+        let stamp = ISO8601DateFormatter.string(from: now, timeZone: .current, formatOptions: [.withYear, .withMonth, .withDay, .withTime])
+        let aside = url.deletingLastPathComponent().appendingPathComponent("\(url.deletingPathExtension().lastPathComponent)-unreadable-\(stamp).json")
+        guard (try? FileManager.default.moveItem(at: url, to: aside)) != nil else { return (nil, nil) }
+        return (nil, aside)
+    }
+
     /// The same layout with anything inconsistent dropped: tabs whose tree and pane (and page) lists disagree or
     /// that reuse a pane from another tab (hook events are routed by pane), empty workspaces, and
     /// selections pointing at nothing.

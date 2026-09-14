@@ -18,7 +18,8 @@ public struct FileLocation: Sendable, Equatable {
     /// nil for text that holds no path. `home` expands "~".
     public init?(_ text: String, folder: String, home: String = NSHomeDirectory()) {
         var text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.hasPrefix("file://"), let url = URL(string: text) { text = url.path }
+        // "file:///tmp/a", "file:/tmp/a", "FILE:///tmp/a": schemes are the same in any case.
+        if text.lowercased().hasPrefix("file:/"), let url = URL(string: text), url.scheme?.lowercased() == "file" { text = url.path }
         // Quotes and brackets some tools put round paths.
         text = text.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`()[]<>,;"))
         // "file.c:10:" as some compilers print it.

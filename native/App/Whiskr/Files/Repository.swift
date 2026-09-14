@@ -296,11 +296,10 @@ final class Repository {
         return String(data: data, encoding: .utf8)
     }
 
-    /// The unified diff of one file: its unstaged changes, or its staged ones.
+    /// The unified diff of one file: its unstaged changes, or its staged ones, in the form a single
+    /// change's patch is made from whatever the user's git settings (`DiffPatch.diffArguments`).
     func diff(path: String, staged: Bool) async -> String {
-        var arguments = ["diff", "--no-ext-diff", "--no-color", "-M"]
-        if staged { arguments.append("--cached") }
-        let data = (try? await Git.run(arguments, paths: [path], in: root)) ?? Data()
+        let data = (try? await Git.run(DiffPatch.diffArguments(staged: staged), paths: [path], in: root)) ?? Data()
         return String(decoding: data, as: UTF8.self)
     }
 

@@ -155,7 +155,9 @@ final class TerminalRegionController: NSViewController {
             view.layoutSubtreeIfNeeded()
         } completionHandler: {
             MainActor.assumeIsolated {
-                if !state.shown { self.sidePanel.isHidden = true }
+                // Hidden only if it is still meant to be: shown again during the slide (⇧⌘E, then ⇧⌘C at
+                // once), it stays.
+                if self.shownPanel?.shown == false { self.sidePanel.isHidden = true }
                 LiveResize.shared.end()
             }
         }

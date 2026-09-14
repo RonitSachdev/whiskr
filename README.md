@@ -9,15 +9,16 @@ black cat sits down on that workspace's blanket and acts out what Claude is doin
 it. When a cat stands up with a paw raised, Claude needs you.
 
 ![Whiskr by day: five workspaces as picnic blankets, with cats showing a request, an error, a finished
-turn, a Claude working with three helpers, and an idle one; the selected workspace's terminal on the
-right](docs/images/meadow-day.jpg)
+turn, a Claude working with its helpers (one of them asking for something), and an idle one; the selected
+workspace's tab row, its terminal, and the status bar on the right](docs/images/meadow-day.jpg)
 
 ![The same meadow at night, with fireflies at each picnic](docs/images/meadow-night.jpg)
 
-![Home: the meadow with every workspace waiting, and the Home page beside it](docs/images/home.jpg)
+![Home: the meadow with every workspace waiting, and the Home page beside it with Open Folder, New
+Terminal, the open workspaces and their state, and recent folders](docs/images/home.jpg)
 
 <sub>Screenshots from the app's built-in demo (Debug builds, `--demo`): the cats are driven by real hook
-events, and the terminal text is illustrative.</sub>
+events, and the folders are demo ones.</sub>
 
 > **Status: pre-release.** There is no published build yet. The app is unsigned and not notarised, and the
 > only way to run it today is to build it yourself. See [docs/RELEASING.md](docs/RELEASING.md).
@@ -52,6 +53,12 @@ events, and the terminal text is illustrative.</sub>
   send them work and wait for them (see [`paw`](#paw)).
 - **A Mac app.** Menus with every command and its key, a command palette (⇧⌘P), Go to (⌘P), themes
   (including your own and iTerm2 colour files), English and Japanese, and VoiceOver labels.
+
+![A TypeScript file open in the editor, coloured by VS Code's grammar, with the Files panel beside
+it](docs/images/editor.jpg)
+
+![A diff side by side in the dark appearance, with unchanged stretches folded, and the Changes panel
+listing staged, changed and untracked files above the commit box](docs/images/diff.jpg)
 
 ## Requirements
 
@@ -131,6 +138,7 @@ session starts.
 | ⌘J | Next request, then the next finished turn |
 | ⌘P / ⇧⌘P | Go to anything / command palette |
 | ⌘1…9 / ⌥⌘1…9 | Tabs / workspaces |
+| ⇧⌘[ ⇧⌘] / ⌃Tab | Previous and next tab / the tab before (hold ⌃ for a list) |
 | ⌘[ ⌘] and ⌥⌘arrows | Panes |
 | ⇧⌘↩ | Zoom the pane |
 | ⌥⌘0 | Keyboard into the meadow (arrows, Return, Esc) |
@@ -138,7 +146,7 @@ session starts.
 | ⇧⌘E / ⇧⌘C | Files / git changes beside the terminals |
 | ⌘B / ⌘\ | Hide the meadow / split right (VS Code's keys, beside the Mac ones) |
 | ⌥↑ ⌥↓ / ⇧⌥↑ ⇧⌥↓ / ⇧⌘K | In the editor: move lines / copy lines / delete lines |
-| ⌘/ / ⇧⌘\ / ⌥Z / ⌘L or ⌃G | In the editor: comment / matching bracket / wrap lines / go to line |
+| ⌘/ / ⇧⌘\ / ⌘L or ⌃G | In the editor: comment / matching bracket / go to line |
 | ⌘? | Help: reading the meadow |
 
 Every command is also in the menus, where System Settings › Keyboard › Keyboard Shortcuts can rebind it.

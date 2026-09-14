@@ -92,8 +92,7 @@ final class SettingsWindowController: NSWindowController {
         panel.message = String(localized: "Choose themes (Whiskr, iTerm2, VS Code or TextMate), VS Code extensions (.vsix or a folder) or TextMate grammars.")
         let finish: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK else { return }
-            importThemes(panel.urls, over: window)
-            then()
+            importThemes(panel.urls, over: window, then: then)
         }
         if let window { panel.beginSheetModal(for: window, completionHandler: finish) } else { finish(panel.runModal()) }
     }
@@ -102,27 +101,46 @@ final class SettingsWindowController: NSWindowController {
     static var languagesFolder: URL { Workbench.supportFolder.appendingPathComponent("Languages", isDirectory: true) }
 
     /// Imports themes and languages (a VS Code extension may hold both; a TextMate grammar is a language),
-    /// keeps one line saying what was added for Settings to show (`ThemeStore.importSummary`), and reports
-    /// anything that could not be read.
-    static func importThemes(_ urls: [URL], over window: NSWindow?) {
+    /// keeps one line saying what was added for Settings to show (`ThemeStore.importSummary`), reports
+    /// anything that could not be read, then runs `then`. Reading the files, unpacking a `.vsix` (once, for
+    /// its themes and its languages) and installing languages happen off the main thread.
+    static func importThemes(_ urls: [URL], over window: NSWindow?, then: @escaping () -> Void = {}) {
+        Task {
+            await performImports(urls, over: window)
+            then()
+        }
+    }
+
+    private static func performImports(_ urls: [URL], over window: NSWindow?) async {
         var problems: [String] = []
         var added: [String] = []
         var languages = 0
+        let originals = ThemeStore.originalsFolder, languagesFolder = languagesFolder
         for url in urls {
             let name = url.lastPathComponent.lowercased()
             let isGrammar = name.hasSuffix(".tmlanguage.json") || name.hasSuffix(".tmlanguage") || url.pathExtension.lowercased() == "plist"
             let isExtension = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true || url.pathExtension.lowercased() == "vsix"
             do {
-                let themes = isGrammar ? [] : try ThemeStore.shared.importThemes(at: url)
+                let (read, installed) = try await Task.detached(priority: .userInitiated) { () throws -> ([Theme], Result<Int, any Error>?) in
+                    let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("whiskr-vsix-\(UUID().uuidString)", isDirectory: true)
+                    defer { try? FileManager.default.removeItem(at: scratch) }
+                    let source = url.pathExtension.lowercased() == "vsix" ? try ThemeImport.unpack(vsix: url, into: scratch) : url
+                    let themes = isGrammar ? [] : try ThemeImport.themes(at: source, originals: originals)
+                    guard isGrammar || isExtension else { return (themes, nil) }
+                    return (themes, Result { try LanguageRegistry.shared.install(from: source, into: languagesFolder).count })
+                }.value
+                let themes = try ThemeStore.shared.add(imported: read)
                 added += themes.map(\.name)
-                if isGrammar || isExtension {
-                    do {
-                        languages += try LanguageRegistry.shared.install(from: url, into: languagesFolder).count
-                    } catch LanguageInstallError.nothingToInstall where !themes.isEmpty {
-                        // An extension of themes only.
-                    }
-                } else if themes.isEmpty {
-                    throw ThemeImportError.unreadable(String(localized: "There are no colour themes in it."))
+                switch installed {
+                case .success(let count)?:
+                    languages += count
+                case .failure(LanguageInstallError.nothingToInstall)? where !themes.isEmpty:
+                    // An extension of themes only.
+                    break
+                case .failure(let error)?:
+                    throw error
+                case nil:
+                    if themes.isEmpty { throw ThemeImportError.unreadable(String(localized: "There are no colour themes in it.")) }
                 }
             } catch let error as ThemeImportError {
                 problems.append("\(url.lastPathComponent): \(error.message)")
@@ -144,7 +162,7 @@ final class SettingsWindowController: NSWindowController {
         let alert = NSAlert()
         alert.messageText = problems.count == 1 ? String(localized: "That theme could not be imported") : String(localized: "Some themes could not be imported")
         alert.informativeText = problems.joined(separator: "\n")
-        if let window { alert.beginSheetModal(for: window) } else { alert.runModal() }
+        if let window { alert.beginSheetModal(for: window) { _ in } } else { alert.runModal() }
     }
 }
 

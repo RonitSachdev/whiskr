@@ -434,6 +434,18 @@ public struct Theme: Hashable, Sendable, Identifiable, Codable {
         let words = folded.lowercased().split { !$0.isLetter && !$0.isNumber }
         return words.isEmpty ? "theme" : words.joined(separator: "-")
     }
+
+    /// The id a theme joining those in `taken` gets: its slug, since its file is named by it, numbered
+    /// ("nord-2") when another theme's id comes to the same slug ("Nord Dark" and "nord-dark" would
+    /// otherwise share one file, and saving one would replace the other).
+    public static func uniqueID(for id: String, taken: some Sequence<String>) -> String {
+        let taken = Set(taken.map(slug))
+        let base = slug(id)
+        guard taken.contains(base) else { return base }
+        var number = 2
+        while taken.contains("\(base)-\(number)") { number += 1 }
+        return "\(base)-\(number)"
+    }
 }
 
 // MARK: Importing
@@ -480,7 +492,13 @@ public enum ThemeImport {
             return try iTermColors(data, name: name)
         default:
             do {
-                return try Theme.read(data)
+                // Its originals were not brought along: a folder it names under `Originals` is another
+                // theme's, or none, so only the names the origin carries are kept.
+                var theme = try Theme.read(data)
+                let light = theme.light?.origin, dark = theme.dark?.origin
+                theme.light?.origin = light.map { ThemeOrigin(name: $0.name, uiTheme: $0.uiTheme) }
+                theme.dark?.origin = dark.map { ThemeOrigin(name: $0.name, uiTheme: $0.uiTheme) }
+                return theme
             } catch let error as DecodingError {
                 throw ThemeImportError.unreadable("This is not a theme file the app understands: \(describe(error))")
             }

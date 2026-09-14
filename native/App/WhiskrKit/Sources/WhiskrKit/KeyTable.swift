@@ -206,7 +206,6 @@ public enum KeyTable {
         KeyBinding("⇧⌥↓", "copyLineDown:", .menuInEditor),
         KeyBinding("⇧⌘K", "deleteLine:", .menu),
         KeyBinding("⇧⌘\\", "goToMatchingBracket:", .menu),
-        KeyBinding("⌥Z", "toggleWrapLines:", .menuInEditor),
         KeyBinding("⌃⌘↓", "nextChange:", .menu),
         KeyBinding("⌃⌘↑", "previousChange:", .menu),
         KeyBinding("⇧⌘J", "revealInFiles:", .menu),
@@ -366,7 +365,21 @@ public enum KeyTable {
                 found.append(Collision(first: binding, second: KeyBinding(binding.chord.description, "the terminal's program", .menuInTerminal)))
             }
         }
+        // ⌥ (or ⇧⌥) with a letter or digit types a character: "Ω" on a US keyboard, "ż" on a Polish one.
+        // A menu matches its key before the text view sees it, so such a key would take that character
+        // away from typing, in the editor too.
+        for binding in bindings where binding.context == .menu || binding.context == .menuInEditor || binding.context == .menuInTerminal {
+            if typesCharacter(binding.chord) {
+                found.append(Collision(first: binding, second: KeyBinding(binding.chord.description, "a typed character", .textEditing)))
+            }
+        }
         return found.sorted { $0.description < $1.description }
+    }
+
+    /// ⌥ or ⇧⌥ with a letter or a digit: a character on many keyboard layouts.
+    static func typesCharacter(_ chord: KeyChord) -> Bool {
+        chord.modifiers.contains(.option) && chord.modifiers.isSubset(of: [.option, .shift])
+            && chord.key.count == 1 && chord.key.first.map { $0.isLetter || $0.isNumber } == true
     }
 
     /// Whether two bindings of the same key fight: both count in one place and do different things.

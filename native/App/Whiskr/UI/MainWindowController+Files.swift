@@ -108,7 +108,8 @@ extension MainWindowController {
     /// View › Show Preview (⌥⌘P): Markdown or SVG between its source and its preview.
     @objc func togglePreview(_ sender: Any?) {
         guard let page = focusedFilePage else { return }
-        page.setMode(page.mode == .source ? .preview : .source)
+        // As the item says: Show Source from the preview, Show Preview from the source or side by side.
+        page.setMode(page.mode == .preview ? .source : .preview)
     }
 
     @objc func togglePreviewSideBySide(_ sender: Any?) {

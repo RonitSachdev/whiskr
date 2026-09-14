@@ -172,7 +172,12 @@ private struct WorkspaceButton: View {
                     .frame(minWidth: 80, maxWidth: 180)
                     .focused($editing)
                     .onSubmit { commit() }
-                    .onExitCommand { workbench.renamingWorkspaceID = nil }
+                    .onExitCommand {
+                        workbench.renamingWorkspaceID = nil
+                        editing = false
+                    }
+                    // The keyboard goes back to the tab once the field has gone, not nowhere.
+                    .onDisappear { workbench.returnKeyboardIfLost() }
                     .onChange(of: editing) { _, focused in if !focused { commit() } }
                     .onAppear {
                         draft = workspace.customName ?? workspace.name
@@ -201,6 +206,8 @@ private struct WorkspaceButton: View {
         guard workbench.renamingWorkspaceID == workspace.id else { return }
         workbench.rename(workspace: workspace, to: draft)
         workbench.renamingWorkspaceID = nil
+        // Let go of the field's focus as it goes: still set, the next rename's field would not take the keyboard.
+        editing = false
     }
 }
 
@@ -405,7 +412,12 @@ private struct TabButton: View {
                     .frame(minWidth: 60, maxWidth: .infinity)
                     .focused($editing)
                     .onSubmit { commit() }
-                    .onExitCommand { workbench.renamingTabID = nil }
+                    .onExitCommand {
+                        workbench.renamingTabID = nil
+                        editing = false
+                    }
+                    // The keyboard goes back to the tab once the field has gone, not nowhere.
+                    .onDisappear { workbench.returnKeyboardIfLost() }
                     .onChange(of: editing) { _, focused in if !focused { commit() } }
                     .onAppear {
                         draft = title
@@ -514,6 +526,8 @@ private struct TabButton: View {
         guard workbench.renamingTabID == tab.id else { return }
         workbench.rename(tab: tab, to: draft)
         workbench.renamingTabID = nil
+        // Let go of the field's focus as it goes: still set, the next rename's field would not take the keyboard.
+        editing = false
     }
 }
 
@@ -614,7 +628,7 @@ private struct TabMouse: NSViewRepresentable {
     }
 }
 
-final class TabMouseView: NSView, NSDraggingSource {
+final class TabMouseView: NSView, NSDraggingSource, NSViewToolTipOwner {
     var tab = UUID()
     /// The workspace's only tab: its close button's tooltip says the workspace closes and Home comes.
     var isLast = false {
@@ -680,14 +694,19 @@ final class TabMouseView: NSView, NSDraggingSource {
         if event.buttonNumber == 2 { onClose() } else { super.otherMouseDown(with: event) }
     }
 
-    /// The close button's tooltip, over the button.
+    /// The close button's tooltip, over the button. The view answers for it itself: AppKit does not keep a
+    /// tooltip's owner, and a string handed over as one was gone by the time the tooltip came up (a crash
+    /// with the pointer resting on ×).
     override func layout() {
         super.layout()
         removeAllToolTips()
-        let tip = isLast
+        addToolTip(closeRect, owner: self, userData: nil)
+    }
+
+    func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?) -> String {
+        isLast
             ? String(localized: "Close Tab (⌥⌘W): the workspace's last tab, so the workspace closes and you go Home", comment: "Tooltip of the close button on a workspace's only tab")
             : String(localized: "Close Tab (⌥⌘W)")
-        addToolTip(closeRect, owner: tip as NSString, userData: nil)
     }
 
     override func mouseDragged(with event: NSEvent) {

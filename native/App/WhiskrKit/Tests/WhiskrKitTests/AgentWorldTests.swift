@@ -404,6 +404,25 @@ struct AgentStatusTests {
         #expect(w.session?.status == .working)
     }
 
+    @Test("an error seen at once is idle at once, and the next prompt thinks: the error's flash is over")
+    func errorSeenAtOnce() {
+        var w = Harness()
+        w.hook("UserPromptSubmit")
+        w.hook("StopFailure", ["error": "rate_limit"])
+        w.world.markSeen(sessionID: "s1", now: w.now)
+        #expect(w.session?.status == .idle)
+        // The next prompt, at once: thinking, not still flashing the error.
+        w.hook("UserPromptSubmit")
+        #expect(w.agent(w.main)?.activity == .thinking)
+        w.hook("Stop")
+        // A step that fails while the turn goes on still flashes as work.
+        w.hook("UserPromptSubmit")
+        w.hook("PreToolUse", ["tool_name": "Bash", "tool_use_id": "t1"])
+        w.hook("PostToolUseFailure", ["tool_name": "Bash", "tool_use_id": "t1"])
+        #expect(w.session?.status == .working)
+        #expect(w.agent(w.main)?.activity == .error)
+    }
+
     @Test("an interrupted turn ends when the terminal reports the program idle, without counting as done")
     func interrupted() {
         var w = Harness()

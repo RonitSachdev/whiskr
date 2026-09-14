@@ -386,23 +386,20 @@ private struct MarkdownImage: View {
     }
 }
 
-/// Pictures beside the Markdown, read once per path.
+/// Pictures beside the Markdown, read once per path. One not there yet is looked for again as the preview
+/// is drawn again (a README written before its screenshot shows it once it is made), not remembered as
+/// missing for the rest of the session.
 @MainActor
 final class ImageCache {
     static let shared = ImageCache()
     private var images: [String: NSImage] = [:]
-    private var missing: Set<String> = []
 
     func image(_ source: String, relativeTo base: URL) -> NSImage? {
         let decoded = source.removingPercentEncoding ?? source
         let url = decoded.hasPrefix("/") ? URL(fileURLWithPath: decoded) : base.appendingPathComponent(decoded)
         let key = url.standardizedFileURL.path
         if let image = images[key] { return image }
-        guard !missing.contains(key) else { return nil }
-        guard let image = NSImage(contentsOf: url) else {
-            missing.insert(key)
-            return nil
-        }
+        guard let image = NSImage(contentsOf: url) else { return nil }
         images[key] = image
         return image
     }

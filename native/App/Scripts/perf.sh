@@ -82,6 +82,37 @@ run() {
     echo
 }
 
+# The journey (`DebugFlowJourney.swift`) across quitting: three runs on one isolated folder. The first leaves
+# its terminals running (as ⌘Q does); the second, a relaunch, finds them as they were and ends with ⌥⌘Q; the
+# third checks nothing of it still runs.
+journey() {
+    local dir="$runs/journey" phase code
+    rm -rf "$dir"; mkdir -p "$dir"
+    wait_until_quiet journey
+    for phase in first relaunch stopped; do
+        local args=(--isolated "$dir/isolated" --background --time day --window 1440x900 --perf "$dir/table-$phase.txt" --perf-limits --perf-flows journey)
+        case $phase in
+            first) args+=(--leave-host) ;;
+            *) args+=(--journey-phase $phase --keep-settings) ;;
+        esac
+        "$app/Contents/MacOS/Whiskr" $args > "$dir/log-$phase.txt" 2>&1 &
+        local pid=$! waited=0
+        while kill -0 $pid 2>/dev/null && (( waited < 600 )); do sleep 1; (( waited++ )); done
+        if kill -0 $pid 2>/dev/null; then
+            echo "journey ($phase): still running after ten minutes; stopping it"
+            kill $pid; sleep 2; kill -9 $pid 2>/dev/null
+            failed=1
+        fi
+        wait $pid
+        code=$?
+        cat "$dir/table-$phase.txt" 2>/dev/null || tail -20 "$dir/log-$phase.txt"
+        judge "journey ($phase)" $code "$dir/log-$phase.txt"
+        (( code != 0 )) && break
+    done
+    stop_host "$dir"
+    echo
+}
+
 # The editor on big files (`DebugFiles --measure-files`): opening, colouring off the main thread, scrolling,
 # jumping, typing, opening a comment that recolours the rest, reverting. Each run fails when a timing passes
 # its limit (`EditorLimits`). The files are made here: 50,000 lines of this repository's Swift, 50,000 lines
@@ -156,6 +187,10 @@ editor() {
 }
 
 run checks --window 1440x900 --perf-flows closing,sizes,interactions
+journey
+run files --window 1440x900 --perf-flows files
+run layout --window 1440x900 --perf-flows layout
+run robust --window 1440x900 --perf-flows robust
 run measure --window 1440x900 --perf-cats
 make_editor_files "$runs/editor-files"
 editor editor-swift "$runs/editor-files/big50k.swift"

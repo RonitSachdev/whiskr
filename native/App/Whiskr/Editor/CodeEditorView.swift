@@ -36,6 +36,8 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
         layoutManager.delegate = self
         textView.document = document
         textView.delegate = self
+        // The status bar's "Ln, Col" is the caret of the editor with the keyboard, not the last one moved.
+        textView.onFocus = { [weak self] in if let self { EditorStatus.shared.update(from: self) } }
         textView.minSize = NSSize(width: 0, height: 0)
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.isVerticallyResizable = true

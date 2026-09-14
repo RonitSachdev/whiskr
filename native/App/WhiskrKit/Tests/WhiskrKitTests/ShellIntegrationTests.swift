@@ -153,6 +153,17 @@ struct ShellIntegrationTests {
         #expect(throws: HookSettings.MergeFailure.notSettings) { try HookSettings.merged(hooks: ours, with: file.path) }
     }
 
+    @Test("in a test run, the shim starts only a claude inside the run's own folder")
+    func testRunsStartNoRealClaude() throws {
+        var env = paneEnvironment(hooks: nil)
+        env[ShellIntegration.Key.claudeOnlyUnder] = root.appendingPathComponent("elsewhere").path
+        let refused = try run("/bin/sh", ["-c", "claude --resume x"], environment: env)
+        #expect(refused.status == 126)
+        #expect(refused.lines.isEmpty)
+        env[ShellIntegration.Key.claudeOnlyUnder] = root.path
+        #expect(try run("/bin/sh", ["-c", "claude x"], environment: env).lines == ["real", "x"])
+    }
+
     @Test("a second shim on PATH is skipped, and no claude at all is the usual 127")
     func noLoops() throws {
         let other = ShellIntegration(folder: root.appendingPathComponent("Other copy/shell", isDirectory: true))
@@ -202,6 +213,28 @@ struct ShellIntegrationTests {
         let encoded = root.resolvingSymlinksInPath().path.replacingOccurrences(of: " ", with: "%20")
         #expect(text.contains("\u{1B}]7;file://"))
         #expect(text.contains(encoded) || text.contains(root.path.replacingOccurrences(of: " ", with: "%20")))
+    }
+
+    @Test("zsh and bash report a folder with \"#\", \"?\", \"%\" and spaces in its name whole")
+    func folderNamesAreEncoded() throws {
+        let folder = root.appendingPathComponent("C# x?y%z", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for shell in ["/bin/zsh", "/bin/bash"] {
+            let env = integration.environment(["PATH": "/usr/bin:/bin", "HOME": root.path, "TERM": "dumb"], shell: shell, paneID: "P1", hooksFile: nil)
+            let arguments = shell == "/bin/zsh" ? ["-i"] : ["--norc", "--noprofile", "-i"]
+            let text = try raw(shell, arguments, environment: env, input: "cd 'C# x?y%z'\nexit\n")
+            let reported = text.matches(of: /\u{1B}\]7;([^\u{07}]*)\u{07}/).map { String($0.output.1) }
+            // As the app reads it (`URL(string:)`), the last report is the folder, not "…/C".
+            let path = try #require(reported.last.flatMap { URL(string: $0)?.path }, "\(shell): \(reported)")
+            #expect(URL(fileURLWithPath: path).resolvingSymlinksInPath() == folder.resolvingSymlinksInPath(), "\(shell): \(reported)")
+        }
+    }
+
+    @Test("bash's command mark (PS0) stays quiet under set -u")
+    func bashNounset() throws {
+        #expect(ShellIntegration.bash.contains("${__whiskr_none[__whiskr_ran=1]-}"))
+        let result = try run("/bin/bash", ["--norc", "--noprofile", "-u", "-c", #"x="${__whiskr_none[__whiskr_ran=1]-}"; echo "$__whiskr_ran""#], environment: [:])
+        #expect(result.lines == ["1"] && result.errors.isEmpty)
     }
 
     @Test("zsh without a ZDOTDIR of its own reads ~/.zshrc as usual")

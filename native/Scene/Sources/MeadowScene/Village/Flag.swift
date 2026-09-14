@@ -86,8 +86,14 @@ struct FlagLabel {
         var title = Self.middle(given.name.isEmpty ? "Untitled" : given.name, Self.titleMost)
         var detail = given.detail.flatMap { $0.isEmpty ? nil : Self.middle($0, Self.detailMost) }
         func needed() -> CGFloat { width(title, bold) + (detail.map { branchMarks + width($0, regular) } ?? 0) }
+        // A branch in folders ("feature/checkout") first gives up its folders, "…/checkout", so what is cut
+        // short still reads as a word rather than "featur…out".
+        var foldersDropped = false
         while needed() > room {
-            if let d = detail, d.count > Self.fewest { detail = Self.middle(d, d.count - 1) }
+            if !foldersDropped, detail != nil, let full = given.detail, let slash = full.lastIndex(of: "/"), full.index(after: slash) < full.endIndex {
+                foldersDropped = true
+                detail = Self.middle("…" + full[slash...], Self.detailMost)
+            } else if let d = detail, d.count > Self.fewest { detail = Self.middle(d, d.count - 1) }
             else if title.count > Self.fewest { title = Self.middle(title, title.count - 1) }
             else if detail != nil { detail = nil }
             else if title.count > 2 { title = Self.middle(title, title.count - 1) }

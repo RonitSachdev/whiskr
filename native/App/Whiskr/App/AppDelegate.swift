@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     /// Folders handed over before the workbench was ready (opened from the Finder or the Dock at launch).
     private var pendingFolders: [String] = []
     private var launched = false
+    /// Keeps the Dock's count of requests in step with the model (`updateDockBadge`).
+    private var dockBadgeWatch: Observing?
 
     override init() {
         workbench = Workbench()
@@ -47,6 +49,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         WorldStore.shared.start()
         let controller = MainWindowController(workbench: workbench)
         windowController = controller
+        // The Dock counts the requests waiting, as the model has them now: one answered, a Claude gone, its
+        // tab closed, the setting turned off. (Set only as Claudes changed, a closed tab's request stayed on it.)
+        dockBadgeWatch = Observing { [weak self] in self?.updateDockBadge() }
         #if DEBUG
         if DebugScenario.keepsInBackground { DebugScript.keepOutOfSight() }
         #endif
@@ -181,6 +186,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     }
 
     // MARK: Dock
+
+    private func updateDockBadge() {
+        let count = workbench.needsYouCount
+        let label = count > 0 && Preferences.shared.dockBadge ? "\(count)" : nil
+        if NSApp.dockTile.badgeLabel != label { NSApp.dockTile.badgeLabel = label }
+    }
 
     /// The Dock menu (§6.1): who is waiting, oldest first ("shop-web: Wants to run npm test"), then New
     /// Workspace (Home) and Pause Alerts. Choosing one is yours to do, so it brings the window forward.

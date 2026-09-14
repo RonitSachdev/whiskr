@@ -50,9 +50,10 @@ final class AgentDesk: @unchecked Sendable {
         let delivery: AgentText.Delivery
         let parent: UUID?
         let began = Date()
-        /// When the command was typed, and whether a program has been seen in front since.
+        /// When the command was typed, and when a program was first seen in front since.
         var typedAt: Date?
-        var programSeen = false
+        var programSeenAt: Date?
+        var programSeen: Bool { programSeenAt != nil }
         var reason = ""
     }
 
@@ -114,7 +115,7 @@ final class AgentDesk: @unchecked Sendable {
             startup.phase = .program
         case .program:
             if terminal.programInFront {
-                startup.programSeen = true
+                if startup.programSeenAt == nil { startup.programSeenAt = now }
                 if programs[id] == .notYet, terminal.origin?.background == false { programs[id] = .running }
             }
             if startup.programSeen && !terminal.programInFront && startup.line != nil {
@@ -137,10 +138,10 @@ final class AgentDesk: @unchecked Sendable {
             case .argument:
                 // Claude has the task already; it is under way once Claude says it works on it, or (for
                 // one that reports nothing) once it has been quiet in front for a while.
-                let quiet = terminal.lastOutput.map { now.timeIntervalSince($0) >= Self.readyQuiet * 2 } ?? false
+                let quiet = Self.quiet(terminal, startup, now: now, for: Self.readyQuiet * 2)
                 if report?.isBusy == true || (report == nil && startup.programSeen && quiet) { startup.phase = .delivered }
             case .paste:
-                let quiet = terminal.lastOutput.map { now.timeIntervalSince($0) >= Self.readyQuiet } ?? false
+                let quiet = Self.quiet(terminal, startup, now: now, for: Self.readyQuiet)
                 let ready = report.map { $0.state == .idle || $0.state == .done } ?? (startup.programSeen && quiet)
                 guard ready else { break }
                 enqueue(Delivery(text: task, kind: .task, sender: startup.parent, needsAgent: false, whenBlocked: .wait, submit: true) { _ in }, to: id)
@@ -155,6 +156,16 @@ final class AgentDesk: @unchecked Sendable {
         startups[id] = startup
         if startup.phase == .delivered { finish(id, startup) }
         if startup.phase == .failed { finish(id, startup) }
+    }
+
+    /// A program that reports nothing counts as ready once it has been quiet in front for `seconds`:
+    /// counted from its last output or from when it came in front, whichever is later. From the output
+    /// alone, a program slow to start (a loaded Mac) would count as quiet the moment it came in front, as
+    /// the echo of its command line was long enough ago, and be handed its task before it could say it
+    /// was blocked or busy.
+    private static func quiet(_ terminal: HostedTerminal, _ startup: Startup, now: Date, for seconds: TimeInterval) -> Bool {
+        guard let seen = startup.programSeenAt else { return false }
+        return now.timeIntervalSince(max(seen, terminal.lastOutput ?? seen)) >= seconds
     }
 
     private func finish(_ id: UUID, _ startup: Startup) {
@@ -384,6 +395,9 @@ final class AgentDesk: @unchecked Sendable {
 
     /// Ten times a second while anything is pending.
     func tick() {
+        // Whether a starting program is quiet, or has said it is blocked, goes by all it has printed so
+        // far: output waiting unread on the queue is taken in first (which comes back here as `changed`).
+        for id in Array(startups.keys) { terminal(id)?.catchUp() }
         for id in Array(startups.keys) { advance(id) }
         for (id, program) in programs where program == .running {
             guard let terminal = terminal(id) else { continue }

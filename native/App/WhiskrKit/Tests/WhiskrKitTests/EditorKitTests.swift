@@ -312,6 +312,11 @@ struct FileLocationTests {
         #expect(FileLocation("../x/y.swift:7", folder: "/repo/sub") == FileLocation(path: "/repo/x/y.swift", line: 7))
         #expect(FileLocation("~/notes.txt:3", folder: "/repo", home: "/Users/me") == FileLocation(path: "/Users/me/notes.txt", line: 3))
         #expect(FileLocation("file:///tmp/a.swift", folder: "/repo") == FileLocation(path: "/tmp/a.swift"))
+        // Any case, one slash or three: a path, never a relative name that cannot exist (which sent the link
+        // to the system to open as it liked, running a script).
+        #expect(FileLocation("file:/tmp/x.command", folder: "/repo") == FileLocation(path: "/tmp/x.command"))
+        #expect(FileLocation("FILE:///tmp/a.swift:3", folder: "/repo") == FileLocation(path: "/tmp/a.swift", line: 3))
+        #expect(FileLocation("file:12", folder: "/repo") == FileLocation(path: "/repo/file", line: 12))
         #expect(FileLocation("\"/abs/path.go:10:\"", folder: "/") == FileLocation(path: "/abs/path.go", line: 10))
         #expect(FileLocation("(lib/main.rs:3)", folder: "/r") == FileLocation(path: "/r/lib/main.rs", line: 3))
         #expect(FileLocation("  ", folder: "/r") == nil)

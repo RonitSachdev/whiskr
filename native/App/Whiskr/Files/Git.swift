@@ -52,8 +52,12 @@ enum Git {
             throw error
         }
         if let input {
-            stdin.fileHandleForWriting.write(input)
-            try? stdin.fileHandleForWriting.close()
+            // git may stop before reading all of it (a refused patch): writing then fails with EPIPE, which
+            // without F_SETNOSIGPIPE is a SIGPIPE that ends the app. The failure shows as git's own.
+            let handle = stdin.fileHandleForWriting
+            _ = fcntl(handle.fileDescriptor, F_SETNOSIGPIPE, 1)
+            try? handle.write(contentsOf: input)
+            try? handle.close()
         }
         // No time limit: a commit runs the repository's hooks, which may take long.
         finished.wait()

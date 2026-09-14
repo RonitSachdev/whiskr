@@ -27,7 +27,12 @@ final class Notifier: NSObject {
         center.setNotificationCategories([UNNotificationCategory(identifier: Self.requestCategory, actions: [allow, deny], intentIdentifiers: [])])
     }
 
+    /// Whether permission has been asked for in this run (or would have been, in a test run that never asks).
+    private(set) var askedThisRun = false
+
     func requestPermissionIfNeeded() {
+        askedThisRun = true
+        // A test run never shows the system's question on anyone's screen.
         guard !AppPlaces.isIsolated else { return }
         guard !AppPlaces.defaults.bool(forKey: Self.askedKey) else { return }
         AppPlaces.defaults.set(true, forKey: Self.askedKey)

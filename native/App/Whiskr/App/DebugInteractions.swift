@@ -40,20 +40,20 @@ extension PerfSuite {
         PointerStandIn.location = nil
     }
 
-    // MARK: Helpers
+    // MARK: Helpers (also `DebugFlowFiles`'s)
 
     /// The pane's rows as drawn, not trimmed (columns stay where they are on screen).
-    private func drawnRows(_ pane: Pane) -> [String] {
+    func drawnRows(_ pane: Pane) -> [String] {
         pane.surface.visibleRowsText(0..<pane.surface.terminalDimensions.rows)
     }
 
     /// The visible row whose text is exactly `text` (an output line, not the command that printed it).
-    private func row(_ pane: Pane, showing text: String) -> Int? {
+    func row(_ pane: Pane, showing text: String) -> Int? {
         drawnRows(pane).firstIndex { $0.trimmingCharacters(in: .whitespaces) == text }
     }
 
     /// The middle of a cell of the terminal's grid, in the terminal view (as `TerminalSurface.cell(at:)` reads it).
-    private func cellPoint(_ pane: Pane, row: Int, column: Int) -> NSPoint {
+    func cellPoint(_ pane: Pane, row: Int, column: Int) -> NSPoint {
         let surface = pane.surface
         let dimensions = surface.terminalDimensions
         let grid = surface.getOptimalFrameSize().size
@@ -62,10 +62,10 @@ extension PerfSuite {
     }
 
     /// The top row of the terminal's view, counted from the first line it keeps.
-    private func topRow(_ pane: Pane) -> Int? { pane.surface.reach?.locked { terminal, _ in terminal.buffer.yDisp } }
+    func topRow(_ pane: Pane) -> Int? { pane.surface.reach?.locked { terminal, _ in terminal.buffer.yDisp } }
 
     /// ⌃, ⌘ and the rest pressed or let go: the keys held from now on, and the event saying so.
-    private func hold(_ flags: NSEvent.ModifierFlags, code: UInt16) {
+    func hold(_ flags: NSEvent.ModifierFlags, code: UInt16) {
         HeldKeys.flags = flags
         if let event = NSEvent.keyEvent(with: .flagsChanged, location: PointerStandIn.location ?? .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                         windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: code) {
@@ -74,7 +74,7 @@ extension PerfSuite {
     }
 
     /// A key pressed with modifiers, through the app's whole event path (its key monitors first).
-    private func press(_ characters: String, ignoring: String? = nil, modifiers: NSEvent.ModifierFlags, code: UInt16) {
+    func press(_ characters: String, ignoring: String? = nil, modifiers: NSEvent.ModifierFlags, code: UInt16) {
         if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: ProcessInfo.processInfo.systemUptime,
                                         windowNumber: window.windowNumber, context: nil, characters: characters,
                                         charactersIgnoringModifiers: ignoring ?? characters, isARepeat: false, keyCode: code) {
@@ -82,7 +82,7 @@ extension PerfSuite {
         }
     }
 
-    private func mouse(_ type: NSEvent.EventType, at location: NSPoint, modifiers: NSEvent.ModifierFlags = [], count: Int = 1) -> NSEvent? {
+    func mouse(_ type: NSEvent.EventType, at location: NSPoint, modifiers: NSEvent.ModifierFlags = [], count: Int = 1) -> NSEvent? {
         NSEvent.mouseEvent(with: type, location: location, modifierFlags: modifiers, timestamp: ProcessInfo.processInfo.systemUptime,
                            windowNumber: window.windowNumber, context: nil, eventNumber: nextEventNumber(), clickCount: count,
                            pressure: [.leftMouseDown, .rightMouseDown].contains(type) ? 1 : 0)
@@ -91,7 +91,7 @@ extension PerfSuite {
     /// A double-click at a point in `view`: each release queued before its press, since a press on a
     /// divider starts a tracking loop that waits for it. Returns the view the window delivered it to.
     @discardableResult
-    private func doubleClick(_ view: NSView, at point: NSPoint) -> NSView? {
+    func doubleClick(_ view: NSView, at point: NSPoint) -> NSView? {
         let location = view.convert(point, to: nil)
         PointerStandIn.location = location
         let target = hit(view, at: point)
@@ -103,7 +103,7 @@ extension PerfSuite {
         return target
     }
 
-    private func name(_ view: NSView?) -> String { view.map { String(describing: type(of: $0)) } ?? "nothing" }
+    func name(_ view: NSView?) -> String { view.map { String(describing: type(of: $0)) } ?? "nothing" }
 
     private func waited(_ time: Double?, since start: Double) -> String { time.map { "\(Self.ms($0 - start)) ms" } ?? "never" }
 
@@ -287,14 +287,14 @@ extension PerfSuite {
 
     /// The terminal's menu for a right-click there, as AppKit asks for it before showing it (it is never
     /// shown: a context menu would come up on screen).
-    private func rightClickMenu(_ surface: TerminalSurface, at point: NSPoint) -> NSMenu? {
+    func rightClickMenu(_ surface: TerminalSurface, at point: NSPoint) -> NSMenu? {
         let location = surface.convert(point, to: nil)
         PointerStandIn.location = location
         return mouse(.rightMouseDown, at: location).flatMap { surface.menu(for: $0) }
     }
 
     /// The first item of a menu or its submenus that passes `test`.
-    private func menuItem(in menu: NSMenu, where test: (NSMenuItem) -> Bool) -> NSMenuItem? {
+    func menuItem(in menu: NSMenu, where test: (NSMenuItem) -> Bool) -> NSMenuItem? {
         for item in menu.items {
             if test(item) { return item }
             if let found = item.submenu.flatMap({ menuItem(in: $0, where: test) }) { return found }
@@ -302,9 +302,9 @@ extension PerfSuite {
         return nil
     }
 
-    private func titles(_ menu: NSMenu) -> [String] { menu.items.map { $0.isSeparatorItem ? "—" : $0.title } }
+    func titles(_ menu: NSMenu) -> [String] { menu.items.map { $0.isSeparatorItem ? "—" : $0.title } }
 
-    private func commandClick(_ view: NSView, at point: NSPoint) {
+    func commandClick(_ view: NSView, at point: NSPoint) {
         let location = view.convert(point, to: nil)
         PointerStandIn.location = location
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
@@ -313,7 +313,7 @@ extension PerfSuite {
     }
 
     /// The focused editor's file is `file`: the line and column of its insertion point.
-    private func editorPlace(file: String) -> (line: Int, column: Int)? {
+    func editorPlace(file: String) -> (line: Int, column: Int)? {
         guard case .file(let path) = workbench.focusedPage, URL(fileURLWithPath: path).lastPathComponent == file,
               let id = workbench.focusedPageID, let page = controller.terminals.paneArea.pageView(id),
               let editor = DebugShell.descendant(of: page, where: { $0 is NSTextView }) as? NSTextView else { return nil }
@@ -600,7 +600,7 @@ extension PerfSuite {
 
     /// The pointer moved down the diff's rows until a change's buttons show, then the one named clicked.
     /// Says what happened.
-    private func pressChangeAction(_ title: String, diff: DiffPageView, table: NSTableView) async -> String {
+    func pressChangeAction(_ title: String, diff: DiffPageView, table: NSTableView) async -> String {
         guard let actions = diff.subviews.first(where: { String(describing: type(of: $0)).contains("ChangeActions") }) else { return "no buttons" }
         // The diff may still be reading the repository: down the rows again for up to three seconds.
         let start = perfNow()
@@ -625,7 +625,7 @@ extension PerfSuite {
     }
 
     /// git in the scratch repository only, with none of this Mac's settings: its output, nil if it failed.
-    private func git(_ arguments: [String], in folder: URL) -> String? {
+    func git(_ arguments: [String], in folder: URL) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["-C", folder.path] + arguments

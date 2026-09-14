@@ -167,6 +167,8 @@ enum DebugScript {
         case "quit":
             NSApp.terminate(nil)
         default:
+            // Commands of the scripted flows, each in its own file (`DebugFlow*.swift`).
+            for more in [journeyCommand, filesCommand, layoutCommand, robustCommand] where more(command, argument, workbench, controller) { return }
             print("  unknown command")
         }
     }

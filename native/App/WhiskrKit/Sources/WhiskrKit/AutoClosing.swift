@@ -171,6 +171,8 @@ public enum AutoClosing {
     /// bracket tree about the whole file; within the line is what matters while typing.)
     static func hasUnmatchedClosing(after before: String, _ after: String, pair: EditingPairs.AutoClosingPair) -> Bool {
         let open = Array(pair.open.utf16), close = Array(pair.close.utf16)
+        // An empty side would match everywhere without moving on.
+        guard !open.isEmpty, !close.isEmpty else { return false }
         let text = Array((before + after).utf16)
         let cursor = before.utf16.count
         var depth = 0

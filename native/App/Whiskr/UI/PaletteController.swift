@@ -115,7 +115,7 @@ final class PaletteController: NSObject, NSWindowDelegate {
             workbench.open(file: path, mode: .keep, line: line, column: column)
         case .line(let line, let column):
             // ":42": the file shown in the tab, at that line.
-            guard let id = workbench.focusedPageID, case .file(let path) = workbench.pages[id] else { return NSSound.beep() }
+            guard let id = workbench.focusedPageID, case .file(let path) = workbench.pages[id] else { return AlertCenter.beep() }
             workbench.open(file: path, mode: .keep, line: line, column: column)
         }
     }

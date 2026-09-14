@@ -22,6 +22,10 @@ struct NavigatorList: View {
             }
         }
         .listStyle(.sidebar)
+        // Solid, in the theme's chrome as the side panel is: a sidebar list's own vibrant material and
+        // label colours ignore the theme, and drew the names fainter than the folders under them.
+        .scrollContentBackground(.hidden)
+        .background(Color.chrome)
     }
 }
 
@@ -52,12 +56,12 @@ private struct WorkspaceRow: View {
                 .frame(width: 10, height: 10)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
-                Text(workspace.name).font(.body).lineLimit(1)
-                Text(workspace.displayPath).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                Text(workspace.name).font(.body).foregroundStyle(Color.ink).lineLimit(1)
+                Text(workspace.displayPath).font(.caption).foregroundStyle(Color.ink2).lineLimit(1).truncationMode(.middle)
             }
             Spacer(minLength: 4)
             if helpers > 0 {
-                Text(String(localized: "+\(helpers) helpers", comment: "Sidebar list: how many helpers are working")).font(.caption).foregroundStyle(.secondary)
+                Text(String(localized: "+\(helpers) helpers", comment: "Sidebar list: how many helpers are working")).font(.caption).foregroundStyle(Color.ink2)
             }
             ForEach(Array(claudes.enumerated()), id: \.offset) { _, claude in
                 // An error is "×", as in the meadow and the tabs.
