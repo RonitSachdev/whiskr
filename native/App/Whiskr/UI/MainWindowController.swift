@@ -24,6 +24,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     private let chrome = WindowChrome()
     /// The command palette and Go to (one overlay).
     private(set) var palette: PaletteController?
+    /// ⌃Tab's most-recent switching.
+    private(set) var tabSwitcher: TabSwitcher?
 
     private(set) var layout: WindowLayout {
         didSet {
@@ -70,7 +72,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         let toolbar = NSToolbar(identifier: "main")
         toolbar.allowsUserCustomization = false
         window.toolbar = toolbar
-        chrome.toggleMeadow = { [weak self] in self?.layout.toggleNavigator() }
+        if let zoom = window.standardWindowButton(.zoomButton) { chrome.trafficLightsEnd = zoom.frame.maxX }
+        chrome.toggleMeadow = { [weak self] in self?.toggleNavigator(nil) }
         window.contentViewController = FrameController(content: split, workbench: workbench, chrome: chrome)
         window.setContentSize(NSSize(width: 1440, height: 900))
         if AppPlaces.isIsolated {
@@ -79,13 +82,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             window.setFrameAutosaveName("MainWindow")
             if !window.setFrameUsingName("MainWindow") { window.center() }
         }
-        split.onToggleSidebar = { [weak self] in self?.layout.toggleNavigator() }
+        split.onToggleSidebar = { [weak self] in self?.toggleNavigator(nil) }
         split.onDividerDragged = { [weak self] width in
             guard let self, let window = self.window else { return }
             self.layout.dragDivider(to: Double(width), window: Double(window.frame.width))
         }
         split.onDividerReset = { [weak self] in self?.layout.resetSplit() }
+        keyboardOrder(window)
         palette = PaletteController(workbench: workbench, window: window)
+        tabSwitcher = TabSwitcher(workbench: workbench, window: window)
         applyLayout(animated: false)
 
         workbench.onFocusPane = { [weak self] pane in
@@ -132,6 +137,17 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     private var keyMonitor: Any?
+
+    /// With Full Keyboard Access, Tab goes round the window in reading order: the top bar, the tab row,
+    /// the pane or page, the side panel, the status bar, and back to the top. (In a terminal Tab is the
+    /// shell's; ⌃F7 or a click moves on from there, as in Terminal.)
+    private func keyboardOrder(_ window: NSWindow) {
+        guard let frame = window.contentViewController as? FrameController, let top = frame.topBar, let status = frame.statusBar else { return }
+        window.autorecalculatesKeyViewLoop = false
+        let order: [NSView] = [top, terminals.tabRow, terminals.paneArea, terminals.sidePanel, status]
+        for (view, next) in zip(order, order.dropFirst() + [top]) { view.nextKeyView = next }
+        window.initialFirstResponder = terminals.paneArea
+    }
 
     /// Keys on their way to a terminal: when one was last typed (alert sounds wait for a pause, the meadow
     /// draws less often meanwhile), and
@@ -187,6 +203,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             guard let self, showNavigator, frame.showsTerminals else { return }
             self.split.setNavigatorWidth(CGFloat(frame.navigator))
         }
+        // A region coming back opens at the width it is to have. Left at the one it had when it went (the
+        // meadow 600 pt wide in a window since narrowed to 720), the split view would widen the window to
+        // make room for it rather than narrow the other region.
+        if showNavigator, frame.showsTerminals {
+            let height = navigator.view.frame.height
+            if navigatorItem.isCollapsed { navigator.view.setFrameSize(NSSize(width: frame.navigator, height: height)) }
+            if terminalItem.isCollapsed { terminals.view.setFrameSize(NSSize(width: window.frame.width - frame.navigator, height: height)) }
+        }
         let changes = navigatorItem.isCollapsed == showNavigator || terminalItem.isCollapsed == frame.showsTerminals
         if animate && changes {
             // The divider goes where it belongs once the regions have finished opening or closing. Meanwhile
@@ -224,8 +248,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// View › Hide Status Bar / Show Status Bar (⌥⌘/).
     @objc func toggleStatusBar(_ sender: Any?) { layout.showsStatusBar.toggle() }
 
-    /// View › Reset Layout: the meadow, the terminals, the status bar and the side panel back as they
-    /// first were (the panel at its usual width, shown only if it was).
+    /// View › Reset Layout: the meadow, the terminals and the status bar back as they first were, and the
+    /// selected workspace's side panel at its usual width (shown only if it was). Other workspaces' panels,
+    /// the panes' shares and how the workspaces are drawn are yours, and stay.
     @objc func resetLayout(_ sender: Any?) {
         layout.reset()
         if let workspace = workbench.selectedWorkspace {
@@ -256,20 +281,30 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         navigator.saveState()
     }
 
-    @objc func toggleNavigator(_ sender: Any?) { layout.toggleNavigator() }
+    /// The window's width, which decides whether the default split has room for the meadow.
+    private var windowWidth: Double { Double(window?.frame.width ?? 0) }
+
+    /// View › Hide Meadow / Show Meadow (⌃⌘S, the meadow button): by what is on screen, so in a window
+    /// too narrow for the default split it shows the meadow, at its narrowest.
+    @objc func toggleNavigator(_ sender: Any?) { layout.toggleNavigator(window: windowWidth) }
 
     /// Go › Move Focus to Meadow (⌥⌘0): the keyboard goes to the meadow (or the list), on the selected
     /// workspace; Esc or Tab gives it back to the terminal.
     @objc func moveFocusToMeadow(_ sender: Any?) {
-        if layout.mode == .terminalsOnly { layout.mode = .split }
+        layout.showNavigator(window: windowWidth)
         navigator.takeKeyboard()
     }
-    @objc func showMeadowAndTerminals(_ sender: Any?) { layout.mode = .split }
+    @objc func showMeadowAndTerminals(_ sender: Any?) {
+        layout.mode = .split
+        layout.showNavigator(window: windowWidth)
+    }
     @objc func showTerminalsOnly(_ sender: Any?) { layout.mode = .terminalsOnly }
     @objc func showMeadowOnly(_ sender: Any?) { layout.mode = .meadowOnly }
+    /// View › Animate Meadow (`WorldStore.animatesMeadow`).
+    @objc func toggleAnimateMeadow(_ sender: Any?) { WorldStore.shared.animatesMeadow.toggle() }
     @objc func toggleWorkspacesAsList(_ sender: Any?) {
         layout.navigator = layout.navigator == .list ? .meadow : .list
-        if layout.mode == .terminalsOnly { layout.mode = .split }
+        layout.showNavigator(window: windowWidth)
     }
 
     #if DEBUG
@@ -438,6 +473,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         workbench.selectTab(at: sender.tag == 9 ? count - 1 : sender.tag - 1)
     }
     @objc func selectWorkspaceByNumber(_ sender: NSMenuItem) { workbench.selectWorkspace(at: sender.tag - 1) }
+    /// ⌃Tab and ⌃⇧Tab: the tab shown before, or a held ⌃'s list of recent tabs (`TabSwitcher`).
+    @objc func switchToRecentTab(_ sender: Any?) { tabSwitcher?.begin(backward: false) }
+    @objc func switchToRecentTabBackward(_ sender: Any?) { tabSwitcher?.begin(backward: true) }
     @objc func nextTab(_ sender: Any?) { workbench.selectTab(offset: 1) }
     @objc func previousTab(_ sender: Any?) { workbench.selectTab(offset: -1) }
     @objc func nextWorkspace(_ sender: Any?) { workbench.selectWorkspace(offset: 1) }
@@ -464,25 +502,30 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         let paneCount = tab?.tree.panes.count ?? 0
         switch item.action {
         case #selector(toggleNavigator(_:)):
-            item.title = layout.mode == .terminalsOnly ? String(localized: "Show Meadow") : String(localized: "Hide Meadow")
+            item.title = layout.showsNavigator(window: windowWidth) ? String(localized: "Hide Meadow") : String(localized: "Show Meadow")
             return true
         case #selector(toggleStatusBar(_:)):
             item.title = layout.showsStatusBar ? String(localized: "Hide Status Bar") : String(localized: "Show Status Bar")
             return true
         case #selector(resetLayout(_:)):
             return true
+        // The form on screen: a split whose meadow stepped aside for lack of room shows the terminals only.
         case #selector(showMeadowAndTerminals(_:)):
-            item.state = layout.mode == .split ? .on : .off
+            let frame = layout.frame(window: windowWidth)
+            item.state = frame.navigator > 0 && frame.showsTerminals ? .on : .off
             return true
         case #selector(showTerminalsOnly(_:)):
-            item.state = layout.mode == .terminalsOnly ? .on : .off
+            item.state = layout.showsNavigator(window: windowWidth) ? .off : .on
             return true
         case #selector(showMeadowOnly(_:)):
-            item.state = layout.mode == .meadowOnly ? .on : .off
+            item.state = layout.frame(window: windowWidth).showsTerminals ? .off : .on
             return true
         case #selector(goHome(_:)):
             item.state = workbench.isHome ? .on : .off
             return !workbench.isHome
+        case #selector(toggleAnimateMeadow(_:)):
+            item.state = WorldStore.shared.animatesMeadow ? .on : .off
+            return layout.navigator == .meadow
         case #selector(toggleWorkspacesAsList(_:)):
             item.state = layout.navigator == .list ? .on : .off
             return true
@@ -510,7 +553,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             return workbench.peekedPane != nil || workbench.focusedPane != nil || workbench.focusedPageID != nil
         case #selector(splitRight(_:)), #selector(splitDown(_:)):
             return workbench.focusedPane != nil || workbench.focusedPageID != nil
-        case #selector(clearScrollback(_:)), #selector(interrupt(_:)):
+        case #selector(clearScrollback(_:)):
+            return workbench.focusedPane != nil
+        case #selector(interrupt(_:)):
+            // ⌘. is also the Mac's Cancel: while a text field, the palette or a card has the keyboard, the
+            // key is theirs (a rename, Go to or the commit message gives up) and no terminal is interrupted.
+            guard let window, NSApp.keyWindow === window || NSApp.keyWindow == nil, !(window.firstResponder is NSText) else { return false }
             return workbench.focusedPane != nil
         case #selector(reopenClosedTab(_:)):
             return workbench.canReopenClosedTab
@@ -526,7 +574,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         case #selector(selectTabByNumber(_:)):
             let count = workbench.selectedWorkspace?.tabs.count ?? 0
             return item.tag == 9 ? count > 0 : count >= item.tag
-        case #selector(nextTab(_:)), #selector(previousTab(_:)):
+        case #selector(nextTab(_:)), #selector(previousTab(_:)), #selector(switchToRecentTab(_:)), #selector(switchToRecentTabBackward(_:)):
             return (workbench.selectedWorkspace?.tabs.count ?? 0) > 1
         case #selector(nextWorkspace(_:)), #selector(previousWorkspace(_:)):
             // From Home, the first or the last.
@@ -602,7 +650,6 @@ final class RegionsController: NSSplitViewController {
 
     override func splitViewDidResizeSubviews(_ notification: Notification) {
         super.splitViewDidResizeSubviews(notification)
-        // Only a drag of the divider itself carries its index.
         // Only a drag of the divider itself, by the mouse, says where you want it (collapsing or opening a
         // region resizes too, with the same notification).
         let byHand = [.leftMouseDragged, .leftMouseUp].contains(NSApp.currentEvent?.type)
@@ -621,15 +668,49 @@ final class RegionsSplitView: NSSplitView {
     override var dividerColor: NSColor { Colors.line }
 
     override func mouseDown(with event: NSEvent) {
-        if event.clickCount == 2, subviews.count == 2 {
+        // The regions are its arranged subviews (the divider is a view of its own beside them).
+        if event.clickCount == 2, arrangedSubviews.count == 2 {
             let point = convert(event.locationInWindow, from: nil)
-            let divider = NSRect(x: subviews[0].frame.maxX - 4, y: 0, width: dividerThickness + 8, height: bounds.height)
-            if divider.contains(point) {
+            if dividerReach.contains(point) {
                 onDoubleClickDivider?()
                 return
             }
         }
         // Anything else that reaches the split view itself is a drag of its divider.
+        glow.show(dividerLine)
         LiveResize.shared.during { super.mouseDown(with: event) }
+        if let window, !dividerReach.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil)) { glow.hide() }
     }
+
+    // MARK: Showing it can be dragged (`DividerGlow`)
+
+    private lazy var glow = DividerGlow(in: self)
+    private var dividerArea: NSTrackingArea?
+
+    /// The meadow's edge, while both regions show.
+    private var dividerLine: NSRect {
+        let regions = arrangedSubviews
+        guard regions.count == 2, !regions[0].isHidden, !regions[1].isHidden, regions[0].frame.width > 0 else { return .zero }
+        return NSRect(x: regions[0].frame.maxX, y: 0, width: dividerThickness, height: bounds.height)
+    }
+
+    private var dividerReach: NSRect { dividerLine.insetBy(dx: -4, dy: 0) }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let dividerArea { removeTrackingArea(dividerArea) }
+        dividerArea = nil
+        guard dividerLine != .zero else { return glow.hide() }
+        let area = NSTrackingArea(rect: dividerReach, options: [.mouseEnteredAndExited, .activeInKeyWindow], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        dividerArea = area
+    }
+
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        super.resizeSubviews(withOldSize: oldSize)
+        updateTrackingAreas()
+    }
+
+    override func mouseEntered(with event: NSEvent) { glow.pointerEntered(dividerLine) }
+    override func mouseExited(with event: NSEvent) { glow.hide() }
 }

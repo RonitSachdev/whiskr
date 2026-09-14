@@ -62,25 +62,39 @@ public enum TextEdits {
         }
     }
 
-    /// The indentation for the line started by Return, given the text of the line before the cursor:
-    /// the same as that line's, one level more after an opening bracket (or a colon ending a line in
-    /// Python and YAML, or a tag left open in HTML).
-    public static func newlineIndent(after line: String, unit: String, language: SyntaxLanguage) -> String {
-        let indent = String(line.prefix { $0 == " " || $0 == "\t" })
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        guard let last = trimmed.last else { return indent }
-        switch language {
-        case .python, .yaml:
-            return last == ":" || "([{".contains(last) ? indent + unit : indent
-        case .html, .xml:
-            let opensTag = last == ">" && !trimmed.hasSuffix("/>") && trimmed.hasPrefix("<") && !trimmed.hasPrefix("</")
-                && !trimmed.dropFirst().contains("</") && !trimmed.hasPrefix("<!") && !trimmed.hasPrefix("<?")
-            return opensTag ? indent + unit : indent
-        case .plain, .markdown:
-            return indent
-        default:
-            return "([{".contains(last) ? indent + unit : indent
+    /// What a line started by Return begins with (its indentation, and any text a rule adds, such as
+    /// " * " inside a doc comment), as VS Code works it out from a language's configuration: the first of
+    /// its `onEnterRules` that matches the text before the cursor (and, when the rule says, the text after
+    /// it and the line above) indents, outdents or keeps the line's indentation; else one level more when
+    /// the line matches its `increaseIndentPattern` or `indentNextLinePattern` (a colon ending a line in
+    /// YAML, a tag left open in HTML), or ends with one of its opening brackets; else the same.
+    public static func newlineIndent(after before: String, following after: String = "", previousLine: String? = nil, unit: String,
+                                     configuration: LanguageConfiguration) -> String {
+        let indent = String(before.prefix { $0 == " " || $0 == "\t" })
+        func matches(_ pattern: LanguageConfiguration.Pattern, _ text: String) -> Bool {
+            pattern.regularExpression()?.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
         }
+        for rule in configuration.onEnterRules where matches(rule.beforeText, before) {
+            if let afterText = rule.afterText, !matches(afterText, after) { continue }
+            if let previousLineText = rule.previousLineText, !matches(previousLineText, previousLine ?? "") { continue }
+            var result: String
+            switch rule.indent {
+            case .none: result = indent
+            case .indent, .indentOutdent: result = indent + unit
+            case .outdent: result = outdentedForClosing(indent, unit: unit)
+            }
+            if let remove = rule.removeText { result = String(result.dropLast(min(remove, result.count))) }
+            return result + (rule.appendText ?? "")
+        }
+        let trimmed = before.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return indent }
+        if let rules = configuration.indentationRules {
+            for pattern in [rules.increaseIndentPattern, rules.indentNextLinePattern].compactMap({ $0 }) where matches(pattern, before) {
+                return indent + unit
+            }
+        }
+        if configuration.brackets.contains(where: { !$0.open.isEmpty && trimmed.hasSuffix($0.open) }) { return indent + unit }
+        return indent
     }
 
     /// The closing bracket typed at the start of an indented line takes one level off it ("}" lines up

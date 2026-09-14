@@ -55,8 +55,11 @@ import simd
         #expect(with.size == without.size)
         for (id, a) in with.actors { #expect(a.spot == without.actors[id]!.spot) }
         // On the cloth, clear of the cats.
+        let village = stage(.night, lanterns: 3).village!
         for l in with.lanterns {
-            #expect(hypot(l.spot.x - with.center.x, l.spot.z - with.center.z) + Picnic.lanternReach <= with.size)
+            let out = Vec2(l.spot.x - with.center.x, l.spot.z - with.center.z)
+            #expect(simd_length(out) + Picnic.lanternReach <= village.clothReach(with, toward: simd_normalize(out)) + 1e-3)
+            for a in with.actors.values { #expect(hypot(l.spot.x - a.spot.x, l.spot.z - a.spot.z) >= 1.35 * a.size + Picnic.lanternReach) }
         }
     }
 

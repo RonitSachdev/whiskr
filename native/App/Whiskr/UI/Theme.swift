@@ -8,7 +8,6 @@ enum Colors {
     private static var palette: Palette { ThemeStore.shared.palette }
 
     static var surface: NSColor { palette[.surface] }
-    static var sidebar: NSColor { palette[.sidebar] }
     static var line: NSColor { palette[.line] }
     static var well: NSColor { palette[.well] }
     static var text: NSColor { palette[.text] }
@@ -37,9 +36,6 @@ extension SwiftUI.Color {
     static var chrome: SwiftUI.Color { theme(.chrome) }
     /// The content layer: the terminal's own background, which the selected tab shares.
     static var content: SwiftUI.Color { SwiftUI.Color(nsColor: Colors.terminalBackground) }
-    static var sunk: SwiftUI.Color { theme(.sidebar) }
-    static var hover: SwiftUI.Color { theme(.hover) }
-    static var press: SwiftUI.Color { theme(.press) }
     static var line: SwiftUI.Color { theme(.line) }
     static var lineStrong: SwiftUI.Color { theme(.lineStrong) }
     static var ink: SwiftUI.Color { theme(.text) }
@@ -73,7 +69,7 @@ enum Look {
     /// The bars' heights. The top bar is the compact title bar's band (40 pt on macOS 26, the traffic
     /// lights centred 20 pt down), so the lights sit centred in it.
     enum Height {
-        static let topBar: CGFloat = 40, tabRow: CGFloat = 34, paneHeader: CGFloat = 30, statusBar: CGFloat = 24
+        static let topBar: CGFloat = 40, tabRow: CGFloat = 34, statusBar: CGFloat = 24
         /// An icon button or a field in a bar.
         static let control: CGFloat = 26
         /// An icon button's width.
@@ -96,9 +92,15 @@ enum Look {
     static func focusLine(active: Bool) -> Color { active ? .accent : .lineStrong }
     static func focusLine(active: Bool) -> NSColor { active ? Colors.accent : Colors.lineStrong }
 
-    /// Width of the line along the selected tab's top, and of the border round the focused pane of a split.
-    static let focusLineWidth: CGFloat = 2
-    static let focusBorderWidth: CGFloat = 1.5
+    /// Width of the line along the selected tab's top, and of the border round the focused pane of a split;
+    /// a point wider each with Increase Contrast.
+    static var focusLineWidth: CGFloat { increasesContrast ? 3 : 2 }
+    static var focusBorderWidth: CGFloat { increasesContrast ? 2.5 : 1.5 }
+
+    /// The system's Increase Contrast (or a high-contrast appearance a debug run draws in).
+    static var increasesContrast: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast || Palette.isHighContrast(NSApp.effectiveAppearance)
+    }
 }
 
 /// A control in the bars: its hover, pressed and selected fills, the same everywhere.
@@ -134,7 +136,13 @@ struct ChromeButtonStyle: ButtonStyle {
 }
 
 extension ControlActiveState {
-    /// The window is the one in use (the key window): the bars' text and the focus lines go quiet when
-    /// it is not, as every Mac window's title bar does.
-    var inUse: Bool { self == .key || WindowChrome.drawsAsKey }
+    /// The window is the one in use: the bars' text and the focus lines go quiet when it is not, as every
+    /// Mac window's title bar does. In use is main as well as key (`.active`), as the title bar goes by: a
+    /// panel of its own taking the keys (Go to, the command palette) leaves it as it was.
+    var inUse: Bool { self == .key || self == .active || WindowChrome.drawsAsKey }
+}
+
+extension NSWindow {
+    /// The window is the one in use (`ControlActiveState.inUse`, for AppKit views).
+    var isInUse: Bool { isMainWindow || isKeyWindow || WindowChrome.drawsAsKey }
 }

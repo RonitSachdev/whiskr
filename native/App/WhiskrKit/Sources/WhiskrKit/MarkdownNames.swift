@@ -11,16 +11,3 @@ public enum MarkdownSlug {
         })
     }
 }
-
-extension SyntaxLanguage {
-    /// A code fence's info string ("swift", "ts", "sh", "py") as a language.
-    public static func named(_ name: String?) -> SyntaxLanguage {
-        guard let name = name?.lowercased(), !name.isEmpty else { return .plain }
-        if let exact = SyntaxLanguage(rawValue: name) { return exact }
-        let aliases: [String: SyntaxLanguage] = ["ts": .typescript, "tsx": .typescript, "js": .javascript, "jsx": .javascript, "py": .python,
-                                                  "sh": .shell, "bash": .shell, "zsh": .shell, "console": .shell, "rs": .rust, "golang": .go,
-                                                  "c++": .cpp, "objc": .cpp, "kt": .kotlin, "rb": .ruby, "yml": .yaml, "md": .markdown, "docker": .dockerfile,
-                                                  "htm": .html, "jsonc": .json, "scss": .css, "less": .css]
-        return aliases[name] ?? SyntaxLanguage.detect(fileName: "file.\(name)", firstLine: nil)
-    }
-}

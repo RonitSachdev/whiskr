@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import WhiskrKit
 
 @main
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemValidation {
     private let workbench: Workbench
     private var windowController: MainWindowController?
     private var quitting = false
@@ -35,9 +35,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // SwiftTerm's shaders, compiled off the main thread now so the first terminal does not wait for them.
+        TerminalShaderWarmup.start()
         NSApp.mainMenu = MainMenu.build()
         MainMenu.openRecent.delegate = self
         _ = ThemeStore.shared
+        // Languages added in Settings, before any file is opened (a few small index files).
+        LanguageRegistry.shared.loadInstalled(from: SettingsWindowController.languagesFolder)
+        SecureKeyboard.shared.update()
         handleTerminationSignal()
         WorldStore.shared.start()
         let controller = MainWindowController(workbench: workbench)
@@ -57,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             launched = true
             controller.workbenchDidLaunch()
             present(controller)
-            HostNotice.show(for: workbench.host, withheld: workbench.resumesWithheld, on: controller.window)
+            if !AppPlaces.isIsolated { workbench.launchNotice = HostNotice(terminals: workbench.host.strangers, withheld: workbench.resumesWithheld) }
             #if DEBUG
             DebugScenario.run(workbench: workbench, window: controller)
             #endif
@@ -103,6 +108,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func showSettings(_ sender: Any?) {
         SettingsWindowController.shared.show()
+    }
+
+    /// File › Import Themes and Languages…: what Settings › Terminal's Add Theme… takes, chosen in an
+    /// open panel; Settings then opens on the themes, with what was added.
+    @objc func importThemes(_ sender: Any?) {
+        SettingsWindowController.chooseImports(over: NSApp.mainWindow) { SettingsWindowController.shared.showThemes() }
+    }
+
+    /// Whiskr › Secure Keyboard Entry (`SecureKeyboard`): checked while on.
+    @objc func toggleSecureKeyboardEntry(_ sender: Any?) {
+        SecureKeyboard.shared.isOn.toggle()
+    }
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        if item.action == #selector(toggleSecureKeyboardEntry(_:)) { item.state = SecureKeyboard.shared.isOn ? .on : .off }
+        return true
     }
 
     /// Folders dropped on the Dock icon or opened with the app (`open -a "Whiskr" ~/code/shop`)

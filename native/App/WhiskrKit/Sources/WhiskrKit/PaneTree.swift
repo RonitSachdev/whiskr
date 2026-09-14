@@ -62,6 +62,45 @@ public indirect enum PaneTree: Sendable, Equatable, Codable {
         }
     }
 
+    /// This arrangement with `tree` (another tab's panes) put beside `target`, taking the half of it on
+    /// `side`: a tab dragged to a pane's edge.
+    public func inserting(_ tree: PaneTree, beside target: UUID, on side: Direction) -> PaneTree {
+        switch self {
+        case .pane(let id):
+            guard id == target else { return self }
+            let axis: Axis = side == .left || side == .right ? .horizontal : .vertical
+            let before = side == .left || side == .up
+            return .split(Split(axis: axis, ratio: 0.5, first: before ? tree : self, second: before ? self : tree))
+        case .split(var split):
+            split.first = split.first.inserting(tree, beside: target, on: side)
+            split.second = split.second.inserting(tree, beside: target, on: side)
+            return .split(split)
+        }
+    }
+
+    /// Where a tab dropped at `point` in a pane's `frame` goes (VS Code's rule): within the outer tenth of
+    /// a side, beside the pane on that side (the nearest side, when in a corner); nil in the middle,
+    /// where it goes into the pane's tab instead. `frame` and `point` share a coordinate space whose y
+    /// grows downward.
+    public static func dropSide(at point: CGPoint, in frame: CGRect, edge: Double = 0.1) -> Direction? {
+        guard frame.width > 0, frame.height > 0 else { return nil }
+        let x = (point.x - frame.minX) / frame.width, y = (point.y - frame.minY) / frame.height
+        let distances: [(Direction, Double)] = [(.left, x), (.right, 1 - x), (.up, y), (.down, 1 - y)]
+        guard let nearest = distances.min(by: { $0.1 < $1.1 }), nearest.1 < edge else { return nil }
+        return nearest.0
+    }
+
+    /// The part of a pane's `frame` a tab dropped on `side` will take (the whole of it for the middle).
+    public static func dropPreview(_ side: Direction?, in frame: CGRect) -> CGRect {
+        switch side {
+        case .left?: CGRect(x: frame.minX, y: frame.minY, width: frame.width / 2, height: frame.height)
+        case .right?: CGRect(x: frame.midX, y: frame.minY, width: frame.width / 2, height: frame.height)
+        case .up?: CGRect(x: frame.minX, y: frame.minY, width: frame.width, height: frame.height / 2)
+        case .down?: CGRect(x: frame.minX, y: frame.midY, width: frame.width, height: frame.height / 2)
+        case nil: frame
+        }
+    }
+
     /// This arrangement without `target`; its neighbour takes the space. nil when nothing is left.
     public func removing(_ target: UUID) -> PaneTree? {
         switch self {

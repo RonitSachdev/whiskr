@@ -44,6 +44,9 @@ final class ThemeStore {
     static let lineHeights: ClosedRange<CGFloat> = 1...1.6
 
     static var themesFolder: URL { Workbench.supportFolder.appendingPathComponent("Themes", isDirectory: true) }
+    /// Copies of the files imported VS Code themes were read from, one folder per import, so they can be
+    /// read again (`ThemeOrigin`).
+    static var originalsFolder: URL { themesFolder.appendingPathComponent("Originals", isDirectory: true) }
 
     private enum Key {
         static let appearance = "appearance", theme = "theme", fontFamily = "terminalFontFamily", fontSize = "terminalFontSize"
@@ -66,6 +69,9 @@ final class ThemeStore {
         palette = Palette(theme: BuiltInThemes.theme(id: BuiltInThemes.defaultID)!)
         loadUserThemes()
         rebuild()
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { ThemeStore.shared.applyAppearance() }
+        }
     }
 
     // MARK: Reading
@@ -100,6 +106,12 @@ final class ThemeStore {
 
     /// Saves a theme of your own (new or edited) and makes it the active one.
     func save(userTheme theme: Theme) throws {
+        try write(userTheme: theme)
+        if themeID == theme.id { rebuild() } else { themeID = theme.id }
+    }
+
+    /// Saves a theme of your own without choosing it.
+    private func write(userTheme theme: Theme) throws {
         var theme = theme
         theme.isBuiltIn = false
         try FileManager.default.createDirectory(at: Self.themesFolder, withIntermediateDirectories: true)
@@ -107,7 +119,6 @@ final class ThemeStore {
         userThemes.removeAll { $0.id == theme.id }
         userThemes.append(theme)
         userThemes.sort { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        if themeID == theme.id { rebuild() } else { themeID = theme.id }
     }
 
     func delete(userTheme theme: Theme) {
@@ -117,16 +128,79 @@ final class ThemeStore {
         if themeID == theme.id { themeID = BuiltInThemes.defaultID }
     }
 
-    /// Reads a theme file (ours, or iTerm2's `.itermcolors`), keeps it with your themes and selects it.
+    /// Removes a theme of your own, with the copy of the original files it was imported from once no
+    /// other theme came from them.
+    func remove(userTheme theme: Theme) {
+        delete(userTheme: theme)
+        let used = Set(userThemes.flatMap { [$0.light?.origin?.folder, $0.dark?.origin?.folder] }.compactMap { $0 })
+        for folder in Set([theme.light?.origin?.folder, theme.dark?.origin?.folder].compactMap { $0 }) where !used.contains(folder) {
+            try? FileManager.default.removeItem(at: Self.originalsFolder.appendingPathComponent(folder, isDirectory: true))
+        }
+    }
+
+    /// Reads every theme in a file (ours, iTerm2's, a VS Code colour theme or a TextMate theme), a VS Code
+    /// extension's folder or its `.vsix`, keeps them with your themes (and the originals of VS Code's in
+    /// `originalsFolder`) and selects the first. Gives what was added; none for an extension without themes.
     @discardableResult
-    func importTheme(at url: URL) throws -> Theme {
-        var theme = try ThemeImport.file(at: url)
-        theme.id = uniqueID(for: theme.id)
-        try save(userTheme: theme)
-        return theme
+    func importThemes(at url: URL) throws -> [Theme] {
+        var added: [Theme] = []
+        for var theme in try ThemeImport.themes(at: url, originals: Self.originalsFolder) {
+            // A theme that is already here (Monokai imported from VS Code is the built-in one) is chosen, not
+            // added twice; another of the same name is told apart by a number, as its file is.
+            if let existing = themes.first(where: { $0.name == theme.name && $0.hasSameColors(as: theme) }) {
+                added.append(existing)
+                continue
+            }
+            theme.id = uniqueID(for: theme.id)
+            if themes.contains(where: { $0.name == theme.name }) { theme.name = uniqueName(for: theme.name) }
+            try write(userTheme: theme)
+            added.append(theme)
+        }
+        if let first = added.first { if themeID == first.id { rebuild() } else { themeID = first.id } }
+        return added
+    }
+
+    /// What the last import added, in one line ("Added Monokai and 2 languages."), for Settings to show.
+    var importSummary: String?
+
+    /// Themes of your own with only the other appearance, which `theme` (one of yours with only one) can
+    /// be paired with.
+    func pairCandidates(for theme: Theme) -> [Theme] {
+        guard !theme.isBuiltIn, let dark = theme.fixedDarkness else { return [] }
+        return userThemes.filter { $0.fixedDarkness == !dark }
+    }
+
+    /// Makes one theme of two of yours, one light and one dark, as the built-in themes have both; the two
+    /// are replaced by it, and it is chosen.
+    func pair(_ theme: Theme, with other: Theme) throws {
+        let (light, dark) = theme.fixedDarkness == false ? (theme, other) : (other, theme)
+        var paired = ThemePairing.pair(light: light, dark: dark)
+        delete(userTheme: theme)
+        delete(userTheme: other)
+        paired.id = uniqueID(for: paired.id)
+        try save(userTheme: paired)
+    }
+
+    /// Gives back the two themes a paired theme of yours was made of; the light one is chosen.
+    func separate(_ theme: Theme) throws {
+        guard !theme.isBuiltIn, theme.light != nil, theme.dark != nil else { return }
+        delete(userTheme: theme)
+        var first = true
+        for var part in ThemePairing.separate(theme) {
+            part.id = uniqueID(for: part.id)
+            if first { try save(userTheme: part) } else { try write(userTheme: part) }
+            first = false
+        }
     }
 
     /// An id for a copy of a theme that clashes with none: "nord", "nord-2", …
+    func uniqueName(for name: String) -> String {
+        let taken = Set(themes.map(\.name))
+        var number = 2
+        while taken.contains("\(name) \(number)") { number += 1 }
+        return "\(name) \(number)"
+    }
+
     func uniqueID(for id: String) -> String {
         let taken = Set(themes.map(\.id))
         guard taken.contains(id) else { return id }
@@ -161,9 +235,14 @@ final class ThemeStore {
     }
 
     /// A theme with only one variant decides the appearance; otherwise your choice does.
+    /// A forced appearance keeps Increase Contrast: the high-contrast one is named then, since a plain
+    /// Aqua or Dark Aqua would drop it.
     private func applyAppearance() {
         let dark: Bool? = theme.fixedDarkness ?? (appearance == .system ? nil : appearance == .dark)
-        NSApp?.appearance = dark.map { NSAppearance(named: $0 ? .darkAqua : .aqua)! }
+        let contrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+        NSApp?.appearance = dark.map { dark in
+            NSAppearance(named: contrast ? (dark ? .accessibilityHighContrastDarkAqua : .accessibilityHighContrastAqua) : (dark ? .darkAqua : .aqua))!
+        }
     }
 
     private func save() {
@@ -192,12 +271,13 @@ struct Palette {
         for key in AppColorKey.allCases {
             app[key] = Palette.dynamic(theme) { $0.app[key] }
         }
-        // With Increase Contrast, every line between regions reaches 3:1 on the chrome: the hint colour,
-        // which the theme keeps at 3:1 there.
-        for key in [AppColorKey.line, .lineStrong] {
+        // With Increase Contrast (docs/DESIGN.md), every line between regions reaches 3:1 on the chrome (the
+        // hint colour, which the theme keeps at 3:1 there), and each quieter text steps up one level.
+        let stronger: [AppColorKey: AppColorKey] = [.line: .textTertiary, .lineStrong: .textTertiary, .textSecondary: .text, .textTertiary: .textSecondary]
+        for (key, raised) in stronger {
             app[key] = NSColor(name: nil) { appearance in
                 let variant = theme.variant(dark: Palette.isDark(appearance))
-                return Palette.nsColor(Palette.isHighContrast(appearance) ? variant.app[.textTertiary] : variant.app[key])
+                return Palette.nsColor(Palette.isHighContrast(appearance) ? variant.app[raised] : variant.app[key])
             }
         }
         self.app = app
@@ -212,6 +292,8 @@ struct Palette {
     func color(_ key: AppColorKey) -> SwiftUI.Color { swiftUI[key]! }
 
     var terminalBackground: NSColor { Palette.dynamic(theme) { $0.terminal.background } }
+    /// One of the editor's, the diffs' or the file list's colours (`EditorColorKey`).
+    func editor(_ key: EditorColorKey) -> NSColor { Palette.dynamic(theme) { $0.editor[key] } }
     var terminalForeground: NSColor { Palette.dynamic(theme) { $0.terminal.foreground } }
 
     nonisolated static func isDark(_ appearance: NSAppearance) -> Bool {

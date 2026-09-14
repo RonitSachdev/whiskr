@@ -42,6 +42,24 @@ final class SidePanelView: NSView {
         setAccessibilityRole(.group)
         setAccessibilityLabel(String(localized: "Files and Changes", comment: "Accessibility: the side panel"))
         observer = Observing { [weak self] in self?.update() }
+        activeFile = Observing { [weak self] in self?.followActiveFile() }
+    }
+
+    /// The file shown in the tab: its row is selected and brought into sight in Files as tabs change
+    /// (VS Code's auto-reveal), without taking the keyboard or opening more folders than it needs.
+    private var activeFile: Observing?
+    private var followedPath: String?
+
+    private func followActiveFile() {
+        guard let id = workbench.focusedPageID, case .file(let path) = workbench.pages[id] else { return }
+        guard let workspace = workbench.selectedWorkspace, workbench.files.panel(workspace.id).shown,
+              workbench.files.panel(workspace.id).mode == .files else { return followedPath = nil }
+        guard path != followedPath else { return }
+        followedPath = path
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let tree = self.fileTree, tree.window != nil else { return }
+            tree.reveal(URL(fileURLWithPath: path), quietly: true)
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -154,13 +172,33 @@ final class PanelEdge: NSView {
         if event.clickCount == 2 { return onReset?() ?? () }
         startX = event.locationInWindow.x
         startWidth = currentWidth()
+        glow.show(line)
         LiveResize.shared.during {
             while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
                 if next.type == .leftMouseUp { break }
                 onDrag?(startWidth + (startX - next.locationInWindow.x))
             }
         }
+        if let window, !bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil)) { glow.hide() }
     }
+
+    // MARK: Showing it can be dragged (`DividerGlow`)
+
+    private lazy var glow = DividerGlow(in: self)
+    private var area: NSTrackingArea?
+    /// The panel's edge line, at the middle of this 7 pt reach.
+    private var line: NSRect { NSRect(x: bounds.midX - 0.5, y: 0, width: 1, height: bounds.height) }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area { removeTrackingArea(area) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        self.area = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { glow.pointerEntered(line) }
+    override func mouseExited(with event: NSEvent) { glow.hide() }
 }
 
 /// Files | Changes, with the count of changed files, and the tree's own tools on the right.
@@ -238,16 +276,19 @@ private struct PanelTab: View {
 /// Git's states in the theme's ANSI colours (readable on the panel in light and dark): modified yellow,
 /// new green, deleted red, renamed blue.
 enum GitColors {
+    /// The theme's colour for a state (`EditorColorKey.gitAdded` …, kept at 3:1 on the bars and the content).
     static func color(_ state: GitFileState) -> NSColor {
-        NSColor(name: nil) { appearance in
-            let terminal = ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(appearance)).terminal
-            let index = switch state {
-            case .added, .untracked: 2
-            case .deleted, .conflicted: 1
-            case .renamed, .copied: 4
-            default: 3
-            }
-            return Palette.nsColor(terminal.ansi[index].ensuring(contrast: 3, with: terminal.background, movingTo: terminal.foreground))
+        let key: EditorColorKey = switch state {
+        case .added: .gitAdded
+        case .untracked: .gitUntracked
+        case .deleted: .gitDeleted
+        case .conflicted: .gitConflict
+        case .renamed, .copied: .gitRenamed
+        case .ignored: .gitIgnored
+        default: .gitModified
+        }
+        return NSColor(name: nil) { appearance in
+            Palette.nsColor(ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(appearance)).editor[key])
         }
     }
 

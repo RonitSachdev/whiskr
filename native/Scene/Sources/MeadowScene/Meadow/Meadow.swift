@@ -309,11 +309,11 @@ final class Meadow {
         return Float(smooth((shaderNoise(Double(x) * 0.045 - Double(Self.wind.x) * drift, Double(z) * 0.045 - Double(Self.wind.y) * drift) - 0.35) / 0.5))
     }
 
-    func update(_ dt: Float, time: Float, eye: Vec3, lookAt: Vec3, sleepers: [Perch], sights: [Ball], sightCount: Int,
+    func update(_ dt: Float, fading: Float, time: Float, eye: Vec3, lookAt: Vec3, sleepers: [Perch], sights: [Ball], sightCount: Int,
                 clearOf: [Ball] = [], clearCount: Int = 0, clearings: [Vec4], clearingCount: Int, night: Float, weather: MeadowWeather?, wind: Float) {
         cloudTurn += dt * 0.004
         critters.update(dt, sleepers: sleepers, random: &random)
-        Occlusion.update(&screens, dt: dt, eye: eye, sights: sights, count: sightCount)
+        Occlusion.update(&screens, dt: fading, eye: eye, sights: sights, count: sightCount)
         glow(time: time, eye: eye, clearings: clearings, count: clearingCount, night: night, falling: weather?.sky == .rain || weather?.sky == .snow)
         keepFlyersOff(clearOf, count: clearCount, eye: eye)
         fall(dt, time: time, around: lookAt, snowing: weather?.sky == .snow, raining: weather?.sky == .rain, wind: wind)

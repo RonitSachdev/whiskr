@@ -84,15 +84,17 @@ public enum PaletteRanking {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return entries.map { Ranked(entry: $0, offsets: []) } }
         struct Scored { let ranked: Ranked; let tier: Int; let score: Int; let frecency: Double }
+        // Every word typed must match, in any order; a quoted one as it is written (`FuzzyMatch.Query`).
+        let words = FuzzyMatch.Query(trimmed)
         let scored = entries.compactMap { entry -> Scored? in
             let frecency = usage.score(entry.id, now: now)
-            if let title = FuzzyMatch.match(trimmed, in: entry.title) {
+            if let title = FuzzyMatch.match(words, in: entry.title) {
                 return Scored(ranked: Ranked(entry: entry, offsets: title.offsets), tier: title.isPrefix ? 0 : 1, score: title.score, frecency: frecency)
             }
-            if !entry.detail.isEmpty, let detail = FuzzyMatch.match(trimmed, in: entry.detail) {
+            if !entry.detail.isEmpty, let detail = FuzzyMatch.match(words, in: entry.detail) {
                 return Scored(ranked: Ranked(entry: entry, offsets: []), tier: 2, score: detail.score, frecency: frecency)
             }
-            if let word = entry.keywords.compactMap({ FuzzyMatch.match(trimmed, in: $0) }).filter(\.isPrefix).max(by: { $0.score < $1.score }) {
+            if let word = entry.keywords.compactMap({ FuzzyMatch.match(words, in: $0) }).filter(\.isPrefix).max(by: { $0.score < $1.score }) {
                 return Scored(ranked: Ranked(entry: entry, offsets: []), tier: 3, score: word.score, frecency: frecency)
             }
             return nil

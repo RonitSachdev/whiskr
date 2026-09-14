@@ -5,7 +5,9 @@ import CoreText
 // above the back of its blanket. Part of the scene, not laid over it, so any cat nearer the camera is
 // drawn in front of it. This half measures and fits the name; VillageDrawer paints it.
 //
-//   ( pin ●  shop-web  ⑂ fix-cart )    pin (if pinned), colour dot, title, then the branch, quieter
+//   ( pin ●  shop-web  ⑂ fix-cart  lantern +5 )    pin (if pinned), colour dot, title, then the branch,
+//                                                  quieter; after dark, a drawn lantern and how many more
+//                                                  terminals there are than the blanket has room for
 
 struct FlagLabel {
     static let scale: CGFloat = 3                    // canvas pixels per point, so it stays crisp when large
@@ -32,12 +34,15 @@ struct FlagLabel {
     static let pinWide: CGFloat = 8, pinGap: CGFloat = 4
     static let dotWide: CGFloat = 10, dotGap: CGFloat = 7
     static let branchGap: CGFloat = 8, glyphWide: CGFloat = 7, glyphGap: CGFloat = 3.5
+    static let lanternGap: CGFloat = 8, lanternWide: CGFloat = 7, lanternTextGap: CGFloat = 2.5
     static let trail: CGFloat = 12.5                 // after the text
 
     struct Inputs: Equatable {
         var name = "", detail: String? = nil, pinned = false
         var color = MeadowColor(hex: 0x000000)
         var chosen = false, hollow = false, remote = false
+        /// Lanterns with no room on the blanket (0 for none), and whether one of them failed.
+        var more = 0, moreFailed = false
         var room: Float = roomMost
     }
     private(set) var inputs = Inputs()
@@ -47,12 +52,17 @@ struct FlagLabel {
     var hollow: Bool { inputs.hollow }
     var remote: Bool { inputs.remote }
     var pinned: Bool { inputs.pinned }
+    var more: Int { inputs.more }
+    var moreFailed: Bool { inputs.moreFailed }
 
     /// What is shown, cut to fit: the title, and the branch (nil when there is none or no room for it).
     private(set) var shown = ""
     private(set) var shownDetail: String?
     /// Left ends along the pill, in canvas pixels from the pill's left end.
     private(set) var dotX: CGFloat = 0, titleX: CGFloat = 0, glyphX: CGFloat = 0, detailX: CGFloat = 0
+    private(set) var lanternX: CGFloat = 0, moreX: CGFloat = 0
+    /// "+N" for the lanterns counted here, or nil.
+    private(set) var shownMore: String?
     /// The pill's width over its height (without the shadow margin).
     private(set) var aspect: Float = 3
     /// Canvas size in pixels, shadow margin included.
@@ -68,8 +78,11 @@ struct FlagLabel {
         func width(_ s: String, _ font: CTFont) -> CGFloat { Paint.width(Paint.line(s, font: font, color: CGColor(gray: 0, alpha: 1))) }
         let marks = Self.lead + (given.pinned ? Self.pinWide + Self.pinGap : 0) + Self.dotWide + Self.dotGap
         let branchMarks = (Self.branchGap + Self.glyphWide + Self.glyphGap) * S
+        // The lantern count is never cut: the title and branch make room for it.
+        let more = given.more > 0 ? "+\(given.more)" : nil
+        let moreWide = more.map { (Self.lanternGap + Self.lanternWide + Self.lanternTextGap) * S + width($0, regular) } ?? 0
         // Room for the words: the pill's room on screen, in canvas pixels, less its marks and ends.
-        let room = CGFloat(given.room) / Self.onScreen * S - (marks + Self.trail) * S
+        let room = CGFloat(given.room) / Self.onScreen * S - (marks + Self.trail) * S - moreWide
         var title = Self.middle(given.name.isEmpty ? "Untitled" : given.name, Self.titleMost)
         var detail = given.detail.flatMap { $0.isEmpty ? nil : Self.middle($0, Self.detailMost) }
         func needed() -> CGFloat { width(title, bold) + (detail.map { branchMarks + width($0, regular) } ?? 0) }
@@ -86,7 +99,10 @@ struct FlagLabel {
         titleX = marks * S
         glyphX = titleX + width(title, bold) + Self.branchGap * S
         detailX = glyphX + (Self.glyphWide + Self.glyphGap) * S
-        let wide = ceil(titleX + needed() + Self.trail * S)
+        shownMore = more
+        lanternX = titleX + needed() + Self.lanternGap * S
+        moreX = lanternX + (Self.lanternWide + Self.lanternTextGap) * S
+        let wide = ceil(titleX + needed() + moreWide + Self.trail * S)
         canvas = (Int(wide + Self.shadow * 2), Int(Self.tall + Self.shadow * 2))
         aspect = Float(wide / Self.tall)
         version += 1

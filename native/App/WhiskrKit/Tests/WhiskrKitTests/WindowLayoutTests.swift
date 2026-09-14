@@ -25,10 +25,66 @@ struct WindowLayoutTests {
         #expect(WindowLayout(mode: .terminalsOnly).frame(window: 1440) == .init(navigator: 0, showsTerminals: true))
         #expect(WindowLayout(mode: .meadowOnly).frame(window: 1440) == .init(navigator: 1440, showsTerminals: false))
         var layout = WindowLayout()
-        layout.toggleNavigator()
+        layout.toggleNavigator(window: 1440)
         #expect(layout.mode == .terminalsOnly)
-        layout.toggleNavigator()
-        #expect(layout.mode == .split)
+        layout.toggleNavigator(window: 1440)
+        #expect(layout == WindowLayout())
+        // Meadow Only: hiding the meadow leaves the terminals.
+        layout = WindowLayout(mode: .meadowOnly)
+        layout.toggleNavigator(window: 1440)
+        #expect(layout.frame(window: 1440) == .init(navigator: 0, showsTerminals: true))
+    }
+
+    @Test("the meadow button shows and hides the meadow at every width the window can have, and says what is on screen",
+          arguments: [720.0, 800, 880, 1440])
+    func toggleAtEveryWidth(width: Double) {
+        let usual = WindowLayout().frame(window: width)
+        var layout = WindowLayout()
+        #expect(layout.showsNavigator(window: width) == (usual.navigator > 0))
+        // Hidden for lack of room, the first press shows it; otherwise the first hides it and the second
+        // brings it back.
+        if !layout.showsNavigator(window: width) {
+            layout.toggleNavigator(window: width)
+        } else {
+            layout.toggleNavigator(window: width)
+            #expect(!layout.showsNavigator(window: width))
+            #expect(layout.frame(window: width).showsTerminals)
+            layout.toggleNavigator(window: width)
+        }
+        let shown = layout.frame(window: width)
+        #expect(layout.showsNavigator(window: width))
+        #expect(shown.showsTerminals)
+        #expect(shown.navigator >= WindowLayout.navigatorMinimum)
+        // The terminals never go under their least.
+        #expect(width - shown.navigator >= WindowLayout.terminalMinimum)
+        // Where there was room, it came back as it was.
+        if usual.navigator > 0 { #expect(shown == usual) }
+        layout.toggleNavigator(window: width)
+        #expect(!layout.showsNavigator(window: width))
+        #expect(layout.frame(window: width).showsTerminals)
+    }
+
+    @Test("under 880 pt the meadow asked for takes its narrowest sidebar, kept as the window grows; Reset Layout gives the default again")
+    func narrowWindow() {
+        var layout = WindowLayout()
+        #expect(layout.frame(window: 720).navigator == 0)
+        layout.showNavigator(window: 720)
+        #expect(layout.frame(window: 720) == .init(navigator: WindowLayout.navigatorMinimum, showsTerminals: true))
+        #expect(layout.frame(window: 1440).navigator == WindowLayout.navigatorMinimum)
+        // From Terminals Only too.
+        var hidden = WindowLayout(mode: .terminalsOnly)
+        hidden.showNavigator(window: 800)
+        #expect(hidden.frame(window: 800) == .init(navigator: WindowLayout.navigatorMinimum, showsTerminals: true))
+        // Already shown: nothing changes.
+        var wide = WindowLayout()
+        wide.showNavigator(window: 1440)
+        #expect(wide == WindowLayout())
+        layout.reset()
+        #expect(layout.frame(window: 720).navigator == 0)
+        // Narrower than the app allows: the meadow alone, rather than not at all.
+        var tiny = WindowLayout()
+        tiny.showNavigator(window: 500)
+        #expect(tiny.frame(window: 500) == .init(navigator: 500, showsTerminals: false))
     }
 
     @Test("the divider drags from a 240 pt sidebar up to the meadow alone; its width is kept; double-click restores the default")

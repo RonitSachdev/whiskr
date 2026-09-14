@@ -25,6 +25,66 @@ final class PaneArea: NSView {
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
         setAccessibilityLabel(String(localized: "Panes", comment: "Accessibility label of the terminal area"))
+        registerForDraggedTypes([TabDrag.pasteboardType])
+        preview.isHidden = true
+        addSubview(preview)
+    }
+
+    // MARK: A tab dropped here
+
+    /// Where a tab being dragged over the panes would go: tinted, over the half of the pane it takes, or
+    /// the whole pane when dropped in its middle (it then moves into that pane's tab).
+    private let preview = DropPreview()
+    private var drop: (leaf: UUID, side: PaneTree.Direction?)?
+
+    /// The pane or page under a point, and its frame here.
+    private func leaf(at point: NSPoint) -> (UUID, NSRect)? {
+        let views = cards.map { ($0.key, $0.value as NSView) } + pageViews.map { ($0.key, $0.value) }
+        for (id, view) in views where view.window != nil && !view.isHiddenOrHasHiddenAncestor {
+            let frame = view.convert(view.bounds, to: self)
+            if frame.contains(point) { return (id, frame) }
+        }
+        return nil
+    }
+
+    private func dragged() -> Tab? {
+        guard let id = TabDrag.current else { return nil }
+        return workbench.workspaces.lazy.flatMap(\.tabs).first { $0.id == id }
+    }
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation { draggingUpdated(sender) }
+
+    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        let point = convert(sender.draggingLocation, from: nil)
+        guard let tab = dragged(), let (id, frame) = leaf(at: point), !tab.tree.contains(id) else {
+            endDrop()
+            return []
+        }
+        // Worked out with y downward, as the tree's rule counts it.
+        let flipped = NSPoint(x: point.x, y: bounds.height - point.y)
+        let flippedFrame = NSRect(x: frame.minX, y: bounds.height - frame.maxY, width: frame.width, height: frame.height)
+        let side = PaneTree.dropSide(at: flipped, in: flippedFrame)
+        let area = PaneTree.dropPreview(side, in: flippedFrame)
+        drop = (id, side)
+        preview.frame = NSRect(x: area.minX, y: bounds.height - area.maxY, width: area.width, height: area.height)
+        preview.isHidden = false
+        addSubview(preview, positioned: .above, relativeTo: nil)
+        return .move
+    }
+
+    override func draggingExited(_ sender: (any NSDraggingInfo)?) { endDrop() }
+    override func draggingEnded(_ sender: any NSDraggingInfo) { endDrop() }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        defer { endDrop() }
+        guard let tab = dragged(), let drop else { return false }
+        workbench.dropTab(tab, onto: drop.leaf, side: drop.side)
+        return true
+    }
+
+    private func endDrop() {
+        drop = nil
+        preview.isHidden = true
     }
 
     required init?(coder: NSCoder) {
@@ -65,7 +125,7 @@ final class PaneArea: NSView {
         let view = build(shown, path: [], tab: tab)
         view.frame = bounds
         view.autoresizingMask = [.width, .height]
-        addSubview(view)
+        addSubview(view, positioned: .below, relativeTo: preview)
         root = view
         // Laid out now, so a terminal that has just come has its size (and its shell can start) this turn.
         layoutSubtreeIfNeeded()
@@ -157,8 +217,44 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
     /// double-click shares the room evenly again, as the meadow's divider goes back to its usual width.
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 { return resetRatio() }
+        glow.show(dividerLine)
         LiveResize.shared.during { super.mouseDown(with: event) }
+        if !isPointerOnDivider { glow.hide() }
     }
+
+    // MARK: Showing it can be dragged (`DividerGlow`)
+
+    private lazy var glow = DividerGlow(in: self)
+    private var dividerArea: NSTrackingArea?
+
+    /// The line drawn between the two panes.
+    private var dividerLine: NSRect {
+        guard subviews.count == 2 else { return .zero }
+        let first = subviews[0].frame
+        return isVertical ? NSRect(x: first.maxX, y: 0, width: dividerThickness, height: bounds.height)
+                          : NSRect(x: 0, y: first.maxY, width: bounds.width, height: dividerThickness)
+    }
+
+    /// Where the divider takes the pointer (8 pt).
+    private var dividerReach: NSRect {
+        isVertical ? dividerLine.insetBy(dx: -3.5, dy: 0) : dividerLine.insetBy(dx: 0, dy: -3.5)
+    }
+
+    private var isPointerOnDivider: Bool {
+        guard let window else { return false }
+        return dividerReach.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let dividerArea { removeTrackingArea(dividerArea) }
+        let area = NSTrackingArea(rect: dividerReach, options: [.mouseEnteredAndExited, .activeInKeyWindow], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        dividerArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { glow.pointerEntered(dividerLine) }
+    override func mouseExited(with event: NSEvent) { glow.hide() }
 
     func resetRatio() {
         ratio = 0.5
@@ -174,6 +270,7 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
     }
 
     private func place() {
+        defer { updateTrackingAreas() }
         guard subviews.count == 2 else { return }
         let first = (length * ratio).rounded()
         if isVertical {
@@ -200,4 +297,28 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
     }
 
     func splitView(_ splitView: NSSplitView, canCollapseSubview subview: NSView) -> Bool { false }
+}
+
+/// The tinted half a dragged tab will take: the accent at a tenth, edged in the accent, square as panes
+/// are; it never takes a click.
+final class DropPreview: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.borderWidth = Look.focusBorderWidth
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("DropPreview is created in code")
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer?.backgroundColor = Colors.accent.withAlphaComponent(0.12).cgColor
+            layer?.borderColor = Colors.accent.cgColor
+        }
+    }
 }

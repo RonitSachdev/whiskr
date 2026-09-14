@@ -115,6 +115,33 @@ extension Workbench {
         scheduleSave()
     }
 
+    /// A tab dropped on a pane (`PaneArea`): on its edge, the tab's panes go beside it on that side and the
+    /// tab leaves the row; in its middle, the tab moves to that pane's tab's place in the row and shows.
+    /// Nothing in it stops or restarts.
+    func dropTab(_ tab: Tab, onto pane: UUID, side: PaneTree.Direction?) {
+        guard let (workspace, target) = workspace(ofLeaf: pane), target !== tab, workspace.tabs.contains(where: { $0 === tab }) else { return }
+        guard let side else {
+            move(tab: tab, toIndex: workspace.tabs.firstIndex { $0 === target } ?? workspace.tabs.count)
+            select(tab: tab)
+            return
+        }
+        workspace.tabs.removeAll { $0 === tab }
+        target.zoomedPane = nil
+        target.tree = target.tree.inserting(tab.tree, beside: pane, on: side)
+        target.focus(tab.focusedPane)
+        workspace.selectedTabID = target.id
+        select(tab: target)
+        scheduleSave()
+    }
+
+    /// The tab holding a pane or a page.
+    func workspace(ofLeaf id: UUID) -> (Workspace, Tab)? {
+        for workspace in workspaces {
+            if let tab = workspace.tabs.first(where: { $0.tree.contains(id) }) { return (workspace, tab) }
+        }
+        return nil
+    }
+
     // MARK: Pins and unread
 
     /// Pin (as herdr has it): a pinned Claude is marked on its blanket and listed first in Go to and the palette.
@@ -138,6 +165,11 @@ extension Workbench {
     func canMarkUnread(pane id: UUID) -> Bool {
         guard let pane = panes[id], let session = session(of: pane) else { return false }
         return session.status == .idle
+    }
+
+    /// A plain terminal of the tab rang its bell while out of sight (its tab shows a bell until seen).
+    func rang(in tab: Tab) -> Bool {
+        tab.tree.panes.contains { panes[$0].map { $0.rang && !$0.agentRunning } ?? false }
     }
 
     // MARK: Recent places

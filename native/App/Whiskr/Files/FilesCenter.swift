@@ -47,9 +47,15 @@ final class FilesCenter {
     // MARK: Repositories
 
     /// The repository (or plain folder) the panel shows for a workspace: its git top folder, else its folder.
+    /// Folders with their symbolic links resolved, as `repository(for:)` found them.
+    @ObservationIgnored private var resolved: [String: String] = [:]
+
     func repository(for workspace: Workspace) -> Repository {
         let isGit = workspace.git != nil
-        let path = URL(fileURLWithPath: workspace.git?.root ?? workspace.folder, isDirectory: true).resolvingSymlinksInPath().path
+        let folder = workspace.git?.root ?? workspace.folder
+        // Resolving links asks the disk; bars ask this on every pass, so each folder is resolved once.
+        let path = resolved[folder] ?? URL(fileURLWithPath: folder, isDirectory: true).resolvingSymlinksInPath().path
+        resolved[folder] = path
         if let known = repositories[path], known.isGit == isGit { return known }
         let repository = Repository(root: URL(fileURLWithPath: path, isDirectory: true), isGit: isGit)
         repository.onPathsChanged = { [weak self] paths in self?.pathsChanged(paths) }

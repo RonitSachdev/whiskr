@@ -28,6 +28,12 @@ import WhiskrKit
 ///   --window <w>x<h>        the window's size
 ///   --time day|night        Settings › Meadow
 ///   --appearance light|dark the app's appearance for this run
+///   --import-theme <path>   imports a theme file, VS Code theme, .vsix or extension folder (repeatable)
+///                           into the run's own themes folder and selects it
+///   --import-language <path>  installs a TextMate grammar, extension folder or .vsix into the run's own
+///                           languages folder, as File › Import does, and prints the languages added
+///   --import-settings vscode|cursor   applies that editor's settings.json found in `<isolated>/Home` and
+///                           prints what was applied
 ///   --leave-host            with --isolated: quits leaving its terminals running in its session host (as
 ///                           ⌘Q does), for a later run with the same folder to find; a run without it
 ///                           ends them and the host
@@ -107,6 +113,38 @@ enum DebugScenario {
     /// After the workbench has launched and the window is up.
     static func run(workbench: Workbench, window: MainWindowController) {
         if let theme = value("--appearance") { ThemeStore.shared.appearance = theme == "dark" ? .dark : .light }
+        // `--import-theme <path>` (repeatable): imports as Settings › Terminal's Add Theme… does, into this
+        // run's own themes folder, and selects what the last one added.
+        for (position, argument) in arguments.enumerated() where argument == "--import-theme" && arguments.count > position + 1 {
+            do {
+                try ThemeStore.shared.importThemes(at: URL(fileURLWithPath: arguments[position + 1]))
+            } catch {
+                print("--import-theme \(arguments[position + 1]): \(error)")
+            }
+        }
+        // `--import-language <path>` (repeatable): File › Import's languages, into this run's own folder.
+        for (position, argument) in arguments.enumerated() where argument == "--import-language" && arguments.count > position + 1 {
+            do {
+                let added = try LanguageRegistry.shared.install(from: URL(fileURLWithPath: arguments[position + 1]), into: SettingsWindowController.languagesFolder)
+                FileDocument.languagesChanged()
+                print("--import-language: added \(added.map(\.id))")
+            } catch {
+                print("--import-language \(arguments[position + 1]): \(error)")
+            }
+        }
+        // `--import-settings vscode|cursor`: Settings › General › Import Settings, from the run's own `Home`.
+        if let editor = value("--import-settings") {
+            print(OtherEditorImport.apply(from: editor == "cursor" ? .cursor : .vsCode))
+        }
+        // Increase Contrast's look, without changing the Mac's setting: the high-contrast appearance.
+        if has("--high-contrast") {
+            let dark = Palette.isDark(NSApp.effectiveAppearance)
+            NSApp.appearance = NSAppearance(named: dark ? .accessibilityHighContrastDarkAqua : .accessibilityHighContrastAqua)
+        }
+        // The launch note about another version's terminals ("--host-notice 3,2": terminals, Claudes withheld).
+        if let numbers = value("--host-notice")?.split(separator: ",").compactMap({ Int($0) }), let terminals = numbers.first {
+            workbench.launchNotice = HostNotice(terminals: terminals, withheld: numbers.count > 1 ? numbers[1] : 0)
+        }
         if let time = value("--time") { WorldStore.shared.settings.timeOfDay = time == "night" ? .night : time == "day" ? .day : .followClock }
         if let size = value("--window")?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
             window.window?.setContentSize(NSSize(width: size[0], height: size[1]))

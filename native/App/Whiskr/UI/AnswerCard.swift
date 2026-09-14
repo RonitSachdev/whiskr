@@ -119,7 +119,8 @@ struct AnswerCard: View {
                 }
                 Spacer(minLength: 8)
                 Button(String(localized: "Go to Terminal"), action: goToTerminal)
-                    .keyboardShortcut(.return, modifiers: .command)
+                    // Only while the card has the keyboard (the Commit button's ⌘↩ is the message's).
+                    .keyboardShortcut(focused ? KeyboardShortcut(.return, modifiers: .command) : nil)
             }
             .controlSize(.large)
             TimelineView(.periodic(from: .now, by: 30)) { context in

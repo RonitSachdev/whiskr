@@ -29,6 +29,13 @@ final class NavigatorController: NSViewController {
     /// Set once a cat has ever appeared: the first-run hint never comes back.
     private static let hintKey = "sawFirstCat"
 
+    /// The hint wraps to the meadow's width (its pill keeps 16 pt from each side), on one line where it fits.
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        let width = max(80, view.bounds.width - 32 - 20)
+        if hint.preferredMaxLayoutWidth != width { hint.preferredMaxLayoutWidth = width }
+    }
+
     var kind: WindowLayout.Navigator = .meadow {
         didSet { if isViewLoaded { showKind() } }
     }
@@ -65,6 +72,9 @@ final class NavigatorController: NSViewController {
                                                      font: .systemFont(ofSize: 11))
         hint.maximumNumberOfLines = 2
         hint.lineBreakMode = .byWordWrapping
+        // In the narrowest sidebar the hint wraps (`viewDidLayout`) rather than hold the meadow wider than
+        // it is asked to be.
+        hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         hint.drawsBackground = false
         // The hint sits on a small solid pill so it reads on grass by day and by night.
         let pill = HintPill(label: hint)
@@ -181,6 +191,7 @@ final class NavigatorController: NSViewController {
         let chrome = MeadowMapping.chrome(variant, focus: (Double(accent.redComponent), Double(accent.greenComponent), Double(accent.blueComponent)))
         let settings = MeadowMapping.settings(store.settings, weather: store.weather, chrome: chrome)
         if meadow.settings != settings { meadow.settings = settings }
+        if meadow.animatesAmbient != store.animatesMeadow { meadow.animatesAmbient = store.animatesMeadow }
     }
 
     // MARK: Choosing

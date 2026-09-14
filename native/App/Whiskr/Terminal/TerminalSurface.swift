@@ -1,4 +1,5 @@
 import AppKit
+import Metal
 import SwiftTerm
 import WhiskrKit
 
@@ -7,11 +8,38 @@ protocol TerminalSurfaceDelegate: AnyObject {
     /// Keys, pastes and the terminal's own answers to the program, to be sent to it.
     func surface(_ surface: TerminalSurface, typed bytes: ArraySlice<UInt8>)
     func surface(_ surface: TerminalSurface, resizedTo size: TerminalSize)
+    /// The view is shown again (back in the window, or no longer hidden): sizes taken while it was not are
+    /// told now.
+    func surfaceShown(_ surface: TerminalSurface)
     /// The program in front named its window (OSC 0/2).
     func surface(_ surface: TerminalSurface, titled title: String)
     /// The shell said where it is (OSC 7).
     func surface(_ surface: TerminalSurface, movedTo directory: String?)
     func surface(_ surface: TerminalSurface, programStatus records: [TerminalProgramStatus])
+    /// The program rang the terminal's bell (BEL).
+    func surfaceRang(_ surface: TerminalSurface)
+    /// The shell marked a command (OSC 133): one started, or one ended with its exit status.
+    func surface(_ surface: TerminalSurface, command: TerminalCommandMark)
+}
+
+/// What a shell's command marks (OSC 133) say happened, as the app needs it.
+nonisolated enum TerminalCommandMark: Equatable, Sendable {
+    /// "C": a command typed at the prompt is running.
+    case started
+    /// "D": it ended, with its exit status (nil when the shell did not say).
+    case finished(status: Int32?)
+
+    /// Reads one OSC 133 payload ("C", "D;1", "A;k=i"); nil for the marks the app does not act on.
+    static func parse(_ payload: [UInt8]) -> TerminalCommandMark? {
+        guard let action = payload.first else { return nil }
+        switch action {
+        case UInt8(ascii: "C"): return .started
+        case UInt8(ascii: "D"):
+            let fields = payload.split(separator: UInt8(ascii: ";"), omittingEmptySubsequences: false)
+            return .finished(status: fields.count > 1 ? Int32(String(decoding: fields[1], as: UTF8.self)) : nil)
+        default: return nil
+        }
+    }
 }
 
 /// One terminal on screen: SwiftTerm's view, in the active theme's colours and the chosen font and
@@ -54,11 +82,31 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         true
         #endif
     }()
+    /// Metal has been turned on once (or failed, and the terminal stays on Core Graphics).
     private var metalTried = false
+    /// The renderer was given back while the terminal was out of the window (`restMetal`).
+    private var metalRested = false
+    private var metalRest: Task<Void, Never>?
 
     private var themeObserver: Observing?
     private var appliedCursor: (ThemeStore.CursorShape, Bool)?
     nonisolated private let outputHandler = OutputHandler()
+    /// Command marks, read off SwiftTerm's own queue (`observeOscEvents`) and brought to the main thread.
+    private var commandMarks: TerminalOscObservation?
+    /// Find (⌘F), and the link under the pointer while ⌘ is held: made the first time they are needed.
+    var findBar: TerminalFindBar?
+    var linkUnderline: LinkUnderlineView?
+    /// What reflection found of SwiftTerm's internals (`TerminalReach`), looked up once.
+    var reachCache: TerminalReach??
+    /// The prompt of the command whose output ⇧⌘↑ / ⇧⌘↓ selected last.
+    var selectedCommandPrompt: Int?
+    /// A ⌘-click opened a link: its release is not SwiftTerm's.
+    var swallowsMouseUp = false
+    /// A link the terminal printed, to be opened, shown in Files or copied (`PaneCard` resolves it).
+    var onLink: ((TerminalLink, TerminalLinkAction) -> Void)?
+    /// Whether a link names something there is (a path that exists, or any web link): only those are
+    /// underlined and opened, so `console.log` or `and/or` stay text.
+    var linkResolves: ((TerminalLink) -> Bool)?
 
     init() {
         let store = ThemeStore.shared
@@ -69,12 +117,26 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         terminalDelegate = self
         appliedCursor = (store.cursorShape, store.cursorBlinks)
         scrollerStyle = .overlay
+        // Links: the app finds paths and web links itself (`TerminalLink`, ⌘ held), so SwiftTerm keeps to
+        // those a program marks (OSC 8). Unfocused terminals show a hollow cursor.
+        linkReporting = .explicit
+        caretViewTracksFocus = true
         // SwiftTerm pauses drawing while its window is not visible, but a terminal attached before
         // the window is on screen never resumes (seen with SwiftTerm 1.99.1): output arrives and
         // nothing is drawn. Terminals in tabs not shown are out of the window and draw nothing anyway.
         suspendsRenderingWhenNotVisible = false
         setAccessibilityLabel("Terminal")
         themeObserver = Observing { [weak self] in self?.applySettings() }
+        // A handful of marks per command, so each one is simply handed over; the payloads are copies.
+        commandMarks = observeOscEvents { [weak self] event in
+            guard event.code == 133, let mark = TerminalCommandMark.parse(event.payload) else { return }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.heard(mark) } }
+        }
+    }
+
+    private func heard(_ mark: TerminalCommandMark) {
+        guard !replaying else { return }
+        surfaceDelegate?.surface(self, command: mark)
     }
 
     required init?(coder: NSCoder) {
@@ -126,18 +188,67 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         surfaceDelegate?.surface(self, resizedTo: size)
     }
 
-    /// Metal is turned on once, in the first window the view joins (it needs one); a device or shader that
-    /// fails leaves the terminal on Core Graphics.
+    /// Metal is turned on in the first window the view joins (it needs one); a device or shader that fails
+    /// leaves the terminal on Core Graphics. Out of the window for a while (its tab not shown), the terminal
+    /// gives its renderer back, and takes a new one as it returns.
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        guard window != nil, Self.drawsWithMetal, !metalTried else { return }
+        if window != nil { surfaceDelegate?.surfaceShown(self) }
+        guard Self.drawsWithMetal else { return }
+        if window == nil { restMetal() } else { wakeMetal() }
+    }
+
+    override func viewDidUnhide() {
+        super.viewDidUnhide()
+        if window != nil { surfaceDelegate?.surfaceShown(self) }
+    }
+
+    private func wakeMetal() {
+        metalRest?.cancel()
+        metalRest = nil
+        guard !metalTried || metalRested else { return }
+        let returning = metalRested
         metalTried = true
+        metalRested = false
         do {
             try setUseMetal(true)
+            // A new renderer's layer is empty until its first frame: drawn now, before the window shows it,
+            // the terminal never flashes blank.
+            if returning { drawMetalFrameNow() }
         } catch {
             NSLog("Whiskr: terminals draw without Metal: \(error)")
         }
     }
+
+    /// A renderer keeps its drawables (the layer's frames at the pane's size in pixels: 10 MB each for a
+    /// full-width pane on a Retina display), glyph atlases and buffers while its terminal is out of the
+    /// window; SwiftTerm only stops drawing. Twenty tabs held 770 MB, against 200 MB once given back.
+    /// Taking a new one costs the main thread 3–15 ms as the tab is shown again (its shaders are compiled
+    /// already, `TerminalShaderWarmup`), so a tab gone back and forth between is left as it is.
+    private func restMetal() {
+        guard isUsingMetalRenderer, metalRest == nil else { return }
+        metalRest = Task { [weak self] in
+            try? await Task.sleep(for: Self.metalRestDelay)
+            guard let self, !Task.isCancelled, window == nil else { return }
+            metalRest = nil
+            // A frame still in flight keeps the renderer; the next time the tab is hidden tries again.
+            guard (try? setUseMetal(false)) != nil else { return }
+            metalRested = true
+        }
+    }
+
+    /// How long a terminal stays out of the window before it gives its renderer back. Debug builds can
+    /// change it, to measure: `--metal-rest-after <seconds>`.
+    static let metalRestDelay: Duration = {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "--metal-rest-after"), arguments.indices.contains(index + 1),
+           let seconds = Double(arguments[index + 1]) {
+            return .milliseconds(Int(seconds * 1000))
+        }
+        #endif
+        return .seconds(30)
+    }()
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
@@ -158,21 +269,25 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         surfaceDelegate?.surface(self, programStatus: records)
     }
 
-    func scrolled(source: TerminalView, position: Double) {}
+    /// A link underlined under the pointer no longer lines up once the text has moved.
+    func scrolled(source: TerminalView, position: Double) {
+        if linkUnderline?.isHidden == false { linkUnderline?.isHidden = true }
+    }
 
     func rangeChanged(source: TerminalView, startY: Int, endY: Int) {}
 
-    /// ⌘-click on a link or a file path the terminal printed ("src/app.ts:12"): the window decides (a file
-    /// opens in the editor at that line); with no one listening, the system opens it.
+    /// ⌘-click on a link a program marked (OSC 8): the window decides (a file opens in the editor at its
+    /// line); with no one listening, the system opens it. Links the app finds itself go to `onLink`.
     var onOpenLink: ((String) -> Void)?
 
     func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
         if let onOpenLink { onOpenLink(link) } else { TerminalView.openDefaultLink(link) }
     }
 
+    /// The pane decides whether to sound it, or mark its tab (`Pane`).
     func bell(source: TerminalView) {
         guard !replaying else { return }
-        NSSound.beep()
+        surfaceDelegate?.surfaceRang(self)
     }
 
     func clipboardCopy(source: TerminalView, content: Data) {
@@ -182,8 +297,13 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         pasteboard.writeObjects([text as NSString])
     }
 
-    func clipboardRead(source: TerminalView) -> Data? {
-        NSPasteboard.general.string(forType: .string)?.data(using: .utf8)
+    /// A program never reads the clipboard (OSC 52 "?"): anything that only prints, a `cat` of a file or
+    /// a remote host, could otherwise take a password and have it typed back. Writes (tmux, an editor's
+    /// yank) still reach it. Refused on both of SwiftTerm's paths, as this answer is what both ask.
+    func clipboardRead(source: TerminalView) -> Data? { nil }
+
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        validateOwnItem(item) ?? super.validateUserInterfaceItem(item)
     }
 
     // MARK: Look
@@ -230,6 +350,55 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         case .block: blinks ? 1 : 2
         case .underline: blinks ? 3 : 4
         case .bar: blinks ? 5 : 6
+        }
+    }
+}
+
+/// SwiftTerm compiles its Metal shaders from source, and builds six pipelines from them, for each terminal's
+/// renderer, on the main thread, in the turn the terminal is first shown (`setUseMetal`). Metal keeps what
+/// it compiled for each copy of the app, so later terminals take about 2 ms; but the first one after an
+/// install, an update or a macOS update waits for the compiler: 75–180 ms measured, in the turn of ⌘T.
+/// Compiling the same source once at launch, off the main thread, takes that wait out of every terminal's way.
+///
+/// The source is SwiftTerm's own `Shaders.metal`, which its package leaves out of its target (it embeds the
+/// same text in its code, less the last line break); a build step copies it into the app (`project.yml`).
+/// Should the two ever differ, nothing breaks: the warm-up only stops helping.
+enum TerminalShaderWarmup {
+    /// At launch, before any terminal is shown.
+    static func start() {
+        guard TerminalSurface.drawsWithMetal,
+              let url = Bundle.main.url(forResource: "SwiftTermShaders", withExtension: "metal") else { return }
+        Task.detached(priority: .utility) { compile(url) }
+    }
+
+    /// The pipelines SwiftTerm's renderer builds, as it describes them: its text pipelines blend
+    /// premultiplied colour, its colour pipelines straight alpha, into its layer's pixel format.
+    nonisolated private static let pipelines: [(vertex: String, fragment: String, source: MTLBlendFactor)] = [
+        ("terminal_text_vertex", "terminal_text_fragment", .one),
+        ("terminal_text_vertex", "terminal_text_fragment_gray", .one),
+        ("terminal_cell_text_vertex", "terminal_text_fragment", .one),
+        ("terminal_cell_text_vertex", "terminal_text_fragment_gray", .one),
+        ("terminal_color_vertex", "terminal_color_fragment", .sourceAlpha),
+        ("terminal_cell_color_vertex", "terminal_color_fragment", .sourceAlpha),
+    ]
+
+    nonisolated private static func compile(_ url: URL) {
+        guard let file = try? String(contentsOf: url, encoding: .utf8), let device = MTLCreateSystemDefaultDevice(),
+              let library = try? device.makeLibrary(source: file.hasSuffix("\n") ? String(file.dropLast()) : file, options: nil) else { return }
+        for pipeline in pipelines {
+            let descriptor = MTLRenderPipelineDescriptor()
+            descriptor.vertexFunction = library.makeFunction(name: pipeline.vertex)
+            descriptor.fragmentFunction = library.makeFunction(name: pipeline.fragment)
+            guard descriptor.vertexFunction != nil, descriptor.fragmentFunction != nil, let attachment = descriptor.colorAttachments[0] else { return }
+            attachment.pixelFormat = .bgra8Unorm
+            attachment.isBlendingEnabled = true
+            attachment.rgbBlendOperation = .add
+            attachment.alphaBlendOperation = .add
+            attachment.sourceRGBBlendFactor = pipeline.source
+            attachment.destinationRGBBlendFactor = .oneMinusSourceAlpha
+            attachment.sourceAlphaBlendFactor = .one
+            attachment.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            _ = try? device.makeRenderPipelineState(descriptor: descriptor)
         }
     }
 }

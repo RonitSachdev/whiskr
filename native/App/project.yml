@@ -66,6 +66,17 @@ targets:
         codeSign: false
         copy:
           destination: executables
+    # SwiftTerm's shader source, which its package leaves out of its target, into the app's resources: the
+    # app compiles it once at launch, off the main thread, so no terminal waits for Metal's compiler
+    # (`TerminalShaderWarmup`). Package checkouts sit in the DerivedData folder, beside Build. The checkout is
+    # read-only, and so is a copy of it: the old copy is removed first, so a second build can replace it.
+    postCompileScripts:
+      - name: SwiftTerm's shader source
+        script: rm -f "$SCRIPT_OUTPUT_FILE_0" && cp "$SCRIPT_INPUT_FILE_0" "$SCRIPT_OUTPUT_FILE_0" && chmod u+w "$SCRIPT_OUTPUT_FILE_0"
+        inputFiles:
+          - $(BUILD_DIR)/../../SourcePackages/checkouts/SwiftTerm/Sources/SwiftTerm/Apple/Metal/Shaders.metal
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/SwiftTermShaders.metal
     settings:
       base:
         PRODUCT_NAME: Whiskr

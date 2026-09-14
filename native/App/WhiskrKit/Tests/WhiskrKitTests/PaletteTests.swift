@@ -30,6 +30,37 @@ struct FuzzyMatchTests {
         // camelCase and punctuation start words too.
         #expect(FuzzyMatch.match("gtn", in: "goToNext")?.offsets == [0, 2, 4])
     }
+
+    @Test("every word must match, in any order; the offsets are all of theirs")
+    func words() throws {
+        let match = try #require(FuzzyMatch.match("java main", in: "src/main/java/App.java"))
+        #expect(match.offsets == [4, 5, 6, 7, 9, 10, 11, 12])
+        #expect(FuzzyMatch.match("main kotlin", in: "src/main/java/App.java") == nil)
+        #expect(FuzzyMatch.Query("  a \"b c\" d").words.map(\.text) == ["a", "b c", "d"])
+        #expect(FuzzyMatch.Query("\"ben").words == [FuzzyMatch.Query.Word(text: "ben", isContiguous: true, letters: ["b", "e", "n"])])
+        #expect(FuzzyMatch.Query(" \"\" ").isEmpty)
+    }
+
+    @Test("a word in quotes matches only side by side")
+    func quoted() {
+        #expect(FuzzyMatch.match("\"bench+\"", in: "Workbench+Scene.swift")?.offsets == [4, 5, 6, 7, 8, 9])
+        #expect(FuzzyMatch.match("\"bench+\"", in: "bench/x+y") == nil)
+        #expect(FuzzyMatch.match("bench+", in: "bench/x+y") != nil)
+        #expect(FuzzyMatch.match("\"SCENE\"", in: "Workbench+Scene.swift") != nil)
+    }
+
+    @Test("after a slash beats after other punctuation, which beats a capital, which beats mid-word")
+    func boundaries() throws {
+        let scores = try ["a/b", "a-b", "aB", "ab"].map { try #require(FuzzyMatch.match("b", in: $0)).score }
+        #expect(scores == scores.sorted(by: >) && Set(scores).count == 4)
+    }
+
+    @Test("of two names a query starts, the shorter wins")
+    func shorterPrefix() throws {
+        let short = try #require(FuzzyMatch.match("window", in: "window.ts"))
+        let long = try #require(FuzzyMatch.match("window", in: "windowActions.ts"))
+        #expect(short.isPrefix && long.isPrefix && short.score > long.score)
+    }
 }
 
 @Suite("Palette ranking")
@@ -217,7 +248,7 @@ struct PlacesTests {
         #expect(Places.recents(opened: opened + claude, claude: [], home: "/h", limit: 1).count == 1)
     }
 
-    @Test("status line counts")
+    @Test("status bar counts")
     func status() {
         let summary = StatusSummary(statuses: [.blocked, .working, .blocked, .done])
         #expect(summary.claudes == 4 && summary.needYou == 2)

@@ -30,12 +30,24 @@ let package = Package(
         .package(path: "../../Scene"),
     ],
     targets: [
-        .target(name: "WhiskrKit", resources: [.process("Localizable.xcstrings")]),
+        // FileIcons: VS Code's Seti file icons (Scripts/update-file-icons.py; FileIcons/ThirdParty).
+        // Languages: TextMate grammars and language data, VS Code's and their upstreams' (Scripts/update-languages.py;
+        // Languages/ThirdParty).
+        .target(name: "WhiskrKit", dependencies: ["COniguruma"], resources: [.process("Localizable.xcstrings"), .copy("FileIcons"), .copy("Languages"), .copy("Themes")]),
+        // Oniguruma, the regular expression engine TextMate grammars are written for (the one VS Code runs),
+        // vendored at a pinned release (ThirdParty/manifest.json). Its Unicode tables are #included by
+        // unicode.c, not compiled on their own.
+        .target(
+            name: "COniguruma",
+            exclude: [
+                "ThirdParty", "unicode_fold_data.c", "unicode_property_data.c", "unicode_property_data_posix.c",
+                "unicode_egcb_data.c", "unicode_wb_data.c",
+            ]),
         .target(name: "WhiskrMeadow", dependencies: ["WhiskrKit", .product(name: "MeadowScene", package: "Scene")]),
         .target(name: "TerminalHost", dependencies: ["WhiskrKit"]),
         .target(name: "Paw", dependencies: ["TerminalHost", "WhiskrKit"]),
         .executableTarget(name: "PawTool", dependencies: ["Paw"]),
-        .testTarget(name: "WhiskrKitTests", dependencies: ["WhiskrKit"]),
+        .testTarget(name: "WhiskrKitTests", dependencies: ["WhiskrKit"], resources: [.copy("Fixtures")]),
         .testTarget(name: "TerminalHostTests", dependencies: ["TerminalHost", "WhiskrKit"]),
         .testTarget(name: "PawTests", dependencies: ["Paw", "TerminalHost", "WhiskrKit"]),
         .testTarget(name: "WhiskrMeadowTests", dependencies: ["WhiskrMeadow", "WhiskrKit", .product(name: "MeadowScene", package: "Scene")]),

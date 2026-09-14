@@ -73,7 +73,9 @@ enum DebugShell {
             case "meadow": NSHostingView(rootView: WorldSettingsView(store: .shared))
             default: NSHostingView(rootView: GeneralSettings(preferences: .shared))
             }
-            let offscreen = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 720, height: 640), styleMask: [.borderless], backing: .buffered, defer: false)
+            // `--settings-height <pt>`: taller than the window, to see a long pane whole (the theme list).
+            let height = value("--settings-height").flatMap(Double.init) ?? 640
+            let offscreen = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 720, height: height), styleMask: [.borderless], backing: .buffered, defer: false)
             offscreen.contentView = view
             if let appearance = value("--appearance") { offscreen.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {

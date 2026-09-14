@@ -250,11 +250,13 @@ private struct MarkdownListView: View {
 private struct MarkdownCode: View {
     let language: String?
     let code: String
+    /// The code's tokens, worked out off the main thread; plain until they come.
+    @State private var tokens: SyntaxText.Tokens?
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            Text(SyntaxText.attributed(code, language: SyntaxLanguage.named(language)))
-                .font(.system(size: 12.5, design: .monospaced))
+            Text(tokens.map(SyntaxText.attributed) ?? AttributedString(code))
+                .font(SyntaxText.font)
                 .lineSpacing(3)
                 .fixedSize(horizontal: true, vertical: true)
                 .padding(.horizontal, 14)
@@ -262,6 +264,9 @@ private struct MarkdownCode: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.well))
+        .task(id: SyntaxText.Request(code: code, language: language)) {
+            tokens = await SyntaxText.tokens(code, fence: language)
+        }
         .overlay(alignment: .topTrailing) {
             if let language, !language.isEmpty {
                 Text(language)
@@ -285,7 +290,7 @@ private struct MarkdownTableView: View {
                         self.cell(cell, column: column).font(.system(size: 13, weight: .semibold))
                     }
                 }
-                .background(Color.hover)
+                .background(Look.Fill.hover)
                 ForEach(Array(table.rows.enumerated()), id: \.offset) { _, row in
                     Divider().gridCellUnsizedAxes(.horizontal)
                     GridRow {
@@ -440,33 +445,68 @@ struct FlowLayout: Layout {
     }
 }
 
-/// Code as coloured text, for the preview's code blocks: each line lexed in turn, its state carried.
+/// Code as coloured text, for the preview's code blocks: tokenized off the main thread in the fence's
+/// language (each line's state carried to the next), then coloured from the theme's scope rules as the
+/// editor is.
 enum SyntaxText {
-    static func attributed(_ code: String, language: SyntaxLanguage) -> AttributedString {
+    struct Request: Equatable {
+        var code: String
+        var language: String?
+    }
+
+    struct Tokens: Equatable {
+        var lines: [String]
+        var tokens: [[SyntaxToken]]
+    }
+
+    static let font = Font.system(size: 12.5, design: .monospaced)
+
+    /// The tokens of `code` in the language a fence's info string names; nil for plain text.
+    nonisolated static func tokens(_ code: String, fence: String?) async -> Tokens? {
+        guard let fence, let language = LanguageRegistry.shared.language(forFence: fence),
+              let tokenizer = await GrammarStore.shared.tokenizer(for: language) else { return nil }
+        return await Task.detached(priority: .userInitiated) {
+            let lines = code.components(separatedBy: "\n")
+            var state: StateStack?
+            var tokens: [[SyntaxToken]] = []
+            for line in lines {
+                let result = tokenizer.tokenize(line, state: state)
+                state = result.end
+                tokens.append(result.tokens)
+            }
+            return Tokens(lines: lines, tokens: tokens)
+        }.value
+    }
+
+    /// The lines in their tokens' colours and styles, in the current theme.
+    static func attributed(_ code: Tokens) -> AttributedString {
         let style = EditorStyle.shared
         style.refresh()
-        let lexer = SyntaxLexer(language: language)
-        var state = LexerState.initial
+        let dark = Palette.isDark(NSApp.effectiveAppearance)
         var result = AttributedString()
-        let lines = code.components(separatedBy: "\n")
-        for (index, line) in lines.enumerated() {
-            let (tokens, end) = lexer.tokenize(line, from: state)
-            state = end
+        for (index, line) in code.lines.enumerated() {
             let utf16 = Array(line.utf16)
             var position = 0
-            func append(_ range: Range<Int>, _ kind: SyntaxKind) {
-                guard !range.isEmpty, range.upperBound <= utf16.count else { return }
-                var piece = AttributedString(String(decoding: utf16[range], as: UTF16.self))
-                piece.foregroundColor = Color(nsColor: style.color(kind))
+            for token in code.tokens[index] where token.range.lowerBound >= position && token.range.upperBound <= utf16.count {
+                if token.range.lowerBound > position { result += AttributedString(String(decoding: utf16[position..<token.range.lowerBound], as: UTF16.self)) }
+                var piece = AttributedString(String(decoding: utf16[token.range], as: UTF16.self))
+                let look = style.look(token.scopes)
+                if let color = look.color { piece.foregroundColor = Color(nsColor: color) }
+                if let background = look.background { piece.backgroundColor = Color(nsColor: background) }
+                let fontStyle = look.fontStyle(dark: dark)
+                if fontStyle.contains(.bold) || fontStyle.contains(.italic) {
+                    var font = Self.font
+                    if fontStyle.contains(.bold) { font = font.bold() }
+                    if fontStyle.contains(.italic) { font = font.italic() }
+                    piece.font = font
+                }
+                if fontStyle.contains(.underline) { piece.underlineStyle = .single }
+                if fontStyle.contains(.strikethrough) { piece.strikethroughStyle = .single }
                 result += piece
-            }
-            for token in tokens {
-                append(position..<token.range.lowerBound, .plain)
-                append(token.range, token.kind)
                 position = token.range.upperBound
             }
-            append(position..<utf16.count, .plain)
-            if index < lines.count - 1 { result += AttributedString("\n") }
+            if position < utf16.count { result += AttributedString(String(decoding: utf16[position...], as: UTF16.self)) }
+            if index < code.lines.count - 1 { result += AttributedString("\n") }
         }
         return result
     }

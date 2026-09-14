@@ -19,6 +19,9 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private var heights: [CGFloat] = []
     private var measuredWidth: CGFloat = 0
     private var lastLayout: EditorPreferences.DiffLayout?
+    /// Revert Change and Stage Change, over the change under the pointer.
+    private let actions: NSHostingView<ChangeActions>
+    private var hoveredBlock: ClosedRange<Int>?
 
     init(pageID: UUID, path: String, staged: Bool, workbench: Workbench) {
         self.pageID = pageID
@@ -28,6 +31,7 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         model = DiffModel(path: path, staged: staged, files: workbench.files)
         header = NSHostingView(rootView: DiffHeader(model: model, workbench: workbench))
         empty = NSHostingView(rootView: DiffEmpty(model: model, workbench: workbench))
+        actions = NSHostingView(rootView: ChangeActions(staged: staged, perform: { _ in }))
         super.init(frame: .zero)
         header.sizingOptions = []
         empty.sizingOptions = []
@@ -69,6 +73,14 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             empty.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         wantsLayer = true
+        actions.sizingOptions = [.intrinsicContentSize]
+        actions.isHidden = true
+        addSubview(actions)
+        actions.rootView = ChangeActions(staged: staged) { [weak self] action in self?.perform(action) }
+        table.onPointer = { [weak self] point in self?.pointerMoved(point) }
+        table.onClickRow = { [weak self] row in self?.clicked(row: row) ?? false }
+        NotificationCenter.default.addObserver(self, selector: #selector(scrolled), name: NSView.boundsDidChangeNotification, object: scrollView.contentView)
+        scrollView.contentView.postsBoundsChangedNotifications = true
         observers.append(Observing { [weak self] in self?.update() })
         observers.append(PageDimming.attach(to: self, page: pageID, workbench: workbench))
     }
@@ -91,6 +103,7 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     private func update() {
         _ = model.rows
+        _ = model.tokens
         _ = ThemeStore.shared.palette
         _ = EditorPreferences.shared.font
         let layout = effectiveLayout
@@ -131,7 +144,7 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         let textWidth = sideBySide ? (width / 2 - DiffRowView.gutter - 16) : (width - DiffRowView.gutter * 2 - 30)
         let perLine = max(8, Int(textWidth / metrics.advance))
         heights = model.rows.map { row in
-            if row.kind == .hunk { return metrics.line + 14 }
+            if row.kind == .hunk || row.kind == .gap { return metrics.line + 14 }
             let longest = max(row.old.map { DiffModel.width(of: $0.text) } ?? 0, row.new.map { DiffModel.width(of: $0.text) } ?? 0)
             let lines = max(1, (longest + perLine - 1) / perLine)
             return CGFloat(lines) * metrics.line + 4
@@ -153,6 +166,83 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     func step(next: Bool) { step(next ? 1 : -1) }
 
+    // MARK: One change at a time
+
+    /// A click on a folded stretch opens it.
+    private func clicked(row: Int) -> Bool {
+        guard model.rows.indices.contains(row), let gap = model.rows[row].gap else { return false }
+        model.unfold(gap)
+        return true
+    }
+
+    /// The pointer over a change shows its actions at the top right of its first row.
+    private func pointerMoved(_ point: NSPoint?) {
+        // Onto the actions themselves is still over the change.
+        if point == nil, let window, actions.frame.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil)) { return }
+        guard let point, model.actsOnChanges else { return hideActions() }
+        let row = table.row(at: point)
+        guard let block = DiffLayout.changeBlocks(model.rows).first(where: { $0.contains(row) }) else { return hideActions() }
+        hoveredBlock = block
+        let first = table.convert(table.rect(ofRow: block.lowerBound), to: self)
+        let size = actions.fittingSize
+        actions.frame = NSRect(x: bounds.width - size.width - Look.Space.xl, y: first.maxY - size.height - 1, width: size.width, height: size.height)
+        actions.isHidden = false
+    }
+
+    private func hideActions() {
+        hoveredBlock = nil
+        actions.isHidden = true
+    }
+
+    @objc private func scrolled() { hideActions() }
+
+    private func perform(_ action: ChangeActions.Action) {
+        guard let block = hoveredBlock else { return }
+        switch action {
+        case .revert: revertChange(rows: block)
+        case .stage: stageChange(rows: block)
+        }
+        hideActions()
+    }
+
+    /// Stage Change (Unstage Change in a staged diff): this change alone into (or out of) the index.
+    func stageChange(rows: ClosedRange<Int>) {
+        guard let repository = workbench.files.repository(containing: URL(fileURLWithPath: path)),
+              let patch = model.patch(for: rows, direction: staged ? .fromNew : .toOld) else { return NSSound.beep() }
+        repository.apply(patch, cached: true, reverse: staged) { if !$0 { NSSound.beep() } }
+    }
+
+    /// Revert Change: the working file loses this change alone. Undoable (Edit › Undo Revert Change, or the
+    /// note's Undo); never over unsaved edits to the file, which would be lost.
+    func revertChange(rows: ClosedRange<Int>) {
+        guard !staged, let repository = workbench.files.repository(containing: URL(fileURLWithPath: path)),
+              let patch = model.patch(for: rows, direction: .fromNew) else { return NSSound.beep() }
+        if workbench.files.documents[path]?.isEdited == true {
+            model.note = .unsaved
+            return
+        }
+        repository.apply(patch, cached: false, reverse: true) { [weak self] done in
+            guard let self, done else { return NSSound.beep() }
+            self.model.note = .reverted
+            self.registerUndoRevert(patch, repository: repository)
+        }
+    }
+
+    /// Undo puts the change back; Redo takes it away again.
+    private func registerUndoRevert(_ patch: String, repository: Repository) {
+        guard let undo = workbench.undoManager else { return }
+        undo.registerUndo(withTarget: repository) { [weak self] repository in
+            repository.apply(patch, cached: false, reverse: false) { done in if !done { NSSound.beep() } }
+            self?.model.note = nil
+            undo.registerUndo(withTarget: repository) { repository in
+                repository.apply(patch, cached: false, reverse: true) { _ in }
+            }
+            undo.setActionName(String(localized: "Revert Change"))
+        }
+        undo.setActionName(String(localized: "Revert Change"))
+        model.undo = { [weak undo] in undo?.undo() }
+    }
+
     // MARK: Table
 
     func numberOfRows(in tableView: NSTableView) -> Int { model.rows.count }
@@ -165,15 +255,90 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         let view = tableView.makeView(withIdentifier: DiffRowView.identifier, owner: nil) as? DiffRowView ?? DiffRowView()
         view.identifier = DiffRowView.identifier
         view.configure(model: model, index: row)
+        // VoiceOver reaches a change's Revert and Stage as the row's own actions.
+        if model.actsOnChanges, let block = DiffLayout.changeBlocks(model.rows).first(where: { $0.contains(row) }) {
+            var actions = [NSAccessibilityCustomAction(name: staged ? String(localized: "Unstage Change") : String(localized: "Stage Change")) { [weak self] in
+                self?.stageChange(rows: block)
+                return true
+            }]
+            if !staged {
+                actions.insert(NSAccessibilityCustomAction(name: String(localized: "Revert Change")) { [weak self] in
+                    self?.revertChange(rows: block)
+                    return true
+                }, at: 0)
+            }
+            view.setAccessibilityCustomActions(actions)
+        } else if let gap = model.rows[row].gap {
+            view.setAccessibilityCustomActions([NSAccessibilityCustomAction(name: String(localized: "Show Lines", comment: "Accessibility: opens a folded stretch of a diff")) { [weak self] in
+                self?.model.unfold(gap)
+                return true
+            }])
+        } else {
+            view.setAccessibilityCustomActions(nil)
+        }
         return view
     }
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool { false }
 }
 
-/// The table: takes the keyboard (arrows scroll; the window's commands still reach the page).
+/// The table: takes the keyboard (arrows scroll; the window's commands still reach the page), says where
+/// the pointer is over it, and a click on a folded stretch opens it.
 private final class DiffTable: NSTableView {
+    var onPointer: ((NSPoint?) -> Void)?
+    var onClickRow: ((Int) -> Bool)?
+    private var area: NSTrackingArea?
+
     override var acceptsFirstResponder: Bool { true }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area { removeTrackingArea(area) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        self.area = area
+    }
+
+    override func mouseMoved(with event: NSEvent) { onPointer?(convert(event.locationInWindow, from: nil)) }
+    override func mouseExited(with event: NSEvent) { onPointer?(nil) }
+
+    override func mouseDown(with event: NSEvent) {
+        let row = row(at: convert(event.locationInWindow, from: nil))
+        if row >= 0, onClickRow?(row) == true { return }
+        super.mouseDown(with: event)
+    }
+}
+
+/// Over a change, on hover: Revert Change and Stage Change (Unstage Change in a staged diff). Small,
+/// in the surface colour, as the bars' buttons are.
+private struct ChangeActions: View {
+    enum Action { case revert, stage }
+    let staged: Bool
+    let perform: (Action) -> Void
+
+    var body: some View {
+        HStack(spacing: 2) {
+            if !staged {
+                button(String(localized: "Revert Change"), symbol: "arrow.uturn.backward") { perform(.revert) }
+            }
+            button(staged ? String(localized: "Unstage Change") : String(localized: "Stage Change"), symbol: staged ? "minus" : "plus") { perform(.stage) }
+        }
+        .padding(2)
+        .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(Color.surface))
+        .overlay(RoundedRectangle(cornerRadius: Look.Radius.control).strokeBorder(Color.line))
+    }
+
+    private func button(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.ink2)
+                .padding(.horizontal, Look.Space.s)
+                .frame(height: 20)
+        }
+        .buttonStyle(ChromeButtonStyle(radius: Look.Radius.small))
+        .help(title)
+    }
 }
 
 /// What the diff shows: its rows in the chosen layout, each side's tokens, and its counts. Read again,
@@ -194,12 +359,22 @@ final class DiffModel {
     private(set) var isConflicted = false
     private(set) var layout: EditorPreferences.DiffLayout = EditorPreferences.shared.diffLayout
     @ObservationIgnored var onStep: ((Int) -> Void)?
+    /// A note in the header after acting on one change (`NoteClock` puts it away).
+    enum Note: Equatable { case reverted, unsaved }
+    var note: Note?
+    /// Undoes the last Revert Change (the note's Undo).
+    @ObservationIgnored var undo: (() -> Void)?
     /// Each row's drawn text, built once per theme and layout.
     @ObservationIgnored var textCache: [Int: (old: NSAttributedString?, new: NSAttributedString?)] = [:]
-    @ObservationIgnored private var diff: FileDiff?
+    @ObservationIgnored private(set) var diff: FileDiff?
+    /// The new side's lines, for unfolding the unchanged stretches (nil until read, or for a binary file).
+    @ObservationIgnored private var newText: [String]?
+    /// The folded stretches you opened; kept as the diff follows the disk.
+    @ObservationIgnored private var expanded: Set<DiffGap> = []
     @ObservationIgnored private weak var files: FilesCenter?
     @ObservationIgnored private var observer: Observing?
     @ObservationIgnored private var loading: Task<Void, Never>?
+    @ObservationIgnored private var colouring: Task<Void, Never>?
 
     init(path: String, staged: Bool, files: FilesCenter) {
         self.path = path
@@ -216,7 +391,7 @@ final class DiffModel {
     }
 
     var name: String { URL(fileURLWithPath: path).lastPathComponent }
-    var language: SyntaxLanguage { SyntaxLanguage.detect(fileName: name, firstLine: nil) }
+    var language: CodeLanguage { LanguageRegistry.shared.detect(fileName: name) }
 
     private var repository: Repository? { files?.repository(containing: URL(fileURLWithPath: path)) }
 
@@ -228,14 +403,22 @@ final class DiffModel {
         loading?.cancel()
         loading = Task { [weak self] in
             let text = untracked && !staged ? nil : await repository.diff(path: relative, staged: staged)
-            let diff: FileDiff? = await Task.detached(priority: .userInitiated) {
-                if let text { return UnifiedDiff.parse(text).first }
-                guard let data = FileManager.default.contents(atPath: path), case .text(let file) = TextFile.read(data) else { return nil }
-                return UnifiedDiff.addedFile(path: relative, text: file.text)
+            // The new side: the index for staged changes, else the file on disk.
+            let index = staged ? await repository.indexText(path: relative) : nil
+            let (diff, newText): (FileDiff?, [String]?) = await Task.detached(priority: .userInitiated) {
+                let disk = FileManager.default.contents(atPath: path).flatMap { data -> String? in
+                    if case .text(let file) = TextFile.read(data) { return file.text }
+                    return nil
+                }
+                let lines = (staged ? index : disk).map(DiffModel.lines)
+                if let text { return (UnifiedDiff.parse(text).first, lines) }
+                guard let disk else { return (nil, nil) }
+                return (UnifiedDiff.addedFile(path: relative, text: disk), lines)
             }.value
             guard let self, !Task.isCancelled else { return }
             self.isNewFile = untracked
             self.isConflicted = conflicted || diff?.isCombined == true
+            self.newText = newText
             self.take(diff)
         }
     }
@@ -257,38 +440,86 @@ final class DiffModel {
             tokens = [:]
             return
         }
-        let rows = layout == .sideBySide ? DiffLayout.sideBySide(diff) : DiffLayout.inline(diff)
-        // Each side is lexed in order, its state carried down the hunk, so strings and comments that span
-        // lines colour as they do in the editor.
-        let lexer = SyntaxLexer(language: language)
-        var oldState = LexerState.initial, newState = LexerState.initial
+        // The unchanged stretches between changes folded (`DiffLayout.folded`), unless opened.
+        let rows = DiffLayout.folded(layout == .sideBySide ? DiffLayout.sideBySide(diff) : DiffLayout.inline(diff),
+                                     diff: diff, newText: isConflicted ? nil : newText, expanded: expanded)
+        self.rows = rows
+        colour(rows)
+    }
+
+    /// Tokenizes the rows off the main thread, then colours them: each side in order, its state carried
+    /// down the hunk, so strings and comments that span lines colour as they do in the editor. The rows
+    /// show plain until then.
+    private func colour(_ rows: [DiffRow]) {
+        colouring?.cancel()
+        let language = language
+        colouring = Task { [weak self] in
+            guard let tokenizer = await GrammarStore.shared.tokenizer(for: language) else {
+                self?.tokens = [:]
+                return
+            }
+            let tokens = await Task.detached(priority: .userInitiated) { Self.tokenize(rows, tokenizer) }.value
+            guard let self, !Task.isCancelled else { return }
+            self.textCache.removeAll()
+            self.tokens = tokens
+        }
+    }
+
+    nonisolated private static func tokenize(_ rows: [DiffRow], _ tokenizer: TextMateTokenizer) -> [Int: (old: [SyntaxToken], new: [SyntaxToken])] {
+        var oldState: StateStack?, newState: StateStack?
         var tokens: [Int: (old: [SyntaxToken], new: [SyntaxToken])] = [:]
         for (index, row) in rows.enumerated() {
-            if row.kind == .hunk {
-                oldState = .initial
-                newState = .initial
+            if row.kind == .hunk || row.kind == .gap {
+                oldState = nil
+                newState = nil
                 continue
             }
             var pair: (old: [SyntaxToken], new: [SyntaxToken]) = ([], [])
+            // An unchanged line in the same state on both sides is tokenized once.
+            let sameStart = oldState == newState
             if let old = row.old {
-                let result = lexer.tokenize(old.text, from: oldState)
+                let result = tokenizer.tokenize(old.text, state: oldState)
                 pair.old = result.tokens
                 oldState = result.end
             }
             if let new = row.new {
-                if row.kind == .context, let old = row.old, old.text == new.text, row.old != nil {
+                if row.kind == .context, let old = row.old, old.text == new.text, sameStart {
                     pair.new = pair.old
-                    newState = lexer.tokenize(new.text, from: newState).end
+                    newState = oldState
                 } else {
-                    let result = lexer.tokenize(new.text, from: newState)
+                    let result = tokenizer.tokenize(new.text, state: newState)
                     pair.new = result.tokens
                     newState = result.end
                 }
             }
             tokens[index] = pair
         }
-        self.rows = rows
-        self.tokens = tokens
+        return tokens
+    }
+
+    /// Opens a folded stretch: its lines show in place.
+    func unfold(_ gap: DiffGap) {
+        expanded.insert(gap)
+        textCache.removeAll()
+        relayout(layout)
+    }
+
+    /// One change can be staged, unstaged or reverted on its own: a text file git already tracks, not in
+    /// conflict.
+    var actsOnChanges: Bool { diff != nil && !isNewFile && !isConflicted && !isBinary }
+
+    /// The patch of the change in `rows` (`DiffPatch`).
+    func patch(for rows: ClosedRange<Int>, direction: DiffPatch.Direction) -> String? {
+        guard let diff, rows.upperBound < self.rows.count else { return nil }
+        let lines = DiffLayout.changedLines(self.rows[rows])
+        return DiffPatch.patch(diff, old: lines.old, new: lines.new, direction: direction)
+    }
+
+    /// A text's lines as git counts them: no line breaks, none after a final one.
+    nonisolated static func lines(_ text: String) -> [String] {
+        var lines = text.split(separator: "\n", omittingEmptySubsequences: false).map { $0.hasSuffix("\r") ? String($0.dropLast()) : String($0) }
+        if lines.last == "" { lines.removeLast() }
+        return lines
     }
 
     /// A line's width in columns, tabs counted to their stops.
@@ -335,6 +566,7 @@ final class DiffRowView: NSView {
         guard let row else { return "" }
         switch row.kind {
         case .hunk: return row.header ?? ""
+        case .gap: return String(localized: "\(row.gap?.count ?? 0) unchanged lines, folded", comment: "Accessibility: a folded stretch of a diff")
         case .context: return String(localized: "Line \(row.new?.number ?? 0): \(row.new?.text ?? "")")
         case .removed: return String(localized: "Removed line \(row.old?.number ?? 0): \(row.old?.text ?? "")")
         case .added: return String(localized: "Added line \(row.new?.number ?? 0): \(row.new?.text ?? "")")
@@ -352,6 +584,15 @@ final class DiffRowView: NSView {
         let metrics = Self.metrics()
         let faint = Palette.nsColor(foreground.mixed(with: background, 0.6))
 
+        if row.kind == .gap, let gap = row.gap {
+            // "⋯ 120 unchanged lines": a quiet band; a click opens it.
+            tint(foreground, 0.04).setFill()
+            bounds.fill()
+            let label = String(localized: "⋯  \(gap.count) unchanged lines", comment: "Diff: a folded stretch; a click shows it")
+            let attributes: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: max(10, metrics.font.pointSize - 1)), .foregroundColor: faint]
+            (label as NSString).draw(at: NSPoint(x: Self.gutter * (model.layout == .sideBySide ? 1 : 2) + 2, y: 7), withAttributes: attributes)
+            return
+        }
         if row.kind == .hunk {
             tint(foreground, 0.04).setFill()
             bounds.fill()
@@ -372,8 +613,8 @@ final class DiffRowView: NSView {
             let removed = row.kind == .removed
             let cell = removed ? row.old : row.new ?? row.old
             let color: WhiskrKit.RGBColor? = row.kind == .context ? nil : removed ? red : green
-            if let color {
-                tint(color, strength).setFill()
+            if color != nil {
+                Palette.nsColor(diffColor(removed ? .diffRemoved : .diffInserted)).setFill()
                 bounds.fill()
             }
             let numbers: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: metrics.font.pointSize - 1, weight: .regular), .foregroundColor: faint]
@@ -397,14 +638,19 @@ final class DiffRowView: NSView {
             rect.fill()
             return
         }
-        if let tintColor {
-            Palette.nsColor(background.mixed(with: tintColor, strength)).setFill()
+        if tintColor != nil {
+            Palette.nsColor(diffColor(removedSide ? .diffRemoved : .diffInserted)).setFill()
             rect.fill()
         }
         let numbers: [NSAttributedString.Key: Any] = [.font: NSFont.monospacedDigitSystemFont(ofSize: metrics.font.pointSize - 1, weight: .regular), .foregroundColor: faint]
         draw(number: cell.number, right: rect.minX + Self.gutter - 8, y: 2, attributes: numbers)
         let text = attributed(cell, old: removedSide, color: tintColor, strength: strength, background: background, metrics: metrics)
         text.draw(with: NSRect(x: rect.minX + Self.gutter, y: 2, width: rect.width - Self.gutter - 8, height: rect.height), options: [.usesLineFragmentOrigin])
+    }
+
+    /// The theme's tint for added and removed lines and their changed words (`EditorColorKey.diffInserted` …).
+    private func diffColor(_ key: EditorColorKey) -> WhiskrKit.RGBColor {
+        ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(effectiveAppearance)).editor[key]
     }
 
     private func draw(number: Int, right: CGFloat, y: CGFloat, attributes: [NSAttributedString.Key: Any]) {
@@ -428,11 +674,19 @@ final class DiffRowView: NSView {
         let text = NSMutableAttributedString(string: cell.text, attributes: [.font: metrics.font, .foregroundColor: style.textColor, .paragraphStyle: paragraph])
         let tokens = model.flatMap { model in model.tokens[index].map { old ? $0.old : $0.new } } ?? []
         let length = (cell.text as NSString).length
-        for token in tokens where token.kind != .plain && token.range.upperBound <= length {
-            text.addAttribute(.foregroundColor, value: style.color(token.kind), range: NSRange(location: token.range.lowerBound, length: token.range.count))
+        let dark = Palette.isDark(effectiveAppearance)
+        for token in tokens where token.range.upperBound <= length {
+            let look = style.look(token.scopes)
+            guard !look.isPlain else { continue }
+            let range = NSRange(location: token.range.lowerBound, length: token.range.count)
+            if let color = look.color { text.addAttribute(.foregroundColor, value: color, range: range) }
+            let fontStyle = look.fontStyle(dark: dark)
+            if !fontStyle.intersection([.bold, .italic]).isEmpty { text.addAttribute(.font, value: style.font(metrics.font, fontStyle), range: range) }
+            if fontStyle.contains(.underline) { text.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: range) }
+            if fontStyle.contains(.strikethrough) { text.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: range) }
         }
-        if let changed = cell.changed, let color, changed.upperBound <= length {
-            text.addAttribute(.backgroundColor, value: Palette.nsColor(background.mixed(with: color, strength * 2.4)),
+        if let changed = cell.changed, color != nil, changed.upperBound <= length {
+            text.addAttribute(.backgroundColor, value: Palette.nsColor(diffColor(old ? .diffRemovedText : .diffInsertedText)),
                               range: NSRange(location: changed.lowerBound, length: changed.count))
         }
         var entry = model?.textCache[index] ?? (nil, nil)
@@ -468,10 +722,13 @@ private struct DiffHeader: View {
                 .foregroundStyle(Color.ink3)
                 .lineLimit(1)
             if model.added + model.removed > 0 {
-                Text(verbatim: "+\(model.added)").font(.system(size: 11).monospacedDigit()).foregroundStyle(Color(nsColor: EditorStyle.shared.color(.string)))
-                Text(verbatim: "−\(model.removed)").font(.system(size: 11).monospacedDigit()).foregroundStyle(Color(nsColor: EditorStyle.shared.color(.property)))
+                Text(verbatim: "+\(model.added)").font(.system(size: 11).monospacedDigit()).foregroundStyle(Color(nsColor: EditorStyle.shared.color(scope: "markup.inserted")))
+                Text(verbatim: "−\(model.removed)").font(.system(size: 11).monospacedDigit()).foregroundStyle(Color(nsColor: EditorStyle.shared.color(scope: "markup.deleted")))
             }
             Spacer(minLength: 12)
+            if let note = model.note {
+                ChangeNote(note: note, undo: { model.undo?(); model.note = nil }, close: { model.note = nil })
+            }
             HeaderButton(symbol: "chevron.up", help: String(localized: "Previous Change")) { model.onStep?(-1) }
             HeaderButton(symbol: "chevron.down", help: String(localized: "Next Change")) { model.onStep?(1) }
             HeaderButton(symbol: "doc.text", help: String(localized: "Open File")) { workbench.open(file: model.path, mode: .keep) }
@@ -530,5 +787,27 @@ private struct DiffEmpty: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: Colors.terminalBackground))
+    }
+}
+
+/// "Change reverted · Undo", or why a change could not be reverted; gone after it has been read
+/// (`NoteClock`).
+private struct ChangeNote: View {
+    let note: DiffModel.Note
+    let undo: () -> Void
+    let close: () -> Void
+
+    var body: some View {
+        HStack(spacing: Look.Space.s) {
+            switch note {
+            case .reverted:
+                Text(String(localized: "Change reverted", comment: "Diff header note after Revert Change")).foregroundStyle(Color.ink2)
+                Button(String(localized: "Undo"), action: undo).buttonStyle(.link)
+            case .unsaved:
+                Text(String(localized: "Save the file first: it has unsaved changes", comment: "Diff header note: Revert Change refused")).foregroundStyle(Color.ink2)
+            }
+        }
+        .font(.system(size: 11))
+        .noteClock(expired: close)
     }
 }

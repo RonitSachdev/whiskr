@@ -377,7 +377,7 @@ public struct DiffCell: Sendable, Equatable {
 }
 
 public struct DiffRow: Sendable, Equatable {
-    public enum Kind: Sendable, Equatable { case hunk, context, removed, added, changed }
+    public enum Kind: Sendable, Equatable { case hunk, context, removed, added, changed, gap }
 
     public var kind: Kind
     /// For a hunk row: its header line ("@@ -12,7 +12,9 @@ func foo()").
@@ -386,12 +386,15 @@ public struct DiffRow: Sendable, Equatable {
     public var old: DiffCell?
     /// The right side, or the added line.
     public var new: DiffCell?
+    /// For a gap row: the unchanged lines it folds away (`DiffLayout.folded`).
+    public var gap: DiffGap?
 
-    public init(kind: Kind, header: String? = nil, old: DiffCell? = nil, new: DiffCell? = nil) {
+    public init(kind: Kind, header: String? = nil, old: DiffCell? = nil, new: DiffCell? = nil, gap: DiffGap? = nil) {
         self.kind = kind
         self.header = header
         self.old = old
         self.new = new
+        self.gap = gap
     }
 }
 
@@ -461,7 +464,7 @@ public enum DiffLayout {
         var inChange = false
         for (index, row) in rows.enumerated() {
             switch row.kind {
-            case .hunk, .context:
+            case .hunk, .context, .gap:
                 inChange = false
             case .removed, .added, .changed:
                 if !inChange { starts.append(index) }

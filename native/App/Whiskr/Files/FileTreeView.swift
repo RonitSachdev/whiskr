@@ -7,7 +7,9 @@ import WhiskrKit
 /// The workspace's files as a native outline: folders first, read as they open, git letters on the
 /// right, ignored paths faint, kept live as files change on disk. A click opens a file in the preview tab
 /// (⌥-click beside), a double-click keeps it; Return renames, ⌘⌫ moves to the Trash, Space is Quick Look,
-/// and a file dragged onto a terminal pastes its path.
+/// and a file dragged onto a terminal pastes its path. A folder whose only entry is a folder shares its
+/// row with it ("src/main/java", VS Code's compact folders): the row is the first of the chain, and
+/// stands for the last (new files go there, a drag carries it); renaming changes the part edited.
 final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate, NSMenuDelegate, NSTextFieldDelegate {
     let repository: Repository
     private let workbench: Workbench
@@ -86,8 +88,37 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
 
     private func node(_ item: Any?) -> FileNode { (item as? FileNode) ?? repository.rootNode }
 
+    // MARK: Compact folders
+
+    /// The folders a row shows, from the one it is to the last of its chain of only children. The top
+    /// folder's own entries are never folded into it.
+    func chain(_ node: FileNode) -> [FileNode] {
+        var chain = [node]
+        while let last = chain.last, last.isFolder, last !== repository.rootNode,
+              let children = last.children, children.count == 1, children[0].isFolder {
+            chain.append(children[0])
+        }
+        return chain
+    }
+
+    /// The folder whose entries a row lists: the last of its chain.
+    func listed(_ node: FileNode) -> FileNode { chain(node).last ?? node }
+
+    /// The row a file or folder is in: a folder in a chain shares its first folder's row.
+    func row(of node: FileNode) -> FileNode {
+        guard node.isFolder else { return node }
+        var head = node
+        while let parent = head.parent, parent !== repository.rootNode, parent.children?.count == 1 { head = parent }
+        return head
+    }
+
+    /// The outline's item for a folder whose entries changed (nil for the top).
+    private func outlineItem(_ node: FileNode) -> Any? {
+        node === repository.rootNode ? nil : row(of: node)
+    }
+
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
-        let node = node(item)
+        let node = listed(node(item))
         guard let children = node.children else {
             repository.load(node)
             return 0
@@ -110,14 +141,14 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
             guard let self, self.shown[key] == count, node.children?.count == total else { return }
             let next = min(total, count + Self.batch)
             self.shown[key] = next
-            let parent: Any? = node === self.repository.rootNode ? nil : node
+            let parent = self.outlineItem(node)
             self.outline.insertItems(at: IndexSet(integersIn: count..<next), inParent: parent, withAnimation: [])
             self.showMore(of: node)
         }
     }
 
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
-        node(item).children![index]
+        listed(node(item)).children![index]
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool { node(item).isFolder }
@@ -125,35 +156,43 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
         let cell = outlineView.makeView(withIdentifier: FileCell.identifier, owner: nil) as? FileCell ?? FileCell()
         cell.textField?.delegate = self
-        cell.show(node(item), repository: repository)
+        let node = node(item)
+        // A folder in sight is read, so a chain of single folders shows as one row before it is opened.
+        if node.isFolder, node.children == nil { repository.load(node) }
+        cell.show(chain(node), repository: repository)
         return cell
     }
 
     func outlineView(_ outlineView: NSOutlineView, rowViewForItem item: Any) -> NSTableRowView? { FileRowView() }
 
     func outlineView(_ outlineView: NSOutlineView, pasteboardWriterForItem item: Any) -> (any NSPasteboardWriting)? {
-        node(item).url as NSURL
+        listed(node(item)).url as NSURL
     }
 
     func outlineViewItemDidExpand(_ notification: Notification) {
-        guard let node = notification.userInfo?["NSObject"] as? FileNode else { return }
+        guard let row = notification.userInfo?["NSObject"] as? FileNode else { return }
+        let node = listed(row)
         if node.children == nil { repository.load(node) }
     }
 
     private func folderLoaded(_ node: FileNode) {
-        let item: Any? = node === repository.rootNode ? nil : node
+        // One folder and nothing else: it joins this folder's row, and its own entries are read next.
+        if let children = node.children, children.count == 1, children[0].isFolder, children[0].children == nil {
+            repository.load(children[0])
+        }
+        let item = outlineItem(node)
         // A folder not in the outline (its parent closed) has nothing to show yet.
         if let item, outline.row(forItem: item) < 0 { return continueReveal() }
         let selected = outline.selectedRowIndexes.compactMap { outline.item(atRow: $0) as? FileNode }
         shown[ObjectIdentifier(node)] = min(node.children?.count ?? 0, Self.batch)
         outline.reloadItem(item, reloadChildren: true)
         showMore(of: node)
-        if node.children?.isEmpty == false, let item, outline.isItemExpanded(item) == false, revealing != nil { outline.expandItem(item) }
+        if node.children?.isEmpty == false, let item, outline.isItemExpanded(item) == false, revealing != nil, !revealsQuietly { outline.expandItem(item) }
         let rows = IndexSet(selected.map { outline.row(forItem: $0) }.filter { $0 >= 0 })
         if !rows.isEmpty { outline.selectRowIndexes(rows, byExtendingSelection: false) }
         if let fresh, let made = node.children?.first(where: { $0.url.standardizedFileURL == fresh.standardizedFileURL }) {
             self.fresh = nil
-            let row = outline.row(forItem: made)
+            let row = outline.row(forItem: self.row(of: made))
             if row >= 0 {
                 outline.selectRowIndexes([row], byExtendingSelection: false)
                 outline.scrollRowToVisible(row)
@@ -167,7 +206,7 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
     /// they are made.
     private func refreshVisibleRows() {
         outline.enumerateAvailableRowViews { rowView, row in
-            (rowView.view(atColumn: 0) as? FileCell)?.show(node(outline.item(atRow: row)), repository: repository)
+            (rowView.view(atColumn: 0) as? FileCell)?.show(chain(node(outline.item(atRow: row))), repository: repository)
         }
     }
 
@@ -195,23 +234,29 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
         for node in selectedNodes where !node.isFolder { workbench.open(file: node.url.path, mode: .keep) }
     }
 
+    /// What the selected rows stand for (a chain of folders: its last).
     var selectedNodes: [FileNode] {
-        outline.selectedRowIndexes.compactMap { outline.item(atRow: $0) as? FileNode }
+        outline.selectedRowIndexes.compactMap { (outline.item(atRow: $0) as? FileNode).map(listed) }
     }
 
     /// The folder new files go into: the selected folder, the selected file's folder, or the top.
     var targetFolder: FileNode {
         guard let node = selectedNodes.first else { return repository.rootNode }
-        return node.isFolder ? node : node.parent ?? repository.rootNode
+        return node.isFolder ? listed(node) : node.parent ?? repository.rootNode
     }
 
     // MARK: Revealing
 
     /// Shows a file in the tree: its folders open (read first where needed), it is selected and scrolled to.
-    func reveal(_ url: URL) {
+    /// `quietly` (the tab shown changed): only as far as needed to show it, without animation, and the
+    /// keyboard stays where it is.
+    func reveal(_ url: URL, quietly: Bool = false) {
         revealing = url.standardizedFileURL
+        revealsQuietly = quietly
         continueReveal()
     }
+
+    private var revealsQuietly = false
 
     private func continueReveal() {
         guard let target = revealing, let relative = repository.relativePath(of: target) else { return }
@@ -226,7 +271,7 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
                 return
             }
             if next.isFolder, next.url.standardizedFileURL != target {
-                outline.expandItem(next)
+                outline.expandItem(row(of: next))
                 if next.children == nil {
                     repository.load(next)
                     return
@@ -235,10 +280,11 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
             node = next
         }
         revealing = nil
-        let row = outline.row(forItem: node)
-        guard row >= 0 else { return }
-        outline.selectRowIndexes([row], byExtendingSelection: false)
-        outline.scrollRowToVisible(row)
+        let index = outline.row(forItem: row(of: node))
+        guard index >= 0 else { return }
+        if outline.selectedRowIndexes != [index] { outline.selectRowIndexes([index], byExtendingSelection: false) }
+        // Scrolled only when out of sight, the least that shows it.
+        if !outline.rows(in: outline.visibleRect).contains(index) { outline.scrollRowToVisible(index) }
     }
 
     func collapseAll() {
@@ -268,7 +314,7 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
             return present(error)
         }
         fresh = url
-        if parent !== repository.rootNode, !outline.isItemExpanded(parent) { outline.expandItem(parent) }
+        if parent !== repository.rootNode, !outline.isItemExpanded(row(of: parent)) { outline.expandItem(row(of: parent)) }
         repository.load(parent)
     }
 
@@ -285,7 +331,10 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
             let name = field.stringValue as NSString
             let dot = name.range(of: ".", options: .backwards)
             let isFolder = (outline.item(atRow: row) as? FileNode)?.isFolder ?? false
-            editor.selectedRange = NSRange(location: 0, length: !isFolder && dot.location != NSNotFound && dot.location > 0 ? dot.location : name.length)
+            // In a chain of folders, the last one's name.
+            let slash = name.range(of: "/", options: .backwards)
+            let start = isFolder && slash.location != NSNotFound ? slash.location + 1 : 0
+            editor.selectedRange = NSRange(location: start, length: !isFolder && dot.location != NSNotFound && dot.location > 0 ? dot.location : name.length - start)
         }
     }
 
@@ -293,7 +342,7 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
         if commandSelector == #selector(NSResponder.cancelOperation(_:)), let field = control as? NSTextField {
             // Esc puts the old name back.
             let row = outline.row(for: field)
-            if row >= 0 { field.stringValue = node(outline.item(atRow: row)).name }
+            if row >= 0 { field.stringValue = FileCell.title(chain(node(outline.item(atRow: row)))) }
             window?.makeFirstResponder(outline)
             return true
         }
@@ -304,14 +353,19 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
         guard let field = notification.object as? NSTextField else { return }
         field.isEditable = false
         let row = outline.row(for: field)
-        guard row >= 0, let node = outline.item(atRow: row) as? FileNode else { return }
+        guard row >= 0, let head = outline.item(atRow: row) as? FileNode else { return }
         let cell = outline.view(atColumn: 0, row: row, makeIfNecessary: false) as? FileCell
         let fresh = cell?.renamingFresh
         cell?.renamingFresh = nil
-        let name = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A chain of folders ("src/main/java"): the one part edited is the folder renamed.
+        let folders = chain(head)
+        let typed = field.stringValue.split(separator: "/", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let changed = zip(folders, typed).filter { $0.0.name != $0.1 }
+        let node = changed.count == 1 && typed.count == folders.count ? changed[0].0 : folders.last ?? head
+        let name = changed.count == 1 && typed.count == folders.count ? changed[0].1 : (typed.count == 1 ? typed[0] : "")
         defer { window?.makeFirstResponder(outline) }
         guard !name.isEmpty, !name.contains("/"), name != node.name else {
-            field.stringValue = node.name
+            field.stringValue = FileCell.title(folders)
             if let fresh, !node.isFolder { workbench.open(file: fresh.path, mode: .keep) }
             return
         }
@@ -324,7 +378,7 @@ final class FileTreeView: NSView, NSOutlineViewDataSource, NSOutlineViewDelegate
             revealing = destination
             if fresh != nil, !node.isFolder { workbench.open(file: destination.path, mode: .keep) }
         } catch {
-            field.stringValue = node.name
+            field.stringValue = FileCell.title(folders)
             present(error)
         }
     }
@@ -507,7 +561,8 @@ final class FileCell: NSTableCellView {
         name.font = .systemFont(ofSize: 12.5)
         name.cell?.isScrollable = false
         name.isEditable = false
-        name.focusRingType = .none
+        // Renaming shows the system focus ring round the name, as the Finder does.
+        name.focusRingType = .default
         badge.font = .monospacedSystemFont(ofSize: 10.5, weight: .semibold)
         badge.alignment = .right
         for view in [icon, name, badge] { addSubview(view) }
@@ -542,13 +597,17 @@ final class FileCell: NSTableCellView {
         return image
     }
 
-    func show(_ node: FileNode, repository: Repository) {
+    /// A row's name: its folders joined by "/" (one name for a file or a lone folder).
+    static func title(_ chain: [FileNode]) -> String { chain.map(\.name).joined(separator: "/") }
+
+    func show(_ chain: [FileNode], repository: Repository) {
+        guard let node = chain.last else { return }
         let status = repository.status
         let ignored = status?.isIgnored(node.isFolder ? node.relativePath + "/" : node.relativePath) ?? false || (status?.isIgnored(node.relativePath) ?? false)
         let state = node.isFolder ? status?.folderDecorations[node.relativePath] : status?.decorations[node.relativePath]
-        icon.image = Self.image(FileIcon.symbol(for: node.name, folder: node.isFolder))
+        icon.image = node.isFolder ? Self.image("folder") : FileIcon.image(for: node.name, size: 13)
         icon.contentTintColor = node.isFolder ? NSColor.controlAccentColor.withAlphaComponent(0.85) : NSColor(Color.ink2)
-        if name.currentEditor() == nil { name.stringValue = node.name }
+        if name.currentEditor() == nil { name.stringValue = Self.title(chain) }
         name.textColor = NSColor(Color.ink)
         if let state {
             badge.stringValue = node.isFolder ? "•" : state.letter
@@ -560,7 +619,7 @@ final class FileCell: NSTableCellView {
         }
         needsLayout = true
         alphaValue = ignored ? 0.45 : 1
-        var label = node.name
+        var label = Self.title(chain)
         if let state, !node.isFolder { label += ", " + GitColors.name(state) }
         if node.isFolder, state != nil { label += ", " + String(localized: "has changes") }
         if ignored { label += ", " + GitColors.name(.ignored) }

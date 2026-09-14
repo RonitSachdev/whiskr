@@ -35,12 +35,13 @@ public struct GitRunner: Sendable {
     }
 
     /// Runs git with `arguments` in `folder` and returns what it printed. Throws its message when it
-    /// fails, or when it has not finished after `timeout` seconds (it is then ended).
+    /// fails, or when it has not finished after `timeout` seconds (it is then ended). `paths` go last,
+    /// after `--`, each meaning exactly that file or folder (`literalPathspecs`).
     @discardableResult
-    public func run(_ arguments: [String], in folder: String, timeout: TimeInterval = 30) throws(GitError) -> String {
+    public func run(_ arguments: [String], paths: [String] = [], in folder: String, timeout: TimeInterval = 30) throws(GitError) -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = ["--no-pager"] + arguments
+        process.arguments = ["--no-pager"] + arguments + (paths.isEmpty ? [] : ["--"] + paths)
         process.currentDirectoryURL = URL(fileURLWithPath: folder, isDirectory: true)
         var environment = ProcessInfo.processInfo.environment
         environment["GIT_TERMINAL_PROMPT"] = "0"
@@ -48,42 +49,49 @@ public struct GitRunner: Sendable {
         environment["GIT_EDITOR"] = "true"
         environment["GIT_OPTIONAL_LOCKS"] = "0"
         environment["LC_ALL"] = "C"
+        if !paths.isEmpty { Self.literalPathspecs(&environment) }
         process.environment = environment
-        let output = Pipe(), errors = Pipe()
+        let output = ProcessPipe.make(), errors = ProcessPipe.make()
         process.standardOutput = output
         process.standardError = errors
         process.standardInput = FileHandle.nullDevice
         let finished = DispatchSemaphore(value: 0)
         process.terminationHandler = { _ in finished.signal() }
+        // Both pipes are drained while git runs, so a long answer never fills one and stalls it.
+        let reader = PipeReader([output, errors])
         do {
             try process.run()
         } catch {
+            _ = reader.finish(by: .now)
             throw GitError(message: "git could not be started: \(error.localizedDescription)", status: -1)
-        }
-        // Both pipes are drained while git runs, so a long answer never fills one and stalls it.
-        let collected = Collected()
-        let reading = DispatchGroup()
-        for (pipe, isError) in [(output, false), (errors, true)] {
-            reading.enter()
-            DispatchQueue.global(qos: .utility).async {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                collected.set(data, isError: isError)
-                reading.leave()
-            }
         }
         if finished.wait(timeout: .now() + timeout) == .timedOut {
             process.terminate()
             _ = finished.wait(timeout: .now() + 2)
-            reading.wait()
+            _ = reader.finish(by: .now)
             throw GitError(message: "git did not finish in \(Int(timeout)) seconds", status: -1)
         }
-        reading.wait()
-        let (out, err) = collected.both
+        // The pipes end with git, unless something it started (a hook's helper, say) keeps one open.
+        let streams = reader.finish(by: Date(timeIntervalSinceNow: 2))
+        let (out, err) = (streams[0], streams[1])
         guard process.terminationReason == .exit, process.terminationStatus == 0 else {
             let message = GitError.cleaned(String(decoding: err, as: UTF8.self))
             throw GitError(message: message.isEmpty ? "git exited with status \(process.terminationStatus)" : message, status: process.terminationStatus)
         }
         return String(decoding: out, as: UTF8.self)
+    }
+
+    /// Makes git read every path on its command line as a name, never a pattern: `--` only ends the
+    /// options, and git still matches what follows as pathspecs, so `app/[id]/page.tsx` would also mean
+    /// `app/i/page.tsx` and `app/d/page.tsx`, `*` and `?` would match other files, and a leading `:`
+    /// would be pathspec magic. A folder still means everything in it. The other global pathspec
+    /// settings, which git refuses beside this one, are dropped. Only for a command given paths: the
+    /// hooks git runs inherit its environment, and a hook's own patterns must keep their meaning.
+    public static func literalPathspecs(_ environment: inout [String: String]) {
+        environment["GIT_LITERAL_PATHSPECS"] = "1"
+        for setting in ["GIT_GLOB_PATHSPECS", "GIT_NOGLOB_PATHSPECS", "GIT_ICASE_PATHSPECS"] {
+            environment.removeValue(forKey: setting)
+        }
     }
 
     /// The repository's state at `folder`: its branch, how far it is ahead of and behind its upstream,
@@ -92,17 +100,4 @@ public struct GitRunner: Sendable {
         let text = try run(["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=normal"], in: folder)
         return GitStatus.parse(Data(text.utf8))
     }
-}
-
-/// What git printed on each stream, handed over from the reading threads.
-private final class Collected: @unchecked Sendable {
-    private let lock = NSLock()
-    private var output = Data()
-    private var errors = Data()
-
-    func set(_ data: Data, isError: Bool) {
-        lock.withLock { if isError { errors = data } else { output = data } }
-    }
-
-    var both: (Data, Data) { lock.withLock { (output, errors) } }
 }

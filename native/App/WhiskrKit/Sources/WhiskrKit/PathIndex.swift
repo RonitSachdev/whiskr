@@ -7,7 +7,8 @@ import Foundation
 /// A file's name matters most, and its name without the extension more: "wbs" finds
 /// `Workbench+Scene.swift` before `Workbench.swift` and `web/bootstrap.css`. The letters are looked for in
 /// the name first, the whole path only when the name cannot hold them; a query with a "/" is matched
-/// along the path. A quick greedy score ranks every candidate, and only the best few hundred get the
+/// along the path, and so is one of several words the name cannot hold ("main java" finds
+/// `src/main/java/App.java`). A quick greedy score ranks every candidate, and only the best few hundred get the
 /// careful `FuzzyMatch`, so 100,000 paths cost a few tens of milliseconds.
 public struct PathIndex: Sendable {
     public struct Match: Sendable, Equatable {
@@ -62,30 +63,40 @@ public struct PathIndex: Sendable {
     public var count: Int { records.count }
     public var paths: [String] { records.map(\.path) }
 
-    /// The best `limit` matches for `query`, best first.
+    /// The best `limit` matches for `query`, best first. Every word of the query must match, in any order
+    /// (`FuzzyMatch.Query`): in the name, or along the path when the name cannot hold them all.
     public func search(_ query: String, limit: Int = 50) -> [Match] {
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return [] }
-        let needle = Array(trimmed.utf8).filter { $0 != UInt8(ascii: " ") }.map { (0x41...0x5A).contains($0) ? $0 + 32 : $0 }
-        let wantsPath = trimmed.contains("/")
+        let query = FuzzyMatch.Query(query)
+        guard !query.isEmpty else { return [] }
+        // Every word's bytes end to end, capitals lowered as in `bytes`, and where each word lies in them.
+        var needle: [UInt8] = [], words: [Word] = []
+        for word in query.words {
+            let from = needle.count
+            needle += word.text.utf8.map { (0x41...0x5A).contains($0) ? $0 + 32 : $0 }
+            words.append(Word(from: from, to: needle.count, isContiguous: word.isContiguous))
+        }
+        let wantsPath = query.mentionsFolder
         struct Candidate { let record: Int; let tier: Int; let quick: Int }
         var candidates: [Candidate] = []
         bytes.withUnsafeBufferPointer { bytes in
             starts.withUnsafeBufferPointer { starts in
                 needle.withUnsafeBufferPointer { needle in
-                    spans.withUnsafeBufferPointer { spans in
-                        // Plain loops here and below: a range's iterator is generic, and slow in a debug build.
-                        var index = -1
-                        while index + 1 < spans.count {
-                            index += 1
-                            let record = spans[index]
-                            let length = record.to - record.from
-                            // The name holding every letter (its stem even more so), else the whole path.
-                            if !wantsPath, let quick = Self.quickScore(bytes, starts, record.nameFrom, record.to, needle) {
-                                let tier = Self.contains(bytes, record.nameFrom, record.stemTo, needle) ? 2 : 1
-                                candidates.append(Candidate(record: index, tier: tier, quick: quick - length / 8))
-                            } else if let quick = Self.quickScore(bytes, starts, record.from, record.to, needle) {
-                                candidates.append(Candidate(record: index, tier: 0, quick: quick))
+                    words.withUnsafeBufferPointer { words in
+                        spans.withUnsafeBufferPointer { spans in
+                            let text = Needle(bytes: needle, words: words)
+                            // Plain loops here and below: a range's iterator is generic, and slow in a debug build.
+                            var index = -1
+                            while index + 1 < spans.count {
+                                index += 1
+                                let record = spans[index]
+                                let length = record.to - record.from
+                                // The name holding every word (its stem even more so), else the whole path.
+                                if !wantsPath, let quick = Self.quickScore(bytes, starts, record.nameFrom, record.to, text) {
+                                    let tier = Self.contains(bytes, record.nameFrom, record.stemTo, text) ? 2 : 1
+                                    candidates.append(Candidate(record: index, tier: tier, quick: quick - length / 8))
+                                } else if let quick = Self.quickScore(bytes, starts, record.from, record.to, text) {
+                                    candidates.append(Candidate(record: index, tier: 0, quick: quick))
+                                }
                             }
                         }
                     }
@@ -115,17 +126,18 @@ public struct PathIndex: Sendable {
             candidates = candidates.filter { rank($0) >= cutoff }
         }
         candidates.sort { $0.tier != $1.tier ? $0.tier > $1.tier : $0.quick > $1.quick }
-        let lowered = trimmed.lowercased()
+        // A one-word query that is the whole name, or the name without its extension.
+        let only = query.words.count == 1 ? query.words[0].text.lowercased() : nil
         var found: [Match] = []
         for candidate in candidates.prefix(kept) {
             let record = records[candidate.record]
             let length = record.to - record.from
-            if candidate.tier > 0, let match = FuzzyMatch.match(trimmed, in: record.name) {
+            if candidate.tier > 0, let match = FuzzyMatch.match(query, in: record.name) {
                 let name = record.name.lowercased()
-                let exact = name == lowered || name.hasPrefix(lowered + ".")
+                let exact = only.map { name == $0 || name.hasPrefix($0 + ".") } ?? false
                 found.append(Match(path: record.path, nameOffsets: match.offsets,
                                    score: candidate.tier * 100_000 + match.score + (exact ? 50_000 : 0) - length))
-            } else if let match = FuzzyMatch.match(trimmed, in: record.path) {
+            } else if let match = FuzzyMatch.match(query, in: record.path) {
                 found.append(Match(path: record.path, nameOffsets: [], score: match.score - length))
             }
         }
@@ -133,29 +145,64 @@ public struct PathIndex: Sendable {
         return Array(found.prefix(limit))
     }
 
-    /// Whether `needle`'s bytes appear in order in `bytes[from..<to]`.
-    private static func contains(_ bytes: UnsafeBufferPointer<UInt8>, _ from: Int, _ to: Int, _ needle: UnsafeBufferPointer<UInt8>) -> Bool {
-        var position = from, wanted = 0
-        while wanted < needle.count {
-            guard let found = next(needle[wanted], in: bytes, from: position, to: to) else { return false }
-            position = found + 1
-            wanted += 1
+    /// One word of the query: where its bytes are in the needle, and whether they must sit side by side.
+    private struct Word {
+        let from: Int, to: Int
+        let isContiguous: Bool
+    }
+
+    /// The query's words as the scan reads them.
+    private struct Needle {
+        let bytes: UnsafeBufferPointer<UInt8>
+        let words: UnsafeBufferPointer<Word>
+    }
+
+    /// Whether every word of `needle` is in `bytes[from..<to]`: its bytes in order, or side by side for a
+    /// word in quotes.
+    private static func contains(_ bytes: UnsafeBufferPointer<UInt8>, _ from: Int, _ to: Int, _ needle: Needle) -> Bool {
+        var index = 0
+        while index < needle.words.count {
+            let word = needle.words[index]
+            index += 1
+            if word.isContiguous {
+                guard run(word, of: needle, in: bytes, from: from, to: to) else { return false }
+                continue
+            }
+            var position = from, wanted = word.from
+            while wanted < word.to {
+                guard let found = next(needle.bytes[wanted], in: bytes, from: position, to: to) else { return false }
+                position = found + 1
+                wanted += 1
+            }
         }
         return true
     }
 
-    /// A cheap first ranking: the letters matched greedily, each worth more at a word's start or right
-    /// after the previous one; nil when they are not all in `bytes[from..<to]` in order.
-    private static func quickScore(_ bytes: UnsafeBufferPointer<UInt8>, _ starts: UnsafeBufferPointer<Bool>, _ from: Int, _ to: Int, _ needle: UnsafeBufferPointer<UInt8>) -> Int? {
-        var score = 0, previous = -2, position = from, wanted = 0
-        while wanted < needle.count {
-            guard let found = next(needle[wanted], in: bytes, from: position, to: to) else { return nil }
-            score += 1 + (starts[found] ? 4 : 0) + (found == previous + 1 ? 3 : 0) + (found == from ? 3 : 0)
-            previous = found
-            position = found + 1
-            wanted += 1
+    /// A cheap first ranking: each word's letters matched greedily, each worth more at a word's start or
+    /// right after the previous one, the words' scores added; nil when some word is not in
+    /// `bytes[from..<to]` (in order, or side by side for a word in quotes).
+    private static func quickScore(_ bytes: UnsafeBufferPointer<UInt8>, _ starts: UnsafeBufferPointer<Bool>, _ from: Int, _ to: Int, _ needle: Needle) -> Int? {
+        var score = 0, index = 0
+        while index < needle.words.count {
+            let word = needle.words[index]
+            index += 1
+            if word.isContiguous, !run(word, of: needle, in: bytes, from: from, to: to) { return nil }
+            var previous = -2, position = from, wanted = word.from
+            while wanted < word.to {
+                guard let found = next(needle.bytes[wanted], in: bytes, from: position, to: to) else { return nil }
+                score += 1 + (starts[found] ? 4 : 0) + (found == previous + 1 ? 3 : 0) + (found == from ? 3 : 0)
+                previous = found
+                position = found + 1
+                wanted += 1
+            }
         }
         return score
+    }
+
+    /// Whether `word`'s bytes appear side by side in `bytes[from..<to]`.
+    private static func run(_ word: Word, of needle: Needle, in bytes: UnsafeBufferPointer<UInt8>, from: Int, to: Int) -> Bool {
+        guard from < to, let base = bytes.baseAddress, let letters = needle.bytes.baseAddress else { return false }
+        return memmem(base + from, to - from, letters + word.from, word.to - word.from) != nil
     }
 
     /// Where `byte` is next in `bytes[from..<to]`. `memchr` steps through a hundred thousand paths per

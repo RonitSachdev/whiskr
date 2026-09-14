@@ -349,35 +349,6 @@
         }
       }
     },
-    "%lld Claudes were not resumed here, so none runs twice: they may still be running there.": {
-      "comment": "Launch notice: Claude conversations not resumed because the other version's host may still run them",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Claude %lld件は二重に動かないよう、ここでは再開していません。そちらでまだ動いている可能性があります。"
-          }
-        },
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld Claude was not resumed here, so it does not run twice: it may still be running there."
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld Claudes were not resumed here, so none runs twice: they may still be running there."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "%lld changed files": {
       "localizations": {
         "ja": {
@@ -520,6 +491,17 @@
         }
       }
     },
+    "%lld languages": {
+      "comment": "After an import: this many languages were added",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld個の言語"
+          }
+        }
+      }
+    },
     "%lld more out of sight": {
       "comment": "Tab row: how many tabs do not fit",
       "localizations": {
@@ -614,35 +596,6 @@
         }
       }
     },
-    "%lld terminals started by a different version of Whiskr keep running in the background. This version cannot show them. They stay until their programs end; open that version to see them again.": {
-      "comment": "Launch notice: how many terminals an incompatible session host holds",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "別のバージョンの Whiskr で開始したターミナル %lld 個がバックグラウンドで実行を続けています。このバージョンでは表示できません。プログラムが終了するまで残ります。再び表示するには、そのバージョンを開いてください。"
-          }
-        },
-        "en": {
-          "variations": {
-            "plural": {
-              "one": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld terminal started by a different version of Whiskr keeps running in the background. This version cannot show it. It stays until its program ends; open that version to see it again."
-                }
-              },
-              "other": {
-                "stringUnit": {
-                  "state": "translated",
-                  "value": "%lld terminals started by a different version of Whiskr keep running in the background. This version cannot show them. They stay until their programs end; open that version to see them again."
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "+%lld helpers": {
       "comment": "Sidebar list: how many helpers are working",
       "localizations": {
@@ -668,6 +621,17 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "1 language": {
+      "comment": "After an import: one language was added",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1つの言語"
           }
         }
       }
@@ -727,6 +691,16 @@
         }
       }
     },
+    "A repository’s .editorconfig file decides these, its indentation and its line endings for the files it covers, as in VS Code.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リポジトリの .editorconfig ファイルがあれば、その対象のファイルではこれらとインデント、改行コードをそのファイルが決めます（VS Code と同じです）。"
+          }
+        }
+      }
+    },
     "A tab by its number.": {
       "localizations": {
         "ja": {
@@ -774,6 +748,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "実際のサイズ"
+          }
+        }
+      }
+    },
+    "Add": {
+      "comment": "Theme file picker's button",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加"
+          }
+        }
+      }
+    },
+    "Add a VS Code theme, extension or .vsix, an iTerm2 .itermcolors file or a .whiskrtheme, or drop one here. A theme with a light and a dark version follows your Mac’s appearance; to pair two of yours, right-click one. Your themes are .whiskrtheme files (plain JSON) in the themes folder.": {
+      "comment": "Settings › Terminal: the theme section's footer",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VS Code のテーマ、拡張機能または .vsix、iTerm2 の .itermcolors ファイル、.whiskrtheme を追加するか、ここにドロップしてください。ライトとダークの両方があるテーマは Mac の外観に合わせて切り替わります。自分のテーマ2つを組み合わせるには、片方を右クリックしてください。自分のテーマはテーマフォルダ内の .whiskrtheme ファイル（プレーンな JSON）です。"
+          }
+        }
+      }
+    },
+    "Add Theme…": {
+      "comment": "Settings › Terminal: imports themes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマを追加…"
+          }
+        }
+      }
+    },
+    "Added %@.": {
+      "comment": "Settings › Terminal, after an import: the themes and languages added",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を追加しました。"
           }
         }
       }
@@ -914,6 +932,17 @@
         }
       }
     },
+    "Auto Detect (%@)": {
+      "comment": "Status bar's language menu: colour the file as its name says",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動検出（%@）"
+          }
+        }
+      }
+    },
     "Back to %@, where you left it — %@": {
       "comment": "Home: an open workspace's tooltip",
       "localizations": {
@@ -962,6 +991,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "テキストを大きく"
+          }
+        }
+      }
+    },
+    "blinking": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点滅"
           }
         }
       }
@@ -1034,6 +1074,59 @@
           "stringUnit": {
             "state": "translated",
             "value": "すべてを手前に移動"
+          }
+        }
+      }
+    },
+    "Choose themes (Whiskr, iTerm2, VS Code or TextMate), VS Code extensions (.vsix or a folder) or TextMate grammars.": {
+      "comment": "Open panel of Add Theme… and File › Import",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマ（Whiskr、iTerm2、VS Code、TextMate）、VS Code 拡張機能（.vsix またはフォルダ）、TextMate 文法を選んでください。"
+          }
+        }
+      }
+    },
+    "Code is coloured by the grammars VS Code uses, and VS Code's colour themes work here: Settings › Terminal › Add Theme…, or File › Import Themes and Languages…, takes a theme file, an extension folder or a .vsix. Settings › General › Import Settings reads your VS Code or Cursor settings once. Nothing from an extension is ever run.": {
+      "comment": "Help page: what Whiskr takes from VS Code",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コードは VS Code と同じ文法で色分けされ、VS Code のカラーテーマもそのまま使えます。設定 › ターミナル › テーマを追加…、またはファイル › テーマと言語を読み込む… で、テーマファイル、拡張機能のフォルダ、.vsix を読み込めます。設定 › 一般 › 設定を読み込む は、VS Code や Cursor の設定を一度だけ読み込みます。拡張機能のコードが実行されることはありません。"
+          }
+        }
+      }
+    },
+    "Comment or uncomment the selected lines.": {
+      "comment": "Help page: toggle comment",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した行をコメントにする、またはコメントを解除します。"
+          }
+        }
+      }
+    },
+    "Copy Line Down": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行を下へコピー"
+          }
+        }
+      }
+    },
+    "Copy Line Up": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行を上へコピー"
           }
         }
       }
@@ -1675,6 +1768,17 @@
         }
       }
     },
+    "cursor": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カーソル"
+          }
+        }
+      }
+    },
     "Cut": {
       "localizations": {
         "ja": {
@@ -1701,6 +1805,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@を削除"
+          }
+        }
+      }
+    },
+    "Delete Line": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行の削除"
           }
         }
       }
@@ -1824,12 +1938,12 @@
         }
       }
     },
-    "Each file keeps its own indentation, encoding and line endings: they are read from it and written back the same way. The tab width is for files that do not say.": {
+    "Each file keeps its own indentation, encoding and line endings: they are read from it and written back the same way. The indentation and tab width are for files that do not say.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "インデント、文字エンコーディング、改行コードはファイルごとに読み取られ、同じ形で書き戻されます。タブの幅は、それらが分からないファイルに使われます。"
+            "value": "インデント、文字エンコーディング、改行コードはファイルごとに読み取られ、同じ形で書き戻されます。インデントとタブの幅は、それらが分からないファイルに使われます。"
           }
         }
       }
@@ -1861,6 +1975,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "編集"
+          }
+        }
+      }
+    },
+    "Edit Anyway": {
+      "comment": "Editor bar: edit an over-long line although typing in it is slow",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "それでも編集"
           }
         }
       }
@@ -1897,6 +2022,28 @@
         }
       }
     },
+    "editor font (%@)": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタのフォント（%@）"
+          }
+        }
+      }
+    },
+    "editor size": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタの文字サイズ"
+          }
+        }
+      }
+    },
     "Editor, %@": {
       "comment": "Accessibility: the editor and its file",
       "localizations": {
@@ -1904,6 +2051,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "エディタ、%@"
+          }
+        }
+      }
+    },
+    "editor.fontFamily (not installed here)": {
+      "comment": "Import Settings summary: none of the fonts named is on this Mac",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "editor.fontFamily（このMacにないフォント）"
           }
         }
       }
@@ -2044,6 +2202,17 @@
         }
       }
     },
+    "final newline": {
+      "comment": "Import Settings summary: files.insertFinalNewline",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "末尾の改行"
+          }
+        }
+      }
+    },
     "Find": {
       "localizations": {
         "ja": {
@@ -2157,6 +2326,39 @@
         }
       }
     },
+    "From %@": {
+      "comment": "Settings › General › Import Settings: the editor to read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ から"
+          }
+        }
+      }
+    },
+    "From %@: %@.": {
+      "comment": "Import Settings summary: what was applied",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ から: %2$@。"
+          }
+        }
+      }
+    },
+    "From VS Code": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VS Code から"
+          }
+        }
+      }
+    },
     "General": {
       "comment": "Settings pane",
       "localizations": {
@@ -2214,6 +2416,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "親のClaudeへ移動"
+          }
+        }
+      }
+    },
+    "Go to Bracket": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラケットへ移動"
           }
         }
       }
@@ -2280,12 +2492,13 @@
         }
       }
     },
-    "Go to any workspace, tab or Claude by name, folder, branch or state.": {
+    "Go to the bracket that matches the one at the cursor. Brackets and quotes close themselves, and typing the closing one steps over it.": {
+      "comment": "Help page: brackets",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "名前、フォルダ、ブランチ、状態で、どのワークスペース、タブ、Claudeにも移動します。"
+            "value": "カーソル位置の括弧と対になる括弧へ移動します。括弧や引用符は自動で閉じられ、閉じる側を入力するとその上を通り過ぎます。"
           }
         }
       }
@@ -2552,23 +2765,24 @@
         }
       }
     },
-    "Import": {
-      "comment": "Theme file picker's button",
+    "Import Settings": {
+      "comment": "Settings › General: menu button reading VS Code's or Cursor's settings",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "読み込む"
+            "value": "設定を読み込む"
           }
         }
       }
     },
-    "Import Theme…": {
+    "Import Themes and Languages…": {
+      "comment": "File menu: adds VS Code themes, extensions and TextMate grammars",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "テーマを読み込む…"
+            "value": "テーマと言語を読み込む…"
           }
         }
       }
@@ -2580,6 +2794,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "競合中（自分の側と比較）"
+          }
+        }
+      }
+    },
+    "In the editor": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エディタで"
+          }
+        }
+      }
+    },
+    "Indent with": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "インデント"
           }
         }
       }
@@ -2604,12 +2839,33 @@
         }
       }
     },
+    "Insert a final newline": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "末尾に改行を追加"
+          }
+        }
+      }
+    },
     "Interrupt": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "中断"
+          }
+        }
+      }
+    },
+    "invisibles": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不可視文字"
           }
         }
       }
@@ -2698,6 +2954,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "キーボード"
+          }
+        }
+      }
+    },
+    "Language, %@": {
+      "comment": "Accessibility: the status bar's language menu",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "言語、%@"
+          }
+        }
+      }
+    },
+    "Language: colour this file as another language": {
+      "comment": "Status bar: the language menu's tooltip",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "言語：このファイルを別の言語として色分けします"
           }
         }
       }
@@ -2801,6 +3079,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld 行目が %2$@ から %3$@ に変更"
+          }
+        }
+      }
+    },
+    "Line %lld is %@ characters long, too long to edit smoothly, so it is read-only.": {
+      "comment": "Editor bar: a minified file's long line is kept from being edited",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld行目は%2$@文字あり、滑らかに編集できないため読み取り専用にしています。"
           }
         }
       }
@@ -3003,12 +3292,43 @@
         }
       }
     },
+    "Move Line Down": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行を下へ移動"
+          }
+        }
+      }
+    },
+    "Move Line Up": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行を上へ移動"
+          }
+        }
+      }
+    },
     "Move the keyboard into the meadow: arrows between blankets and cats, Return to open, Esc to go back.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "キーボード操作を草原に移します。矢印キーでシートと猫の間を移動し、Returnで開き、Escで戻ります。"
+          }
+        }
+      }
+    },
+    "Move the line, or the selected lines, up or down. With ⇧, copy them up or down; ⇧⌘K deletes them.": {
+      "comment": "Help page: moving, copying and deleting lines",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行、または選択した行を上下に移動します。⇧ を押すと上下にコピーし、⇧⌘K で削除します。"
           }
         }
       }
@@ -3296,6 +3616,17 @@
         }
       }
     },
+    "No %@ settings were found.": {
+      "comment": "Settings › General › Import Settings: the editor's settings.json is not there",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ の設定が見つかりませんでした。"
+          }
+        }
+      }
+    },
     "No changes": {
       "localizations": {
         "ja": {
@@ -3327,6 +3658,17 @@
         }
       }
     },
+    "Not applied: %@.": {
+      "comment": "Import Settings summary: what was left as it is",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "適用しなかったもの: %@。"
+          }
+        }
+      }
+    },
     "Nothing": {
       "comment": "Picnic things on each blanket",
       "localizations": {
@@ -3334,6 +3676,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "なし"
+          }
+        }
+      }
+    },
+    "Nothing in %@’s settings applies here.": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ の設定に、ここで使えるものはありません。"
           }
         }
       }
@@ -3376,16 +3729,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claudeが応答を待っているときに通知"
-          }
-        }
-      }
-    },
-    "OK": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OK"
           }
         }
       }
@@ -3562,6 +3905,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "またはフォルダをここにドロップ。"
+          }
+        }
+      }
+    },
+    "Pair with Dark Theme": {
+      "comment": "Theme card's menu: makes one theme of this light one and a dark one",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダークテーマと組み合わせる"
+          }
+        }
+      }
+    },
+    "Pair with Light Theme": {
+      "comment": "Theme card's menu: makes one theme of this dark one and a light one",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライトテーマと組み合わせる"
           }
         }
       }
@@ -3850,6 +4215,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "リポジトリを読み込み中…"
+          }
+        }
+      }
+    },
+    "Reads its settings once, when you choose: fonts and sizes, indentation, wrapping, invisibles, saving, the terminal’s cursor and the colour theme. Nothing is changed there, and nothing is sent anywhere.": {
+      "comment": "Settings › General: Import Settings' footer",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだときに一度だけ設定を読み込みます: フォントとサイズ、インデント、折り返し、不可視文字、保存、ターミナルのカーソル、カラーテーマ。元の設定は変更せず、どこにも送信しません。"
           }
         }
       }
@@ -4182,6 +4558,28 @@
         }
       }
     },
+    "Separate Light and Dark": {
+      "comment": "Theme card's menu: splits a paired theme back into two",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライトとダークに分ける"
+          }
+        }
+      }
+    },
+    "Settings from VS Code or Cursor": {
+      "comment": "Settings › General: the row of Import Settings",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VS Code または Cursor の設定"
+          }
+        }
+      }
+    },
     "SF Mono (system)": {
       "localizations": {
         "ja": {
@@ -4288,16 +4686,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "サービス"
-          }
-        }
-      }
-    },
-    "Sessions from another version are still running": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "別のバージョンのセッションが実行中です"
           }
         }
       }
@@ -4521,17 +4909,6 @@
         }
       }
     },
-    "Show or hide Files (⇧⌘C for Changes); the button at the top right does too. Drag the panel's edge to size it, past its least width to close it, or double-click it for its usual width.": {
-      "comment": "Help page: the side panel's toggle",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ファイルを表示または非表示にします（変更は ⇧⌘C）。右上のボタンでも同じです。パネルの端をドラッグすると幅が変わり、最小幅より狭くすると閉じ、ダブルクリックすると標準の幅に戻ります。"
-          }
-        }
-      }
-    },
     "Show or hide the meadow": {
       "localizations": {
         "ja": {
@@ -4548,17 +4925,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "草原を表示/非表示（⌃⌘S）"
-          }
-        }
-      }
-    },
-    "Show or hide the meadow; the button by the window's buttons does too. ⌃⌘1, ⌃⌘2 and ⌃⌘3 give both, the terminals alone or the meadow alone.": {
-      "comment": "Help page: the meadow's toggle",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "草原を表示または非表示にします。ウインドウのボタンの横にあるボタンでも同じです。⌃⌘1、⌃⌘2、⌃⌘3 で、両方、ターミナルだけ、草原だけになります。"
           }
         }
       }
@@ -4733,6 +5099,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "ソース、プレビュー、または左右に並べる"
+          }
+        }
+      }
+    },
+    "Spaces": {
+      "comment": "Settings › Editor: indent with spaces",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スペース"
+          }
+        }
+      }
+    },
+    "spaces or tabs": {
+      "comment": "Import Settings summary: editor.insertSpaces",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スペースかタブか"
           }
         }
       }
@@ -5012,6 +5400,17 @@
         }
       }
     },
+    "tab width": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブ幅"
+          }
+        }
+      }
+    },
     "Tabs": {
       "comment": "Accessibility label of the tab strip",
       "localizations": {
@@ -5041,6 +5440,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "ターミナル"
+          }
+        }
+      }
+    },
+    "terminal font (%@)": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルのフォント（%@）"
+          }
+        }
+      }
+    },
+    "terminal size": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルの文字サイズ"
+          }
+        }
+      }
+    },
+    "terminal.integrated.fontFamily (not installed here)": {
+      "comment": "Import Settings summary: none of the fonts named is on this Mac",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminal.integrated.fontFamily（このMacにないフォント）"
           }
         }
       }
@@ -5146,6 +5578,17 @@
         }
       }
     },
+    "The language in the status bar is a menu: colour this file as another language, or as its name says. A repository's .editorconfig decides indentation, line endings and what saving tidies.": {
+      "comment": "Help page: the language menu and EditorConfig",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ステータスバーの言語はメニューです。このファイルを別の言語として、または名前どおりに色分けできます。リポジトリの .editorconfig が、インデント、改行コード、保存時の整形を決めます。"
+          }
+        }
+      }
+    },
     "The next request, then the next finished turn, then back where you were.": {
       "localizations": {
         "ja": {
@@ -5226,6 +5669,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "テーマ"
+          }
+        }
+      }
+    },
+    "theme (%@)": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマ（%@）"
+          }
+        }
+      }
+    },
+    "theme “%@” (not built in, nor installed as an extension)": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマ「%@」（内蔵でも、拡張機能としてインストール済みでもありません）"
+          }
+        }
+      }
+    },
+    "There are no colour themes in it.": {
+      "comment": "Importing a theme: the file has none",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カラーテーマが含まれていません。"
           }
         }
       }
@@ -5323,6 +5799,17 @@
         }
       }
     },
+    "Tidy on Save": {
+      "comment": "Undo menu: what saving trimmed or added",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存時の整形"
+          }
+        }
+      }
+    },
     "Time of day": {
       "localizations": {
         "ja": {
@@ -5376,6 +5863,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "トップバー"
+          }
+        }
+      }
+    },
+    "trailing whitespace": {
+      "comment": "Import Settings summary: files.trimTrailingWhitespace",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行末の空白"
+          }
+        }
+      }
+    },
+    "Trim trailing whitespace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行末の空白を削除"
           }
         }
       }
@@ -5543,17 +6051,6 @@
         }
       }
     },
-    "View › Reset Layout puts every part of the window back as it first was. The bars at the top move the window, and a double-click on them zooms it, as on any Mac title bar; new tabs come from + and ⌘T.": {
-      "comment": "Help page: resetting the layout, and what the bars do",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "表示 › レイアウトをリセット で、ウインドウのすべての部分が最初の状態に戻ります。上のバーをドラッグするとウインドウが移動し、ダブルクリックするとほかの Mac のタイトルバーと同じく拡大/縮小します。新しいタブは + と ⌘T で開きます。"
-          }
-        }
-      }
-    },
     "Volume": {
       "localizations": {
         "ja": {
@@ -5667,6 +6164,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "マークの意味"
+          }
+        }
+      }
+    },
+    "When Saving": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存時"
           }
         }
       }
@@ -5822,6 +6329,28 @@
         }
       }
     },
+    "Wrap long lines, or not.": {
+      "comment": "Help page: wrap lines",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "長い行を折り返すかどうかを切り替えます。"
+          }
+        }
+      }
+    },
+    "wrapping": {
+      "comment": "Import Settings summary",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "折り返し"
+          }
+        }
+      }
+    },
     "Your changes will be lost if you don’t save them.": {
       "localizations": {
         "ja": {
@@ -5838,16 +6367,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "自分のキー"
-          }
-        }
-      }
-    },
-    "Your themes are .whiskrtheme files (plain JSON) in the themes folder; share them, edit them by hand, or drop a .whiskrtheme or iTerm2 .itermcolors file here to import it.": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "テーマはテーマフォルダ内の.whiskrthemeファイル（プレーンなJSON）です。共有したり手で編集したりできます。.whiskrthemeまたはiTerm2の.itermcolorsファイルをここにドロップすると読み込めます。"
           }
         }
       }
@@ -6363,6 +6882,558 @@
     },
     "✗ 1 failing": {
       "shouldTranslate": false
+    },
+    "%lld Claudes were not resumed here, so none runs twice.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claude %lld件は二重に動かないよう、ここでは再開していません。"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claude was not resumed here, so it does not run twice."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Claudes were not resumed here, so none runs twice."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "%lld terminals from another version of Whiskr are still running.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のバージョンのWhiskrのターミナルが%lld件、まだ動いています。"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld terminal from another version of Whiskr is still running."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld terminals from another version of Whiskr are still running."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld unchanged lines, folded": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更のない%lld行（折りたたみ）"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld unchanged line, folded"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld unchanged lines, folded"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Animate Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を動かす"
+          }
+        }
+      }
+    },
+    "Animate the meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を動かす"
+          }
+        }
+      }
+    },
+    "Bell": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベル"
+          }
+        }
+      }
+    },
+    "Change reverted": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更を元に戻しました"
+          }
+        }
+      }
+    },
+    "Close (Esc)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じる（Esc）"
+          }
+        }
+      }
+    },
+    "Copy Link": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リンクをコピー"
+          }
+        }
+      }
+    },
+    "Details": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細"
+          }
+        }
+      }
+    },
+    "Drag a tab onto the edge of a pane to split it there, or onto its middle to move it into that pane's tab.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブをペインの端にドラッグするとそこで分割し、中央にドラッグするとそのペインのタブへ移動します。"
+          }
+        }
+      }
+    },
+    "Find in terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナル内を検索"
+          }
+        }
+      }
+    },
+    "Find in the terminal. ⌘G and ⇧⌘G step through the matches; Esc gives the keyboard back.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナル内を検索します。⌘Gと⇧⌘Gで一致を順に移動し、Escでキーボードをターミナルに戻します。"
+          }
+        }
+      }
+    },
+    "Go to Line %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld行目へ移動"
+          }
+        }
+      }
+    },
+    "Go to Line %lld, Column %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld行目、%2$lld列目へ移動"
+          }
+        }
+      }
+    },
+    "Go to any workspace, tab, Claude or file by name, folder, branch or state. Start with > for commands, :42 for a line of the file shown, or name:42 for a file at a line.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前、フォルダ、ブランチ、状態で、ワークスペース、タブ、Claude、ファイルへ移動します。>で始めるとコマンド、:42で表示中のファイルの行、名前:42でファイルのその行へ移動します。"
+          }
+        }
+      }
+    },
+    "In a terminal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルで"
+          }
+        }
+      }
+    },
+    "Next Command": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次のコマンド"
+          }
+        }
+      }
+    },
+    "Next Match (⌘G)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の一致（⌘G）"
+          }
+        }
+      }
+    },
+    "No file is shown: type a file's name before the colon": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示中のファイルがありません：コロンの前にファイル名を入力してください"
+          }
+        }
+      }
+    },
+    "No results": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一致なし"
+          }
+        }
+      }
+    },
+    "Off, the grass, butterflies and cats' little movements hold still. Cats still change as Claude does. Also in View › Animate Meadow.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフにすると、草やチョウ、猫の小さな動きが止まります。Claudeの状態に合わせて猫は変わります。表示 › 草原を動かす からも切り替えられます。"
+          }
+        }
+      }
+    },
+    "Open Link": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リンクを開く"
+          }
+        }
+      }
+    },
+    "Open a file path or web link the terminal printed; a file opens at its line. Hold ⌘ to see what is a link.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ターミナルに表示されたファイルのパスやWebリンクを開きます。ファイルはその行で開きます。⌘を押したままにすると、どれがリンクかわかります。"
+          }
+        }
+      }
+    },
+    "Previous Command": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前のコマンド"
+          }
+        }
+      }
+    },
+    "Previous Match (⇧⌘G)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前の一致（⇧⌘G）"
+          }
+        }
+      }
+    },
+    "Recent tabs": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近のタブ"
+          }
+        }
+      }
+    },
+    "Revert Change": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更を元に戻す"
+          }
+        }
+      }
+    },
+    "Right-click for Copy, Paste, Find, Clear, splitting and, over a link, Open and Copy. A full-screen program that takes clicks gets the right-click unless you hold Option.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右クリックで、コピー、ペースト、検索、消去、分割、リンクの上では開く・コピーができます。クリックを受け取るフルスクリーンのプログラムでは、Optionを押していない限り右クリックはそのプログラムに届きます。"
+          }
+        }
+      }
+    },
+    "Save the file first: it has unsaved changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "先にファイルを保存してください：保存していない変更があります"
+          }
+        }
+      }
+    },
+    "Scroll to the command before or after.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前または次のコマンドまでスクロールします。"
+          }
+        }
+      }
+    },
+    "Secure Keyboard Entry": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーボード入力の保護"
+          }
+        }
+      }
+    },
+    "Select Next Output": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の出力を選択"
+          }
+        }
+      }
+    },
+    "Select Previous Output": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前の出力を選択"
+          }
+        }
+      }
+    },
+    "Select what the command before or after printed.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "前または次のコマンドの出力を選択します。"
+          }
+        }
+      }
+    },
+    "Stage Change": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更をステージ"
+          }
+        }
+      }
+    },
+    "The tab you were in before. Keep ⌃ held to choose from the workspace's tabs, most recent first.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "直前のタブに戻ります。⌃を押したままにすると、ワークスペースのタブを最近使った順に選べます。"
+          }
+        }
+      }
+    },
+    "This version cannot show them. They keep running until their programs end; open that version to see them again. Nothing was stopped.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このバージョンでは表示できません。プログラムが終わるまで動き続けます。もう一度見るには、そのバージョンを開いてください。何も止めていません。"
+          }
+        }
+      }
+    },
+    "Unstage Change": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変更のステージを取り消す"
+          }
+        }
+      }
+    },
+    "line %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld行目"
+          }
+        }
+      }
+    },
+    "⋯  %lld unchanged lines": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⋯  変更のない%lld行"
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "⋯  %lld unchanged line"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "⋯  %lld unchanged lines"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Show Lines": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "行を表示"
+          }
+        }
+      }
+    },
+    "Open this link in %@?": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリンクを%@で開きますか？"
+          }
+        }
+      }
+    },
+    "A program in the terminal printed this link. Its text can differ from where it leads.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このリンクはターミナルのプログラムが表示したものです。表示される文字と実際の行き先が違うことがあります。"
+          }
+        }
+      }
+    },
+    "Show or hide the meadow; the button by the window's buttons does too. In a narrow window the meadow steps aside, and showing it gives it a narrow sidebar. ⌃⌘1, ⌃⌘2 and ⌃⌘3 give both, the terminals alone or the meadow alone.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を表示または非表示にします。ウインドウのボタンの横のボタンでも切り替えられます。狭いウインドウでは草原は脇に退き、表示すると細いサイドバーになります。⌃⌘1、⌃⌘2、⌃⌘3で、両方、ターミナルだけ、草原だけを表示します。"
+          }
+        }
+      }
+    },
+    "Show or hide Files (⇧⌘C for Changes); the button at the top right does too. Drag the panel's edge to size it, nearly shut to close it, or double-click it for its usual width.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを表示または非表示にします（変更は⇧⌘C）。右上のボタンでも切り替えられます。パネルの端をドラッグすると幅を変えられ、ほぼ閉じるまでドラッグすると閉じ、ダブルクリックすると通常の幅に戻ります。"
+          }
+        }
+      }
+    },
+    "View › Reset Layout brings back the meadow, the terminals and the status bar at their usual sizes, and this workspace's side panel at its usual width. The bars at the top move the window, and a double-click on them does what Desktop & Dock says a title bar's double-click does; new tabs come from + and ⌘T.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示 › レイアウトをリセット で、草原、ターミナル、ステータスバーが通常の大きさに、このワークスペースのサイドパネルが通常の幅に戻ります。上部のバーをドラッグするとウインドウが移動し、ダブルクリックするとデスクトップとDockで設定したタイトルバーのダブルクリックの動作になります。新しいタブは＋と⌘Tで開きます。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

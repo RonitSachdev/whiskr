@@ -1,0 +1,26 @@
+[
+  {
+    "name": "VS Code Seti file icon theme (vs-seti-icon-theme.json, seti.woff)",
+    "source": "https://github.com/microsoft/vscode/tree/08e8bbfca63e53b57005f10e97b0fa19f2cf81f1/extensions/theme-seti",
+    "commit": "08e8bbfca63e53b57005f10e97b0fa19f2cf81f1",
+    "license": "MIT",
+    "licenseFile": "LICENSE-vscode.txt",
+    "files": [
+      "seti.json",
+      "seti.woff"
+    ],
+    "sha256": {
+      "seti.woff": "b127762058f89b37b08d76185e3b0558f5c28859e39a3840a27cb28b9739d6e2"
+    }
+  },
+  {
+    "name": "Seti UI (the icons and their font, from which VS Code's theme is generated)",
+    "source": "https://github.com/jesseweed/seti-ui",
+    "commit": "2d6c5e68b4ded73c92dac291845ee44e1182d511",
+    "license": "MIT",
+    "licenseFile": "LICENSE-seti-ui.txt",
+    "files": [
+      "seti.woff"
+    ]
+  }
+]

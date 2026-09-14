@@ -40,8 +40,12 @@ events, and the terminal text is illustrative.</sub>
 - **Answer from the meadow.** Click a requesting cat whose terminal is not on screen and answer it from a
   card (1 Allow, 2 Deny), or go to its terminal.
 - **Files and changes.** A file tree and git changes beside the terminals (stage, unstage, discard,
-  commit). A light editor with syntax colouring, find and replace. Markdown, image and PDF previews, and
-  diffs side by side or inline. Files Claude edits reload by themselves.
+  commit). A light editor with find and replace, closing brackets, indent guides and EditorConfig. Markdown,
+  image and PDF previews, and diffs side by side or inline. Files Claude edits reload by themselves.
+- **What you know from VS Code.** Code is coloured by VS Code's TextMate grammars (about 45 languages), VS
+  Code colour themes import from a file, an extension folder or a `.vsix` and colour code as they do there,
+  files show VS Code's Seti icons, VS Code's keys work where they suit a Mac, and your VS Code or Cursor
+  settings can be read once, when you ask. It is all data: no extension ever runs.
 - **Worktrees.** Each git worktree is a workspace of its own. Its blanket is joined to its repository's by
   stepping stones.
 - **Agents steering agents.** Every terminal has `paw` on its PATH, so Claude can start helper terminals,
@@ -132,6 +136,9 @@ session starts.
 | ⌥⌘0 | Keyboard into the meadow (arrows, Return, Esc) |
 | ⌃⌘1 / ⌃⌘2 / ⌃⌘3 / ⌃⌘S | Meadow and terminals / terminals only / meadow only / hide the meadow |
 | ⇧⌘E / ⇧⌘C | Files / git changes beside the terminals |
+| ⌘B / ⌘\ | Hide the meadow / split right (VS Code's keys, beside the Mac ones) |
+| ⌥↑ ⌥↓ / ⇧⌥↑ ⇧⌥↓ / ⇧⌘K | In the editor: move lines / copy lines / delete lines |
+| ⌘/ / ⇧⌘\ / ⌥Z / ⌘L or ⌃G | In the editor: comment / matching bracket / wrap lines / go to line |
 | ⌘? | Help: reading the meadow |
 
 Every command is also in the menus, where System Settings › Keyboard › Keyboard Shortcuts can rebind it.

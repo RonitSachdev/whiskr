@@ -33,7 +33,8 @@ import simd
         let image = view.renderImage(width: Int(Self.size.width * 2), height: Int(Self.size.height * 2))!
         let plot = view.stage.village!.plots[0]
         let globe = plot.lanterns.first.map { l -> Vec2 in
-            let p = view.stage.screen(plot.group + l.at + Vec3(0, 0.45 * LANTERN_SIZE, 0))
+            // Low on the globe: seen steeply from above, its cap hides the top half.
+            let p = view.stage.screen(plot.group + l.at + Vec3(0, 0.32 * LANTERN_SIZE, 0))
             return Vec2(p.x * 2, p.y * 2)
         }
         return (image, globe, view)
@@ -141,7 +142,8 @@ import simd
         let plot = view.stage.village!.plots[0]
         let cat = plot.actors["main"]!.spot, lantern = plot.lanterns[0].spot
         #expect(hypot(cat.x - lantern.x, cat.z - lantern.z) >= 1.35 + Picnic.lanternReach)
-        #expect(hypot(lantern.x - plot.center.x, lantern.z - plot.center.z) + Picnic.lanternReach * 0.5 <= plot.size + 1e-3)
+        let out = Vec2(lantern.x - plot.center.x, lantern.z - plot.center.z)
+        #expect(simd_length(out) + Picnic.lanternReach * 0.5 <= view.stage.village!.clothReach(plot, toward: simd_normalize(out)) + 1e-3)
     }
 
     /// Making room for the hamper grows the cloth; it never moves the cat.

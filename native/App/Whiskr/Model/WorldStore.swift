@@ -1,3 +1,4 @@
+import AppKit
 import CoreLocation
 import Foundation
 import MeadowScene
@@ -30,6 +31,19 @@ final class WorldStore: NSObject {
             if settings.realWeather != oldValue.realWeather { weatherSwitched() }
         }
     }
+    /// View › Animate Meadow and Settings › Meadow: off, the meadow's own motion (grass, butterflies, a
+    /// cat's fidgets) holds still while cats still change as Claude does (WCAG 2.2.2's pause). Until
+    /// chosen it follows Reduce Motion.
+    var animatesMeadow: Bool {
+        get {
+            access(keyPath: \.animatesMeadow)
+            return AppPlaces.defaults.object(forKey: Self.animateKey) as? Bool ?? !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
+        set {
+            withMutation(keyPath: \.animatesMeadow) { AppPlaces.defaults.set(newValue, forKey: Self.animateKey) }
+        }
+    }
+    private static let animateKey = "animateMeadow"
     /// The latest conditions; nil until the first answer, and while weather is off.
     private(set) var weather: MeadowWeather?
     private(set) var weatherProblem: WeatherProblem?

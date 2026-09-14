@@ -41,7 +41,7 @@ public enum Places {
     }
 }
 
-/// The status line under the terminals (as herdr's status bar): where you are and how many Claudes
+/// The status bar along the window's foot (as herdr's): where you are and how many Claudes
 /// there are, how many need you.
 public struct StatusSummary: Sendable, Equatable {
     public var claudes = 0

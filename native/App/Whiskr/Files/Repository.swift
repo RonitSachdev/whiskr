@@ -206,15 +206,15 @@ final class Repository {
     // MARK: Git commands (each from a click)
 
     /// Stages files (their deletions too).
-    func stage(_ paths: [String]) { write(["add", "-A", "--"] + paths) }
+    func stage(_ paths: [String]) { write(["add", "-A"], paths: paths) }
 
     /// Unstages files, keeping their changes in the working tree. Before the first commit there is no HEAD
     /// to restore from, so they leave the index instead.
     func unstage(_ paths: [String]) {
         if status?.commit == nil {
-            write(["rm", "--cached", "-r", "-q", "--"] + paths)
+            write(["rm", "--cached", "-r", "-q"], paths: paths)
         } else {
-            write(["restore", "--staged", "--"] + paths)
+            write(["restore", "--staged"], paths: paths)
         }
     }
 
@@ -232,7 +232,7 @@ final class Repository {
                 }
             }
         }
-        if !tracked.isEmpty { write(["restore", "--worktree", "--"] + tracked) }
+        if !tracked.isEmpty { write(["restore", "--worktree"], paths: tracked) }
     }
 
     /// Commits what is staged with `message`; calls back with whether it worked.
@@ -254,11 +254,11 @@ final class Repository {
         }
     }
 
-    private func write(_ arguments: [String]) {
+    private func write(_ arguments: [String], paths: [String]) {
         let root = root
         Task { [weak self] in
             do {
-                _ = try await Git.run(arguments, in: root, writes: true)
+                _ = try await Git.run(arguments, paths: paths, in: root, writes: true)
                 self?.lastError = nil
             } catch {
                 self?.lastError = error.localizedDescription
@@ -267,12 +267,40 @@ final class Repository {
         }
     }
 
+    /// Applies a patch of one change (`DiffPatch`) off the main thread: to the index (`cached`: stage, or
+    /// with `reverse` unstage) or to the working file (`reverse`: revert it). Calls back with whether it
+    /// worked; a failure is shown under the commit box, as any git command's.
+    func apply(_ patch: String, cached: Bool, reverse: Bool, done: @escaping (Bool) -> Void) {
+        let root = root
+        var arguments = ["apply", "--whitespace=nowarn"]
+        if cached { arguments.append("--cached") }
+        if reverse { arguments.append("-R") }
+        arguments.append("-")
+        Task { [weak self] in
+            do {
+                _ = try await Git.run(arguments, in: root, input: Data(patch.utf8), writes: true)
+                self?.lastError = nil
+                done(true)
+            } catch {
+                self?.lastError = error.localizedDescription
+                done(false)
+            }
+            self?.refreshStatus()
+        }
+    }
+
+    /// A file as the index holds it (`git show :0:path`): the new side of its staged changes. The stage
+    /// is named, so a path that itself starts with a digit and a colon is still read as a path.
+    func indexText(path: String) async -> String? {
+        guard let data = try? await Git.run(["show", ":0:" + path], in: root) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
     /// The unified diff of one file: its unstaged changes, or its staged ones.
     func diff(path: String, staged: Bool) async -> String {
         var arguments = ["diff", "--no-ext-diff", "--no-color", "-M"]
         if staged { arguments.append("--cached") }
-        arguments += ["--", path]
-        let data = (try? await Git.run(arguments, in: root)) ?? Data()
+        let data = (try? await Git.run(arguments, paths: [path], in: root)) ?? Data()
         return String(decoding: data, as: UTF8.self)
     }
 

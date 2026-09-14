@@ -146,6 +146,25 @@ struct ThemingTests {
         #expect(!String(decoding: try theme.fileData(), as: UTF8.self).contains("chrome"))
     }
 
+    @Test("a file from when themes had sidebar, hover and pressed colours still opens, keeps its other colours, and drops those when saved again")
+    func retiredColours() throws {
+        let file = """
+        { "format": "whiskr-theme", "version": 1, "name": "Older",
+          "dark": { "terminal": { "background": "#101010", "foreground": "#e0e0e0",
+            "ansi": ["#000000","#aa0000","#00aa00","#aa5500","#0000aa","#aa00aa","#00aaaa","#aaaaaa",
+                     "#555555","#ff5555","#55ff55","#ffff55","#5555ff","#ff55ff","#55ffff","#ffffff"] },
+            "app": { "sidebar": "#202020", "hover": "#303030", "press": "#404040", "accent": "#ff8800" } } }
+        """
+        let theme = try Theme.read(Data(file.utf8))
+        let dark = try #require(theme.dark)
+        #expect(dark.app[.accent].hex == "#ff8800")
+        #expect(dark.app.values.count == AppColorKey.allCases.count)
+        let saved = String(decoding: try theme.fileData(), as: UTF8.self)
+        for retired in ["sidebar", "hover", "press"] { #expect(!saved.contains("\"\(retired)\"")) }
+        #expect(try Theme.read(try theme.fileData()).dark?.app[.accent].hex == "#ff8800")
+        #expect(!AppColorKey.allCases.map(\.rawValue).contains { ["sidebar", "hover", "press"].contains($0) })
+    }
+
     @Test("a hard-to-read pair is warned about")
     func warning() {
         var variant = BuiltInThemes.theme(id: BuiltInThemes.defaultID)!.light!

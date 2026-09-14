@@ -33,8 +33,9 @@ extension Workbench {
         } else if pane.exited {
             kind = .terminal(lantern: (pane.exitCode ?? 0) == 0 ? .dark : .failed(code: pane.exitCode ?? 0))
         } else {
-            // Lit while a command runs in front of the shell; dark while the shell waits for you.
-            kind = .terminal(lantern: pane.foreground != nil ? .lit : .dark)
+            // Lit while a command runs in front of the shell; dark while the shell waits for you, or
+            // red while its last command's failure is unseen (the shell's marks, OSC 133).
+            kind = .terminal(lantern: pane.foreground != nil ? .lit : pane.failedCommand.map { .failed(code: $0) } ?? .dark)
         }
         return SceneSnapshot.Pane(id: pane.id, name: name(of: pane), kind: kind, parent: pane.origin?.parent)
     }

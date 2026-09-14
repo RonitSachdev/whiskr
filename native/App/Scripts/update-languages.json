@@ -1,0 +1,415 @@
+{
+  "comment": "What update-languages.py bundles: VS Code's built-in language data at one commit, plus grammars VS Code does not ship, each pinned to a commit of its upstream repository. Licences are read at the same commits.",
+  "vscode": {
+    "repository": "microsoft/vscode",
+    "commit": "08e8bbfca63e53b57005f10e97b0fa19f2cf81f1",
+    "license": "MIT",
+    "licenseFile": "LICENSE.txt"
+  },
+  "languages": [
+    "c",
+    "cpp",
+    "csharp",
+    "css",
+    "dart",
+    "diff",
+    "dockercompose",
+    "dockerfile",
+    "dotenv",
+    "git-commit",
+    "git-rebase",
+    "go",
+    "graphql",
+    "html",
+    "ignore",
+    "ini",
+    "java",
+    "javascript",
+    "javascriptreact",
+    "json",
+    "jsonc",
+    "jsonl",
+    "jsx-tags",
+    "kotlin",
+    "less",
+    "log",
+    "lua",
+    "makefile",
+    "markdown",
+    "objective-c",
+    "objective-cpp",
+    "php",
+    "properties",
+    "python",
+    "ruby",
+    "rust",
+    "scss",
+    "shellscript",
+    "sql",
+    "swift",
+    "toml",
+    "typescript",
+    "typescriptreact",
+    "xml",
+    "xsl",
+    "yaml",
+    "zig"
+  ],
+  "grammars": [
+    "documentation.injection.js.jsx",
+    "documentation.injection.ts",
+    "inline.graphql",
+    "inline.graphql.markdown.codeblock",
+    "markdown.kotlin.codeblock",
+    "markdown.toml.codeblock",
+    "source.c",
+    "source.cpp",
+    "source.cpp.embedded.macro",
+    "source.cs",
+    "source.css",
+    "source.css.less",
+    "source.css.scss",
+    "source.dart",
+    "source.diff",
+    "source.dockerfile",
+    "source.dotenv",
+    "source.go",
+    "source.graphql",
+    "source.ignore",
+    "source.ini",
+    "source.java",
+    "source.js",
+    "source.js.jsx",
+    "source.js.regexp",
+    "source.json",
+    "source.json.comments",
+    "source.json.lines",
+    "source.kotlin",
+    "source.lua",
+    "source.makefile",
+    "source.objc",
+    "source.objcpp",
+    "source.php",
+    "source.python",
+    "source.regexp.python",
+    "source.ruby",
+    "source.rust",
+    "source.sassdoc",
+    "source.shell",
+    "source.sql",
+    "source.swift",
+    "source.toml",
+    "source.ts",
+    "source.tsx",
+    "source.yaml",
+    "source.yaml.1.0",
+    "source.yaml.1.1",
+    "source.yaml.1.2",
+    "source.yaml.1.3",
+    "source.yaml.embedded",
+    "source.zig",
+    "text.git-commit",
+    "text.git-rebase",
+    "text.html.basic",
+    "text.html.derivative",
+    "text.html.markdown",
+    "text.html.php",
+    "text.log",
+    "text.xml",
+    "text.xml.xsl"
+  ],
+  "unresolvedIncludes": {
+    "comment": "Scopes bundled grammars include that are not bundled, and why. A rule that includes one of them matches nothing, as in VS Code without that extension.",
+    "scopes": {
+      "source.abap": "Markdown fences of ABAP; VS Code ships no grammar for it either.",
+      "source.arm": "C and C++ inline assembly; VS Code ships no assembly grammar either.",
+      "source.asm": "C and C++ inline assembly; VS Code ships no assembly grammar either.",
+      "source.asp.vb.net": "Markdown fences of Visual Basic, a language VS Code ships that Whiskr does not bundle.",
+      "source.batchfile": "Markdown fences of Batch, a language VS Code ships that Whiskr does not bundle.",
+      "source.clojure": "Markdown fences of Clojure, a language VS Code ships that Whiskr does not bundle.",
+      "source.coffee": "Markdown fences of CoffeeScript, a language VS Code ships that Whiskr does not bundle.",
+      "source.elixir": "Markdown fences of Elixir; VS Code ships no grammar for it either.",
+      "source.erlang": "Markdown fences of Erlang; VS Code ships no grammar for it either.",
+      "source.fsharp": "Markdown fences of F#, a language VS Code ships that Whiskr does not bundle.",
+      "source.glsl": "GLSL inside C++ raw strings; VS Code ships no GLSL grammar either.",
+      "source.groovy": "Markdown fences of Groovy, a language VS Code ships that Whiskr does not bundle.",
+      "source.html": "SassDoc examples; no grammar has this scope (HTML is text.html.basic), in VS Code too.",
+      "source.js.jquery": "Ruby heredocs marked JQUERY; VS Code ships no such grammar either.",
+      "source.julia": "Markdown fences of Julia, a language VS Code ships that Whiskr does not bundle.",
+      "source.perl": "Markdown fences of Perl, a language VS Code ships that Whiskr does not bundle.",
+      "source.perl.6": "Markdown fences of Raku, a language VS Code ships that Whiskr does not bundle.",
+      "source.powershell": "Markdown fences of PowerShell, a language VS Code ships that Whiskr does not bundle.",
+      "source.r": "Markdown fences of R, a language VS Code ships that Whiskr does not bundle.",
+      "source.rst": "Markdown fences of reStructuredText, a language VS Code ships that Whiskr does not bundle.",
+      "source.scala": "Markdown fences of Scala; VS Code ships no grammar for it either.",
+      "source.twig": "Markdown fences of Twig; VS Code ships no grammar for it either.",
+      "source.x86": "C and C++ inline assembly; VS Code ships no assembly grammar either.",
+      "source.x86_64": "C and C++ inline assembly; VS Code ships no assembly grammar either.",
+      "source.yang": "Markdown fences of YANG; VS Code ships no grammar for it either.",
+      "text.bibtex": "Markdown fences of BibTeX, a language VS Code ships that Whiskr does not bundle.",
+      "text.haml": "Ruby heredocs marked HAML; VS Code ships no Haml grammar either.",
+      "text.html.handlebars": "Markdown fences of Handlebars, a language VS Code ships that Whiskr does not bundle.",
+      "text.html.php.blade": "Laravel Blade inside PHP; VS Code ships no Blade grammar either.",
+      "text.pug": "Markdown fences of Pug, a language VS Code ships that Whiskr does not bundle.",
+      "text.slim": "Ruby heredocs marked SLIM; VS Code ships no Slim grammar either.",
+      "text.tex.latex": "Markdown fences of LaTeX, a language VS Code ships that Whiskr does not bundle."
+    }
+  },
+  "fenceAliases": {
+    "comment": "Markdown fence words the Markdown grammars do not know, for shell sessions as GitHub writes them. Each becomes the language named.",
+    "words": {
+      "console": "shellscript",
+      "shellsession": "shellscript"
+    }
+  },
+  "provenance": {
+    "comment": "Grammars VS Code ships without an information_for_contributors note naming their upstream.",
+    "javascript/syntaxes/Regular Expressions (JavaScript).tmLanguage": {
+      "repository": "textmate/javascript.tmbundle",
+      "commit": "fccf0af0c95430a42e1bf98f0c7a4723a53283e7"
+    }
+  },
+  "extensions": [
+    {
+      "name": "Kotlin",
+      "repository": "fwcd/vscode-kotlin",
+      "commit": "4a7c1538754828c1d22a8bee8ff3400045b4352a",
+      "folder": "",
+      "files": [
+        "package.json",
+        "language-configuration.json",
+        "syntaxes/kotlin.tmLanguage.json",
+        "syntaxes/kotlin-codeblock.json"
+      ]
+    },
+    {
+      "name": "TOML",
+      "repository": "tamasfe/taplo",
+      "commit": "08f343be02ce1b20296470396a42f0fa47820449",
+      "folder": "editors/vscode",
+      "files": [
+        "package.json",
+        "language-configuration.json",
+        "toml.tmLanguage.json",
+        "toml.markdown.tmLanguage.json"
+      ]
+    },
+    {
+      "name": "Zig",
+      "repository": "ziglang/vscode-zig",
+      "commit": "38309f0b1dc0c1bdc4b23e78594302bf28ef43d1",
+      "folder": "",
+      "files": [
+        "package.json",
+        "language-configuration.json",
+        "syntaxes/zig.tmLanguage.json"
+      ]
+    },
+    {
+      "name": "GraphQL",
+      "repository": "graphql/graphiql",
+      "commit": "1a7874770c53700076427c6f7c5a4c4c183d1d06",
+      "folder": "packages/vscode-graphql-syntax",
+      "files": [
+        "package.json",
+        "language/language-configuration.json",
+        "grammars/graphql.json",
+        "grammars/graphql.js.json",
+        "grammars/graphql.markdown.codeblock.json"
+      ]
+    }
+  ],
+  "licenses": {
+    "comment": "Where each upstream's licence is written. A TextMate bundle has its licence in the README's License section.",
+    "atom/language-java": {
+      "spdx": "MIT",
+      "file": "LICENSE.md",
+      "note": "VS Code's last copy converted from this repository (microsoft/vscode b37252c); VS Code now takes Java from redhat-developer/vscode-java, an EPL-2.0 repository."
+    },
+    "atom/language-sass": {
+      "spdx": "MIT",
+      "file": "LICENSE.md"
+    },
+    "atom/language-xml": {
+      "spdx": "MIT",
+      "file": "LICENSE.md"
+    },
+    "dart-lang/dart-syntax-highlight": {
+      "spdx": "BSD-3-Clause",
+      "file": "LICENSE"
+    },
+    "dotenv-org/dotenv-vscode": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "dotnet/csharp-tmLanguage": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "dustypomerleau/rust-syntax": {
+      "spdx": "MIT",
+      "file": "LICENSE.txt"
+    },
+    "emilast/vscode-logfile-highlighter": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "fadeevab/make.tmbundle": {
+      "spdx": "MIT AND LicenseRef-TextMate-Bundle",
+      "file": "LICENSE.md"
+    },
+    "fwcd/vscode-kotlin": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "graphql/graphiql": {
+      "spdx": "MIT",
+      "file": "packages/vscode-graphql-syntax/LICENSE"
+    },
+    "jeff-hykin/better-c-syntax": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "jeff-hykin/better-cpp-syntax": {
+      "spdx": "MIT",
+      "file": "LICENSE",
+      "note": "Taken at 06f4011, which only changes LICENSE back to MIT from the GPL-3.0 the repository carried from 2023 to May 2026; the grammar is the one VS Code pins (071dd6e)."
+    },
+    "jeff-hykin/better-objc-syntax": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "jeff-hykin/better-objcpp-syntax": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "jeff-hykin/better-shell-syntax": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "jtbandes/swift-tmlanguage": {
+      "spdx": "MIT",
+      "file": "LICENSE.md"
+    },
+    "KapitanOczywisty/language-php": {
+      "spdx": "MIT",
+      "file": "LICENSE.md"
+    },
+    "MagicStack/MagicPython": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "microsoft/TypeScript-TmLanguage": {
+      "spdx": "MIT",
+      "file": "LICENSE.txt"
+    },
+    "microsoft/vscode": {
+      "spdx": "MIT",
+      "file": "LICENSE.txt"
+    },
+    "microsoft/vscode-css": {
+      "spdx": "MIT",
+      "file": "LICENSE.txt"
+    },
+    "microsoft/vscode-JSON.tmLanguage": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "microsoft/vscode-markdown-tm-grammar": {
+      "spdx": "MIT",
+      "file": "LICENSE.txt"
+    },
+    "microsoft/vscode-mssql": {
+      "spdx": "MIT",
+      "file": "LICENSE.txt"
+    },
+    "moby/moby": {
+      "spdx": "Apache-2.0",
+      "file": "LICENSE",
+      "notice": "NOTICE"
+    },
+    "radium-v/Better-Less": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "RedCMD/YAML-Syntax-Highlighter": {
+      "spdx": "MIT",
+      "file": "LICENSE.md"
+    },
+    "Shopify/ruby-lsp": {
+      "spdx": "MIT",
+      "file": "LICENSE.txt"
+    },
+    "sumneko/lua.tmbundle": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "tamasfe/taplo": {
+      "spdx": "MIT",
+      "file": "editors/vscode/LICENSE.md"
+    },
+    "textmate/c.tmbundle": {
+      "spdx": "LicenseRef-TextMate-Bundle",
+      "file": "README.mdown",
+      "section": "License"
+    },
+    "textmate/diff.tmbundle": {
+      "spdx": "LicenseRef-TextMate-Bundle",
+      "file": "README.mdown",
+      "section": "License"
+    },
+    "textmate/git.tmbundle": {
+      "spdx": "MIT",
+      "file": "MIT-LICENSE"
+    },
+    "textmate/html.tmbundle": {
+      "spdx": "LicenseRef-TextMate-Bundle",
+      "file": "README.mdown",
+      "section": "License"
+    },
+    "textmate/ini.tmbundle": {
+      "spdx": "LicenseRef-TextMate-Bundle",
+      "file": "README.mdown",
+      "section": "License"
+    },
+    "textmate/javascript.tmbundle": {
+      "spdx": "LicenseRef-TextMate-Bundle",
+      "file": "README.mdown",
+      "section": "License"
+    },
+    "walles/git-commit-message-plus": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "worlpaker/go-syntax": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    },
+    "ziglang/vscode-zig": {
+      "spdx": "MIT",
+      "file": "LICENSE"
+    }
+  },
+  "grammarFiles": {
+    "comment": "Grammars bundled from another commit than the one contributing them. Java: VS Code's grammar today comes from redhat-developer/vscode-java, an EPL-2.0 repository; this is VS Code's last copy converted from atom/language-java (MIT), so its licence is beyond doubt. C++: the commit VS Code pins (071dd6e) falls in the time the repository was GPL-3.0 (2023 to May 2026); the next commit, 06f4011, changes only LICENSE back to MIT, so the same grammar is taken from there.",
+    "source.java": {
+      "repository": "microsoft/vscode",
+      "commit": "b37252c18238fffcebdc9fd7680f1dabea3a50a0",
+      "path": "extensions/java/syntaxes/java.tmLanguage.json",
+      "upstream": {
+        "repository": "atom/language-java",
+        "commit": "29f977dc42a7e2568b39bb6fb34c4ef108eb59b3"
+      }
+    },
+    "source.cpp": {
+      "repository": "jeff-hykin/better-cpp-syntax",
+      "commit": "06f4011c0b5ccb85fcbcbaebbb73d2fda93365bf",
+      "path": "autogenerated/cpp.tmLanguage.json"
+    },
+    "source.cpp.embedded.macro": {
+      "repository": "jeff-hykin/better-cpp-syntax",
+      "commit": "06f4011c0b5ccb85fcbcbaebbb73d2fda93365bf",
+      "path": "autogenerated/cpp.embedded.macro.tmLanguage.json"
+    }
+  }
+}

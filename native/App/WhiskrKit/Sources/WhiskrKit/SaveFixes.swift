@@ -1,0 +1,41 @@
+import Foundation
+
+/// What saving does to the text when asked (Settings › Editor, or a file's `.editorconfig`): trailing spaces
+/// and tabs taken off every line, and a line break added at the end. As VS Code's
+/// `files.trimTrailingWhitespace` and `files.insertFinalNewline` do on an explicit save: every line, the
+/// cursor's too, and nothing for an empty file.
+public enum SaveFixes {
+    public struct Edit: Equatable, Sendable {
+        public var range: NSRange
+        public var text: String
+
+        public init(range: NSRange, text: String) {
+            self.range = range
+            self.text = text
+        }
+    }
+
+    /// The edits, first to last (apply them last to first, or all at once).
+    public static func edits(in text: NSString, trimTrailingWhitespace: Bool, insertFinalNewline: Bool) -> [Edit] {
+        var edits: [Edit] = []
+        let length = text.length
+        if trimTrailingWhitespace {
+            var lineStart = 0
+            while lineStart < length {
+                var lineEnd = 0, contentsEnd = 0
+                text.getLineStart(nil, end: &lineEnd, contentsEnd: &contentsEnd, for: NSRange(location: lineStart, length: 0))
+                var trimmed = contentsEnd
+                while trimmed > lineStart, text.character(at: trimmed - 1) == 0x20 || text.character(at: trimmed - 1) == 0x09 { trimmed -= 1 }
+                if trimmed < contentsEnd { edits.append(Edit(range: NSRange(location: trimmed, length: contentsEnd - trimmed), text: "")) }
+                lineStart = lineEnd
+            }
+        }
+        if insertFinalNewline, length > 0, text.character(at: length - 1) != 0x0A {
+            // Not after a last line that trimming leaves empty (VS Code trims first, then looks).
+            let last = text.lineRange(for: NSRange(location: length - 1, length: 0)).location
+            let blank = (last..<length).allSatisfy { text.character(at: $0) == 0x20 || text.character(at: $0) == 0x09 }
+            if !(trimTrailingWhitespace && blank) { edits.append(Edit(range: NSRange(location: length, length: 0), text: "\n")) }
+        }
+        return edits
+    }
+}

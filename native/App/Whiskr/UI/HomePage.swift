@@ -23,6 +23,16 @@ struct HomePage: View {
     private static let rowHeight: CGFloat = 34
 
     var body: some View {
+        VStack(spacing: 0) {
+            if let notice = workbench.launchNotice {
+                LaunchNoteBar(notice: notice) { workbench.launchNotice = nil }
+            }
+            list
+        }
+        .background(Color(nsColor: Colors.terminalBackground))
+    }
+
+    private var list: some View {
         GeometryReader { area in
             let open = workbench.homeRows
             // A short window offers fewer recent folders rather than scrolling them; the open workspaces are
@@ -35,7 +45,7 @@ struct HomePage: View {
                     // Hung from a fixed point in the upper part, not centred: a workspace coming or going adds or
                     // takes a row below and never moves what is above it.
                     page(open: open, recents: recents, rows: rows)
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, Look.Space.xxxl)
                         .padding(.top, min(max(area.size.height * 0.14, 24), 120))
                         .padding(.bottom, 24)
                         .frame(width: area.size.width, alignment: .top)
@@ -62,7 +72,8 @@ struct HomePage: View {
         }
         .background(Color(nsColor: Colors.terminalBackground))
         .onAppear { focused = true }
-        // Each time Home is entered (⌘N, Go › Home, a workspace closing) it starts again on New Terminal.
+        // Each visit builds the page afresh (`HomeHost`), on New Terminal; asked for again while already
+        // shown (⌘N or Go › Home on Home), it goes back there too.
         .onChange(of: workbench.homeVisits) { _, _ in
             highlighted = 1
             focused = true
@@ -212,7 +223,7 @@ private struct HomeSection<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Look.Space.xxs) {
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Color.ink3)
@@ -381,5 +392,26 @@ enum RepositoryLookup {
         let repository = head.map { $0.repository ?? $0.root }
         known[folder] = repository
         return repository
+    }
+}
+
+/// Home's note about another version's terminals (`HostNotice`): one line, Details, and close; gone ten
+/// seconds after it was seen (`NoteClock`).
+private struct LaunchNoteBar: View {
+    let notice: HostNotice
+    let close: () -> Void
+    @State private var showingDetails = false
+
+    var body: some View {
+        NoticeBar(symbol: "info.circle", message: notice.summary,
+                  action: (String(localized: "Details", comment: "Home note: shows more about it"), { showingDetails.toggle() }), close: close)
+            .popover(isPresented: $showingDetails, arrowEdge: .bottom) {
+                Text(notice.details)
+                    .font(.system(size: 12))
+                    .frame(width: 300, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(Look.Space.l)
+            }
+            .noteClock { if !showingDetails { close() } }
     }
 }

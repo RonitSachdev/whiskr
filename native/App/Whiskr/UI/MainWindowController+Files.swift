@@ -53,6 +53,17 @@ extension MainWindowController {
         workbench.save(document)
     }
 
+    /// File › Save All (⌥⌘S, as in VS Code): every file with unsaved changes that a tab shows, in every
+    /// workspace; stops at one that cannot be written, saying why.
+    @objc func saveAllDocuments(_ sender: Any?) {
+        for document in editedDocumentsInTabs where !workbench.save(document) { return }
+    }
+
+    private var editedDocumentsInTabs: [FileDocument] {
+        var seen = Set<ObjectIdentifier>()
+        return workbench.workspaces.flatMap { workbench.editedDocuments(in: $0) }.filter { seen.insert(ObjectIdentifier($0)).inserted }
+    }
+
     /// File › Save As… (⇧⌘S): the standard save panel; the tab then shows the new file.
     @objc func saveDocumentAs(_ sender: Any?) {
         guard let window, let document = workbench.focusedDocument, let page = workbench.focusedPageID else { return }
@@ -149,6 +160,8 @@ extension MainWindowController {
             return document?.isText == true
         case #selector(saveDocumentAs(_:)):
             return document?.isText == true
+        case #selector(saveAllDocuments(_:)):
+            return !editedDocumentsInTabs.isEmpty
         case #selector(revertDocumentToSaved(_:)):
             return document?.isEdited == true
         case #selector(showFilesPanel(_:)):

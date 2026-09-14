@@ -9,6 +9,8 @@ final class TerminalRegionController: NSViewController {
     private let workbench: Workbench
 
     private(set) var paneArea: PaneArea!
+    /// The tab row (for the window's keyboard order).
+    private(set) var tabRow: NSView!
     /// The Home page, shown while no workspace is selected.
     private(set) var home: NSHostingView<HomeHost>!
     private var homeObserver: Observing?
@@ -44,6 +46,7 @@ final class TerminalRegionController: NSViewController {
         let tabs = NSHostingView(rootView: TabStrip(workbench: workbench))
         tabs.sizingOptions = []
         tabs.safeAreaRegions = []
+        tabRow = tabs
         let home = NSHostingView(rootView: HomeHost(workbench: workbench))
         home.sizingOptions = []
         home.safeAreaRegions = []
@@ -117,11 +120,13 @@ final class TerminalRegionController: NSViewController {
         if home.isHidden == isHome { home.isHidden = !isHome }
     }
 
-    /// Home takes the keyboard (at launch, ⌘N, Go › Home, a workspace closing): ↑ ↓ and Return. Shown
-    /// first if observation has not got to it yet, so the keys typed next reach it.
+    /// Home takes the keyboard (at launch, ⌘N, Go › Home, a workspace closing): ↑ ↓ and Return. Shown,
+    /// and its page put in, in this same turn if observation has not got to it yet, so the keys typed next
+    /// reach it.
     func focusHome() {
         showHome()
         guard let window = view.window, !home.isHidden else { return }
+        home.layoutSubtreeIfNeeded()
         if window.firstResponder !== home { window.makeFirstResponder(home) }
     }
 
@@ -187,7 +192,8 @@ final class TerminalRegionController: NSViewController {
         workbench.scheduleSave()
     }
 
-    /// The panel closing with the keyboard in it gives the keyboard to what has the focus in the tab.
+    /// The panel closing with the keyboard in it gives the keyboard to what has the focus in the tab, or
+    /// (with nothing focused there) to the window itself: never left in the panel out of sight.
     private func giveBackKeyboard() {
         guard let window = view.window, let responder = window.firstResponder as? NSView, responder.isDescendant(of: sidePanel) else { return }
         if let pane = workbench.focusedPane {
@@ -195,7 +201,7 @@ final class TerminalRegionController: NSViewController {
         } else if let page = workbench.focusedPageID {
             workbench.files.onFocusPage?(page)
         } else {
-            window.makeFirstResponder(paneArea)
+            window.makeFirstResponder(nil)
         }
     }
 
@@ -263,6 +269,9 @@ private struct UndoNote: View {
                     .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
             }
             .buttonStyle(.plain)
+            // Never taken away while being read: the moment for ⌘Z waits while the pointer is on it.
+            .onHover { workbench.holdsUndoNote = $0 }
+            .onDisappear { workbench.holdsUndoNote = false }
         }
     }
 }

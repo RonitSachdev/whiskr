@@ -18,8 +18,6 @@ public struct OutputBatch {
         self.limit = limit
     }
 
-    public var isEmpty: Bool { bytes.isEmpty }
-
     /// Adds a piece; returns what must go first (the batch so far, for another terminal or full).
     public mutating func add(_ piece: Data, for terminal: UUID) -> (UUID, Data)? {
         guard !piece.isEmpty else { return nil }

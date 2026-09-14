@@ -7,7 +7,7 @@ public enum BuiltInThemes {
     public static let defaultID = "whiskr"
 
     public static let all: [Theme] = [
-        whiskr, catppuccin, tokyoNight, gruvbox, solarized, rosePine, dracula, nord,
+        whiskr, bundled("modern"), catppuccin, tokyoNight, gruvbox, bundled("solarized"), rosePine, dracula, bundled("monokai"), nord,
     ]
 
     public static func theme(id: String) -> Theme? { all.first { $0.id == id } }
@@ -21,6 +21,17 @@ public enum BuiltInThemes {
         values.mapValues(RGBColor.init)
     }
 
+    /// A theme kept as data in the Kit's `Themes` folder: those made from Visual Studio Code's themes, with
+    /// their code colours (converted by `VSCodeThemeConversion`; sources and licences in `Themes/ThirdParty`).
+    private static func bundled(_ id: String) -> Theme {
+        guard let url = Bundle.module.url(forResource: id, withExtension: Theme.fileExtension, subdirectory: "Themes"),
+              let data = try? Data(contentsOf: url), var theme = try? Theme.read(data) else {
+            fatalError("The built-in theme \(id) is missing from the Kit's resources")
+        }
+        theme.isBuiltIn = true
+        return theme
+    }
+
     /// Ours: off-white and near-black surfaces with the bars a step below them, charcoal ink in three
     /// strengths, soft grey lines, one red for "needs you" (docs/DESIGN.md).
     static let whiskr = Theme(
@@ -30,7 +41,7 @@ public enum BuiltInThemes {
                 0x232327, 0xb3261e, 0x1d6b39, 0x8a6100, 0x2f5596, 0x8e3b8f, 0x1f6f78, 0xbdbdb8,
                 0x6b6b72, 0xd4433a, 0x2e8b4f, 0xa87b00, 0x2f6fe4, 0xa855a8, 0x2a8a95, 0xe6e6e2,
             ]),
-            app: app([.surface: 0xfcfcfb, .chrome: 0xf3f3f1, .sidebar: 0xf4f4f2, .hover: 0xefefec, .press: 0xe6e6e2, .line: 0xd2d2ce, .lineStrong: 0xc4c4bf,
+            app: app([.surface: 0xfcfcfb, .chrome: 0xf3f3f1, .line: 0xd2d2ce, .lineStrong: 0xc4c4bf,
                       .text: 0x232327, .textSecondary: 0x5b5b62, .textTertiary: 0x8a8a91, .well: 0xf1f1ee, .accent: 0x2f6fe4,
                       .working: 0x8a8a91, .needsYou: 0xd4433a, .done: 0x232327, .idle: 0xd4d4cf, .error: 0xd4433a])),
         dark: ThemeVariant(
@@ -38,7 +49,7 @@ public enum BuiltInThemes {
                 0x2a2a2d, 0xef6b62, 0x6cc488, 0xe6c15a, 0x6fa3f2, 0xc98ee0, 0x5fc4cf, 0xd8d8dc,
                 0x6b6b72, 0xff8a80, 0x8fdba6, 0xf5d77e, 0x94bcff, 0xe0b0f2, 0x86dde6, 0xf4f4f6,
             ]),
-            app: app([.surface: 0x1e1e20, .chrome: 0x0f0f11, .sidebar: 0x19191b, .hover: 0x2a2a2d, .press: 0x343437, .line: 0x36363b, .lineStrong: 0x4a4a50,
+            app: app([.surface: 0x1e1e20, .chrome: 0x0f0f11, .line: 0x36363b, .lineStrong: 0x4a4a50,
                       .text: 0xececee, .textSecondary: 0xa9a9b0, .textTertiary: 0x7a7a82, .well: 0x0f0f11, .accent: 0x6fa3f2,
                       .working: 0x7a7a82, .needsYou: 0xe5564c, .done: 0xececee, .idle: 0x45454a, .error: 0xe5564c])),
         isBuiltIn: true)
@@ -76,20 +87,6 @@ public enum BuiltInThemes {
         dark: ThemeVariant(terminal: terminal(0x282828, 0xebdbb2, cursor: 0xebdbb2, selection: 0x504945, [
             0x282828, 0xcc241d, 0x98971a, 0xd79921, 0x458588, 0xb16286, 0x689d6a, 0xa89984,
             0x928374, 0xfb4934, 0xb8bb26, 0xfabd2f, 0x83a598, 0xd3869b, 0x8ec07c, 0xebdbb2,
-        ])),
-        isBuiltIn: true)
-
-    /// Solarized's body text (base00/base0) reads below 4.5:1 on its own backgrounds, so the
-    /// foregrounds here are its "emphasised" tones (base01 on light, base1 on dark).
-    static let solarized = Theme(
-        id: "solarized", name: "Solarized", author: "Ethan Schoonover", credit: "ethanschoonover.com/solarized · MIT licence · emphasised body text for legibility",
-        light: ThemeVariant(terminal: terminal(0xfdf6e3, 0x586e75, cursor: 0x586e75, selection: 0xeee8d5, [
-            0x073642, 0xdc322f, 0x859900, 0xb58900, 0x268bd2, 0xd33682, 0x2aa198, 0xeee8d5,
-            0x002b36, 0xcb4b16, 0x586e75, 0x657b83, 0x839496, 0x6c71c4, 0x93a1a1, 0xfdf6e3,
-        ])),
-        dark: ThemeVariant(terminal: terminal(0x002b36, 0x93a1a1, cursor: 0x93a1a1, selection: 0x073642, [
-            0x073642, 0xdc322f, 0x859900, 0xb58900, 0x268bd2, 0xd33682, 0x2aa198, 0xeee8d5,
-            0x002b36, 0xcb4b16, 0x586e75, 0x657b83, 0x839496, 0x6c71c4, 0x93a1a1, 0xfdf6e3,
         ])),
         isBuiltIn: true)
 

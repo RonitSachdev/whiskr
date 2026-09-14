@@ -183,6 +183,15 @@ final class Stage {
     /// How fast the scene's own time runs, 0…1: slowed while it rests, so at the resting rate each frame
     /// moves things as little as a frame at the full rate does. The camera always keeps real time.
     var pace: Float = 1
+    /// Ambient motion on (`MeadowView.animatesAmbient`). Off, the meadow's own time stands still: grass,
+    /// flowers, critters, fireflies, falling seeds, flickering lights and every cat's idle life hold where
+    /// they are, while changes of state, the light and the camera go on.
+    var ambient = true {
+        didSet {
+            village?.ambient = ambient
+            playgroundCat?.frozen = !ambient
+        }
+    }
 
     func show(_ world: MeadowWorld) {
         if let cat = playgroundCat {
@@ -251,7 +260,7 @@ final class Stage {
             guard let actor = plot.actors[agent], !actor.leaving else { return nil }
             return box(of: actor.cat)
         case .lantern(_, let id):
-            guard let lantern = plot.lanterns.first(where: { $0.view.id == id && !$0.leaving }), village.shown(lantern) > 0.01 else { return nil }
+            guard let lantern = plot.lanterns.first(where: { $0.view.id == id && !$0.leaving && !$0.hidden }), village.shown(lantern) > 0.01 else { return nil }
             return ball(plot.group + lantern.at + Vec3(0, 0.5, 0) * LANTERN_SIZE, 0.6 * LANTERN_SIZE)
         }
     }
@@ -364,12 +373,24 @@ final class Stage {
 
     func hop(_ item: MeadowItem?) { cat(for: item)?.hop() }
 
+    /// Works the light out afresh for the time of day and the weather; whether it changed.
+    @discardableResult func relight() -> Bool {
+        guard mode == .meadow else { return false }
+        sinceLit = 0
+        let fresh = Daylight.light(hour: Daylight.hour(for: settings.timeOfDay), weather: settings.weather)
+        let changed = fresh.night != light.night || fresh.keyColor != light.keyColor || fresh.skyTop != light.skyTop
+        light = fresh
+        return changed
+    }
+
     // MARK: each frame
 
     func update(_ seconds: Float) {
         camera.update(seconds)
         let dt = seconds * pace
-        time += dt
+        // What only sways, drifts and flickers moves with the meadow's time; the rest with `dt`.
+        let drift = ambient ? dt : 0
+        time += drift
         frame += 1
         fitVillageToView()
         // How fast you are swinging the view round, which the cats notice. A flight is not you swinging it.
@@ -380,14 +401,12 @@ final class Stage {
         surroundings.eye = camera.eye
         surroundings.right = simd_normalize(inv.direction(Vec3(1, 0, 0)))
         surroundings.up = simd_normalize(inv.direction(Vec3(0, 1, 0)))
-        surroundings.pointer = pointer
+        // With ambient motion off the cats' eyes no longer follow the pointer about.
+        surroundings.pointer = ambient ? pointer : .zero
         surroundings.frame = frame
 
         sinceLit += dt
-        if mode == .meadow, sinceLit > 30 {
-            sinceLit = 0
-            light = Daylight.light(hour: Daylight.hour(for: settings.timeOfDay), weather: settings.weather)
-        }
+        if mode == .meadow, sinceLit > 30 { relight() }
 
         cats.removeAll(keepingCapacity: true)
         if let cat = playgroundCat {
@@ -403,7 +422,7 @@ final class Stage {
             clearingCount = village.clearings(into: &world, eased: true, dt: dt)
             streamCount = village.streams.count
             for i in 0..<MAX_STREAMS { world.streams[i] = i < streamCount ? village.streams[i] : .zero }
-            meadow.update(dt, time: time, eye: camera.eye, lookAt: camera.target, sleepers: sleepers, sights: sights, sightCount: sightCount,
+            meadow.update(drift, fading: dt, time: time, eye: camera.eye, lookAt: camera.target, sleepers: sleepers, sights: sights, sightCount: sightCount,
                           clearOf: clearOf, clearCount: clearCount, clearings: world.clearings, clearingCount: clearingCount, night: light.night, weather: settings.weather, wind: light.wind)
             surroundings.critters = meadow.critters.spots
             village.update(dt, surroundings, stage: self)

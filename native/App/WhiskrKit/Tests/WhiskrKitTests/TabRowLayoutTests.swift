@@ -26,7 +26,32 @@ struct TabRowLayoutTests {
         #expect(layout(800, 10, selected: 1, previous: 4).start == 1)
         // A tab closing leaves the run inside the tabs there are.
         #expect(layout(800, 7, selected: 6, previous: 4).range == 1..<7)
-        // A window too narrow for even one tab and the list still shows the selected tab.
-        #expect(layout(100, 3, selected: 2).range == 2..<3)
+    }
+
+    @Test("a row narrower than one tab narrows the selected tab to fit beside the list, and one tab alone gets no list")
+    func narrow() {
+        // 100 pt for 3 tabs: the selected one, narrowed to what the list leaves.
+        #expect(layout(100, 3, selected: 2) == TabRowLayout(start: 2, count: 1, tabWidth: 68, overflowing: true))
+        // One tab is never "out of sight": it takes the row, however narrow.
+        #expect(layout(100, 1, selected: 0) == TabRowLayout(start: 0, count: 1, tabWidth: 100, overflowing: false))
+        #expect(layout(150, 1, selected: 0).overflowing == false)
+        // Just under two tabs' worth: one, as wide as tabs go, and the list.
+        #expect(layout(255, 2, selected: 1) == TabRowLayout(start: 1, count: 1, tabWidth: 220, overflowing: true))
+    }
+
+    @Test("whatever the room, what is shown fits in it, holds the selected tab, and lists tabs only when some are out of sight")
+    func fitsTheRoom() {
+        for width in stride(from: 32.0, through: 1200, by: 7) {
+            for tabs in 1...14 {
+                for selected in [0, tabs / 2, tabs - 1] {
+                    let row = layout(width, tabs, selected: selected, previous: tabs / 3)
+                    let used = Double(row.count) * row.tabWidth + (row.overflowing ? 32 : 0)
+                    #expect(used <= width, "\(width) pt, \(tabs) tabs")
+                    #expect(row.range.contains(selected))
+                    #expect(row.range.lowerBound >= 0 && row.range.upperBound <= tabs)
+                    #expect(row.overflowing == (row.count < tabs))
+                }
+            }
+        }
     }
 }

@@ -337,7 +337,34 @@ final class VillageDrawer {
                 branch(in: c, left: shadow + label.glyphX, middle: middle, color: quiet)
                 Paint.draw(Paint.line(detail, font: FlagLabel.detailFont, color: quiet), in: c, left: shadow + label.detailX, middleY: middle + S * 0.5)
             }
+            if let more = label.shownMore {
+                // Red when one of those it counts has failed, as that lantern would be.
+                let mark = label.moreFailed ? Paint.color(chrome.alert) : quiet
+                lantern(in: c, left: shadow + label.lanternX, middle: middle, color: mark)
+                Paint.draw(Paint.line(more, font: FlagLabel.detailFont, color: mark), in: c, left: shadow + label.moreX, middleY: middle + S * 0.5)
+            }
         }
+    }
+
+    /// A small hurricane lantern drawn in line, as the branch is: a handle, a cap, the globe with its flame
+    /// and a base; `FlagLabel.lanternWide` across.
+    private static func lantern(in c: CGContext, left: CGFloat, middle: CGFloat, color: CGColor) {
+        let S = FlagLabel.scale, wide = FlagLabel.lanternWide * S, x = left + wide / 2
+        c.saveGState()
+        c.setStrokeColor(color)
+        c.setFillColor(color)
+        c.setLineWidth(1.1 * S)
+        c.setLineCap(.round)
+        c.addArc(center: CGPoint(x: x, y: middle - 3.6 * S), radius: 1.6 * S, startAngle: .pi, endAngle: 0, clockwise: false)
+        c.strokePath()
+        c.move(to: CGPoint(x: x - 2.2 * S, y: middle - 3.4 * S)); c.addLine(to: CGPoint(x: x + 2.2 * S, y: middle - 3.4 * S))
+        c.move(to: CGPoint(x: left + 0.2 * S, y: middle + 4.3 * S)); c.addLine(to: CGPoint(x: left + wide - 0.2 * S, y: middle + 4.3 * S))
+        c.strokePath()
+        c.addPath(CGPath(roundedRect: CGRect(x: left + 0.9 * S, y: middle - 2 * S, width: wide - 1.8 * S, height: 5.4 * S),
+                         cornerWidth: 2 * S, cornerHeight: 2 * S, transform: nil))
+        c.strokePath()
+        c.fillEllipse(in: CGRect(x: x - 0.9 * S, y: middle - 0.1 * S, width: 1.8 * S, height: 2.4 * S))
+        c.restoreGState()
     }
 
     /// A push pin leaning right, head up, its point toward the bottom left: `FlagLabel.pinWide` across.

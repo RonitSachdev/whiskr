@@ -16,8 +16,20 @@ final class Pane: Identifiable {
     /// The folder it was started in.
     private(set) var folder: String
     let surface: TerminalSurface
-    /// The title the program in front set for its terminal (OSC 0/2), without spinner glyphs.
+    /// The title the program in front set for its terminal (OSC 0/2), without spinner glyphs. Taken at
+    /// most four times a second: a program may retitle its terminal on every frame.
     private(set) var terminalTitle = ""
+    @ObservationIgnored private var pendingTitle: String?
+    /// The program in front as the tab names it: one that ends within `titleSettle` (an `ls`, a `git
+    /// status`) never takes the tab's title, so the title does not flicker at every command.
+    private(set) var titleProgram: String?
+    @ObservationIgnored private var titleProgramTurn = 0
+    static let titleSettle: TimeInterval = 0.4
+    /// The last command typed at the shell failed (OSC 133 says so) and you have not looked since: its
+    /// exit status. The lantern of a plain terminal is red meanwhile.
+    private(set) var failedCommand: Int32?
+    /// The program rang the bell while the pane was out of sight: its tab shows a bell until you look.
+    private(set) var rang = false
     /// The shell ended (you typed `exit`, or it failed to start): the code it ended with.
     private(set) var exitCode: Int32?
     private(set) var exited = false
@@ -71,6 +83,8 @@ final class Pane: Identifiable {
     @ObservationIgnored private var pendingInput: String?
     @ObservationIgnored private var ready = false
     @ObservationIgnored var onExit: ((Pane) -> Void)?
+    /// The program rang the bell: the workbench sounds it or marks the tab.
+    @ObservationIgnored var onBell: ((Pane) -> Void)?
     @ObservationIgnored var onProgramIdle: ((Pane) -> Void)?
     /// The host said the foreground changed: the workbench looks at once, so a cat appears as Claude starts.
     @ObservationIgnored var onForegroundChange: ((Pane) -> Void)?
@@ -172,17 +186,19 @@ final class Pane: Identifiable {
         let id = id
         let handlers = HostConnection.Handlers(
             output: { _, bytes in
-                if replay.isExpecting {
+                // Kept output, then what the program prints from now on, which can arrive in the same piece.
+                // Only the kept part holds the host's size marks; a program printing one is not obeyed.
+                let kept = replay.keptPart(of: bytes.count)
+                if kept > 0 {
                     // Kept output is laid out at the size each stretch of it was printed for: the size
                     // is taken on the main thread (where the terminal is resized) before the stretch is fed.
-                    for piece in ReplaySize.split(bytes) {
+                    for piece in ReplaySize.split(bytes.prefix(kept)) {
                         if let size = piece.size { DispatchQueue.main.sync { MainActor.assumeIsolated { surface.adopt(size) } } }
                         if !piece.bytes.isEmpty { surface.show(piece.bytes) }
                     }
-                } else {
-                    surface.show(bytes)
+                    replay.took(kept)
                 }
-                replay.took(bytes.count)
+                if kept < bytes.count { surface.show(bytes.dropFirst(kept)) }
             },
             event: { [weak self] event in
                 Task { @MainActor in self?.hear(event, for: id) }
@@ -325,7 +341,15 @@ final class Pane: Identifiable {
             return observePresence { $0.observe(foreground: pretend, liveSession: liveSession) }
         }
         #endif
-        if foreground != front { foreground = front }
+        if foreground != front {
+            // A program started at the prompt: the last one's title is not its own.
+            if foreground == nil, !terminalTitle.isEmpty || pendingTitle != nil {
+                terminalTitle = ""
+                pendingTitle = nil
+            }
+            foreground = front
+            settleTitleProgram()
+        }
         if !ready, shellLooksReady(now: now) { becomeReady() }
         return observePresence { $0.observe(foreground: front, liveSession: liveSession) }
     }
@@ -334,6 +358,32 @@ final class Pane: Identifiable {
     @discardableResult
     func heardFromAgent() -> Bool {
         observePresence { $0.heard() }
+    }
+
+    /// The tab names a program once it has been in front for `titleSettle`; the folder comes back at once.
+    private func settleTitleProgram() {
+        titleProgramTurn += 1
+        guard foreground != nil else {
+            if titleProgram != nil { titleProgram = nil }
+            return
+        }
+        let turn = titleProgramTurn
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.titleSettle) { [weak self] in
+            guard let self, self.titleProgramTurn == turn else { return }
+            let name = self.programName
+            if self.titleProgram != name { self.titleProgram = name }
+        }
+    }
+
+    /// You have seen the pane: its failed command and its bell are no longer news.
+    func markSeen() {
+        if failedCommand != nil { failedCommand = nil }
+        if rang { rang = false }
+    }
+
+    /// The bell rang where you could not see it.
+    func noteBell() {
+        if !rang { rang = true }
     }
 
     /// Changes what is known of Claude's presence, telling observers only when it really changed: this
@@ -410,6 +460,11 @@ extension Pane: TerminalSurfaceDelegate {
         }
     }
 
+    func surfaceShown(_ surface: TerminalSurface) {
+        guard waitingToStart == nil else { return }
+        self.surface(surface, resizedTo: surface.size)
+    }
+
     private func tellSize() {
         if waitingToStart != nil {
             // Started once laid out at a size a shell can draw in; until then the deadline in `start` holds.
@@ -419,16 +474,41 @@ extension Pane: TerminalSurfaceDelegate {
             }
             return
         }
+        // A view out of the window or hidden (a region folded away) can be laid out at nothing: a program
+        // told that would draw itself for a sliver. It is told the size it has once it is shown again.
         let size = surface.size
-        guard !exited, !surface.replaying, waitingToStart == nil, size != toldSize else { return }
+        guard !exited, !surface.replaying, waitingToStart == nil, surface.window != nil, !surface.isHiddenOrHasHiddenAncestor,
+              size != toldSize else { return }
         toldSize = size
         if Self.isPlausible(size) { Self.lastSettledSize = size }
         connection?.send(.resize(terminal: id, size))
     }
 
     func surface(_ surface: TerminalSurface, titled title: String) {
-        let plain = Self.plainTitle(title)
-        if terminalTitle != plain { terminalTitle = plain }
+        let first = pendingTitle == nil
+        pendingTitle = Self.plainTitle(title)
+        guard first else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self, let title = self.pendingTitle else { return }
+            self.pendingTitle = nil
+            if self.terminalTitle != title { self.terminalTitle = title }
+        }
+    }
+
+    func surfaceRang(_ surface: TerminalSurface) {
+        onBell?(self)
+    }
+
+    /// The shell's command marks: a failed command (exit status other than 0) lights a plain terminal's
+    /// lantern red until you look; the next command, or one that succeeds, puts it out.
+    func surface(_ surface: TerminalSurface, command: TerminalCommandMark) {
+        switch command {
+        case .started:
+            if failedCommand != nil { failedCommand = nil }
+        case .finished(let status):
+            let failed = status.flatMap { $0 == 0 ? nil : $0 }
+            if failedCommand != failed { failedCommand = failed }
+        }
     }
 
     /// OSC 7, sent by our zsh integration before each prompt: where the shell is, and that it is ready.
@@ -482,8 +562,8 @@ nonisolated final class ReplayCount: @unchecked Sendable {
         }
     }
 
-    /// Kept output is still on its way.
-    var isExpecting: Bool { lock.withLock { finished != nil } }
+    /// How many of the next `count` bytes are kept output; the rest is the program's, printed since.
+    func keptPart(of count: Int) -> Int { lock.withLock { finished == nil ? 0 : min(count, remaining) } }
 
     func took(_ bytes: Int) {
         let done: (@Sendable () -> Void)? = lock.withLock {

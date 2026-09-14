@@ -8,7 +8,7 @@ import Foundation
 public enum TextEncoding: String, Sendable, Codable, CaseIterable {
     case utf8, utf8WithBOM, utf16LittleEndian, utf16BigEndian, latin1
 
-    /// As the status line and the Reopen With menu name it.
+    /// As the status bar and the Reopen With menu name it.
     public var displayName: String {
         switch self {
         case .utf8: "UTF-8"

@@ -106,6 +106,12 @@ final class Workbench {
     /// Claudes not resumed at this launch because another version's session host still holds terminals
     /// (they may be alive there); the launch notice says so.
     private(set) var resumesWithheld = 0
+    /// The note on Home about another version's terminals, until it is closed or has been read
+    /// (`HostNotice`).
+    var launchNotice: HostNotice?
+    /// The pointer is on "Closed · Undo ⌘Z": the moment for ⌘Z waits (a note is never taken away while
+    /// it is being read).
+    @ObservationIgnored var holdsUndoNote = false
     @ObservationIgnored private var saveScheduled = false
     @ObservationIgnored private var ticker: Timer?
     /// Folders opened here, newest first (File › Open Recent and Home).
@@ -138,6 +144,8 @@ final class Workbench {
     static let lookInterval: TimeInterval = 0.25
     /// How long a closed tab keeps running so ⌘Z can bring it back.
     static let undoSeconds: TimeInterval = 10
+    /// How much longer at a time while the undo note is under the pointer.
+    static let undoHold: TimeInterval = 2
     /// How long a finished pane must be on screen before it counts as seen.
     static let seenDwell: TimeInterval = 1
 
@@ -280,12 +288,15 @@ final class Workbench {
     /// the program in front ("Claude Code", "vim", "npm"), else the folder the shell is in.
     func name(of pane: Pane) -> String {
         if pane.agentRunning {
+            // Claude names its terminal after the conversation (its own title, without the spinner).
+            if !pane.terminalTitle.isEmpty, pane.terminalTitle != "Claude Code" { return pane.terminalTitle }
             if let title = session(of: pane)?.title, !title.isEmpty { return title }
             // A resumed conversation, before it has reported: the name it had.
             if let title = pane.sessionTitle, !title.isEmpty { return title }
             return String(localized: "Claude Code", comment: "A pane's title while Claude Code runs in it and its chat has no name yet")
         }
-        if let program = pane.programName { return program }
+        // The program in front once it has stayed a moment (`Pane.titleProgram`), else where the shell is.
+        if let program = pane.titleProgram { return program }
         return folderName(pane.currentFolder)
     }
 
@@ -458,6 +469,15 @@ final class Workbench {
     /// The moment for ⌘Z has passed: its processes end; it can still be reopened in its folder.
     private func expire(_ id: UUID) {
         guard let index = closing.firstIndex(where: { $0.id == id }) else { return }
+        // Its note is being read: a little longer, and the host keeps the processes as long.
+        if holdsUndoNote, index == closing.count - 1 {
+            for pane in closing[index].panes {
+                pane.keepRunning()
+                pane.end(after: Self.undoHold + 1)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.undoHold) { [weak self] in self?.expire(id) }
+            return
+        }
         let closed = closing.remove(at: index)
         for pane in closed.panes {
             pane.end()
@@ -768,6 +788,8 @@ final class Workbench {
         visibleSince = visibleSince.filter { shown.contains($0.key) }
         for id in shown where visibleSince[id] == nil { visibleSince[id] = now }
         for id in shown where now.timeIntervalSince(visibleSince[id] ?? now) >= Self.seenDwell && !heldUnread.contains(id) {
+            // A failed command's red lantern and a bell's mark: seen.
+            panes[id]?.markSeen()
             guard let pane = panes[id], let session = session(of: pane) else { continue }
             if session.status == .done || session.failed {
                 monitor.markSeen(sessionID: session.id)
@@ -821,6 +843,7 @@ final class Workbench {
         let pane = Pane(id: id, folder: folder)
         pane.hostAnswersProbes = host.speaksAgents
         pane.onExit = { [weak self] pane in self?.paneExited(pane) }
+        pane.onBell = { [weak self] pane in self?.rang(pane) }
         pane.onProgramIdle = { [weak self] pane in self?.monitor.programIdle(paneID: pane.id) }
         pane.onForegroundChange = { [weak self] pane in
             guard let self, self.panes[pane.id] === pane else { return }
@@ -828,6 +851,16 @@ final class Workbench {
         }
         panes[pane.id] = pane
         return pane
+    }
+
+    /// A terminal rang its bell: heard while you can see it (unless alerts are paused), else a bell on its
+    /// tab until you look. A Claude's own marks say more than a bell, so its tab shows none.
+    private func rang(_ pane: Pane) {
+        if isVisible(pane.id) {
+            if !Preferences.shared.alertsPaused { NSSound.beep() }
+        } else if !pane.agentRunning {
+            pane.noteBell()
+        }
     }
 
     /// A shell that ends normally (you typed `exit`) closes its pane, as in Terminal; one that fails

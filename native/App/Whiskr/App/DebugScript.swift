@@ -18,6 +18,7 @@ import WhiskrKit
 ///   press <label>           the first accessibility element whose label, title or identifier is <label>
 ///   snapshot <png>          the window as drawn, with the palette and answer card over it
 ///   menus <file>            every menu item: key, enabled state for the present focus, title
+///   keytable <file>         the menus' keys against `KeyTable` (differences, then collisions), "same" if none
 ///   views <file>            the window's view tree with frames; ax <file> its accessibility tree
 ///   state                   the workbench in one line, and what has the keyboard
 ///   window <w>x<h>          resizes the window; layout split|terminals|meadow|list|meadow-view
@@ -33,7 +34,8 @@ import WhiskrKit
 enum DebugScript {
     /// A background run stays out of the way of whoever is at this Mac: no Dock icon, never active, every
     /// window it orders in (sheets, popovers, panels too) transparent and click-through, no full screen
-    /// (who asked is printed), no Dock bounce.
+    /// (who asked is printed), no Dock bounce, and the clipboard and the find text (shared with every app)
+    /// pasteboards of its own.
     static func keepOutOfSight() {
         guard DebugScenario.keepsInBackground else { return }
         NSApp.setActivationPolicy(.accessory)
@@ -44,6 +46,17 @@ enum DebugScript {
             (NSApplication.self, #selector(NSApplication.activate(ignoringOtherApps:)), #selector(NSApplication.debugRefusedActivate(ignoringOtherApps:))),
             (NSApplication.self, #selector(NSApplication.requestUserAttention(_:)), #selector(NSApplication.debugRefusedAttention(_:))),
         ]
+        let pasteboards: [(Selector, Selector)] = [
+            (NSSelectorFromString("pasteboardWithName:"), #selector(NSPasteboard.debugPrivatePasteboard(withName:))),
+            (#selector(getter: NSPasteboard.general), #selector(getter: NSPasteboard.debugPrivateGeneral)),
+        ]
+        for (original, replacement) in pasteboards {
+            guard let from = class_getClassMethod(NSPasteboard.self, original), let to = class_getClassMethod(NSPasteboard.self, replacement) else {
+                print("keep-out-of-sight: cannot replace \(original)")
+                continue
+            }
+            method_exchangeImplementations(from, to)
+        }
         for (type, original, replacement): (AnyClass, Selector, Selector) in swaps {
             guard let from = class_getInstanceMethod(type, original), let to = class_getInstanceMethod(type, replacement) else {
                 print("keep-out-of-sight: cannot replace \(original)")
@@ -100,6 +113,8 @@ enum DebugScript {
             DebugShell.snapshot(window: controller, workbench: workbench, to: URL(fileURLWithPath: argument))
         case "menus":
             write(menuLines(window: window), to: argument)
+        case "keytable":
+            write(keyTableLines(), to: argument)
         case "views":
             var lines: [String] = []
             if let frame = window.contentView?.superview { viewLines(frame, depth: 0, into: &lines) }
@@ -206,8 +221,9 @@ enum DebugScript {
     }
 
     /// Where AppKit would send the item's action if the window were key: its own target, else the first
-    /// in the window's responder chain, the window's delegate, the app, the app's delegate.
-    private static func target(for item: NSMenuItem, window: NSWindow) -> AnyObject? {
+    /// in the window's responder chain, the window's delegate, the app, the app's delegate. Also used by
+    /// `DebugInteractions` (an item of a context menu).
+    static func target(for item: NSMenuItem, window: NSWindow) -> AnyObject? {
         guard let action = item.action else { return nil }
         if let target = item.target { return target }
         var responder: NSResponder? = window.firstResponder
@@ -257,6 +273,41 @@ enum DebugScript {
         return lines
     }
 
+    /// Every key the menus have, as `KeyTable.menu` writes them, and what differs between the two. The
+    /// items macOS adds to every app's Edit and View menus (Emoji & Symbols, Dictation, and the globe key's
+    /// Full Screen) are the system's, not ours.
+    private static func keyTableLines() -> [String] {
+        var live: [KeyBinding] = []
+        let systems: Set<Selector> = [#selector(NSApplication.orderFrontCharacterPalette(_:)), Selector(("startDictation:"))]
+        func walk(_ menu: NSMenu) {
+            for item in menu.items {
+                if let submenu = item.submenu { walk(submenu) }
+                guard let action = item.action, !item.keyEquivalent.isEmpty, !systems.contains(action),
+                      !item.keyEquivalentModifierMask.contains(.function) else { continue }
+                let mask = item.keyEquivalentModifierMask
+                var modifiers: KeyChord.Modifiers = []
+                if mask.contains(.control) { modifiers.insert(.control) }
+                if mask.contains(.option) { modifiers.insert(.option) }
+                if mask.contains(.shift) { modifiers.insert(.shift) }
+                if mask.contains(.command) { modifiers.insert(.command) }
+                let chord = KeyChord(menuKey: item.keyEquivalent, modifiers)
+                let command = NSStringFromSelector(action) + (item.tag != 0 ? "#\(item.tag)" : "")
+                let context: KeyContext = switch (item as? ScopedKeyItem)?.scope {
+                case .editor: .menuInEditor
+                case .terminal: .menuInTerminal
+                case nil: .menu
+                }
+                live.append(KeyBinding(chord.description, command, context))
+            }
+        }
+        if let bar = NSApp.mainMenu { walk(bar) }
+        let table = Set(KeyTable.menu), menus = Set(live)
+        var lines = menus.subtracting(table).map { "only in the menus: \($0.chord) \($0.command) \($0.context.rawValue)" }.sorted()
+        lines += table.subtracting(menus).map { "only in KeyTable: \($0.chord) \($0.command) \($0.context.rawValue)" }.sorted()
+        lines += KeyTable.collisions(in: live + KeyTable.editor + KeyTable.textEditing + KeyTable.views + KeyTable.system).map { "collision: \($0)" }
+        return lines.isEmpty ? ["same: \(live.count) menu keys, no collisions"] : lines
+    }
+
     private static func keyLabel(_ item: NSMenuItem) -> String {
         guard !item.keyEquivalent.isEmpty else { return "" }
         let mask = item.keyEquivalentModifierMask
@@ -300,18 +351,21 @@ enum DebugScript {
         }
         let (characters, code) = namedKeys[name] ?? (name, 0)
         guard let event = keyEvent(characters: characters, modifiers: modifiers, code: code, window: window) else { return }
-        if !modifiers.isDisjoint(with: [.command, .control]) {
-            // As NSApplication does: the window's views first, then the menus.
+        if !modifiers.isEmpty {
+            // As NSApplication does: the window's views first, then the menus (⌥ keys too: a menu may have them).
             if window.performKeyEquivalent(with: event) { return quiet ? () : print("  taken by a view") }
-            if let item = matchingItem(NSApp.mainMenu, characters: characters, modifiers: modifiers) { return send(item, window: window, quiet: quiet) }
+            if let item = matchingItem(NSApp.mainMenu, event: event, window: window) { return send(item, window: window, quiet: quiet) }
         }
         if !quiet { print("  to \(window.firstResponder.map { String(describing: type(of: $0)) } ?? "nothing")") }
         (window.firstResponder ?? window).keyDown(with: event)
     }
 
-    private static func matchingItem(_ menu: NSMenu?, characters: String, modifiers: NSEvent.ModifierFlags) -> NSMenuItem? {
+    private static func matchingItem(_ menu: NSMenu?, event: NSEvent, window: NSWindow) -> NSMenuItem? {
+        // A key scoped to a view that does not have the keyboard goes on to the view (`ScopedKeysMenu`).
+        if let scoped = menu as? ScopedKeysMenu, scoped.passesOn(event, keyboard: .holding(window)) { return nil }
+        let characters = event.charactersIgnoringModifiers ?? "", modifiers = event.modifierFlags
         for item in menu?.items ?? [] {
-            if let submenu = item.submenu, let found = matchingItem(submenu, characters: characters, modifiers: modifiers) { return found }
+            if let submenu = item.submenu, let found = matchingItem(submenu, event: event, window: window) { return found }
             let mask = item.keyEquivalentModifierMask.intersection([.command, .shift, .option, .control])
             if item.keyEquivalent.lowercased() == characters.lowercased(), !item.keyEquivalent.isEmpty, mask == modifiers.intersection([.command, .shift, .option, .control]),
                !item.isAlternate || modifiers.contains(.option) {
@@ -378,7 +432,7 @@ enum DebugScript {
         for child in element.accessibilityChildren() ?? [] { accessibilityLines(child, depth: depth + 1, into: &lines) }
     }
 
-    private static func accessibilityElement(in root: Any, named name: String) -> NSAccessibilityProtocol? {
+    static func accessibilityElement(in root: Any, named name: String) -> NSAccessibilityProtocol? {
         guard let element = root as? NSAccessibilityProtocol else { return nil }
         for candidate in [element.accessibilityLabel(), element.accessibilityTitle(), element.accessibilityIdentifier()] where candidate == name {
             return element
@@ -416,6 +470,19 @@ extension NSWindow {
 private func noteRefusedActivation() {
     print("activation refused in a background run; asked by:")
     Thread.callStackSymbols.dropFirst(2).prefix(8).forEach { print("  \($0)") }
+}
+
+extension NSPasteboard {
+    /// Stands in for `NSPasteboard(name:)` in a background run: the clipboard and the find text are this
+    /// run's own (named for its process), every other pasteboard (a drag's) the one asked for.
+    @objc class func debugPrivatePasteboard(withName name: NSPasteboard.Name) -> NSPasteboard {
+        let own: Set<NSPasteboard.Name> = [.general, .find]
+        // The original, exchanged.
+        return debugPrivatePasteboard(withName: own.contains(name) ? NSPasteboard.Name("Whiskr-isolated-\(getpid())-\(name.rawValue)") : name)
+    }
+
+    /// Stands in for `NSPasteboard.general`: the run's own clipboard.
+    @objc class var debugPrivateGeneral: NSPasteboard { NSPasteboard(name: .general) }
 }
 
 extension NSApplication {

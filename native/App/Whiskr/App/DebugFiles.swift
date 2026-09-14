@@ -18,8 +18,11 @@ import WhiskrKit
 ///   --wrap on|off                     Editor › Wrap Lines
 ///   --go-to-line <n>[,<n>…] [--go-to-line-after <s>]   Go to Line in the focused editor, a second apart
 ///   --expand <relative folder>        opens a folder in the tree
-///   --measure-files <report> --measure-file <big file> [--measure-folder <huge folder>]
-///                                     times opening, tab switching, scrolling, typing and expanding
+///   --measure-files <report> --measure-file <big file> [--measure-folder <huge folder>] [--measure-limits [long-lines]]
+///                                     times opening, colouring, scrolling, jumping, typing (also opening a
+///                                     comment that recolours the rest), reverting, tab switching and
+///                                     expanding; with --measure-limits, exits with 1 when one passes its
+///                                     limit (`EditorLimits`; "long-lines" for a minified file's)
 @MainActor
 enum DebugFiles {
     private static func value(_ flag: String) -> String? { DebugScenario.value(flag) }
@@ -114,8 +117,32 @@ enum DebugFiles {
                 try? await Task.sleep(for: .milliseconds(1))
             }
             drawNow()
-            note(String(format: "open %@ lines=%d total=%.1fms", (file as NSString).lastPathComponent, document?.lines.lineCount ?? 0, milliseconds(since: started)))
-            try? await Task.sleep(for: .milliseconds(600))
+            // TextKit may leave the first paragraph's layout for a later turn of the run loop (a minified file's
+            // one line takes most of a second): opening lasts until it is laid out and drawn.
+            while milliseconds(since: started) < 10_000 {
+                guard let manager = (window.terminals.paneArea.pageView(page) as? FilePageView)?.editor?.textView.textLayoutManager else { break }
+                if manager.textLayoutFragment(for: manager.documentRange.location)?.state == .layoutAvailable { break }
+                try? await Task.sleep(for: .milliseconds(1))
+            }
+            drawNow()
+            let opened = milliseconds(since: started)
+            note(String(format: "open %@ lines=%d total=%.1fms", (file as NSString).lastPathComponent, document?.lines.lineCount ?? 0, opened))
+            var limits = EditorLimits(longLines: value("--measure-limits") == "long-lines")
+            limits.check("open, ms", opened)
+            // Colouring: the first lines' tokens, then every line's (off the main thread), and the longest
+            // the main thread was held meanwhile (taking in what the background worked out).
+            let watch = HoldWatch()
+            var firstColours: Double?
+            while milliseconds(since: started) < 60_000, document?.syntaxIsComplete == false {
+                if firstColours == nil, document?.tokens(line: 0).isEmpty == false { firstColours = milliseconds(since: started) }
+                try? await Task.sleep(for: .milliseconds(2))
+            }
+            if firstColours == nil, document?.tokens(line: 0).isEmpty == false { firstColours = milliseconds(since: started) }
+            let colouringHold = await watch.finish(after: 50)
+            note(String(format: "colours first-lines=%.1fms all-lines=%.1fms complete=%@ longest-main-thread-hold=%.1fms", firstColours ?? -1,
+                        milliseconds(since: started), document?.syntaxIsComplete == true ? "yes" : "no", colouringHold))
+            limits.check("colouring: longest main-thread hold, ms", colouringHold)
+            try? await Task.sleep(for: .milliseconds(300))
 
             guard let view = window.terminals.paneArea.pageView(page) as? FilePageView, let editor = view.editor else { return note("no editor") }
             // Scrolling: a screenful at a time from top to bottom (and a jump to the end and back).
@@ -131,6 +158,8 @@ enum DebugFiles {
                 await Task.yield()
             }
             note(summary("scroll-screenful", steps))
+            limits.check("scroll a screenful: p95 ms", Self.pick(steps, 0.95))
+            limits.check("scroll a screenful: max ms", steps.max())
             var jumps: [Double] = []
             for target in [CGFloat.greatestFiniteMagnitude, 0, CGFloat.greatestFiniteMagnitude / 2, 0] {
                 let begin = DispatchTime.now()
@@ -142,9 +171,12 @@ enum DebugFiles {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             note(summary("scroll-jump", jumps))
-            // Typing in the middle of the file: one character, laid out, coloured and drawn.
+            limits.check("jump: max ms", jumps.max())
+            // Typing in the middle of the file: one character, laid out, coloured and drawn. In a line too long
+            // to edit (a minified file's), the keys are refused, as the page's bar says.
             editor.textView.show(line: (document?.lines.lineCount ?? 2) / 2)
             drawNow()
+            let lengthBefore = document?.storage.length ?? 0
             var typing: [Double] = []
             for _ in 0..<60 {
                 let begin = DispatchTime.now()
@@ -154,8 +186,48 @@ enum DebugFiles {
                 await Task.yield()
             }
             note(summary("type", typing))
+            limits.check("type: p95 ms", Self.pick(typing, 0.95))
+            limits.check("type: max ms", typing.max())
+            // Opening a block comment above the rest of the file: the keystroke itself, the longest hold while
+            // the rest is coloured again off the main thread, and closing it.
+            var comment: [Double] = []
+            let commentWatch = HoldWatch()
+            for text in ["/", "*", " "] {
+                let begin = DispatchTime.now()
+                editor.textView.insertText(text, replacementRange: editor.textView.selectedRange())
+                drawNow()
+                comment.append(milliseconds(since: begin))
+                try? await Task.sleep(for: .milliseconds(30))
+            }
+            let settleStart = DispatchTime.now()
+            while milliseconds(since: settleStart) < 60_000, document?.syntaxIsComplete == false { try? await Task.sleep(for: .milliseconds(2)) }
+            let settled = milliseconds(since: settleStart)
+            let commentHold = await commentWatch.finish(after: 50)
+            note(summary("type-comment-open", comment) + String(format: " recoloured-rest=%.1fms longest-main-thread-hold=%.1fms", settled, commentHold))
+            limits.check("open a comment: keystroke max ms", comment.max())
+            limits.check("open a comment: longest main-thread hold, ms", commentHold)
+            if let guarded = document?.guardedLine {
+                note(String(format: "long-line guarded line=%d length=%d typing-refused=%@", guarded.line + 1, guarded.length,
+                            document?.storage.length == lengthBefore ? "yes" : "no"))
+                // Edit Anyway: what a key then costs, reported (TextKit lays the whole paragraph out again).
+                document?.allowLongLineEdits()
+                var anyway: [Double] = []
+                for _ in 0..<10 {
+                    let begin = DispatchTime.now()
+                    editor.textView.insertText("x", replacementRange: editor.textView.selectedRange())
+                    drawNow()
+                    anyway.append(milliseconds(since: begin))
+                    await Task.yield()
+                }
+                note(summary("type-long-line-anyway", anyway))
+            }
+            // Reverting puts the disk's text back with the scroll kept (it once trapped in `visibleLines`).
             document?.undoManager.removeAllActions()
+            let revertStart = DispatchTime.now()
             document?.revert()
+            while milliseconds(since: revertStart) < 10_000, document?.isEdited == true { try? await Task.sleep(for: .milliseconds(1)) }
+            drawNow()
+            note(String(format: "revert %.1fms", milliseconds(since: revertStart)))
             try? await Task.sleep(for: .milliseconds(500))
 
             // Switching tabs between the big file and the terminal beside it, back and forth.
@@ -170,6 +242,7 @@ enum DebugFiles {
                     try? await Task.sleep(for: .milliseconds(30))
                 }
                 note(summary("switch-tab", switches))
+                limits.check("switch tab: max ms", switches.max())
             }
 
             // Expanding a folder of thousands of files in the tree: the main thread's longest hold.
@@ -194,7 +267,16 @@ enum DebugFiles {
                 let count = repository.node(for: folder)?.children?.count ?? 0
                 note(String(format: "expand %@ files=%d shown=%.1fms loaded=%@ longest-main-thread-hold=%.1fms", folder, count, shown, loaded ? "yes" : "no", hold))
             }
+            lines += limits.lines
             try? Data((lines.joined(separator: "\n") + "\n").utf8).write(to: report)
+            if DebugScenario.has("--measure-limits") {
+                for line in limits.lines { print(line) }
+                guard limits.passed else {
+                    workbench.shutDown(stoppingSessions: true)
+                    exit(1)
+                }
+                NSApp.terminate(nil)
+            }
         }
 
         private func drawNow() {
@@ -202,11 +284,63 @@ enum DebugFiles {
             window.window?.displayIfNeeded()
         }
 
+        static func pick(_ samples: [Double], _ part: Double) -> Double? {
+            let sorted = samples.sorted()
+            return sorted.isEmpty ? nil : sorted[min(sorted.count - 1, Int(Double(sorted.count) * part))]
+        }
+
         private func summary(_ name: String, _ samples: [Double]) -> String {
             let sorted = samples.sorted()
             guard !sorted.isEmpty else { return "\(name) none" }
             let pick = { (part: Double) in sorted[min(sorted.count - 1, Int(Double(sorted.count) * part))] }
             return String(format: "%@ n=%d median=%.2fms p95=%.2fms max=%.2fms", name, sorted.count, pick(0.5), pick(0.95), sorted.last!)
+        }
+    }
+
+    /// What the editor is held to (`--measure-limits`, `make perf`), set from the editor before TextMate
+    /// grammars (its old lexer, measured the same way on the same files: typing p95 5.7 ms, max 15 ms;
+    /// scrolling p95 8 ms, max 13 ms; jumps 18 ms) so the new engine is at least as quick to the eye: a
+    /// keystroke or a scroll step stays inside two frames at 60 Hz, and the main thread is never held
+    /// longer than that while colours are worked out in the background. Loose enough not to fail by
+    /// chance on a busy machine.
+    ///
+    /// A file of very long lines (a minified script's one 2 MB line) is held to the old editor's numbers on
+    /// it instead: its lines are not tokenized (`TextMateTokenizer.lineLimit`), so what is left of an edit
+    /// is TextKit laying the whole 2 MB paragraph out again (about 350 ms; it was about 420 ms before).
+    struct EditorLimits {
+        static let longLineLimits: [String: Double] = [
+            "open, ms": 2_500,
+            "colouring: longest main-thread hold, ms": 33,
+            "scroll a screenful: p95 ms": 16,
+            "scroll a screenful: max ms": 33,
+            "jump: max ms": 33,
+            "type: p95 ms": 16,
+            "type: max ms": 33,
+            "open a comment: keystroke max ms": 33,
+            "open a comment: longest main-thread hold, ms": 33,
+            "switch tab: max ms": 100,
+        ]
+        static let limits: [String: Double] = [
+            "open, ms": 400,
+            "colouring: longest main-thread hold, ms": 33,
+            "scroll a screenful: p95 ms": 16,
+            "scroll a screenful: max ms": 33,
+            "jump: max ms": 33,
+            "type: p95 ms": 16,
+            "type: max ms": 33,
+            "open a comment: keystroke max ms": 33,
+            "open a comment: longest main-thread hold, ms": 33,
+            "switch tab: max ms": 33,
+        ]
+        let longLines: Bool
+        private(set) var lines: [String] = []
+        private(set) var passed = true
+
+        mutating func check(_ name: String, _ value: Double?) {
+            guard let most = (longLines ? Self.longLineLimits : Self.limits)[name] else { return }
+            let kept = (value ?? .infinity) <= most
+            passed = passed && kept
+            lines.append(String(format: "limit: %@ %@: %@ (limit %g)", kept ? "kept" : "PASSED", name, value.map { String(format: "%.1f", $0) } ?? "none", most))
         }
     }
 
@@ -247,3 +381,5 @@ private func milliseconds(since start: DispatchTime) -> Double {
     Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6
 }
 #endif
+
+

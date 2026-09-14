@@ -37,6 +37,13 @@ struct WorldSettingsView: View {
             }
 
             Section {
+                Toggle(String(localized: "Animate the meadow"), isOn: $store.animatesMeadow)
+            } footer: {
+                Text(String(localized: "Off, the grass, butterflies and cats' little movements hold still. Cats still change as Claude does. Also in View › Animate Meadow."))
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+
+            Section {
                 Picker("Picnic things", selection: $store.settings.picnic) {
                     Text("Nothing", comment: "Picnic things on each blanket").tag(WorldSettings.Picnic.nothing)
                     Text("Just the hamper").tag(WorldSettings.Picnic.hamper)

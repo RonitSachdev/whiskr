@@ -14,16 +14,19 @@ import WhiskrKit
 /// view under the pointer or with the keyboard), never through the model.
 ///
 ///   --perf <file>             runs the measurements, writes the table to <file> and stdout, then quits
-///   --perf-flows <a,b,…>      only these: typing, yes, cat, stream, newtab, close, switch, idle, closing
+///   --perf-flows <a,b,…>      only these: typing, yes, cat, stream, newtab, close, switch, memory, idle; and the
+///                             checks, run only when named: closing, sizes, interactions (`DebugInteractions`)
 ///   --perf-cats               four more workspaces with Claudes at work, so the meadow is busy
 ///   --perf-keys <n>           keystrokes timed in `typing` (150)
 ///   --perf-limits             checks the measurements against `PerfSuite`'s limits; exits with 1 when one
 ///                             is passed or a check fails (`make perf`)
 ///
-/// Measured: each keystroke from the event to its bytes leaving for the host, to its echo taken in by the
-/// terminal, to the terminal's next frame drawn (`TerminalView.onFramePresented`); how long the main
+/// Measured: the first terminal after launch, from before it is made; each keystroke from the moment it is
+/// queued for the app, to the app taking it (its bytes leave for the host in that same call), to its echo
+/// taken in by the terminal, to the terminal's next frame drawn (`TerminalView.onFramePresented`); how long the main
 /// thread took to answer a ping sent every 4 ms (a stall is time the window cannot take a key or draw);
-/// terminal frames drawn and the longest gap between them; the meadow's frames, main-thread and GPU time.
+/// terminal frames drawn and the longest gap between them; the meadow's frames, main-thread and GPU time;
+/// memory (the app's and its session host's footprint) with 1 and with 20 tabs; the host's CPU at idle.
 /// Not measured: the compositor's own step from a drawn frame to the glass (one display refresh).
 @MainActor
 enum DebugPerf {
@@ -280,18 +283,20 @@ final class PerfSuite {
     /// What the window's chrome reads of the model (the meadow's snapshot, every tab's title and mark):
     /// counted each time something it read changes. Typing and printing should change none of it.
     private var chromeWatch: Observing?
-    private var rows: [PerfRow] = []
+    var rows: [PerfRow] = []
     private var checks: [(String, Bool, String)] = []
     /// Measurements against their limits (`--perf-limits`): loose enough never to fail by chance on an
     /// idle Mac, tight enough to catch what made the window lag.
     private var limits: [(String, Bool, String)] = []
     var passed: Bool { checks.allSatisfy(\.1) && limits.allSatisfy(\.1) }
 
-    private func limit(_ name: String, _ value: Double?, atMost most: Double) {
+    func limit(_ name: String, _ value: Double?, atMost most: Double) {
         let ok = value.map { $0.isFinite && $0 <= most } ?? false
         limits.append((name, ok, "\(value.map { String(format: "%.1f", $0) } ?? "none") (limit \(String(format: "%g", most)))"))
+        // Said as it is measured, as checks are: a run that crashes later writes no table.
+        print("limit: \(ok ? "kept" : "PASSED") \(name): \(limits.last!.2)")
     }
-    private var root: URL!
+    var root: URL!
     private var main: Pane!
 
     init(workbench: Workbench, controller: MainWindowController, window: NSWindow, flows: Set<String>?) {
@@ -301,8 +306,11 @@ final class PerfSuite {
         self.flows = flows
     }
 
-    /// Without `--perf-flows`, every measurement; the correctness checks (`closing`, `sizes`) only when named.
-    private func wants(_ flow: String) -> Bool { flows?.contains(flow) ?? !["closing", "sizes"].contains(flow) }
+    /// The correctness checks, run only when named.
+    private static let checkFlows: Set<String> = ["closing", "sizes", "interactions"]
+
+    /// Without `--perf-flows`, every measurement; the checks only when named.
+    private func wants(_ flow: String) -> Bool { flows?.contains(flow) ?? !Self.checkFlows.contains(flow) }
 
     // MARK: Running
 
@@ -318,20 +326,26 @@ final class PerfSuite {
         }
         root = AppPlaces.supportFolder.appendingPathComponent("perf", isDirectory: true)
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        if DebugScenario.has("--perf-cats") {
-            _ = DebugScenario.Demo(workbench: workbench, root: root.appendingPathComponent("cats", isDirectory: true), count: 4)
-        }
         // AppKit drops the first click a window ever gets in a run like this one (the one that would bring an
         // inactive window forward): one on Home's empty page, which does nothing, takes its place.
         if let home = controller.terminals.home { click(home, at: NSPoint(x: home.bounds.midX, y: 8)) }
         if wants("closing") { await closingCheck() }
         if wants("sizes") { await sizesCheck() }
-        guard flows.map({ !$0.subtracting(["closing", "sizes"]).isEmpty }) ?? true else { return }
-        main = workbench.newWorkspace(folder: folder("w1"))
-        guard await shellReady(main) else { return note("setup", "the first shell never drew its prompt") }
+        if wants("interactions") { await interactionsCheck() }
+        guard flows.map({ !$0.subtracting(Self.checkFlows).isEmpty }) ?? true else { return }
+        // From before the first terminal: making its view (its renderer among it) is main-thread work too.
         pinger.start()
         anatomy.start()
         defer { pinger.stop() }
+        guard await firstTerminal() else { return note("setup", "the first shell never drew its prompt") }
+        // The cats come after it, so the first terminal is the first one the window ever draws.
+        if DebugScenario.has("--perf-cats"), let space = workbench.selectedWorkspace {
+            _ = DebugScenario.Demo(workbench: workbench, root: root.appendingPathComponent("cats", isDirectory: true), count: 4)
+            workbench.select(workspace: space)
+            _ = await PerfWait.until(2000) { self.focused(self.main) }
+            await PerfWait.sleep(1000)
+        }
+        if wants("memory") { await memory() }
         if wants("typing") { await typing() }
         if wants("newtab") || wants("close") { await newAndClose() }
         if wants("switch") { await switching() }
@@ -341,31 +355,31 @@ final class PerfSuite {
         if wants("idle") { await idle() }
     }
 
-    private func folder(_ name: String) -> String {
+    func folder(_ name: String) -> String {
         let url = root.appendingPathComponent(name, isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url.path
     }
 
-    private func note(_ name: String, _ text: String) { rows.append(PerfRow(name: name, values: [("", text)])) }
+    func note(_ name: String, _ text: String) { rows.append(PerfRow(name: name, values: [("", text)])) }
 
     /// The pane's shell has drawn its first prompt (our integration's OSC 7, else quiet output), and a
     /// frame has been drawn since.
-    private func shellReady(_ pane: Pane, timeout: Double = 10000) async -> Bool {
+    func shellReady(_ pane: Pane, timeout: Double = 10000) async -> Bool {
         guard let ready = await PerfWait.until(timeout, { pane.debugReady }) else { return false }
         return await PerfWait.until(1000, { self.log.firstFrame(after: ready) != nil }) != nil
     }
 
-    // MARK: Events, as the window gets them
+    // MARK: Events, as the window gets them (also `DebugInteractions`'s)
 
-    private func keyEvent(_ characters: String, modifiers: NSEvent.ModifierFlags = [], code: UInt16 = 0) -> NSEvent? {
+    func keyEvent(_ characters: String, modifiers: NSEvent.ModifierFlags = [], code: UInt16 = 0) -> NSEvent? {
         NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: ProcessInfo.processInfo.systemUptime,
                          windowNumber: window.windowNumber, context: nil, characters: characters,
                          charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code)
     }
 
     /// A typed key: to the window, which hands it to its first responder.
-    private func typeKeys(_ text: String) {
+    func typeKeys(_ text: String) {
         for character in text {
             let key = character == "\r" ? ("\r", UInt16(36)) : (String(character), UInt16(0))
             if let event = keyEvent(key.0, code: key.1) { NSApp.sendEvent(event) }
@@ -373,18 +387,19 @@ final class PerfSuite {
     }
 
     /// A shortcut, as the app routes one: the window's views, then the menus.
-    private func shortcut(_ spec: String) {
+    func shortcut(_ spec: String) {
         DebugScript.key(spec, window: window, quiet: true)
     }
 
     private var eventNumber = 1000
-    private func nextEventNumber() -> Int { eventNumber += 1; return eventNumber }
+    func nextEventNumber() -> Int { eventNumber += 1; return eventNumber }
 
     /// A click (down, then up) at a point in `view`, delivered as the window delivers a click: to whatever
     /// its views say is under that point. Returns the view that took it.
     @discardableResult
-    private func click(_ view: NSView, at point: NSPoint, count: Int = 1) -> NSView? {
+    func click(_ view: NSView, at point: NSPoint, count: Int = 1) -> NSView? {
         let location = view.convert(point, to: nil)
+        PointerStandIn.location = location
         let target = hit(view, at: point)
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             guard let event = NSEvent.mouseEvent(with: type, location: location, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
@@ -396,14 +411,15 @@ final class PerfSuite {
     }
 
     /// What the window would deliver a click at that point in `view` to.
-    private func hit(_ view: NSView, at point: NSPoint) -> NSView? {
+    func hit(_ view: NSView, at point: NSPoint) -> NSView? {
         window.contentView?.superview?.hitTest(view.convert(point, to: nil))
     }
 
     /// The pointer moves to a point in `view` and rests there a moment (hover effects show, as before a
     /// real click).
-    private func hover(_ view: NSView, at point: NSPoint) async {
+    func hover(_ view: NSView, at point: NSPoint) async {
         let location = view.convert(point, to: nil)
+        PointerStandIn.location = location
         // A real pointer moving shows the cursor that typing hid; until then AppKit takes a click as the
         // one that shows it again, and drops it.
         NSCursor.setHiddenUntilMouseMoves(false)
@@ -417,7 +433,7 @@ final class PerfSuite {
     }
 
     /// The tab row's tabs on screen, leading first.
-    private var tabViews: [TabMouseView] {
+    var tabViews: [TabMouseView] {
         guard let frame = window.contentView?.superview else { return [] }
         var found: [TabMouseView] = []
         func walk(_ view: NSView) {
@@ -428,27 +444,27 @@ final class PerfSuite {
         return found.sorted { $0.convert($0.bounds, to: nil).minX < $1.convert($1.bounds, to: nil).minX }
     }
 
-    private func tabView(_ tab: Tab) -> TabMouseView? { tabViews.first { $0.tab == tab.id } }
+    func tabView(_ tab: Tab) -> TabMouseView? { tabViews.first { $0.tab == tab.id } }
 
     /// The point of a tab's close button, in the tab's view.
     private func closePoint(_ view: TabMouseView) -> NSPoint { view.closePoint }
 
-    private func screen(_ pane: Pane) -> [String] {
+    func screen(_ pane: Pane) -> [String] {
         let rows = pane.surface.terminalDimensions.rows
         return pane.surface.visibleRowsText(0..<rows).map { $0.trimmingCharacters(in: .whitespaces) }
     }
 
-    private func focused(_ pane: Pane) -> Bool { window.firstResponder === pane.surface && pane.surface.window === window }
+    func focused(_ pane: Pane) -> Bool { window.firstResponder === pane.surface && pane.surface.window === window }
 
     // MARK: Statistics
 
-    private static func pick(_ values: [Double], _ part: Double) -> Double {
+    static func pick(_ values: [Double], _ part: Double) -> Double {
         guard !values.isEmpty else { return .nan }
         let sorted = values.sorted()
         return sorted[min(sorted.count - 1, Int(Double(sorted.count - 1) * part + 0.5))]
     }
 
-    private static func ms(_ value: Double?) -> String {
+    static func ms(_ value: Double?) -> String {
         guard let value, value.isFinite else { return "-" }
         return String(format: "%.1f", value)
     }
@@ -475,9 +491,114 @@ final class PerfSuite {
         return values
     }
 
+    // MARK: The first terminal
+
+    /// The first terminal after launch (cold: no terminal has been drawn in this run), made as Home's New
+    /// Terminal makes it: when its tab shows, takes the keyboard, its shell starts and its prompt is drawn,
+    /// and what the main thread went through meanwhile.
+    private func firstTerminal() async -> Bool {
+        let before = workbench.panes.count
+        let start = perfNow()
+        main = workbench.newWorkspace(folder: folder("w1"))
+        let pane = main!
+        let action = perfNow()
+        let early = await PerfWait.each(5000, [{ self.workbench.selectedTab.flatMap(self.tabView) != nil }, { self.focused(pane) }, { pane.debugStarted }])
+        let prompt = await drawn(after: await PerfWait.until(10000) { self.screen(pane).contains { !$0.isEmpty } })
+        let ready = await shellReady(pane)
+        let end = perfNow()
+        rows.append(PerfRow(name: before == 0 ? "first terminal, cold (the first after launch)" : "first terminal (after \(before) made before it)", values: [
+            ("action", Self.ms(action - start)), ("tab shown", Self.ms(early[0].map { $0 - start })), ("focused", Self.ms(early[1].map { $0 - start })),
+            ("started", Self.ms(early[2].map { $0 - start })), ("prompt drawn", Self.ms(prompt.map { $0 - start })),
+        ] + stalls(from: start, to: end)))
+        limit("first terminal: shown with the keyboard, ms", early[1].map { $0 - start }, atMost: 150)
+        limit("first terminal: longest main-thread stall, ms", log.pings(from: start, to: end).max(), atMost: 150)
+        oneTab = (Self.footprint(getpid()), hostPID.flatMap(Self.footprint))
+        return ready
+    }
+
+    /// The first terminal frame drawn after a moment (waiting up to a second for it).
+    private func drawn(after time: Double?) async -> Double? {
+        guard let time else { return nil }
+        _ = await PerfWait.until(1000) { self.log.firstFrame(after: time) != nil }
+        return log.firstFrame(after: time)
+    }
+
+    // MARK: Memory
+
+    /// The app's and its session host's footprint with one tab (`firstTerminal`), set aside when it was made.
+    private var oneTab: (app: Double?, host: Double?) = (nil, nil)
+
+    /// Memory with 20 tabs open, each shown once: 19 more in a workspace of their own (closed again after).
+    private func memory() async {
+        guard let space = workbench.selectedWorkspace else { return }
+        let first = workbench.newWorkspace(folder: folder("m"))
+        _ = await shellReady(first)
+        for _ in 0..<18 {
+            let pane = workbench.newTab()
+            _ = await shellReady(pane)
+        }
+        await PerfWait.sleep(1500)
+        let tabs = workbench.workspaces.reduce(0) { $0 + $1.tabs.count }
+        let app = Self.footprint(getpid()), host = hostPID.flatMap(Self.footprint)
+        func mb(_ value: Double?) -> String { value.map { String(format: "%.0f", $0) } ?? "-" }
+        rows.append(PerfRow(name: "memory, footprint MB", values: [
+            ("app, 1 tab", mb(oneTab.app)), ("app, \(tabs) tabs", mb(app)),
+            ("app per tab", mb(app.flatMap { app in oneTab.app.map { (app - $0) / Double(max(tabs - 1, 1)) } })),
+            ("host, 1 tab", mb(oneTab.host)), ("host, \(tabs) tabs", mb(host)),
+        ]))
+        limit("memory: the app's footprint with \(tabs) tabs, MB", app, atMost: 900)
+        limit("memory: the app's footprint for each tab past the first, MB", app.flatMap { app in oneTab.app.map { (app - $0) / Double(max(tabs - 1, 1)) } }, atMost: 35)
+        if let created = workbench.workspaces.first(where: { $0.tabs.contains { $0.tree.contains(first.id) } }) { workbench.close(workspace: created) }
+        workbench.select(workspace: space)
+        _ = await PerfWait.until(2000) { self.focused(self.main) }
+        await PerfWait.sleep(500)
+    }
+
+    /// A process's physical footprint in MB, as Activity Monitor's Memory column shows it: this app's from
+    /// its own task (`TASK_VM_INFO`), another's (its session host) from `proc_pid_rusage`.
+    nonisolated static func footprint(_ pid: pid_t) -> Double? {
+        if pid == getpid() {
+            var info = task_vm_info_data_t()
+            var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+            let result = withUnsafeMutablePointer(to: &info) {
+                $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) }
+            }
+            return result == KERN_SUCCESS ? Double(info.phys_footprint) / 1_048_576 : nil
+        }
+        return usage(pid).map { Double($0.ri_phys_footprint) / 1_048_576 }
+    }
+
+    /// Another process's resource usage (one of this user's: the run's session host).
+    nonisolated static func usage(_ pid: pid_t) -> rusage_info_v4? {
+        var info = rusage_info_v4()
+        let result = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, RUSAGE_INFO_V4, $0) }
+        }
+        return result == 0 ? info : nil
+    }
+
+    /// CPU time a process has used, in milliseconds (`proc_pid_rusage` counts in Mach time units).
+    nonisolated static func cpuMilliseconds(_ usage: rusage_info_v4) -> Double {
+        var base = mach_timebase_info_data_t()
+        mach_timebase_info(&base)
+        return Double(usage.ri_user_time + usage.ri_system_time) * Double(base.numer) / Double(base.denom) / 1e6
+    }
+
+    /// The run's own session host: the process its log, in this run's isolated folder, says is listening.
+    private var hostPID: pid_t? {
+        let log = AppPlaces.supportFolder.appendingPathComponent("host/host.log")
+        guard let text = try? String(contentsOf: log, encoding: .utf8),
+              let line = text.split(separator: "\n").last(where: { $0.contains("] listening on") }),
+              let open = line.firstIndex(of: "["), let close = line[open...].firstIndex(of: "]"),
+              let pid = pid_t(line[line.index(after: open)..<close]), kill(pid, 0) == 0 else { return nil }
+        return pid
+    }
+
     // MARK: (a) Typing
 
-    /// Keystrokes at a typist's pace into `cat` (the terminal's own line discipline echoes each at once).
+    /// Keystrokes at a typist's pace into `cat` (the terminal's own line discipline echoes each at once),
+    /// queued for the app from a thread of their own as the window server hands keys over: each waits its
+    /// turn behind whatever the main thread is doing, as a real one does.
     private func typing() async {
         main.type("clear; cat > /dev/null\r")
         await PerfWait.sleep(600)
@@ -485,26 +606,27 @@ final class PerfSuite {
         main.surface.setOutputHandler { log.output() }
         defer { main.surface.setOutputHandler(nil) }
         let count = DebugScenario.value("--perf-keys").flatMap(Int.init) ?? 150
-        var sent: [(down: Double, written: Double)] = []
-        let start = perfNow()
-        for index in 0..<count {
-            let letter = String(UnicodeScalar(UInt8(97 + index % 26)))
-            guard let event = keyEvent(letter) else { continue }
-            let down = perfNow()
-            NSApp.sendEvent(event)
-            sent.append((down, perfNow()))
-            // A brisk typist: 35 to 65 ms apart.
-            await PerfWait.sleep(35 + Double(index * 7 % 31))
+        let events = QueuedKeys((0..<count).compactMap { keyEvent(String(UnicodeScalar(UInt8(97 + $0 % 26)))) }, app: NSApp)
+        // When the app takes each one off its queue (its key monitors run first, then the terminal's keyDown).
+        var taken: [Double] = []
+        let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            taken.append(perfNow())
+            return event
         }
+        defer { if let monitor { NSEvent.removeMonitor(monitor) } }
+        let start = perfNow()
+        events.post()
+        _ = await PerfWait.until(Double(count) * 100 + 3000) { events.done && taken.count >= events.count }
         await PerfWait.sleep(300)
         let end = perfNow()
+        let sent = events.times
         var written: [Double] = [], echoed: [Double] = [], drawn: [Double] = [], lost = 0
-        for (index, key) in sent.enumerated() {
-            let next = index + 1 < sent.count ? sent[index + 1].down : end
-            guard let echo = log.outputs(from: key.down, to: next).first, let frame = log.firstFrame(after: echo) else { lost += 1; continue }
-            written.append(key.written - key.down)
-            echoed.append(echo - key.down)
-            drawn.append(frame - key.down)
+        for (index, down) in sent.enumerated() {
+            let next = index + 1 < sent.count ? sent[index + 1] : end
+            guard let echo = log.outputs(from: down, to: next).first, let frame = log.firstFrame(after: echo) else { lost += 1; continue }
+            if index < taken.count { written.append(taken[index] - down) }
+            echoed.append(echo - down)
+            drawn.append(frame - down)
         }
         main.type("\u{3}")
         let pings = log.pings(from: start, to: end)
@@ -514,7 +636,7 @@ final class PerfSuite {
         limit("typing: main-thread stalls over 50 ms", Double(pings.filter { $0 > 50 }.count), atMost: 0)
         rows.append(PerfRow(name: "typing", values: [
             ("keys", "\(count)"), ("no echo", "\(lost)"),
-            ("to host p50", Self.ms(Self.pick(written, 0.5))),
+            ("taken p50", Self.ms(Self.pick(written, 0.5))), ("taken max", Self.ms(written.max())),
             ("echo p50", Self.ms(Self.pick(echoed, 0.5))), ("echo p99", Self.ms(Self.pick(echoed, 0.99))),
             ("glyph p50", Self.ms(Self.pick(drawn, 0.5))), ("glyph p99", Self.ms(Self.pick(drawn, 0.99))), ("glyph max", Self.ms(drawn.max())),
         ] + stalls(from: start, to: end)))
@@ -543,7 +665,7 @@ final class PerfSuite {
             let early = await PerfWait.each(3000, [{ self.tabViews.count == count + 1 }, { self.focused(pane) }, { pane.debugStarted }])
             let (shown, focus, started) = (early[0], early[1], early[2])
             // The prompt: the first text on its screen, then a frame drawn.
-            let prompt = await PerfWait.until(10000) { self.screen(pane).contains { !$0.isEmpty } }.flatMap { log.firstFrame(after: $0) }
+            let prompt = await drawn(after: await PerfWait.until(10000) { self.screen(pane).contains { !$0.isEmpty } })
             let accepted = await PerfWait.until(10000) { self.screen(pane).contains(marker) }
             if accepted == nil { misses.append("round \(round): typed keys never ran in the new tab") }
             if screen(before).contains(where: { $0.contains("echo \(marker)") }) { misses.append("round \(round): keys went to the previous tab") }
@@ -574,22 +696,28 @@ final class PerfSuite {
         }
         let end = perfNow()
         var values: [(String, String)] = []
+        let spread = { (times: [Double]) in Self.ms(Self.pick(times, 0.5)) + "/" + Self.ms(Self.pick(times, 0.95)) + "/" + Self.ms(times.max()) }
         for name in ["action", "tab shown", "focused", "started", "prompt drawn", "keys ran"] {
-            values.append((name, Self.ms(Self.pick(opened[name] ?? [], 0.5)) + "/" + Self.ms((opened[name] ?? []).max())))
+            values.append((name, spread(opened[name] ?? [])))
         }
-        rows.append(PerfRow(name: "new tab ⌘T (median/max)", values: values + stalls(from: start, to: end)))
+        rows.append(PerfRow(name: "new tab ⌘T, warm (median/p95/max)", values: values + stalls(from: start, to: end)))
         limit("new tab: keys typed straight after ⌘T lost or misplaced", Double(misses.count), atMost: 0)
         limit("new tab: shown in the row, median ms", Self.pick(opened["tab shown"] ?? [], 0.5), atMost: 50)
         limit("new tab: has the keyboard, median ms", Self.pick(opened["focused"] ?? [], 0.5), atMost: 50)
         limit("new tab: shell started, median ms", Self.pick(opened["started"] ?? [], 0.5), atMost: 100)
+        limit("new tab: shown in the row, p95 ms", Self.pick(opened["tab shown"] ?? [], 0.95), atMost: 100)
+        limit("new tab: has the keyboard, p95 ms", Self.pick(opened["focused"] ?? [], 0.95), atMost: 100)
+        limit("new tab: shell started, p95 ms", Self.pick(opened["started"] ?? [], 0.95), atMost: 200)
         values = []
         for name in ["× action", "× gone from bar", "× next shown with the keyboard", "⌘W action", "⌘W gone from bar", "⌘W next shown with the keyboard"] {
-            values.append((name, Self.ms(Self.pick(closed[name] ?? [], 0.5)) + "/" + Self.ms((closed[name] ?? []).max())))
+            values.append((name, spread(closed[name] ?? [])))
         }
-        rows.append(PerfRow(name: "close tab (median/max)", values: values))
+        rows.append(PerfRow(name: "close tab (median/p95/max)", values: values))
         for key in ["×", "⌘W"] {
             limit("close by \(key): gone from the row, median ms", Self.pick(closed["\(key) gone from bar"] ?? [], 0.5), atMost: 50)
             limit("close by \(key): the next tab shown with the keyboard, median ms", Self.pick(closed["\(key) next shown with the keyboard"] ?? [], 0.5), atMost: 50)
+            limit("close by \(key): gone from the row, p95 ms", Self.pick(closed["\(key) gone from bar"] ?? [], 0.95), atMost: 100)
+            limit("close by \(key): the next tab shown with the keyboard, p95 ms", Self.pick(closed["\(key) next shown with the keyboard"] ?? [], 0.95), atMost: 100)
         }
         if !misses.isEmpty { note("new/close problems", misses.joined(separator: "; ")) }
     }
@@ -609,17 +737,20 @@ final class PerfSuite {
         guard let otherSpace = workbench.selectedWorkspace else { return }
         workbench.select(workspace: workspace)
         await PerfWait.sleep(800)
-        var tabTimes: [Double] = [], spaceTimes: [Double] = []
+        var tabTimes: [Double] = [], spaceTimes: [Double] = [], drawnTimes: [Double] = []
         let start = perfNow()
         for round in 0..<10 {
             let target = round % 2 == 0 ? second : first
             let down = perfNow()
             shortcut(round % 2 == 0 ? "cmd+2" : "cmd+1")
-            // Shown: in the window with the keyboard, and that frame committed (`PerfWait`). Its terminal draws
-            // again only if something changed while it was hidden; its layer still holds its last frame.
+            // Shown: in the window with the keyboard, and that frame committed (`PerfWait`); then drawn: the
+            // terminal's first frame after the switch (one that changed nothing while hidden may draw none; its
+            // layer still holds its last frame).
             if let shown = await PerfWait.until(2000, { self.focused(target) }) {
                 tabTimes.append(shown - down)
             } else { tabTimes.append(.nan) }
+            let drawn = await PerfWait.until(500) { self.log.firstFrame(after: down) != nil }
+            drawnTimes.append(drawn != nil ? (log.firstFrame(after: down) ?? .nan) - down : .nan)
             await PerfWait.sleep(250)
         }
         for round in 0..<10 {
@@ -633,13 +764,19 @@ final class PerfSuite {
             await PerfWait.sleep(250)
         }
         let end = perfNow()
-        let tabs = tabTimes.filter(\.isFinite), spaces = spaceTimes.filter(\.isFinite)
+        let tabs = tabTimes.filter(\.isFinite), spaces = spaceTimes.filter(\.isFinite), drawn = drawnTimes.filter(\.isFinite)
         limit("switch: tab, median ms", Self.pick(tabs, 0.5), atMost: 50)
         limit("switch: workspace, median ms", Self.pick(spaces, 0.5), atMost: 50)
+        limit("switch: tab, p95 ms", Self.pick(tabs, 0.95), atMost: 100)
+        limit("switch: workspace, p95 ms", Self.pick(spaces, 0.95), atMost: 100)
+        // Any terminal's frame (SwiftTerm does not say whose), and one that changed nothing while hidden may
+        // draw none: the median says it, a p95 would catch the next unrelated frame.
+        if !drawn.isEmpty { limit("switch: tab to the first terminal frame drawn, median ms", Self.pick(drawn, 0.5), atMost: 50) }
         limit("switch: switches that never showed", Double(tabTimes.count - tabs.count + spaceTimes.count - spaces.count), atMost: 0)
         rows.append(PerfRow(name: "switch, to shown", values: [
-            ("tab p50", Self.ms(Self.pick(tabs, 0.5))), ("tab max", Self.ms(tabs.max())), ("tab failed", "\(tabTimes.count - tabs.count)"),
-            ("workspace p50", Self.ms(Self.pick(spaces, 0.5))), ("workspace max", Self.ms(spaces.max())), ("workspace failed", "\(spaceTimes.count - spaces.count)"),
+            ("tab p50", Self.ms(Self.pick(tabs, 0.5))), ("tab p95", Self.ms(Self.pick(tabs, 0.95))), ("tab max", Self.ms(tabs.max())), ("tab failed", "\(tabTimes.count - tabs.count)"),
+            ("drawn p50", Self.ms(Self.pick(drawn, 0.5))), ("drawn p95", Self.ms(Self.pick(drawn, 0.95))), ("no frame", "\(drawnTimes.count - drawn.count)"),
+            ("workspace p50", Self.ms(Self.pick(spaces, 0.5))), ("workspace p95", Self.ms(Self.pick(spaces, 0.95))), ("workspace max", Self.ms(spaces.max())), ("workspace failed", "\(spaceTimes.count - spaces.count)"),
         ] + stalls(from: start, to: end)))
         workbench.select(workspace: workspace)
         workbench.select(tab: workspace.tabs[0])
@@ -747,17 +884,22 @@ final class PerfSuite {
         main.type("clear\r")
         await PerfWait.sleep(7000)
         var before = rusage(), after = rusage()
+        let host = hostPID
+        let hostBefore = host.flatMap(Self.usage)
         getrusage(RUSAGE_SELF, &before)
         let start = perfNow()
         await PerfWait.sleep(5000)
         getrusage(RUSAGE_SELF, &after)
+        let hostAfter = host.flatMap(Self.usage)
         let elapsed = perfNow() - start
+        let hostCPU = hostBefore.flatMap { first in hostAfter.map { (Self.cpuMilliseconds($0) - Self.cpuMilliseconds(first)) / elapsed * 100 } }
         func seconds(_ time: timeval) -> Double { Double(time.tv_sec) + Double(time.tv_usec) / 1e6 }
         let cpu = (seconds(after.ru_utime) + seconds(after.ru_stime) - seconds(before.ru_utime) - seconds(before.ru_stime)) * 1000
         let frames = log.frames(from: start, to: start + elapsed)
         limit("idle: process CPU %", cpu / elapsed * 100, atMost: 15)
+        limit("idle: the session host's CPU %", hostCPU, atMost: 3)
         limit("idle: chrome updates a second", Double(log.invalidations(from: start, to: start + elapsed)) / (elapsed / 1000), atMost: 1)
-        rows.append(PerfRow(name: "idle", values: [("cpu %", String(format: "%.1f", cpu / elapsed * 100)), ("terminal frames/s", String(format: "%.1f", Double(frames.count) / (elapsed / 1000)))]
+        rows.append(PerfRow(name: "idle", values: [("cpu %", String(format: "%.1f", cpu / elapsed * 100)), ("host cpu %", hostCPU.map { String(format: "%.1f", $0) } ?? "-"), ("terminal frames/s", String(format: "%.1f", Double(frames.count) / (elapsed / 1000)))]
                             + stalls(from: start, to: start + elapsed).filter { $0.0.hasPrefix("meadow") || $0.0.hasPrefix("chrome") }))
         pinger.start()
     }
@@ -860,7 +1002,7 @@ final class PerfSuite {
 
     // MARK: Closing everything (correctness)
 
-    private func check(_ name: String, _ passed: Bool, _ detail: String = "") {
+    func check(_ name: String, _ passed: Bool, _ detail: String = "") {
         checks.append((name, passed, detail))
         print("check: \(passed ? "PASS" : "FAIL") \(name)\(detail.isEmpty ? "" : ": \(detail)")")
     }
@@ -1072,5 +1214,40 @@ final class PerfSuite {
 
     /// Built with optimisation (`make perf`'s profile build) or not (a Debug build).
     private var isOptimised: Bool { !_isDebugAssertConfiguration() }
+}
+/// Keys queued for the app from a thread of their own, at a brisk typist's pace (35 to 65 ms apart), as
+/// the window server hands real ones over: when each was queued.
+nonisolated final class QueuedKeys: @unchecked Sendable {
+    private let events: [NSEvent]
+    private let app: NSApplication
+    private let lock = NSLock()
+    private var queued: [Double] = []
+    var count: Int { events.count }
+
+    init(_ events: [NSEvent], app: NSApplication) {
+        self.events = events
+        self.app = app
+    }
+
+    var times: [Double] { lock.withLock { queued } }
+    var done: Bool { lock.withLock { queued.count == events.count } }
+
+    func post() {
+        let thread = Thread { [self] in
+            // AppKit lets `postEvent` be called from any thread ("can also be called in subthreads"); the SDK's
+            // annotation says main actor, so it is called through its Objective-C implementation.
+            typealias Post = @convention(c) (AnyObject, Selector, NSEvent, ObjCBool) -> Void
+            let selector = NSSelectorFromString("postEvent:atStart:")
+            let post = unsafeBitCast(class_getMethodImplementation(NSApplication.self, selector), to: Post.self)
+            for (index, event) in events.enumerated() {
+                let now = perfNow()
+                lock.withLock { queued.append(now) }
+                post(app, selector, event, false)
+                usleep(UInt32(35 + index * 7 % 31) * 1000)
+            }
+        }
+        thread.qualityOfService = .userInteractive
+        thread.start()
+    }
 }
 #endif

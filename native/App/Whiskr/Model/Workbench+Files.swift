@@ -309,17 +309,19 @@ extension Workbench {
 
     // MARK: Links in terminals
 
-    /// ⌘-click on something a terminal printed: a web link opens in the browser; a file path (relative to
-    /// the pane's folder, with ":line" or ":line:column" after it) opens in the editor at that line; a
-    /// folder shows in Finder.
+    /// ⌘-click on something a terminal printed: a web link opens in the browser (any other kind of link
+    /// asks first, `openTerminalURL`); a file path (relative to the pane's folder, with ":line" or
+    /// ":line:column" after it) opens in the editor at that line; a folder shows in Finder.
     func openLink(_ link: String, folder: String) {
-        if let url = URL(string: link), let scheme = url.scheme, scheme != "file", scheme.count > 1 {
-            NSWorkspace.shared.open(url)
-            return
+        let url = URL(string: link).flatMap { $0.scheme?.lowercased() == "file" ? nil : $0 }
+        if let url, let scheme = url.scheme, scheme.count > 1, !scheme.contains(".") {
+            return openTerminalURL(url)
         }
         let location = FileLocation(link, folder: folder)
         var isFolder: ObjCBool = false
         guard let location, FileManager.default.fileExists(atPath: location.path, isDirectory: &isFolder) else {
+            // Not a file after all ("c:…", "name.x:…"): a link to some app.
+            if let url, url.scheme != nil { return openTerminalURL(url) }
             TerminalView.openDefaultLink(link)
             return
         }
@@ -328,6 +330,74 @@ extension Workbench {
         } else {
             open(file: location.path, mode: .keep, line: location.line, column: location.column)
         }
+    }
+
+    /// A path or web link the app found in a terminal's text (`TerminalLink`): opened (a file in the
+    /// editor at its line, a folder in Finder, a web link in the browser), shown in Files, or copied.
+    func act(on link: TerminalLink, _ action: TerminalLinkAction, folder: String) {
+        switch link.target {
+        case .url(let url):
+            switch action {
+            case .open, .reveal: if let url = URL(string: url) { openTerminalURL(url) }
+            case .copy: copyToPasteboard(url)
+            }
+        case .file(let path, let line, let column):
+            let resolved = existingPath(of: path, folder: folder)
+            switch action {
+            case .open:
+                guard let resolved else { return NSSound.beep() }
+                var isFolder: ObjCBool = false
+                FileManager.default.fileExists(atPath: resolved, isDirectory: &isFolder)
+                if isFolder.boolValue {
+                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: resolved)])
+                } else {
+                    open(file: resolved, mode: .keep, line: line, column: column)
+                }
+            case .reveal:
+                guard let resolved else { return NSSound.beep() }
+                revealInFiles(path: resolved)
+            case .copy:
+                copyToPasteboard(resolved ?? path)
+            }
+        }
+    }
+
+    /// A link from a terminal: http, https and mailto open at once. Any other scheme hands the link to
+    /// whichever app claims it (`x-apple.systempreferences:`, `smb://`, an installed app's own scheme),
+    /// and a program can print a link (OSC 8) whose text shows a file name while it leads there, so the
+    /// real link is shown and the user is asked first: they clicked, so a sheet is what they expect, and
+    /// a link that did nothing at all would look broken. A link no app opens just beeps.
+    private func openTerminalURL(_ url: URL) {
+        guard !["http", "https", "mailto"].contains(url.scheme?.lowercased() ?? "") else {
+            NSWorkspace.shared.open(url)
+            return
+        }
+        guard let application = NSWorkspace.shared.urlForApplication(toOpen: url) else { return NSSound.beep() }
+        guard let window = files.window else { return }
+        let name = FileManager.default.displayName(atPath: application.path)
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Open this link in \(name)?", comment: "Asked before a link a terminal printed opens in another app; the app's name")
+        alert.informativeText = url.absoluteString + "\n\n"
+            + String(localized: "A program in the terminal printed this link. Its text can differ from where it leads.",
+                     comment: "Under the real link, when a terminal's link would open another app")
+        let open = alert.addButton(withTitle: String(localized: "Open Link"))
+        let cancel = alert.addButton(withTitle: String(localized: "Cancel"))
+        // Return cancels: opening takes a deliberate click.
+        open.keyEquivalent = ""
+        cancel.keyEquivalent = "\r"
+        alert.beginSheetModal(for: window) { response in
+            if response == .alertFirstButtonReturn { NSWorkspace.shared.open(url) }
+        }
+    }
+
+    /// Where a path printed in a terminal is on disk: the first of its readings that exists.
+    func existingPath(of path: String, folder: String) -> String? {
+        TerminalLink.candidates(for: path, folder: folder).first { FileManager.default.fileExists(atPath: $0) }
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     // MARK: Saving and restoring

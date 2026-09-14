@@ -59,7 +59,7 @@ final class FilePageView: NSView {
         observers.append(Observing { [weak self] in self?.update() })
         observers.append(Observing { [weak self] in
             guard let self else { return }
-            self.bannerHeight.constant = self.document.diskChange == nil ? 0 : 34
+            self.bannerHeight.constant = self.document.diskChange == nil && self.document.guardedLine == nil ? 0 : 34
             // Typing in a preview tab keeps it.
             if self.document.isEdited { self.workbench.keep(page: self.pageID) }
         })
@@ -99,6 +99,9 @@ final class FilePageView: NSView {
         let mode: EditorPreferences.MarkdownMode? = state.previewable ? state.mode : nil
         effectiveAppearance.performAsCurrentDrawingAppearance { layer?.backgroundColor = Colors.terminalBackground.cgColor }
         if let shown, shown.0 == content, shown.1 == mode { return }
+        // The bar's room is set before the editor is made, so the text is laid out once at its final height
+        // (a minified file's one line takes a quarter of a second to lay out again).
+        bannerHeight.constant = document.diskChange == nil && document.guardedLine == nil ? 0 : 34
         let hadFocus = window?.firstResponder.flatMap { $0 as? NSView }.map { $0.isDescendant(of: self) } ?? false
         shown = (content, mode)
         body.subviews.forEach { $0.removeFromSuperview() }
@@ -243,8 +246,11 @@ enum PageDimming {
             dim.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
         return Observing { [weak workbench, weak dim] in
+            // The theme's colours too: the border and the veil take a new theme at once.
+            _ = ThemeStore.shared.palette
             guard let workbench, let dim, let (_, tab) = workbench.workspace(of: page) else { return }
             dim.state = PaneFocusView.State(tab: tab, pane: page)
+            dim.needsDisplay = true
         }
     }
 }
@@ -315,8 +321,7 @@ private struct FileHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: FileIcon.symbol(for: document.url.lastPathComponent, folder: false))
-                .font(.system(size: 11))
+            FileIconView(name: document.url.lastPathComponent, size: 11)
                 .foregroundStyle(Color.ink3)
                 .accessibilityHidden(true)
             breadcrumb
@@ -447,6 +452,27 @@ private struct DiskBanner: View {
             .background(Color.accent.opacity(0.1))
             .overlay(alignment: .bottom) { Color.line.frame(height: 1) }
             .accessibilityElement(children: .contain)
+        } else if let guarded = document.guardedLine {
+            // As VS Code says of its large files: what was turned off, and why.
+            HStack(spacing: 10) {
+                Image(systemName: "text.alignleft")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.ink2)
+                    .accessibilityHidden(true)
+                Text(String(localized: "Line \(guarded.line + 1) is \(guarded.length.formatted()) characters long, too long to edit smoothly, so it is read-only.",
+                            comment: "Editor bar: a minified file's long line is kept from being edited"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Button(String(localized: "Edit Anyway", comment: "Editor bar: edit an over-long line although typing in it is slow")) { document.allowLongLineEdits() }
+            }
+            .controlSize(.small)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.surface)
+            .overlay(alignment: .bottom) { Color.line.frame(height: 1) }
+            .accessibilityElement(children: .contain)
         }
     }
 }
@@ -477,7 +503,7 @@ private struct GoToLineField: View {
     }
 }
 
-/// The focused editor's cursor, for the status line ("Ln 12, Col 4").
+/// The focused editor's cursor, for the status bar ("Ln 12, Col 4").
 @Observable
 final class EditorStatus {
     static let shared = EditorStatus()
@@ -497,29 +523,5 @@ final class EditorStatus {
         if line != newLine { line = newLine }
         if column != newColumn { column = newColumn }
         if selected != selection.length { selected = selection.length }
-    }
-}
-
-/// SF Symbols for files and folders, by kind: calm, monochrome, the theme's ink.
-enum FileIcon {
-    static func symbol(for name: String, folder: Bool) -> String {
-        if folder { return "folder" }
-        let lower = name.lowercased()
-        let ext = (lower as NSString).pathExtension
-        switch ext {
-        case "swift": return "swift"
-        case "md", "markdown", "mdx", "txt", "rtf": return "doc.text"
-        case "png", "jpg", "jpeg", "gif", "webp", "heic", "heif", "tiff", "bmp", "ico", "svg": return "photo"
-        case "pdf": return "doc.richtext"
-        case "json", "yml", "yaml", "toml", "plist", "xml": return "curlybraces"
-        case "sh", "bash", "zsh", "fish": return "terminal"
-        case "zip", "gz", "tgz", "tar", "xz", "dmg": return "archivebox"
-        case "mp4", "mov", "m4v": return "film"
-        case "mp3", "wav", "aiff", "m4a": return "waveform"
-        case "lock": return "lock"
-        default:
-            if lower.hasPrefix(".git") || lower == "dockerfile" || lower == "makefile" || lower.hasPrefix(".env") { return "gearshape" }
-            return SyntaxLanguage.detect(fileName: name, firstLine: nil) == .plain ? "doc" : "chevron.left.forwardslash.chevron.right"
-        }
     }
 }

@@ -48,6 +48,10 @@ private let FLAG_RAISE: Float = 1.9
 let LAMP_SIZE: Float = 1.5
 let LAMP_HEIGHT: Float = 0.95 * TREAT_SIZE
 let LANTERN_SIZE: Float = 1.0
+let MOST_LANTERNS = 8                          // stood on one blanket at most; the rest are counted on its flag
+private let LANTERN_SPACING: Float = 1.0       // between neighbours along the hem, middle to middle
+private let LANTERN_HEM: Float = 0.12          // cloth left between a lantern and the edge
+private let LANTERN_SPAN: Float = 0.55 * .pi   // how far round the hem from its front, either way
 
 final class Actor {
     let cat: Cat
@@ -95,6 +99,10 @@ struct LanternPlace {
     var shown = Sprung()
     var leaving = false
     var placed = false
+    /// Not stood on the cloth: more lanterns than the hem has room for, counted on the flag instead.
+    var hidden = false
+    /// Its place along the hem (`Village.hemPlaces`), kept while it stays free so neighbours never shuffle.
+    var slot: Int?
     var lit: Float = 1          // eased: 1 lit, 0 dark
     var red: Float = 0          // eased: 1 red
     let phase: Float
@@ -111,7 +119,10 @@ final class Plot {
     var order: [String] = []           // launch order
     var treats: [TreatPlace] = []
     var lanterns: [LanternPlace] = []
-    var at: Vec2? = nil                // where in the meadow the middle of the blanket lies, once placed
+    /// Lanterns with no room on the hem, and whether one of them failed: "+N" on the flag after dark.
+    var lanternsHidden = 0
+    var hiddenFailed = false
+    var at: Vec2? = nil               // where in the meadow the middle of the blanket lies, once placed
     var home = Vec3.zero               // where the group sits so that its middle lands there
     var group = Vec3.zero              // eased toward home
     var center = Vec3.zero             // middle of its cats, relative to the group
@@ -155,6 +166,19 @@ final class Village {
     private(set) var time: Float = 0
     /// Reduce Motion: helpers do not trot and notes do not float; cats only look at each other.
     var reduceMotion = false
+    /// Ambient motion on (`MeadowView.animatesAmbient`). Off, every cat's own clock stops (`Cat.frozen`)
+    /// and the ladybirds keep still; arrivals, departures and changes of state still show.
+    var ambient = true {
+        didSet {
+            guard ambient != oldValue else { return }
+            for plot in plots { for actor in plot.actors.values { actor.cat.frozen = !ambient } }
+        }
+    }
+    /// Reduce Motion or ambient motion off: no trots or floating notes, and a helper appears in its seat
+    /// rather than walking there from its boss.
+    var hushed: Bool { reduceMotion || !ambient }
+    /// The ladybirds' clock, which stops with ambient motion.
+    private var strollTime: Float = 0
     /// Notes floating between cats, and notes waiting for their cats to be free (two at most).
     var notes: [FlyingNote] = []
     var waitingNotes: [(MeadowItem, MeadowItem)] = []
@@ -331,6 +355,7 @@ final class Village {
                 actor.view = agent
             } else {
                 let cat = Cat(seed: "\(view.id)/\(agent.id)")
+                cat.frozen = !ambient
                 cat.setActivity(effective)
                 let actor = Actor(cat: cat, view: agent, shownAt: time, shownSize: sizeAt(depthOf[agent.id] ?? 0))
                 plot.actors[agent.id] = actor
@@ -359,7 +384,7 @@ final class Village {
             // already there its boss hands it the task, it listens, then trots off to its seat; with the
             // whole blanket new (the app opening) everyone simply settles in, the boss watching.
             let boss = actor.view.parentID.flatMap { plot.actors[$0] }
-            actor.rootLocal = boss.map { $0 !== actor ? $0.rootLocal : actor.spot } ?? actor.spot
+            actor.rootLocal = hushed ? actor.spot : boss.map { $0 !== actor ? $0.rootLocal : actor.spot } ?? actor.spot
             actor.cat.jump(4, 1.5)
             if let boss, boss !== actor, !isNew, !arrivals.contains(where: { $0 === boss }), !boss.leaving {
                 handOver(to: actor, from: boss)
@@ -494,47 +519,100 @@ final class Village {
     }
 
     // Lanterns only show after dark, so they take no part in the seating: they are set down last, in
-    // cloth left free by the cats and the picnic, by the main cat (a terminal beside its agent), and never
-    // move anyone or make the blanket bigger. By day nothing on the blanket says they are there.
+    // cloth left free by the cats and the picnic, and never move anyone or make the blanket bigger. By day
+    // nothing on the blanket says they are there.
+    //
+    // They stand in one row along the front of the hem (the side toward you as the meadow is usually
+    // seen; the flag stands at the back), like lights along a stage: in front of every cat, so none hides
+    // one, and far from the flag. The row starts straight in front and grows right, then left, a lantern
+    // apart, passing over any place a cat or the picnic takes. Each keeps its place while it stays free,
+    // so one coming or going never moves the others. At most `MOST_LANTERNS` stand (fewer if the hem has
+    // less room): the failed first, then the lit, then the dark; the rest are counted on the flag.
     private func placeLanterns(_ plot: Plot, _ seated: [Spot]) {
-        let id = plot.view.id
-        let anchor = main(of: plot)?.spot ?? plot.center
+        let reach = Picnic.lanternReach * LANTERN_SIZE
         var taken = seated
         for t in plot.treats where t.wanted { taken.append(Spot(x: t.spot.x, z: t.spot.z, reach: t.reach)) }
-        let cx = plot.center.x, cz = plot.center.z, room = plot.size - HEM * 0.5
-        let reach = Picnic.lanternReach * LANTERN_SIZE
-        for i in plot.lanterns.indices where !plot.lanterns[i].leaving {
-            var own = chance("\(id)/lantern/\(plot.lanterns[i].view.id)/place")
-            let near = SEAT + reach + GAP_ON_BLANKET * 0.6
-            let fits = { (x: Float, z: Float) in hypot(x - cx, z - cz) + reach <= room }
-            var at = settle(&own, taken, reach, GAP_ON_BLANKET * 0.6, anchor.x, anchor.z, near, near + 1, fits: fits)
-            var w = 1
-            while !at.clear && w < 8 {
-                at = settle(&own, taken, reach, GAP_ON_BLANKET * 0.6, anchor.x, anchor.z, near, near + 1 + Float(w), fits: fits)
-                w += 1
-            }
-            // A crowded or small blanket may have no cloth left wholly free: the lantern then stands at the
-            // edge, more than half on the cloth. Never where nothing fitted at all, which would leave it at
-            // the main cat's own spot, hidden inside the cat.
-            if !at.clear {
-                let rim = { (x: Float, z: Float) in hypot(x - cx, z - cz) + reach * 0.5 <= plot.size }
-                var tries = 0
-                repeat {
-                    at = settle(&own, taken, reach, GAP_ON_BLANKET * 0.6, anchor.x, anchor.z, near, near + 1 + Float(tries) * 1.5, fits: rim)
-                    tries += 1
-                } while !at.clear && tries < 8
-                if !rim(at.x, at.z) || (at.x == anchor.x && at.z == anchor.z) {
-                    // Straight out from the middle, on the edge of the cloth, away from the main cat.
-                    var away = Vec2(cx - anchor.x, cz - anchor.z)
-                    if simd_length(away) < 1e-3 { let a = own.float() * .pi * 2; away = Vec2(cos(a), sin(a)) }
-                    away = simd_normalize(away) * (plot.size - reach * 0.5)
-                    at = (cx + away.x, cz + away.y, false)
-                }
-            }
-            if !plot.lanterns[i].placed { plot.lanterns[i].at = Vec3(at.x, 0, at.z); plot.lanterns[i].placed = true }
-            plot.lanterns[i].spot = Vec3(at.x, 0, at.z)
-            taken.append(Spot(x: at.x, z: at.z, reach: reach))
+        func free(_ p: Vec2) -> Bool {
+            taken.allSatisfy { hypot(p.x - $0.x, p.y - $0.z) >= $0.reach + reach + GAP_ON_BLANKET * 0.6 } && !Self.behind(p.x, p.y, reach, seated)
         }
+        var places = hemPlaces(plot, inset: reach + LANTERN_HEM)
+        var open = places.indices.filter { free(places[$0]) }
+        // A crowded or small blanket may have no cloth wholly free along its hem: the lanterns then stand
+        // on the edge, more than half on the cloth.
+        if open.isEmpty {
+            places = hemPlaces(plot, inset: reach * 0.5)
+            open = places.indices.filter { free(places[$0]) }
+        }
+        func rank(_ l: LanternPlace) -> Int { l.view.state == .failed ? 0 : l.view.state == .running ? 1 : 2 }
+        let live = plot.lanterns.indices.filter { !plot.lanterns[$0].leaving }
+        let ranked = live.sorted { (rank(plot.lanterns[$0]), $0) < (rank(plot.lanterns[$1]), $1) }
+        let standing = ranked.prefix(min(MOST_LANTERNS, open.count))
+        // Those already standing keep their places; newcomers take the free place nearest the front.
+        var claimed = Set<Int>()
+        for i in standing {
+            if let slot = plot.lanterns[i].slot, open.contains(slot), claimed.insert(slot).inserted { continue }
+            plot.lanterns[i].slot = nil
+        }
+        for i in standing where plot.lanterns[i].slot == nil {
+            let slot = open.first { !claimed.contains($0) }!
+            claimed.insert(slot)
+            plot.lanterns[i].slot = slot
+        }
+        var hidden = 0, hiddenFailed = false
+        for i in live {
+            guard let slot = plot.lanterns[i].slot, standing.contains(i) else {
+                plot.lanterns[i].hidden = true
+                plot.lanterns[i].slot = nil
+                hidden += 1
+                hiddenFailed = hiddenFailed || plot.lanterns[i].view.state == .failed
+                continue
+            }
+            let at = places[slot]
+            // Set down where it first stands rather than sliding along the hem from where it last stood.
+            if !plot.lanterns[i].placed || plot.lanterns[i].hidden { plot.lanterns[i].at = Vec3(at.x, 0, at.y); plot.lanterns[i].placed = true }
+            plot.lanterns[i].hidden = false
+            plot.lanterns[i].spot = Vec3(at.x, 0, at.y)
+        }
+        if hidden != plot.lanternsHidden || hiddenFailed != plot.hiddenFailed {
+            plot.lanternsHidden = hidden
+            plot.hiddenFailed = hiddenFailed
+            label(plot)
+        }
+    }
+
+    /// Places for lanterns along the front of a blanket's hem, `inset` in from its edge: straight in front
+    /// first, then alternately to the right and the left, `LANTERN_SPACING` apart along the hem, as far
+    /// round as `LANTERN_SPAN`. Group-local, as the blanket is laid now.
+    func hemPlaces(_ plot: Plot, inset: Float) -> [Vec2] {
+        func point(_ phi: Float) -> Vec2 {
+            let toward = Vec2(sin(phi), cos(phi))
+            return Vec2(plot.center.x, plot.center.z) + toward * (clothReach(plot, toward: toward) - inset)
+        }
+        var sides: [[Vec2]] = [[], []]
+        for (k, sign) in [Float(1), -1].enumerated() {
+            var walked: Float = 0, last = point(0), next = LANTERN_SPACING
+            for step in 1...200 {
+                let p = point(sign * LANTERN_SPAN * Float(step) / 200)
+                walked += simd_distance(p, last)
+                last = p
+                if walked >= next { sides[k].append(p); next += LANTERN_SPACING }
+            }
+        }
+        var places = [point(0)]
+        for k in 0..<max(sides[0].count, sides[1].count) {
+            if k < sides[0].count { places.append(sides[0][k]) }
+            if k < sides[1].count { places.append(sides[1][k]) }
+        }
+        return places
+    }
+
+    /// How far the cloth reaches from its middle along a direction on the ground (x, z), as laid now: its
+    /// outline turned the blanket's way and scaled to its size.
+    func clothReach(_ plot: Plot, toward: Vec2) -> Float {
+        // Into the cloth's own frame (`Mat4.rotationY(turn)` undone), whose outline lies in (x, −z).
+        let c = cos(plot.turn), s = sin(plot.turn)
+        let x = c * toward.x - s * toward.y, z = s * toward.x + c * toward.y
+        return Picnic.clothReach(Picnic.clothSeeds[plot.cloth], atan2(-z, x)) * plot.size
     }
 
     /// How far the lanterns are out, 0 by day to 1 at night: the same night amount the picnic light uses,
@@ -542,6 +620,8 @@ final class Village {
     private(set) var lanternLight: Float = 0
     /// How much of a lantern shows now, 0…1 (its own pop in and out, and the dark).
     func shown(_ lantern: LanternPlace) -> Float { max(lantern.shown.x, 0) * lanternLight }
+    /// Whether it is dark enough for lanterns: flags then count those with no room on their blankets.
+    private(set) var lanternsOut = false
 
     // The picnic, laid out as one spread the way people set one down: the hamper first, to one side of the
     // cats, and a few things unpacked beside it. Which things, and where, come from the tab's name so the
@@ -867,8 +947,13 @@ final class Village {
 
     func update(_ dt: Float, _ around: Surroundings, stage: Stage) {
         time += dt
+        if ambient { strollTime += dt }
         lanternLight += (stage.light.night - lanternLight) * min(1, dt * 2)
         if lanternLight < 0.002 { lanternLight = 0 }
+        if (lanternLight > 0.5) != lanternsOut {
+            lanternsOut = lanternLight > 0.5
+            relabel()
+        }
         for plot in plots {
             plot.group += (plot.home - plot.group) * min(1, dt * 4)
             plot.blanketSize += (plot.size - plot.blanketSize) * min(1, dt * 5)
@@ -881,7 +966,7 @@ final class Village {
                 plot.treats[i].at += (plot.treats[i].spot - plot.treats[i].at) * min(1, dt * 3)
             }
             for i in plot.lanterns.indices {
-                plot.lanterns[i].shown.spring(plot.lanterns[i].leaving ? 0 : 1, 180, 16, dt)
+                plot.lanterns[i].shown.spring(plot.lanterns[i].leaving || plot.lanterns[i].hidden ? 0 : 1, 180, 16, dt)
                 plot.lanterns[i].at += (plot.lanterns[i].spot - plot.lanterns[i].at) * min(1, dt * 3)
                 let state = plot.lanterns[i].view.state
                 plot.lanterns[i].lit += ((state == .finished ? 0 : 1) - plot.lanterns[i].lit) * min(1, dt * 4)
@@ -902,7 +987,7 @@ final class Village {
                 actor.cat.wards.removeAll(keepingCapacity: true)
                 if actor.cat.activity == .supervising { for helper in actor.helpers where !helper.leaving { actor.cat.wards.append(helper.head) } }
                 let going = actor.leaving && time >= actor.departAt
-                if going { actor.cat.spin += dt * 11 }
+                if going && ambient { actor.cat.spin += dt * 11 }
                 actor.pop.spring(going ? 0 : 1, 180, 16, dt)
                 actor.shownSize += (actor.size - actor.shownSize) * min(1, dt * 5)
                 if actor.errand != nil { runErrand(actor, in: plot) } else { actor.rootLocal += (actor.spot - actor.rootLocal) * min(1, dt * 3.5) }
@@ -949,7 +1034,7 @@ final class Village {
 
     // The ladybird ambles round the blanket in a slow wobbly loop, always heading the way it faces.
     private func crawl(_ plot: Plot) {
-        let t = time * 0.22 + plot.middle.x
+        let t = strollTime * 0.22 + plot.middle.x
         let out = plot.blanketSize * (0.55 + 0.3 * sin(t * 1.7))
         let was = plot.ladybird
         plot.ladybird = Vec3(plot.blanketAt.x + cos(t) * out, 0.005, plot.blanketAt.z + sin(t) * out)
@@ -963,9 +1048,10 @@ final class Village {
         for plot in plots { label(plot) }
     }
     private func label(_ plot: Plot) {
+        let more = lanternsOut ? plot.lanternsHidden : 0
         plot.label.update(FlagLabel.Inputs(name: plot.view.title, detail: plot.view.detail, pinned: plot.view.pinned, color: plot.view.color,
                                            chosen: chosen?.blanketID == plot.view.id, hollow: plot.view.state == .watchOnly,
-                                           remote: plot.machine > 0, room: plot.room))
+                                           remote: plot.machine > 0, more: more, moreFailed: more > 0 && plot.hiddenFailed, room: plot.room))
     }
 
     // The flag stands just past the far edge of the blanket as you look at it, raised above the height of a
@@ -1193,7 +1279,7 @@ final class Village {
     /// The lantern under a screen point.
     func pickLantern(_ point: Vec2, _ stage: Stage) -> (Plot, LanternPlace)? {
         for plot in plots {
-            for lantern in plot.lanterns where !lantern.leaving && shown(lantern) > 0.5 {
+            for lantern in plot.lanterns where !lantern.leaving && !lantern.hidden && shown(lantern) > 0.5 {
                 let c = stage.screen(plot.group + lantern.at + Vec3(0, 0.5, 0)), e = stage.screen(plot.group + lantern.at + Vec3(0, 1.05, 0))
                 if c.z > 1 { continue }
                 if hypot(c.x - point.x, c.y - point.y) < max(hypot(e.x - c.x, e.y - c.y), 6) { return (plot, lantern) }

@@ -11,7 +11,12 @@ final class FrameController: NSViewController {
     private let chrome: WindowChrome
     private let content: NSViewController
     private var statusHeight: NSLayoutConstraint!
-    private var status: NSView!
+    /// The status bar, its content there only while shown (`WhileShown`): hidden, it would still be worked
+    /// out again on every Claude's and pane's change.
+    private var status: NSHostingView<WhileShown<StatusBar>>!
+    /// The top bar: first in the order Tab goes through the window with Full Keyboard Access.
+    private(set) var topBar: NSView!
+    var statusBar: NSView? { status }
     private var statusObserver: Observing?
 
     static let topBarHeight = Look.Height.topBar
@@ -31,7 +36,8 @@ final class FrameController: NSViewController {
     override func loadView() {
         let view = NSView()
         let top = NSHostingView(rootView: TopBar(workbench: workbench, chrome: chrome))
-        let status = NSHostingView(rootView: StatusBar(workbench: workbench))
+        let workbench = workbench
+        let status = NSHostingView(rootView: WhileShown(shown: chrome.showsStatusBar) { StatusBar(workbench: workbench) })
         addChild(content)
         for part in [content.view, top, status] {
             part.translatesAutoresizingMaskIntoConstraints = false
@@ -58,6 +64,7 @@ final class FrameController: NSViewController {
         statusHeight = status.heightAnchor.constraint(equalToConstant: Self.statusBarHeight)
         statusHeight.isActive = true
         self.status = status
+        topBar = top
         self.view = view
         statusObserver = Observing { [weak self] in self?.updateStatusBar() }
     }
@@ -68,10 +75,14 @@ final class FrameController: NSViewController {
         let shown = chrome.showsStatusBar
         let height = shown ? Self.statusBarHeight : 0
         guard statusHeight.constant != height else { return }
-        if shown { status.isHidden = false }
+        if shown {
+            status.isHidden = false
+            status.rootView.shown = true
+        }
         guard view.window?.isVisible == true, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else {
             statusHeight.constant = height
             status.isHidden = !shown
+            status.rootView.shown = shown
             return
         }
         LiveResize.shared.begin()
@@ -82,7 +93,10 @@ final class FrameController: NSViewController {
             view.layoutSubtreeIfNeeded()
         } completionHandler: {
             MainActor.assumeIsolated {
-                if !self.chrome.showsStatusBar { self.status.isHidden = true }
+                if !self.chrome.showsStatusBar {
+                    self.status.isHidden = true
+                    self.status.rootView.shown = false
+                }
                 LiveResize.shared.end()
             }
         }
@@ -99,8 +113,12 @@ final class WindowChrome {
     var meadowShown = true
     @ObservationIgnored var toggleMeadow: () -> Void = {}
 
+    /// Where the close, minimise and zoom buttons end, read from the window (72 pt on macOS 26), so the
+    /// bar's first button keeps its distance from them on any version of the system.
+    var trafficLightsEnd: CGFloat = 72
+
     /// Room for the close, minimise and zoom buttons at the top bar's leading end.
-    var leadingInset: CGFloat { fullScreen ? Look.Space.m : 78 }
+    var leadingInset: CGFloat { fullScreen ? Look.Space.m : trafficLightsEnd + Look.Space.s }
 
     /// Debug builds draw the window as the one in use although a background run's window is never key,
     /// so a snapshot shows what you see while working (`--key-look`).
@@ -150,7 +168,11 @@ struct TopBar: View {
         .opacity(activeState.inUse ? 1 : 0.6)
         .frame(maxWidth: .infinity, minHeight: Look.Height.topBar, maxHeight: Look.Height.topBar)
         .chromeBackground()
-        .overlay(alignment: .bottom) { Color.line.frame(height: 1) }
+        // The line drags the window as the rest of the bar does.
+        .overlay(alignment: .bottom) { Color.line.frame(height: 1).allowsHitTesting(false) }
+        // In a window that is not the one in use, the first click on any control acts as well as bringing
+        // the window forward, as the bar's empty stretches and the tabs (AppKit's) do.
+        .allowsWindowActivationEvents()
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: chrome.leadingInset)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Top bar", comment: "Accessibility label of the window's top bar"))

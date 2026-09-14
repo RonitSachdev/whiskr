@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// The settings our `claude` shim passes to Claude Code in a pane (`claude --settings <file>`). Claude
@@ -54,20 +55,68 @@ public enum HookSettings {
     /// start and steer helper terminals. Kept to a sentence, so it costs nearly nothing.
     public static let pawNote = "In this terminal you can start and steer helper terminals (other Claude Code sessions, long commands) with the `paw` command; run `paw --skill` before using it."
 
+    /// Why your own `--settings` could not get the pane's hooks: Claude Code then runs with yours alone.
+    public enum MergeFailure: Error, Equatable, Sendable {
+        /// The pane's hooks file is gone or is not settings.
+        case noHooks
+        /// Your settings file cannot be read (the path is as you gave it).
+        case unreadable(String)
+        /// Yours is not a JSON object.
+        case notSettings
+        /// The merged settings could not be written beside the pane's hooks.
+        case notWritten
+
+        /// A few words for the one line the shim prints.
+        public var reason: String {
+            switch self {
+            case .noHooks: "the app's hooks file cannot be read"
+            case .unreadable(let path): "\(path) cannot be read"
+            case .notSettings: "yours is not a JSON object"
+            case .notWritten: "the merged settings cannot be written"
+            }
+        }
+    }
+
     /// Your own `--settings` (a path, or the JSON itself) with the pane's hooks added: Claude Code takes
     /// one `--settings`, so the shim passes this instead of yours. Everything of yours stays, your hooks
-    /// first; nil when yours cannot be read as a JSON object (then it is passed on untouched).
-    public static func merged(hooks document: Data, with theirs: String) -> Data? {
+    /// first.
+    public static func merged(hooks document: Data, with theirs: String) throws(MergeFailure) -> Data {
         let trimmed = theirs.trimmingCharacters(in: .whitespacesAndNewlines)
         let source = trimmed.hasPrefix("{") ? Data(trimmed.utf8) : FileManager.default.contents(atPath: (trimmed as NSString).expandingTildeInPath)
-        guard let source, var settings = (try? JSONSerialization.jsonObject(with: source)) as? [String: Any],
-              let ours = ((try? JSONSerialization.jsonObject(with: document)) as? [String: Any])?["hooks"] as? [String: Any] else { return nil }
+        guard let source else { throw .unreadable(trimmed) }
+        guard var settings = (try? JSONSerialization.jsonObject(with: source)) as? [String: Any] else { throw .notSettings }
+        guard let ours = ((try? JSONSerialization.jsonObject(with: document)) as? [String: Any])?["hooks"] as? [String: Any] else { throw .noHooks }
         var hooks = settings["hooks"] as? [String: Any] ?? [:]
         for (event, added) in ours {
             hooks[event] = (hooks[event] as? [Any] ?? []) + (added as? [Any] ?? [])
         }
         settings["hooks"] = hooks
-        return try? JSONSerialization.data(withJSONObject: settings, options: [.sortedKeys, .withoutEscapingSlashes])
+        guard let data = try? JSONSerialization.data(withJSONObject: settings, options: [.sortedKeys, .withoutEscapingSlashes]) else { throw .notSettings }
+        return data
+    }
+
+    /// `merged`, written to a file beside the pane's hooks file (`hooksFile`), whose path the shim passes
+    /// to Claude Code. A file, not the JSON in the command line: anyone on the Mac can read a process's
+    /// arguments, and your settings may hold secrets (an `env` block); the file is readable only by you,
+    /// in the app's private folder. It is named after its contents, so running `claude` again with the
+    /// same settings rewrites the same file, never one a running session uses with other contents.
+    /// Claude Code reads it once, at start; the app clears the folder of such files at its next launch.
+    public static func mergedFile(hooks hooksFile: String, with theirs: String) throws(MergeFailure) -> String {
+        guard let document = FileManager.default.contents(atPath: hooksFile) else { throw .noHooks }
+        let data = try merged(hooks: document, with: theirs)
+        let name = "merged-" + SHA256.hash(data: data).prefix(8).map { String(format: "%02x", $0) }.joined() + ".json"
+        let folder = (hooksFile as NSString).deletingLastPathComponent
+        let file = (folder as NSString).appendingPathComponent(name)
+        // Written whole under a name of its own, readable only by you from the start, then put in place.
+        let partial = (folder as NSString).appendingPathComponent(".\(name).\(UUID().uuidString)")
+        let descriptor = open(partial, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
+        guard descriptor >= 0 else { throw .notWritten }
+        let written = data.withUnsafeBytes { write(descriptor, $0.baseAddress, $0.count) }
+        guard close(descriptor) == 0, written == data.count, rename(partial, file) == 0 else {
+            unlink(partial)
+            throw .notWritten
+        }
+        return file
     }
 
     /// The settings document every pane's `claude` gets: one command hook per event, all posting to the

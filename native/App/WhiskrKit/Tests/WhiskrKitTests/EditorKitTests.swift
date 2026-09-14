@@ -96,6 +96,15 @@ struct TextFileTests {
 
 @Suite("Line index")
 struct LineIndexTests {
+    @Test("the longest line is found, the first of equals, without its line break")
+    func longestLine() {
+        let found = LineIndex("ab\ncdef\nghij").longestLine
+        #expect(found.line == 1 && found.length == 4)
+        #expect(LineIndex("").longestLine.length == 0)
+        let last = LineIndex("a\nbb\nccc").longestLine
+        #expect(last.line == 2 && last.length == 3)
+    }
+
     @Test("lines start after each newline; offsets find their line")
     func basics() {
         let index = LineIndex("ab\ncd\n\nef")
@@ -137,85 +146,6 @@ struct LineIndexTests {
     }
 }
 
-@Suite("Incremental syntax states")
-struct SyntaxStatesTests {
-    private func lines(_ text: String) -> [String] { text.components(separatedBy: "\n") }
-
-    @Test("lazily lexed states equal a full pass, and an edit inside a function relexes one line")
-    func incremental() {
-        var source = lines((0..<300).map { "func f\($0)() {\n    let x = \"s\" // c\n}\n/* block\n still */" }.joined(separator: "\n"))
-        let lexer = SyntaxLexer(language: .swift)
-        var states = SyntaxStates(lexer: lexer, lineCount: source.count)
-        // A full pass, one line at a time.
-        var expected: [LexerState] = [.initial]
-        for line in source.dropLast() { expected.append(lexer.tokenize(line, from: expected.last!).end) }
-        let last = states.state(atLine: source.count - 1) { source[$0] }
-        #expect(last == expected.last)
-        #expect(states.known == source.count)
-
-        // Typing inside a string on line 1: only that line changes.
-        source[1] = "    let x = \"st\" // c"
-        states.replaceLines(1..<2, with: 1)
-        let changed = states.relex(1..<2, budget: 10_000) { source[$0] }
-        #expect(changed == 1..<2)
-        #expect(states.known == source.count)
-
-        // Opening a block comment changes everything after it, up to the budget.
-        source[1] = "    /* open"
-        states.replaceLines(1..<2, with: 1)
-        let opened = states.relex(1..<2, budget: 50) { source[$0] }
-        #expect(opened.lowerBound == 1 && opened.upperBound == source.count)
-        // Closing it again converges back to the old states.
-        source[1] = "    let x = 1"
-        states.replaceLines(1..<2, with: 1)
-        _ = states.relex(1..<2, budget: 10_000) { source[$0] }
-        var fresh = SyntaxStates(lexer: lexer, lineCount: source.count)
-        for line in stride(from: 0, to: source.count, by: 97) {
-            let kept = states.state(atLine: line) { source[$0] }
-            let worked = fresh.state(atLine: line) { source[$0] }
-            #expect(kept == worked)
-        }
-    }
-
-    @Test("inserting and removing lines keeps the states after them")
-    func structural() {
-        var source = lines((0..<200).map { "let v\($0) = \"x\"" }.joined(separator: "\n"))
-        let lexer = SyntaxLexer(language: .swift)
-        var states = SyntaxStates(lexer: lexer, lineCount: source.count)
-        _ = states.state(atLine: source.count - 1) { source[$0] }
-        source.insert(contentsOf: ["// one", "// two"], at: 10)
-        states.replaceLines(10..<10, with: 2)
-        #expect(states.lineCount == source.count)
-        let changed = states.relex(10..<12, budget: 1000) { source[$0] }
-        #expect(changed == 10..<12)
-        #expect(states.known == source.count)
-        source.removeSubrange(5..<20)
-        states.replaceLines(5..<20, with: 0)
-        _ = states.relex(5..<5, budget: 1000) { source[$0] }
-        #expect(states.lineCount == source.count)
-        let tokens = states.tokens(line: source.count - 1) { source[$0] }
-        #expect(!tokens.isEmpty)
-    }
-}
-
-@Suite("Syntax colours from the theme")
-struct SyntaxPaletteTests {
-    @Test("every kind has a colour that stays readable on the background, in light and dark themes")
-    func readable() {
-        for theme in BuiltInThemes.all {
-            for variant in [theme.light, theme.dark].compactMap({ $0 }) {
-                let styles = SyntaxPalette.styles(for: variant.terminal)
-                #expect(styles.count == SyntaxKind.allCases.count)
-                for (kind, style) in styles where kind != .punctuation {
-                    #expect(style.color.contrast(with: variant.terminal.background) >= 2.5, "\(theme.name) \(kind)")
-                }
-                #expect(styles[.comment]?.italic == true)
-                #expect(styles[.keyword]?.color != styles[.string]?.color)
-            }
-        }
-    }
-}
-
 @Suite("Finding files by name")
 struct PathIndexTests {
     let index = PathIndex(paths: [
@@ -252,6 +182,40 @@ struct PathIndexTests {
         let elapsed = threadTime { _ = many.search("mod12file99", limit: 50) }
         #expect(elapsed < .milliseconds(150))
         print("PathIndex 100k search:", elapsed)
+    }
+
+    @Test("every word must match, in the name or along the path, in any order")
+    func words() {
+        let index = PathIndex(paths: ["src/main/java/App.java", "src/main/kotlin/App.kt", "src/test/java/AppTest.java"])
+        #expect(index.search("main java").map(\.path) == ["src/main/java/App.java"])
+        #expect(index.search("java main").map(\.path) == ["src/main/java/App.java"])
+        #expect(index.search("app test").first?.path == "src/test/java/AppTest.java")
+    }
+
+    @Test("a quoted word matches side by side")
+    func quoted() {
+        let found = index.search("\"bench+\"").map(\.path)
+        #expect(found == ["native/App/Whiskr/Model/Workbench+Scene.swift"])
+    }
+
+    @Test("the shorter name a query starts comes first; word starts beat letters inside a word")
+    func ranking() {
+        let names = PathIndex(paths: ["src/windowActions.ts", "src/window.ts", "lib/window/view.ts"])
+        #expect(names.search("window").map(\.path).prefix(2) == ["src/window.ts", "src/windowActions.ts"])
+        let starts = PathIndex(paths: ["src/wb/x.ts", "src/awbx.ts", "src/w-b.ts"])
+        #expect(starts.search("wb").map(\.path) == ["src/w-b.ts", "src/awbx.ts", "src/wb/x.ts"])
+        #expect(starts.search("src/wb").first?.path == "src/wb/x.ts")
+    }
+
+    @Test("a two-word search over 100,000 paths stays quick, even in a debug build")
+    func wordsSpeed() {
+        let many = PathIndex(paths: (0..<100_000).map { "src/module\($0 % 300)/sub\($0 % 17)/File\($0).swift" })
+        let elapsed = threadTime { _ = many.search("sub3 file99", limit: 50) }
+        #expect(elapsed < .milliseconds(150))
+        print("PathIndex 100k two-word search:", elapsed)
+        let quoted = threadTime { _ = many.search("\"module12/\" file", limit: 50) }
+        #expect(quoted < .milliseconds(150))
+        print("PathIndex 100k quoted search:", quoted)
     }
 }
 
@@ -300,14 +264,20 @@ struct TextEditsTests {
         #expect(TextEdits.shiftLeft(["    a", "  b", "\tc", "d"], width: 4) == ["a", "b", "c", "d"])
     }
 
-    @Test("a new line keeps the indentation, and indents after an opening bracket or a Python colon")
+    @Test("a new line keeps the indentation, and indents (or continues a doc comment) where the language's rules say")
     func newlines() {
-        #expect(TextEdits.newlineIndent(after: "    let a = 1", unit: "    ", language: .swift) == "    ")
-        #expect(TextEdits.newlineIndent(after: "    if x {", unit: "    ", language: .swift) == "        ")
-        #expect(TextEdits.newlineIndent(after: "def f():", unit: "    ", language: .python) == "    ")
-        #expect(TextEdits.newlineIndent(after: "  <div>", unit: "  ", language: .html) == "    ")
-        #expect(TextEdits.newlineIndent(after: "  <br/>", unit: "  ", language: .html) == "  ")
-        #expect(TextEdits.newlineIndent(after: "- item", unit: "  ", language: .markdown) == "")
+        func indent(_ line: String, _ unit: String, _ id: String, following: String = "") -> String {
+            TextEdits.newlineIndent(after: line, following: following, unit: unit, configuration: LanguageRegistry.shared.language(id: id)!.configuration)
+        }
+        #expect(indent("    let a = 1", "    ", "swift") == "    ")
+        #expect(indent("    if x {", "    ", "swift") == "        ")
+        #expect(indent("key:", "  ", "yaml") == "  ")
+        #expect(indent("def f():", "    ", "python") == "    ")
+        // Return inside a line comment carries the comment on to the new line.
+        #expect(indent("    // a note", "    ", "swift", following: "that goes on") == "    // ")
+        #expect(indent("  <div>", "  ", "html") == "    ")
+        #expect(indent("  <br/>", "  ", "html") == "  ")
+        #expect(indent("- item", "  ", "markdown") == "")
         #expect(TextEdits.outdentedForClosing("        ", unit: "    ") == "    ")
     }
 }
@@ -368,16 +338,5 @@ struct MarkdownNamesTests {
         #expect(MarkdownSlug.make("Getting started") == "getting-started")
         #expect(MarkdownSlug.make("What's **new** in 2.0?") == "whats-new-in-20")
         #expect(MarkdownSlug.make("`make` targets") == "make-targets")
-    }
-
-    @Test("fence names find their language")
-    func fences() {
-        #expect(SyntaxLanguage.named("swift") == .swift)
-        #expect(SyntaxLanguage.named("TS") == .typescript)
-        #expect(SyntaxLanguage.named("sh") == .shell)
-        #expect(SyntaxLanguage.named("yml") == .yaml)
-        #expect(SyntaxLanguage.named(nil) == .plain)
-        #expect(SyntaxLanguage.named("rb") == .ruby)
-        #expect(SyntaxLanguage.named("nonsense") == .plain)
     }
 }

@@ -167,8 +167,7 @@ private struct ChangeRow: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            Image(systemName: FileIcon.symbol(for: name, folder: false))
-                .font(.system(size: 11))
+            FileIconView(name: name, size: 11)
                 .foregroundStyle(Color.ink2)
                 .frame(width: 16)
             Text(name)
@@ -330,7 +329,8 @@ private struct CommitBox: View {
             .controlSize(.large)
             .buttonStyle(.borderedProminent)
             .disabled(!canCommit)
-            .keyboardShortcut(.return, modifiers: .command)
+            // Only from the message: a window-wide ⌘↩ would commit from a terminal or the editor.
+            .keyboardShortcut(focused.wrappedValue ? KeyboardShortcut(.return, modifiers: .command) : nil)
             .help(status.staged.isEmpty ? String(localized: "Stage changes to commit them") : String(localized: "Commit the staged changes (⌘↩)"))
             if let error = repository.lastError {
                 Text(error)

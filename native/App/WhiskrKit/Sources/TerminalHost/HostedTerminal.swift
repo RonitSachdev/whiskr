@@ -80,7 +80,7 @@ final class HostedTerminal: @unchecked Sendable {
         history.resized(to: spec.size)
 
         let reading = DispatchSource.makeReadSource(fileDescriptor: descriptor, queue: queue)
-        reading.setEventHandler { [weak self] in self?.read(rounds: 8) }
+        reading.setEventHandler { [weak self] in self?.read() }
         unwatched.enter()
         reading.setCancelHandler { [unwatched] in unwatched.leave() }
         reading.resume()
@@ -104,17 +104,25 @@ final class HostedTerminal: @unchecked Sendable {
     // MARK: Output
 
     /// Takes what the program has printed: kept for later, and passed to everyone watching, as one piece
-    /// for all that could be read now (`OutputBatch`): a pseudo-terminal gives at most a kilobyte a read.
-    private func read(rounds: Int) {
+    /// for all that could be read now (`OutputBatch`), as a pseudo-terminal gives at most a kilobyte a read.
+    /// A program printing faster is read again at once, once the other terminals on the queue have had
+    /// their turn: one turn reads at most a batch.
+    private func read() {
         var batch = OutputBatch()
-        // Before anything else is said about the terminal (a status, its end), what it printed first.
+        var taken = 0
+        // Before anything else is said about the terminal (a status, its end, what its printing sets off
+        // in the host), what it printed first.
         func pass() {
             if let ready = batch.take() { for viewer in viewers { viewer.send(.output(terminal: ready.0, ready.1)) } }
         }
-        defer { pass() }
-        for _ in 0..<rounds {
+        defer {
+            pass()
+            if taken > 0 { onOutput?(self) }
+        }
+        while taken < batch.limit {
             let count = chunk.withUnsafeMutableBytes { Darwin.read(descriptor, $0.baseAddress, $0.count) }
             if count > 0 {
+                taken += count
                 let data = Data(chunk[0..<count])
                 history.append(data)
                 modes.scan(data)
@@ -124,12 +132,10 @@ final class HostedTerminal: @unchecked Sendable {
                 let findings = scanner.scan(data)
                 if !findings.isEmpty { pass() }
                 for finding in findings { take(finding) }
-                onOutput?(self)
             } else if count < 0, errno == EINTR {
                 continue
             } else {
                 // Nothing more for now; or the last program holding the terminal has gone.
-                pass()
                 if count == 0 || (errno != EAGAIN && errno != EWOULDBLOCK) { stopReading() }
                 return
             }
@@ -367,7 +373,7 @@ final class HostedTerminal: @unchecked Sendable {
     private func programEnded() {
         guard !exited else { return }
         // Whatever it printed last.
-        if reading != nil { read(rounds: 64) }
+        if reading != nil { read() }
         stopReading()
         // A terminal being closed takes its stragglers with it. Done before the shell is reaped, while
         // its process (and so its session's number) cannot have been given to anyone else.

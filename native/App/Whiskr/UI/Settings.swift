@@ -45,6 +45,12 @@ final class SettingsWindowController: NSWindowController {
         return item
     }
 
+    /// Opens on Terminal, where the themes are.
+    func showThemes() {
+        show()
+        (window?.contentViewController as? SettingsTabs)?.select(pane: "terminal")
+    }
+
     /// Opens on Meadow (Debug: for a look from the command line).
     func showWorld() {
         show()
@@ -61,24 +67,78 @@ final class SettingsWindowController: NSWindowController {
         window?.makeKeyAndOrderFront(nil)
     }
 
-    /// Theme files the app can read: its own and iTerm2's.
-    static let themeTypes: [UTType] = [
+    /// What Add Theme… and File › Import take: the app's own theme files and iTerm2's, VS Code colour
+    /// themes (JSON, with comments or without) and TextMate themes, VS Code extensions (a `.vsix` or a
+    /// folder), and TextMate grammars.
+    static let importTypes: [UTType] = [
         UTType(filenameExtension: Theme.fileExtension) ?? .json,
         UTType(filenameExtension: Theme.legacyFileExtension) ?? .json,
         UTType(filenameExtension: "itermcolors") ?? .propertyList,
+        .json,
+        UTType(filenameExtension: "jsonc") ?? .json,
+        UTType(filenameExtension: "tmTheme") ?? .propertyList,
+        UTType(filenameExtension: "vsix") ?? .zip,
+        UTType(filenameExtension: "tmLanguage") ?? .propertyList,
+        .folder,
     ]
 
-    /// Imports theme files and reports anything that went wrong.
+    /// The open panel for Add Theme… and File › Import; `then` runs after an import.
+    static func chooseImports(over window: NSWindow?, then: @escaping () -> Void = {}) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = importTypes
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = true
+        panel.prompt = String(localized: "Add", comment: "Theme file picker's button")
+        panel.message = String(localized: "Choose themes (Whiskr, iTerm2, VS Code or TextMate), VS Code extensions (.vsix or a folder) or TextMate grammars.")
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK else { return }
+            importThemes(panel.urls, over: window)
+            then()
+        }
+        if let window { panel.beginSheetModal(for: window, completionHandler: finish) } else { finish(panel.runModal()) }
+    }
+
+    /// Where languages added with Add Theme… or File › Import are kept (`LanguageRegistry.install`).
+    static var languagesFolder: URL { Workbench.supportFolder.appendingPathComponent("Languages", isDirectory: true) }
+
+    /// Imports themes and languages (a VS Code extension may hold both; a TextMate grammar is a language),
+    /// keeps one line saying what was added for Settings to show (`ThemeStore.importSummary`), and reports
+    /// anything that could not be read.
     static func importThemes(_ urls: [URL], over window: NSWindow?) {
         var problems: [String] = []
+        var added: [String] = []
+        var languages = 0
         for url in urls {
+            let name = url.lastPathComponent.lowercased()
+            let isGrammar = name.hasSuffix(".tmlanguage.json") || name.hasSuffix(".tmlanguage") || url.pathExtension.lowercased() == "plist"
+            let isExtension = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true || url.pathExtension.lowercased() == "vsix"
             do {
-                try ThemeStore.shared.importTheme(at: url)
+                let themes = isGrammar ? [] : try ThemeStore.shared.importThemes(at: url)
+                added += themes.map(\.name)
+                if isGrammar || isExtension {
+                    do {
+                        languages += try LanguageRegistry.shared.install(from: url, into: languagesFolder).count
+                    } catch LanguageInstallError.nothingToInstall where !themes.isEmpty {
+                        // An extension of themes only.
+                    }
+                } else if themes.isEmpty {
+                    throw ThemeImportError.unreadable(String(localized: "There are no colour themes in it."))
+                }
             } catch let error as ThemeImportError {
+                problems.append("\(url.lastPathComponent): \(error.message)")
+            } catch let error as LanguageInstallError {
                 problems.append("\(url.lastPathComponent): \(error.message)")
             } catch {
                 problems.append("\(url.lastPathComponent): \(error.localizedDescription)")
             }
+        }
+        if languages > 0 {
+            FileDocument.languagesChanged()
+            added.append(languages == 1 ? String(localized: "1 language") : String(localized: "\(languages) languages"))
+        }
+        if !added.isEmpty {
+            let names = ListFormatter.localizedString(byJoining: added)
+            ThemeStore.shared.importSummary = String(localized: "Added \(names).", comment: "Settings › Terminal, after an import: the themes and languages added")
         }
         guard !problems.isEmpty else { return }
         let alert = NSAlert()
@@ -149,14 +209,17 @@ struct TerminalSettings: View {
                 .padding(.vertical, 4)
                 HStack {
                     Button("Edit Colors…") { editing = store.theme }
-                    Button("Import Theme…", action: chooseThemeFiles)
+                    Button("Add Theme…") { SettingsWindowController.chooseImports(over: NSApp.keyWindow) }
                     Spacer()
                     Button("Show Themes Folder") { store.showThemesFolder() }
+                }
+                if let summary = store.importSummary {
+                    Text(summary).font(.callout).foregroundStyle(.secondary)
                 }
             } header: {
                 Text("Theme")
             } footer: {
-                Text("Your themes are .whiskrtheme files (plain JSON) in the themes folder; share them, edit them by hand, or drop a .whiskrtheme or iTerm2 .itermcolors file here to import it.")
+                Text("Add a VS Code theme, extension or .vsix, an iTerm2 .itermcolors file or a .whiskrtheme, or drop one here. A theme with a light and a dark version follows your Mac’s appearance; to pair two of yours, right-click one. Your themes are .whiskrtheme files (plain JSON) in the themes folder.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             .overlay {
@@ -204,27 +267,33 @@ struct TerminalSettings: View {
         .sheet(item: $editing) { theme in
             ThemeEditor(original: theme, store: store) { editing = nil }
         }
+        .onDisappear { store.importSummary = nil }
     }
 
     @ViewBuilder private func cardMenu(_ theme: Theme) -> some View {
         Button("Use \(theme.name)") { store.themeID = theme.id }
         Button(theme.isBuiltIn ? "Duplicate and Edit…" : "Edit Colors…") { editing = theme }
+        // Two of your own, one light and one dark, become one theme that follows the Mac's appearance.
+        let candidates = store.pairCandidates(for: theme)
+        if !candidates.isEmpty {
+            Menu(theme.fixedDarkness == true ? String(localized: "Pair with Light Theme") : String(localized: "Pair with Dark Theme")) {
+                ForEach(candidates) { other in
+                    Button(other.name) { attempt { try store.pair(theme, with: other) } }
+                }
+            }
+        }
+        if !theme.isBuiltIn, theme.fixedDarkness == nil {
+            Button(String(localized: "Separate Light and Dark")) { attempt { try store.separate(theme) } }
+        }
         if !theme.isBuiltIn {
             Divider()
-            Button("Delete \(theme.name)", role: .destructive) { store.delete(userTheme: theme) }
+            Button("Delete \(theme.name)", role: .destructive) { store.remove(userTheme: theme) }
         }
     }
 
-    private func chooseThemeFiles() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = SettingsWindowController.themeTypes
-        panel.allowsMultipleSelection = true
-        panel.prompt = String(localized: "Import", comment: "Theme file picker's button")
-        guard let window = NSApp.keyWindow else { return }
-        panel.beginSheetModal(for: window) { response in
-            guard response == .OK else { return }
-            SettingsWindowController.importThemes(panel.urls, over: window)
-        }
+    /// Runs a change to your themes, saying so if it could not be saved.
+    private func attempt(_ change: () throws -> Void) {
+        do { try change() } catch { NSApp.presentError(error) }
     }
 
     private func importDropped(_ providers: [NSItemProvider]) -> Bool {
@@ -358,7 +427,7 @@ struct ThemeEditor: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.12)))
             let warnings = variant.readabilityWarnings
             if !warnings.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Look.Space.xxs) {
                     ForEach(warnings, id: \.what) { warning in
                         Label(warning.message, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange)
                     }
@@ -464,6 +533,10 @@ struct EditorSettings: View {
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section {
+                Picker(String(localized: "Indent with"), selection: $preferences.insertSpaces) {
+                    Text(String(localized: "Spaces", comment: "Settings › Editor: indent with spaces")).tag(true)
+                    Text(String(localized: "Tabs")).tag(false)
+                }
                 Picker(String(localized: "Tab width"), selection: $preferences.tabWidth) {
                     ForEach(EditorPreferences.tabWidths, id: \.self) { Text(String(localized: "\($0) spaces")).tag($0) }
                 }
@@ -472,7 +545,16 @@ struct EditorSettings: View {
             } header: {
                 Text(String(localized: "Text"))
             } footer: {
-                Text(String(localized: "Each file keeps its own indentation, encoding and line endings: they are read from it and written back the same way. The tab width is for files that do not say."))
+                Text(String(localized: "Each file keeps its own indentation, encoding and line endings: they are read from it and written back the same way. The indentation and tab width are for files that do not say."))
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Section {
+                Toggle(String(localized: "Trim trailing whitespace"), isOn: $preferences.trimTrailingWhitespace)
+                Toggle(String(localized: "Insert a final newline"), isOn: $preferences.insertFinalNewline)
+            } header: {
+                Text(String(localized: "When Saving"))
+            } footer: {
+                Text(String(localized: "A repository’s .editorconfig file decides these, its indentation and its line endings for the files it covers, as in VS Code."))
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -483,6 +565,8 @@ struct EditorSettings: View {
 /// Settings › General.
 struct GeneralSettings: View {
     @Bindable var preferences: Preferences
+    /// What the last Import Settings applied (`OtherEditorImport`).
+    @State private var otherEditorSummary: String?
 
     /// Settings › General's folder for new worktrees, chosen with the system's folder picker.
     private func chooseWorktreeFolder() {
@@ -541,6 +625,24 @@ struct GeneralSettings: View {
                         }
                     }
                 }
+            }
+            Section {
+                LabeledContent(String(localized: "Settings from VS Code or Cursor")) {
+                    Menu(String(localized: "Import Settings")) {
+                        ForEach(OtherEditor.allCases, id: \.self) { editor in
+                            Button(String(localized: "From \(editor.name)", comment: "Settings › General › Import Settings: the editor to read")) {
+                                otherEditorSummary = OtherEditorImport.apply(from: editor)
+                            }
+                        }
+                    }
+                    .fixedSize()
+                }
+                if let otherEditorSummary {
+                    Text(otherEditorSummary).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+            } footer: {
+                Text(String(localized: "Reads its settings once, when you choose: fonts and sizes, indentation, wrapping, invisibles, saving, the terminal’s cursor and the colour theme. Nothing is changed there, and nothing is sent anywhere."))
+                    .font(.callout).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

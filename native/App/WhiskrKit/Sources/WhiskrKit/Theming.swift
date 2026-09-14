@@ -142,9 +142,12 @@ public struct TerminalColors: Hashable, Sendable, Codable {
 ///
 /// The window is built from two layers (docs/DESIGN.md, "Look of the interface"): the **content** (the
 /// terminal's background: panes, editors, Home, the selected tab) and the **chrome** a step below it (the
-/// top bar, the tab row, the status bar, the side panel), with one **line** between any two.
+/// top bar, the tab row, the status bar, the side panel), with one **line** between any two. Hover,
+/// pressed and selected fills are not colours of the theme but the text's colour, faint, over whatever
+/// they are on (docs/DESIGN.md, "States"). Files written when the theme had colours of its own for a
+/// sidebar, hover and pressed (`sidebar`, `hover`, `press`) still open; those are left out.
 public enum AppColorKey: String, CaseIterable, Codable, Sendable {
-    case surface, chrome, sidebar, hover, press, line, lineStrong
+    case surface, chrome, line, lineStrong
     case text, textSecondary, textTertiary
     case well, accent
     case working, needsYou, done, idle, error
@@ -153,9 +156,6 @@ public enum AppColorKey: String, CaseIterable, Codable, Sendable {
         switch self {
         case .surface: "Surface"
         case .chrome: "Bars and panels"
-        case .sidebar: "Sidebar"
-        case .hover: "Hover"
-        case .press: "Pressed"
         case .line: "Separator"
         case .lineStrong: "Strong separator"
         case .text: "Text"
@@ -190,9 +190,6 @@ public struct AppColors: Hashable, Sendable {
         var values: [AppColorKey: RGBColor] = [
             .surface: dark ? bg.mixed(with: fg, 0.03) : bg.mixed(with: .white, 0.4),
             .chrome: dark ? bg.mixed(with: .black, 0.28) : bg.mixed(with: fg, 0.05),
-            .sidebar: dark ? bg.mixed(with: .black, 0.12) : bg.mixed(with: fg, 0.04),
-            .hover: bg.mixed(with: fg, 0.08),
-            .press: bg.mixed(with: fg, 0.12),
             // Lines at the strong end of what editors use (about 1.4:1 on the chrome): the regions must read
             // apart at a glance.
             .line: bg.mixed(with: fg, dark ? 0.18 : 0.2),
@@ -204,8 +201,6 @@ public struct AppColors: Hashable, Sendable {
             .accent: terminal.ansi[4],
         ]
         let surface = values[.surface]!
-        // The sidebar must still carry body text well.
-        values[.sidebar] = values[.sidebar]!.ensuring(contrast: 4.5, with: fg, movingTo: surface)
         // The bars carry text in all three strengths: secondary as body text, tertiary as hints.
         let chrome = values[.chrome]!
         values[.text] = fg.ensuring(contrast: 4.5, with: chrome, movingTo: dark ? .white : .black)
@@ -225,21 +220,48 @@ public struct AppColors: Hashable, Sendable {
     }
 }
 
-/// One appearance of a theme: its terminal colours and the app's.
+/// One appearance of a theme: its terminal colours, the app's, the editor's, and the colours of code
+/// (`ThemeEditorColors.swift`).
 public struct ThemeVariant: Hashable, Sendable, Codable {
     public var terminal: TerminalColors
     public var app: AppColors
+    /// The editor colours this variant sets itself; the rest follow the terminal's (`editor`).
+    public var editorOverrides: [EditorColorKey: RGBColor]
+    /// The colours of code as scope rules; empty when they come from the terminal's palette.
+    public var tokenColors: [TokenColorRule]
+    /// Where an imported variant came from (`ThemeOrigin`); nil for one made here.
+    public var origin: ThemeOrigin?
 
-    public init(terminal: TerminalColors, app overrides: [AppColorKey: RGBColor] = [:]) {
+    public init(terminal: TerminalColors, app overrides: [AppColorKey: RGBColor] = [:], editor editorOverrides: [EditorColorKey: RGBColor] = [:],
+                tokenColors: [TokenColorRule] = [], origin: ThemeOrigin? = nil) {
         self.terminal = terminal
         var app = AppColors.derived(from: terminal)
         for (key, value) in overrides { app[key] = value }
         self.app = app
+        let derived = EditorColors.derived(from: terminal)
+        self.editorOverrides = editorOverrides.filter { derived[$0.key] != $0.value }
+        self.tokenColors = tokenColors
+        self.origin = origin
     }
 
     public var isDark: Bool { terminal.isDark }
 
-    private enum Keys: String, CodingKey { case terminal, app }
+    /// The editor's colours: those this variant sets, the rest worked out from its terminal colours (so a
+    /// changed terminal palette carries into every colour the theme does not set). Setting keeps only what
+    /// differs from what would be worked out.
+    public var editor: EditorColors {
+        get {
+            var colors = EditorColors.derived(from: terminal)
+            for (key, value) in editorOverrides { colors[key] = value }
+            return colors
+        }
+        set {
+            let derived = EditorColors.derived(from: terminal)
+            editorOverrides = newValue.values.filter { derived[$0.key] != $0.value }
+        }
+    }
+
+    private enum Keys: String, CodingKey { case terminal, app, editor, tokenColors, origin }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: Keys.self)
@@ -247,10 +269,15 @@ public struct ThemeVariant: Hashable, Sendable, Codable {
         let given = try container.decodeIfPresent([String: RGBColor].self, forKey: .app) ?? [:]
         // Unknown names are left out rather than refused, so a newer file still opens.
         let overrides = Dictionary(uniqueKeysWithValues: given.compactMap { key, value in AppColorKey(rawValue: key).map { ($0, value) } })
-        self.init(terminal: terminal, app: overrides)
+        let givenEditor = try container.decodeIfPresent([String: RGBColor].self, forKey: .editor) ?? [:]
+        let editorOverrides = Dictionary(uniqueKeysWithValues: givenEditor.compactMap { key, value in EditorColorKey(rawValue: key).map { ($0, value) } })
+        let tokenColors = try container.decodeIfPresent([TokenColorRule].self, forKey: .tokenColors) ?? []
+        self.init(terminal: terminal, app: overrides, editor: editorOverrides, tokenColors: tokenColors,
+                  origin: try container.decodeIfPresent(ThemeOrigin.self, forKey: .origin))
     }
 
-    /// Writes only the app colours that differ from what the terminal's would give, so files stay short.
+    /// Writes only the app and editor colours that differ from what the terminal's would give, so files
+    /// stay short.
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: Keys.self)
         try container.encode(terminal, forKey: .terminal)
@@ -259,6 +286,13 @@ public struct ThemeVariant: Hashable, Sendable, Codable {
             app[key] == derived[key] ? nil : (key.rawValue, app[key])
         })
         if !changed.isEmpty { try container.encode(changed, forKey: .app) }
+        let derivedEditor = EditorColors.derived(from: terminal)
+        let changedEditor = Dictionary(uniqueKeysWithValues: editorOverrides.compactMap { key, value in
+            derivedEditor[key] == value ? nil : (key.rawValue, value)
+        })
+        if !changedEditor.isEmpty { try container.encode(changedEditor, forKey: .editor) }
+        if !tokenColors.isEmpty { try container.encode(tokenColors, forKey: .tokenColors) }
+        try container.encodeIfPresent(origin, forKey: .origin)
     }
 
     /// Pairs that are hard to read, with WCAG's thresholds: 4.5 for text, 3 for secondary text and
@@ -269,7 +303,6 @@ public struct ThemeVariant: Hashable, Sendable, Codable {
             ("Terminal text on its background", terminal.foreground, terminal.background, 4.5),
             ("Text on the surface", app[.text], surface, 4.5),
             ("Secondary text on the surface", app[.textSecondary], surface, 3),
-            ("Text in the sidebar", app[.text], app[.sidebar], 4.5),
             ("Text on the bars", app[.text], app[.chrome], 4.5),
             ("Secondary text on the bars", app[.textSecondary], app[.chrome], 4.5),
             ("Hints on the bars", app[.textTertiary], app[.chrome], 3),
@@ -320,6 +353,16 @@ public struct Theme: Hashable, Sendable, Identifiable, Codable {
         self.light = light
         self.dark = dark
         self.isBuiltIn = isBuiltIn
+    }
+
+    /// The same colours in each appearance, whatever the theme's name, id or the files it came from: an
+    /// import of a theme already there (a built-in imported again from VS Code) is that theme.
+    public func hasSameColors(as other: Theme) -> Bool {
+        func same(_ a: ThemeVariant?, _ b: ThemeVariant?) -> Bool {
+            guard let a, let b else { return a == nil && b == nil }
+            return a.terminal == b.terminal && a.app == b.app && a.editor == b.editor && a.tokenColors == b.tokenColors
+        }
+        return same(light, other.light) && same(dark, other.dark)
     }
 
     /// The variant for an appearance: the matching one when the theme has both, else the one it has.

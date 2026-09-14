@@ -69,9 +69,27 @@ private struct HelpPage: View {
                     HelpKey(keys: "⇧⌘C", text: String(localized: "What changed in the repository: stage, unstage, look at the differences and commit.", comment: "Help page: the Changes panel"))
                     HelpKey(keys: "⇧⌘N", text: String(localized: "A new worktree of the repository, opened as a workspace of its own.", comment: "Help page: worktrees"))
                 }
+                HelpSection(title: String(localized: "In the editor", comment: "Help page heading")) {
+                    HelpKey(keys: "⌥↑ ↓", text: String(localized: "Move the line, or the selected lines, up or down. With ⇧, copy them up or down; ⇧⌘K deletes them.", comment: "Help page: moving, copying and deleting lines"))
+                    HelpKey(keys: "⇧⌘\\", text: String(localized: "Go to the bracket that matches the one at the cursor. Brackets and quotes close themselves, and typing the closing one steps over it.", comment: "Help page: brackets"))
+                    HelpKey(keys: "⌘/", text: String(localized: "Comment or uncomment the selected lines.", comment: "Help page: toggle comment"))
+                    HelpKey(keys: "⌥Z", text: String(localized: "Wrap long lines, or not.", comment: "Help page: wrap lines"))
+                    Text(String(localized: "The language in the status bar is a menu: colour this file as another language, or as its name says. A repository's .editorconfig decides indentation, line endings and what saving tidies.", comment: "Help page: the language menu and EditorConfig"))
+                }
+                HelpSection(title: String(localized: "From VS Code", comment: "Help page heading")) {
+                    Text(String(localized: "Code is coloured by the grammars VS Code uses, and VS Code's colour themes work here: Settings › Terminal › Add Theme…, or File › Import Themes and Languages…, takes a theme file, an extension folder or a .vsix. Settings › General › Import Settings reads your VS Code or Cursor settings once. Nothing from an extension is ever run.", comment: "Help page: what Whiskr takes from VS Code"))
+                }
+                HelpSection(title: String(localized: "In a terminal", comment: "Help page heading")) {
+                    HelpKey(keys: "⌘F", text: String(localized: "Find in the terminal. ⌘G and ⇧⌘G step through the matches; Esc gives the keyboard back.", comment: "Help page: find in a terminal"))
+                    HelpKey(keys: "⌘↑ ↓", text: String(localized: "Scroll to the command before or after.", comment: "Help page: jumping between commands"))
+                    HelpKey(keys: "⇧⌘↑ ↓", text: String(localized: "Select what the command before or after printed.", comment: "Help page: selecting a command's output"))
+                    HelpKey(keys: "⌘-click", text: String(localized: "Open a file path or web link the terminal printed; a file opens at its line. Hold ⌘ to see what is a link.", comment: "Help page: links in a terminal"))
+                    Text(String(localized: "Right-click for Copy, Paste, Find, Clear, splitting and, over a link, Open and Copy. A full-screen program that takes clicks gets the right-click unless you hold Option.", comment: "Help page: the terminal's right-click menu"))
+                }
                 HelpSection(title: String(localized: "Getting around")) {
                     HelpKey(keys: "⌘J", text: String(localized: "The next request, then the next finished turn, then back where you were."))
-                    HelpKey(keys: "⌘P", text: String(localized: "Go to any workspace, tab or Claude by name, folder, branch or state."))
+                    HelpKey(keys: "⌘P", text: String(localized: "Go to any workspace, tab, Claude or file by name, folder, branch or state. Start with > for commands, :42 for a line of the file shown, or name:42 for a file at a line.", comment: "Help page: Go to"))
+                    HelpKey(keys: "⌃Tab", text: String(localized: "The tab you were in before. Keep ⌃ held to choose from the workspace's tabs, most recent first.", comment: "Help page: switching tabs by recent use"))
                     HelpKey(keys: "⇧⌘P", text: String(localized: "Every command, with its key."))
                     HelpKey(keys: "⌥⌘1…9", text: String(localized: "A workspace by its number. The workspace button at the start of the tab row lists them all, and Home."))
                     HelpKey(keys: "⌘1…9", text: String(localized: "A tab by its number."))
@@ -80,11 +98,12 @@ private struct HelpPage: View {
                     HelpKey(keys: "⌘N", text: String(localized: "A new workspace: Home, ready to open a folder or a terminal. Every other workspace stays open.", comment: "Help page: New Workspace"))
                 }
                 HelpSection(title: String(localized: "Laying out the window", comment: "Help page heading")) {
-                    HelpKey(keys: "⌃⌘S", text: String(localized: "Show or hide the meadow; the button by the window's buttons does too. ⌃⌘1, ⌃⌘2 and ⌃⌘3 give both, the terminals alone or the meadow alone.", comment: "Help page: the meadow's toggle"))
-                    HelpKey(keys: "⇧⌘E", text: String(localized: "Show or hide Files (⇧⌘C for Changes); the button at the top right does too. Drag the panel's edge to size it, past its least width to close it, or double-click it for its usual width.", comment: "Help page: the side panel's toggle"))
+                    HelpKey(keys: "⌃⌘S", text: String(localized: "Show or hide the meadow; the button by the window's buttons does too. In a narrow window the meadow steps aside, and showing it gives it a narrow sidebar. ⌃⌘1, ⌃⌘2 and ⌃⌘3 give both, the terminals alone or the meadow alone.", comment: "Help page: the meadow's toggle"))
+                    HelpKey(keys: "⇧⌘E", text: String(localized: "Show or hide Files (⇧⌘C for Changes); the button at the top right does too. Drag the panel's edge to size it, nearly shut to close it, or double-click it for its usual width.", comment: "Help page: the side panel's toggle"))
                     HelpKey(keys: "⌥⌘/", text: String(localized: "Show or hide the status bar.", comment: "Help page: the status bar's toggle"))
                     HelpKey(keys: "⇧⌘↩", text: String(localized: "Zoom the pane you are typing in to fill its tab, and back. A double-click on the line between two panes shares the room evenly again.", comment: "Help page: zooming a pane"))
-                    Text(String(localized: "View › Reset Layout puts every part of the window back as it first was. The bars at the top move the window, and a double-click on them zooms it, as on any Mac title bar; new tabs come from + and ⌘T.", comment: "Help page: resetting the layout, and what the bars do"))
+                    Text(String(localized: "Drag a tab onto the edge of a pane to split it there, or onto its middle to move it into that pane's tab.", comment: "Help page: dragging a tab to split"))
+                    Text(String(localized: "View › Reset Layout brings back the meadow, the terminals and the status bar at their usual sizes, and this workspace's side panel at its usual width. The bars at the top move the window, and a double-click on them does what Desktop & Dock says a title bar's double-click does; new tabs come from + and ⌘T.", comment: "Help page: resetting the layout, and what the bars do"))
                 }
                 HelpSection(title: String(localized: "Your own keys")) {
                     Text(String(localized: "Any menu command can have a different shortcut: System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts."))
@@ -117,7 +136,7 @@ private struct HelpMark: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             mark.frame(width: 16)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: Look.Space.xxs) {
                 Text(title).fontWeight(.medium)
                 Text(text).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }

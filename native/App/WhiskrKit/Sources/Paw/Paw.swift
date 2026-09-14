@@ -55,12 +55,21 @@ public struct Paw: Sendable {
 
     /// Runs `arguments` (without the program's name) and returns the exit code.
     public func run(_ arguments: [String]) -> Int32 {
-        // Not a command of yours: the `claude` shim asks for your --settings with the pane's hooks added.
+        // Not a command of yours: the `claude` shim asks for your --settings with the pane's hooks added
+        // (`merge-settings <hooks file> <yours>`), and gets the path of the merged file. When that cannot
+        // be done, the one line said here is all the user hears of it.
         if arguments.first == "merge-settings" {
-            guard arguments.count == 3, let hooks = FileManager.default.contents(atPath: arguments[1]),
-                  let merged = HookSettings.merged(hooks: hooks, with: arguments[2]) else { return PawExit.usage.rawValue }
-            io.out(String(decoding: merged, as: UTF8.self))
-            return PawExit.ok.rawValue
+            guard arguments.count == 3 else {
+                io.err("merge-settings takes the hooks file and your --settings")
+                return PawExit.usage.rawValue
+            }
+            do {
+                io.out(try HookSettings.mergedFile(hooks: arguments[1], with: arguments[2]))
+                return PawExit.ok.rawValue
+            } catch {
+                io.err("\(PawExit.appName)'s hooks were not added to your --settings (\(error.reason)), so \(PawExit.appName) will not see this session")
+                return PawExit.failed.rawValue
+            }
         }
         let command: PawCommand
         do {

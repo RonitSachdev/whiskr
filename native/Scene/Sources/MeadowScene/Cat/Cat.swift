@@ -79,6 +79,18 @@ final class Cat: Performer {
     /// keep their shape. Whoever stages the cat moves it there; nil while it simply sits.
     var going: Vec3? = nil
     var trotting = false
+    /// Ambient motion is switched off (`MeadowView.animatesAmbient`): its own clock stops, so breathing,
+    /// blinks, twitches, fidgets, glances, the tail and the loop of its work all hold still, and it never
+    /// hops. A change of state still shows, easing into the new pose. Its clock carries on from where it
+    /// stopped when switched back on, so nothing jumps.
+    var frozen = false {
+        didSet {
+            guard frozen, !oldValue else { return }
+            // Nothing left half done: no glance, nod or listening held for ever, no eye half shut.
+            glanceUntil = time; attendUntil = time; listenUntil = time; shakeUntil = time; wiggleUntil = time
+            fidgetUntil = time; nodAt = -10; blinkAt = -1; twitchAt = -1
+        }
+    }
 
     // ---- what the renderer reads each frame (all in the world unless said otherwise)
     private(set) var posed = PoseInputs()
@@ -175,6 +187,7 @@ final class Cat: Performer {
         presses = 0
         fidgetUntil = 0
         States.enter(next, self)
+        if frozen { return }
         // Woken up: shake the sleep off. Work finished: a little hop and wiggle of satisfaction.
         if was == .napping { shakeUntil = time + 0.45 }
         // Given something to do while at rest (you sent a prompt): it looks up at you first, listening.
@@ -187,6 +200,7 @@ final class Cat: Performer {
 
     /// Look at a spot in the world for a moment, if not busy.
     func glance(_ at: Vec3, _ seconds: Float) {
+        if frozen { return }
         glancing = at
         glanceUntil = time + seconds
     }
@@ -194,15 +208,17 @@ final class Cat: Performer {
     /// Gives a spot its full attention for a moment, whatever it is doing: it sits up, puts down what it
     /// holds and looks there (being handed a task, or listening to a report). Not while it needs you.
     func attend(_ at: Vec3, _ seconds: Float) {
+        if frozen { return }
         attending = at
         attendUntil = time + seconds
     }
 
     /// A small dip of the head: "got it". `after` seconds from now.
-    func nod(after: Float = 0) { nodAt = time + after }
+    func nod(after: Float = 0) { if !frozen { nodAt = time + after } }
 
     /// Something touched an ear.
     func tickle() {
+        if frozen { return }
         twitchAt = time
         twitchEar = rnd() < 0.5 ? 0 : 1
     }
@@ -218,6 +234,7 @@ final class Cat: Performer {
     func hop() { jump(7.5, 2.5) }
 
     func jump(_ speed: Float, _ stretch: Float) {
+        if frozen { return }
         if height == 0 { velocity = speed }
         squash.v = stretch
     }
@@ -226,6 +243,7 @@ final class Cat: Performer {
 
     func thump() {
         // Steam, flinch and blink.
+        if frozen { return }
         for i in 0..<6 {
             steamLife[i] = -Float(i) * 0.07
             steamDrift[i] = Vec2((rnd() - 0.5) * 0.5, (rnd() - 0.5) * 0.5)
@@ -259,7 +277,7 @@ final class Cat: Performer {
     // MARK: - update
 
     func update(_ dt: Float, _ around: Surroundings) {
-        time += dt
+        if !frozen { time += dt }
         let t = time
         let ease = min(1, dt * 7)
 
@@ -619,7 +637,7 @@ final class Cat: Performer {
 
     // Tapered tube rebuilt each frame from a swaying curve.
     private func updateTail(_ dt: Float, _ want: Want) {
-        tailPhase += dt * want.tailSpeed
+        tailPhase += (frozen ? 0 : dt) * want.tailSpeed
         let sway = sin(tailPhase) * want.tailAmp
         let flick = sin(tailPhase - 0.9) * want.tailAmp
         let follow = min(1, dt * 5)

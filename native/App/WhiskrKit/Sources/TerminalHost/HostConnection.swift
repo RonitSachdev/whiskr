@@ -45,6 +45,9 @@ public final class HostConnection: @unchecked Sendable {
         } catch {
             throw HostFailure(.connectionLost, "\(error)")
         }
+        // Non-blocking, so a send that does not fit returns at once: on a blocking Unix socket macOS
+        // ignores MSG_DONTWAIT, and a paste larger than the socket's buffer would hold up the main thread.
+        _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         self.handlers = handlers
         let thread = Thread { [self] in read() }
         thread.name = "host connection"
@@ -119,6 +122,8 @@ public final class HostConnection: @unchecked Sendable {
                         position += count
                     } else if count < 0, errno == EINTR {
                         continue
+                    } else if count < 0, errno == EAGAIN {
+                        Self.wait(for: fd, POLLOUT)
                     } else {
                         // The host has gone; the reading thread says so.
                         return
@@ -128,16 +133,26 @@ public final class HostConnection: @unchecked Sendable {
         }
     }
 
-    /// Ends the connection, after everything already sent has gone out. The host keeps every terminal.
+    /// Ends the connection, after everything already sent has gone out: within `closeGrace`, as a host
+    /// that has stopped reading (stopped, or stuck) would otherwise keep a large paste's write waiting, and
+    /// with it the connection, its thread and whatever its handlers hold. The host keeps every terminal.
     public func close() {
         let already = state.withLock {
             defer { closing = true }
             return closing
         }
         guard !already else { return }
-        writing.async { [self] in
-            // Wakes the reading thread, which closes the descriptor.
-            if !state.withLock({ closed }) { shutdown(fd, SHUT_RDWR) }
+        writing.async { [self] in shutDown() }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Self.closeGrace) { [self] in shutDown() }
+    }
+
+    static let closeGrace: TimeInterval = 2
+
+    /// Wakes the reading thread, which closes the descriptor, and any write under way. Under the lock: the
+    /// reading thread marks the connection closed before it closes the descriptor, which may then be reused.
+    private func shutDown() {
+        state.withLock {
+            if !closed { _ = shutdown(fd, SHUT_RDWR) }
         }
     }
 
@@ -150,20 +165,28 @@ public final class HostConnection: @unchecked Sendable {
         reading: while true {
             let count = Darwin.read(fd, chunk.baseAddress, chunk.count)
             if count < 0, errno == EINTR { continue }
+            if count < 0, errno == EAGAIN {
+                Self.wait(for: fd, POLLIN)
+                continue
+            }
             guard count > 0 else { break }
             decoder.append(UnsafeRawBufferPointer(rebasing: chunk[0..<count]))
-            // A terminal's output read in one go is handed over as one piece (`OutputBatch`).
+            // A terminal's output read in one go is handed over as one piece (`OutputBatch`), before
+            // anything that came after it, and before the connection ends on a broken frame.
             var batch = OutputBatch()
+            defer { if let ready = batch.take() { handlers.output(ready.0, ready.1) } }
             do {
                 while let frame = try decoder.next() {
-                    if case .output(let terminal, let bytes) = frame {
+                    switch frame {
+                    case .output(let terminal, let bytes):
                         if let ready = batch.add(bytes, for: terminal) { handlers.output(ready.0, ready.1) }
-                    } else {
+                    case .message(let json):
                         if let ready = batch.take() { handlers.output(ready.0, ready.1) }
-                        deliver(frame)
+                        deliver(json)
+                    case .input:
+                        break
                     }
                 }
-                if let ready = batch.take() { handlers.output(ready.0, ready.1) }
             } catch {
                 break reading
             }
@@ -179,20 +202,19 @@ public final class HostConnection: @unchecked Sendable {
         writing.async { [fd] in Darwin.close(fd) }
     }
 
-    private func deliver(_ frame: HostFrame) {
-        switch frame {
-        case .output(let terminal, let bytes):
-            handlers.output(terminal, bytes)
-        case .input:
-            break
-        case .message(let json):
-            guard let message = try? JSONDecoder().decode(HostMessage.self, from: json) else { return }
-            switch message {
-            case .reply(let id, let reply):
-                state.withLock { waiting.removeValue(forKey: id) }?(reply)
-            case .event(let event):
-                handlers.event(event)
-            }
+    /// Until the socket can be read or written (or has been shut down, which wakes it as well).
+    private static func wait(for fd: Int32, _ event: Int32) {
+        var ready = pollfd(fd: fd, events: Int16(event), revents: 0)
+        _ = poll(&ready, 1, -1)
+    }
+
+    private func deliver(_ json: Data) {
+        guard let message = try? JSONDecoder().decode(HostMessage.self, from: json) else { return }
+        switch message {
+        case .reply(let id, let reply):
+            state.withLock { waiting.removeValue(forKey: id) }?(reply)
+        case .event(let event):
+            handlers.event(event)
         }
     }
 }

@@ -32,6 +32,16 @@ public struct LineIndex: Sendable, Equatable {
         return low
     }
 
+    /// The longest line (the first, of equals) and its length in UTF-16 units, without its "\n".
+    public var longestLine: (line: Int, length: Int) {
+        var best = (line: 0, length: 0)
+        for line in starts.indices {
+            let end = line + 1 < starts.count ? starts[line + 1] - 1 : length
+            if end - starts[line] > best.length { best = (line, end - starts[line]) }
+        }
+        return best
+    }
+
     /// A line's range without its "\n".
     public func range(ofLine line: Int) -> Range<Int> {
         let start = starts[line]

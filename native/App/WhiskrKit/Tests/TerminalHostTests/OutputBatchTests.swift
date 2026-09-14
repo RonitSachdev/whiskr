@@ -13,7 +13,6 @@ struct OutputBatchTests {
         let out = batch.take()
         #expect(out?.0 == one)
         #expect(out?.1 == Data("abcd".utf8))
-        #expect(batch.isEmpty)
         #expect(batch.take() == nil)
     }
 
@@ -34,11 +33,18 @@ struct OutputBatchTests {
         #expect(batch.take()?.1 == Data("de".utf8))
     }
 
-    @Test func aLonePieceGoesAsItIs() {
+    @Test func nothingIsNotAPiece() {
         var batch = OutputBatch()
         #expect(batch.add(Data(), for: one) == nil)
-        #expect(batch.isEmpty)
-        _ = batch.add(Data("x".utf8), for: one)
-        #expect(batch.take()?.1 == Data("x".utf8))
+        #expect(batch.take() == nil)
+    }
+
+    /// Batching only joins: a piece is never cut.
+    @Test func aPieceLargerThanTheLimitGoesWhole() {
+        var batch = OutputBatch(limit: 4)
+        _ = batch.add(Data("ab".utf8), for: one)
+        let first = batch.add(Data("cdefgh".utf8), for: one)
+        #expect(first?.1 == Data("ab".utf8))
+        #expect(batch.take()?.1 == Data("cdefgh".utf8))
     }
 }

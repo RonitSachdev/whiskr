@@ -7,3 +7,8 @@
 // in Debug for the same kind of reason (Scene/Package.swift). Every other target keeps its own setting.
 WHISKR_OPTIMIZATION_SwiftTerm = -O
 SWIFT_OPTIMIZATION_LEVEL = $(WHISKR_OPTIMIZATION_$(TARGET_NAME):default=$(inherited))
+
+// Oniguruma (the regular expressions of the editor's TextMate grammars) is C, optimised in Debug too:
+// unoptimised, a 50,000-line file takes several times as long to colour.
+WHISKR_C_OPTIMIZATION_COniguruma = 2
+GCC_OPTIMIZATION_LEVEL = $(WHISKR_C_OPTIMIZATION_$(TARGET_NAME):default=$(inherited))

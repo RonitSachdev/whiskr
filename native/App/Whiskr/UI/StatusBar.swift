@@ -38,14 +38,14 @@ struct StatusBar: View {
                 if summary.claudes > 0 { Separator() }
             }
             if summary.claudes > 0 {
-                Text(String(localized: "\(summary.claudes) Claudes", comment: "Status line: how many Claudes are running"))
+                Text(String(localized: "\(summary.claudes) Claudes", comment: "Status bar: how many Claudes are running"))
                     .statusItem()
                 if summary.needYou > 0 {
                     Separator()
                     Button {
                         NSApp.sendAction(#selector(MainWindowController.goToNextThing(_:)), to: nil, from: nil)
                     } label: {
-                        Text(String(localized: "\(summary.needYou) need you", comment: "Status line: how many requests wait"))
+                        Text(String(localized: "\(summary.needYou) need you", comment: "Status bar: how many requests wait"))
                             .foregroundStyle(StateMark.vermillion)
                             .statusItem()
                     }
@@ -80,9 +80,12 @@ struct StatusBar: View {
         .padding(.horizontal, Look.Space.s)
         .frame(maxWidth: .infinity, minHeight: Look.Height.statusBar, maxHeight: Look.Height.statusBar)
         .chromeBackground()
-        .overlay(alignment: .top) { Color.line.frame(height: 1) }
+        .overlay(alignment: .top) { Color.line.frame(height: 1).allowsHitTesting(false) }
+        // In a window that is not the one in use, the first click acts as well as bringing it forward, as
+        // in the top bar and the tab row.
+        .allowsWindowActivationEvents()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(String(localized: "Status", comment: "Accessibility label of the status line"))
+        .accessibilityLabel(String(localized: "Status", comment: "Accessibility label of the status bar"))
     }
 }
 
@@ -96,9 +99,9 @@ private struct FileStatus: View {
         let here = status.documentID == ObjectIdentifier(document)
         HStack(spacing: 6) {
             Text(here ? (status.selected > 0
-                         ? String(localized: "Ln \(status.line), Col \(status.column) (\(status.selected) selected)", comment: "Status line: cursor and selection")
-                         : String(localized: "Ln \(status.line), Col \(status.column)", comment: "Status line: cursor position"))
-                 : String(localized: "Ln 1, Col 1", comment: "Status line: cursor position"))
+                         ? String(localized: "Ln \(status.line), Col \(status.column) (\(status.selected) selected)", comment: "Status bar: cursor and selection")
+                         : String(localized: "Ln \(status.line), Col \(status.column)", comment: "Status bar: cursor position"))
+                 : String(localized: "Ln 1, Col 1", comment: "Status bar: cursor position"))
                 .monospacedDigit()
             Separator()
             Menu {
@@ -107,7 +110,7 @@ private struct FileStatus: View {
                 }
                 Button(String(localized: "Tabs")) { document.indentation = Indentation(usesTabs: true, width: document.indentation.width) }
             } label: {
-                Text(document.indentation.usesTabs ? String(localized: "Tabs", comment: "Status line: indentation") : String(localized: "Spaces: \(document.indentation.width)", comment: "Status line: indentation"))
+                Text(document.indentation.usesTabs ? String(localized: "Tabs", comment: "Status bar: indentation") : String(localized: "Spaces: \(document.indentation.width)", comment: "Status bar: indentation"))
                     .font(.system(size: 11))
                     .foregroundStyle(Color.ink2)
             }
@@ -127,7 +130,21 @@ private struct FileStatus: View {
             }
             .help(document.format.hadMixedLineEndings ? String(localized: "Line endings: mixed in the file; saved as \(document.format.lineEnding.displayName)") : String(localized: "Line endings"))
             Separator()
-            Text(document.language.displayName)
+            Menu {
+                Button(String(localized: "Auto Detect (\(document.detectedLanguage.displayName))", comment: "Status bar's language menu: colour the file as its name says")) {
+                    document.choose(language: nil)
+                }
+                Divider()
+                ForEach(LanguageRegistry.shared.all) { language in
+                    Toggle(language.displayName, isOn: Binding(get: { document.language == language }, set: { _ in document.choose(language: language) }))
+                }
+            } label: {
+                Text(document.language.displayName)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.ink2)
+            }
+            .help(String(localized: "Language: colour this file as another language", comment: "Status bar: the language menu's tooltip"))
+            .accessibilityLabel(String(localized: "Language, \(document.language.displayName)", comment: "Accessibility: the status bar's language menu"))
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)

@@ -256,12 +256,16 @@ enum Picnic {
         let steps = 120
         for i in 0...steps {
             let a = Float(i) / Float(steps) * 2 * .pi
-            let square = pow(pow(abs(cos(a)), 4.5) + pow(abs(sin(a)), 4.5), -1 / 4.5)
-            let ripple = 1 + 0.018 * sin(a * 3 + seed) + 0.012 * sin(a * 7 + seed * 2.3)
-            let r = max(1, square * ripple)
+            let r = clothReach(seed, a)
             if i == 0 { o.move(cos(a) * r, sin(a) * r) } else { o.line(cos(a) * r, sin(a) * r) }
         }
         return o.closed
+    }
+    /// How far the outline reaches from the middle at angle `a` of its own (x, y): never less than one.
+    static func clothReach(_ seed: Float, _ a: Float) -> Float {
+        let square = pow(pow(abs(cos(a)), 4.5) + pow(abs(sin(a)), 4.5), -1 / 4.5)
+        let ripple = 1 + 0.018 * sin(a * 3 + seed) + 0.012 * sin(a * 7 + seed * 2.3)
+        return max(1, square * ripple)
     }
     /// A square of cloth lying flat, its top exactly at y = 0 where the cats sit.
     static func cloth(_ seed: Float) -> Geometry {

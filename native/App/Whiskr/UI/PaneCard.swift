@@ -47,10 +47,20 @@ final class PaneCard: NSView {
         NotificationCenter.default.addObserver(self, selector: #selector(liveResizeChanged), name: LiveResize.changed, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(liveResizeChanged), name: TerminalSurface.replayingChanged, object: pane.surface)
         liveResizeChanged()
-        // ⌘-click on a path the terminal printed opens it in the editor, at its line.
+        // ⌘-click on a path the terminal printed opens it in the editor, at its line; its menu shows it in
+        // Files or copies it.
         pane.surface.onOpenLink = { [weak self] link in
             guard let self else { return }
             self.workbench.openLink(link, folder: self.pane.currentFolder)
+        }
+        pane.surface.onLink = { [weak self] link, action in
+            guard let self else { return }
+            self.workbench.act(on: link, action, folder: self.pane.currentFolder)
+        }
+        pane.surface.linkResolves = { [weak self] link in
+            guard let self else { return false }
+            if case .file(let path, _, _) = link.target { return self.workbench.existingPath(of: path, folder: self.pane.currentFolder) != nil }
+            return true
         }
         registerForDraggedTypes([.fileURL])
     }
@@ -123,6 +133,8 @@ final class PaneCard: NSView {
         effectiveAppearance.performAsCurrentDrawingAppearance {
             layer?.backgroundColor = Colors.terminalBackground.cgColor
         }
+        // Run again by a theme change too: the border and the veil take the new theme's colours.
+        dim.needsDisplay = true
     }
 
     /// A helper of this pane's Claude was chosen in the meadow: its story is shown here, over the
@@ -160,6 +172,57 @@ final class PaneCard: NSView {
     /// A click anywhere on the pane focuses its terminal.
     override func mouseDown(with event: NSEvent) {
         workbench.focus(pane: pane.id)
+    }
+
+    // MARK: The pointer, for links under ⌘
+
+    /// SwiftTerm keeps its own pointer handling closed to subclasses, so the card follows the pointer over
+    /// its terminal and tells it, and watches ⌘ only while the pointer is there.
+    private var pointerArea: NSTrackingArea?
+    private var flagsMonitor: Any?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let pointerArea { removeTrackingArea(pointerArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        pointerArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        guard flagsMonitor == nil else { return }
+        flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            self?.pointerChanged(command: event.modifierFlags.contains(.command))
+            return event
+        }
+        pointerChanged(command: event.modifierFlags.contains(.command))
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        if let flagsMonitor { NSEvent.removeMonitor(flagsMonitor) }
+        flagsMonitor = nil
+        pane.surface.pointerMoved(to: .zero, command: false)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        // Nothing to do unless ⌘ is held: plain pointer moves cost nothing.
+        guard event.modifierFlags.contains(.command) || pane.surface.linkUnderline?.isHidden == false else { return }
+        pointerChanged(command: event.modifierFlags.contains(.command))
+    }
+
+    private func pointerChanged(command: Bool) {
+        guard let window else { return }
+        let point = pane.surface.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        pane.surface.pointerMoved(to: point, command: command && pane.surface.bounds.contains(point))
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if newWindow == nil, let flagsMonitor {
+            NSEvent.removeMonitor(flagsMonitor)
+            self.flagsMonitor = nil
+        }
     }
 }
 
@@ -201,13 +264,14 @@ final class PaneFocusView: NSView {
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    /// The focus border greys while the window is not the one in use.
+    /// The focus border greys while the window is not the one in use (neither main nor key).
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         keyObservers.forEach(NotificationCenter.default.removeObserver)
         keyObservers = []
         guard let window else { return }
-        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification] {
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                     NSWindow.didBecomeMainNotification, NSWindow.didResignMainNotification] {
             keyObservers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.needsDisplay = true }
             })
@@ -218,7 +282,7 @@ final class PaneFocusView: NSView {
 
     override func updateLayer() {
         guard let layer else { return }
-        let inUse = window?.isKeyWindow == true || WindowChrome.drawsAsKey
+        let inUse = window?.isInUse ?? WindowChrome.drawsAsKey
         effectiveAppearance.performAsCurrentDrawingAppearance {
             switch state {
             case .alone:

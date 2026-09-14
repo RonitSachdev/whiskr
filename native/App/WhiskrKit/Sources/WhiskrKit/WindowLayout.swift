@@ -37,7 +37,7 @@ public struct WindowLayout: Equatable, Sendable, Codable {
     /// 80 columns: what the default split still keeps once the meadow has narrowed to its sidebar form
     /// (the pane area's minimum, docs/DESIGN.md). Only below this does the meadow step aside.
     public static let terminalCompact: Double = 640
-    /// The narrowest you can drag the terminals to.
+    /// The narrowest you can drag the terminals to, and the least they keep whatever the meadow asks.
     public static let terminalMinimum: Double = 320
     /// Dragging the divider this close to either edge switches to that region alone.
     public static let snap: Double = 120
@@ -97,9 +97,26 @@ public struct WindowLayout: Equatable, Sendable, Codable {
         mode = .split
     }
 
-    /// View › Hide Meadow / Show Meadow (⌃⌘S): the terminals alone, or back to both.
-    public mutating func toggleNavigator() {
-        mode = mode == .terminalsOnly ? .split : .terminalsOnly
+    /// The meadow is on screen in a window `width` wide: what the meadow button and View › Hide Meadow /
+    /// Show Meadow go by, rather than the mode, since the default split hides it in a narrow window.
+    public func showsNavigator(window width: Double) -> Bool {
+        frame(window: width).navigator > 0
+    }
+
+    /// View › Hide Meadow / Show Meadow (⌃⌘S): the terminals alone, or the meadow back beside them.
+    public mutating func toggleNavigator(window width: Double) {
+        if showsNavigator(window: width) { mode = .terminalsOnly } else { showNavigator(window: width) }
+    }
+
+    /// Asked for, the meadow shows at any width the window can have. Where the default split has no room
+    /// for it (a window under 880 pt), it takes its narrowest sidebar, as if the divider had been dragged
+    /// there: the terminals keep the rest, under their 80 columns but never under their least, so both
+    /// stay in sight. Only a window too narrow for even that (none the app allows) gives it the window.
+    public mutating func showNavigator(window width: Double) {
+        guard !showsNavigator(window: width) else { return }
+        mode = .split
+        if !showsNavigator(window: width) { navigatorWidth = Self.navigatorMinimum }
+        if !showsNavigator(window: width) { mode = .meadowOnly }
     }
 
     /// View › Reset Layout: every region back, at its usual size. How the workspaces are drawn (meadow or

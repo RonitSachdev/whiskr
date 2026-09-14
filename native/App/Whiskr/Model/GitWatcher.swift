@@ -3,7 +3,7 @@ import WhiskrKit
 
 /// Each workspace's repository and branch (docs/DESIGN.md): found and read off the main thread
 /// from the repository's own files (no `git` process), and read again whenever its `HEAD` changes, which
-/// is how a branch switch shows on the blanket's flag and in the status line.
+/// is how a branch switch shows on the blanket's flag and in the status bar.
 final class GitWatcher {
     /// Called on the main thread with a workspace's repository (nil outside one) whenever it changes.
     var onChange: ((UUID, GitHead?) -> Void)?

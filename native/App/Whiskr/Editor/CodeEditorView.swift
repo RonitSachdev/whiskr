@@ -13,6 +13,9 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
     private let container = NSTextContainer(size: NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude))
     /// Lines whose colours are on screen as they should be.
     private var painted = IndexSet()
+    /// Lines that may hold rendering attributes (taken off before a line is coloured again; a minified
+    /// file's one 2 MB line holds none, and taking them off it would redraw all of it).
+    private var attributed = IndexSet()
     private var waiting = IndexSet()
     private var paintScheduled = false
     private var observers: [Observing] = []
@@ -65,9 +68,16 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
 
         document.attach(self, FileDocument.Editing(
             edited: { [weak self] lines, recoloured in self?.edited(lines: lines, recoloured: recoloured) },
+            recoloured: { [weak self] lines in self?.recoloured(lines) },
             willReload: { [weak self] in self?.keepPlace() },
             didReload: { [weak self] in self?.restorePlace() }))
         observers.append(Observing { [weak self] in self?.applySettings() })
+        // Edit Anyway, or a long line arriving: the caret follows (`CodeTextView.followGuardedLine`).
+        observers.append(Observing { [weak self] in
+            guard let self else { return }
+            _ = self.document.guardedLine
+            self.textView.followGuardedLine()
+        })
     }
 
     required init?(coder: NSCoder) {
@@ -93,20 +103,22 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
         _ = preferences.showInvisibles
         _ = ThemeStore.shared.palette
         _ = preferences.font
-        _ = preferences.tabWidth
+        // The file's own tab width (its indentation, its EditorConfig) or Settings'.
+        let tabWidth = document.tabWidth
         EditorStyle.shared.refresh()
         textView.applyStyle()
         // The whole text takes the font and tab width (layout follows; colours are rendering attributes).
         let storage = document.storage
         if storage.length > 0 {
             document.contentStorage.performEditingTransaction {
-                storage.addAttributes(EditorStyle.shared.baseAttributes, range: NSRange(location: 0, length: storage.length))
+                storage.addAttributes(EditorStyle.shared.baseAttributes(tabWidth: tabWidth), range: NSRange(location: 0, length: storage.length))
             }
         }
         setWrapping(wrap)
         layoutManager.invalidateLayout(for: layoutManager.documentRange)
         repaintAll()
         gutter.font = EditorStyle.shared.font
+        gutter.fitWidth()
         gutter.needsDisplay = true
     }
 
@@ -129,7 +141,7 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
         let fragment = EditorLayoutFragment(textElement: textElement, range: textElement.elementRange)
         if EditorPreferences.shared.showInvisibles {
             let style = EditorStyle.shared
-            fragment.invisibles = [.font: style.font, .foregroundColor: style.color(.punctuation).withAlphaComponent(0.55)]
+            fragment.invisibles = [.font: style.font, .foregroundColor: ThemeStore.shared.palette.editor(.whitespace)]
         }
         if let start = textElement.elementRange?.location {
             let offset = document.contentStorage.offset(from: document.contentStorage.documentRange.location, to: start)
@@ -143,6 +155,9 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
     private func edited(lines: Range<Int>, recoloured: Range<Int>) {
         // Lines after an edit move; their colours follow the text, but are worked out again from here on.
         if lines.lowerBound < (painted.last ?? -1) + 1 { painted.remove(integersIn: lines.lowerBound..<Int.max) }
+        // Lines after the edit moved: which of them hold attributes is no longer known.
+        attributed.insert(integersIn: lines.lowerBound..<Int.max)
+        gutter.fitWidth()
         gutter.needsDisplay = true
         // Told while the storage is still being edited: what is on screen is asked once the edit is done.
         DispatchQueue.main.async { [weak self] in
@@ -152,6 +167,15 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
             self.waiting.insert(integersIn: recoloured.clamped(to: visible))
             self.schedulePaint()
         }
+    }
+
+    /// New tokens arrived for `lines` (the background's pass): those on screen are coloured again.
+    private func recoloured(_ lines: Range<Int>) {
+        let visible = visibleLines().clamped(to: lines)
+        painted.remove(integersIn: lines)
+        guard !visible.isEmpty else { return }
+        waiting.insert(integersIn: visible)
+        schedulePaint()
     }
 
     private func repaintAll() {
@@ -166,7 +190,8 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
         DispatchQueue.main.async { [weak self] in self?.paint() }
     }
 
-    /// Colours the waiting lines with their tokens' colours (rendering attributes: no layout is redone).
+    /// Colours the waiting lines with their tokens' colours, backgrounds and lines (rendering attributes:
+    /// no layout is redone; bold and italics are the paragraphs' own, `SyntaxParagraphs`).
     private func paint() {
         paintScheduled = false
         guard document.isText else { return }
@@ -175,28 +200,62 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
         let storage = document.contentStorage
         let start = storage.documentRange.location
         let count = document.lines.lineCount
+        let dark = Palette.isDark(effectiveAppearance)
+        var coloured = IndexSet()
         for line in waiting where line < count && !painted.contains(line) {
             let range = document.lines.range(ofLine: line)
             guard let from = storage.location(start, offsetBy: range.lowerBound), let to = storage.location(from, offsetBy: range.count),
                   let lineRange = NSTextRange(location: from, end: to) else { continue }
-            layoutManager.removeRenderingAttribute(.foregroundColor, for: lineRange)
-            for token in document.tokens(line: line) where token.kind != .plain {
-                guard let tokenStart = storage.location(from, offsetBy: token.range.lowerBound),
-                      let tokenEnd = storage.location(tokenStart, offsetBy: token.range.count),
-                      let tokenRange = NSTextRange(location: tokenStart, end: tokenEnd) else { continue }
-                layoutManager.addRenderingAttribute(.foregroundColor, value: style.color(token.kind), for: tokenRange)
+            if attributed.contains(line) {
+                for key in Self.paintedKeys { layoutManager.removeRenderingAttribute(key, for: lineRange) }
+                attributed.remove(line)
+            }
+            // Neighbouring tokens that look the same are one run, and each run's place is found from the
+            // last one's (a location is found by walking from where it is asked from: from the line's start
+            // each time, a long line's colours would cost the square of its length).
+            var runs: [(range: Range<Int>, look: EditorStyle.Look)] = []
+            for token in document.tokens(line: line) where token.range.upperBound <= range.count {
+                let look = style.look(token.scopes)
+                guard !look.isPlain else { continue }
+                if let last = runs.last, last.range.upperBound == token.range.lowerBound, last.look.looksLike(look) {
+                    runs[runs.count - 1].range = last.range.lowerBound..<token.range.upperBound
+                } else {
+                    runs.append((token.range, look))
+                }
+            }
+            var cursor = from, cursorOffset = 0
+            for run in runs {
+                guard let runStart = storage.location(cursor, offsetBy: run.range.lowerBound - cursorOffset),
+                      let runEnd = storage.location(runStart, offsetBy: run.range.count),
+                      let runRange = NSTextRange(location: runStart, end: runEnd) else { break }
+                cursor = runEnd
+                cursorOffset = run.range.upperBound
+                attributed.insert(line)
+                let look = run.look
+                if let color = look.color { layoutManager.addRenderingAttribute(.foregroundColor, value: color, for: runRange) }
+                if let background = look.background { layoutManager.addRenderingAttribute(.backgroundColor, value: background, for: runRange) }
+                let fontStyle = look.fontStyle(dark: dark)
+                if fontStyle.contains(.underline) { layoutManager.addRenderingAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, for: runRange) }
+                if fontStyle.contains(.strikethrough) { layoutManager.addRenderingAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, for: runRange) }
             }
             painted.insert(line)
+            coloured.insert(line)
         }
         waiting.removeAll()
+        document.refreshFonts(coloured)
     }
+
+    private static let paintedKeys: [NSAttributedString.Key] = [.foregroundColor, .backgroundColor, .underlineStyle, .strikethroughStyle]
 
     /// The lines on screen (and a screenful either side), from the layout of the visible rectangle.
     func visibleLines() -> Range<Int> {
         let count = document.lines.lineCount
         guard count > 0 else { return 0..<0 }
         let visible = scrollView.contentView.bounds
-        let top = line(atY: visible.minY), bottom = line(atY: visible.maxY)
+        // Either end may not be laid out yet (just after a reload or a jump), which reads as the last
+        // line: the range is put in order, kept inside the text, and no taller than a screen can be.
+        let first = line(atY: visible.minY), last = line(atY: visible.maxY)
+        let top = min(first, last), bottom = min(max(first, last), top + 300)
         let margin = max(20, bottom - top)
         return max(0, top - margin)..<min(count, bottom + margin + 1)
     }
@@ -213,6 +272,7 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
     @objc private func scrolled() {
         gutter.needsDisplay = true
         let visible = visibleLines()
+        document.showLines(visible)
         let missing = IndexSet(integersIn: visible).subtracting(painted)
         if !missing.isEmpty {
             waiting.formUnion(missing)
@@ -231,7 +291,9 @@ final class CodeEditorView: NSView, NSTextLayoutManagerDelegate, NSTextViewDeleg
     }
 
     private func restorePlace() {
+        gutter.fitWidth()
         painted.removeAll()
+        attributed.insert(integersIn: 0..<Int.max)
         guard let kept = keptPlace else { return repaintAll() }
         keptPlace = nil
         let lines = document.lines
@@ -274,10 +336,26 @@ nonisolated final class EditorLayoutFragment: NSTextLayoutFragment, @unchecked S
     /// How the marks are drawn; nil while invisibles are hidden.
     var invisibles: [NSAttributedString.Key: Any]?
 
+    /// A paragraph wrapped into more lines than this (a minified file's one line: thousands) draws only
+    /// the lines inside the area being drawn; TextKit's own drawing goes through every one of them.
+    private static let manyLines = 200
+
     override func draw(at point: CGPoint, in context: CGContext) {
-        super.draw(at: point, in: context)
+        let lines = textLineFragments
+        let shown: [NSTextLineFragment]
+        if lines.count > Self.manyLines {
+            let clip = context.boundingBoxOfClipPath
+            shown = lines.filter { line in
+                let bounds = line.typographicBounds.offsetBy(dx: point.x, dy: point.y)
+                return bounds.maxY >= clip.minY && bounds.minY <= clip.maxY
+            }
+            for line in shown { line.draw(at: CGPoint(x: point.x + line.typographicBounds.minX, y: point.y + line.typographicBounds.minY), in: context) }
+        } else {
+            shown = lines
+            super.draw(at: point, in: context)
+        }
         guard let attributes = invisibles else { return }
-        for line in textLineFragments {
+        for line in shown {
             let text = line.attributedString.string as NSString
             let range = line.characterRange
             for index in range.lowerBound..<range.upperBound {
@@ -321,21 +399,30 @@ final class LineGutter: NSView {
         fatalError("LineGutter is created in code")
     }
 
+    /// The numbers' font, made again only when the editor's font changes.
+    private var numberFont = NSFont.monospacedDigitSystemFont(ofSize: 9.5, weight: .regular)
+
+    /// Room for the largest line number. Set when the font or the number of digits changes, before the text is
+    /// laid out (not while drawing): a narrower text area lays every wrapped line out again, a minified
+    /// file's one line in a quarter of a second.
+    func fitWidth() {
+        guard let editor else { return }
+        let size = max(9, font.pointSize - 1.5)
+        if numberFont.pointSize != size { numberFont = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .regular) }
+        let digits = max(3, String(editor.document.lines.lineCount).count)
+        let needed = ceil(CGFloat(digits) * ("8" as NSString).size(withAttributes: [.font: numberFont]).width + 26)
+        if abs((width?.constant ?? 0) - needed) > 0.5 { width?.constant = needed }
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         guard let editor else { return }
         let document = editor.document
         let colors = ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(effectiveAppearance)).terminal
         Palette.nsColor(colors.background).setFill()
         bounds.fill()
-        let numberFont = NSFont.monospacedDigitSystemFont(ofSize: max(9, font.pointSize - 1.5), weight: .regular)
-        let digits = max(3, String(document.lines.lineCount).count)
-        let needed = ceil(CGFloat(digits) * ("8" as NSString).size(withAttributes: [.font: numberFont]).width + 26)
-        if abs((width?.constant ?? 0) - needed) > 0.5 {
-            width?.constant = needed
-            return
-        }
-        let faint = Palette.nsColor(colors.foreground.mixed(with: colors.background, 0.62))
-        let strong = Palette.nsColor(colors.foreground.mixed(with: colors.background, 0.2))
+        let marks = ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(effectiveAppearance)).editor
+        let faint = Palette.nsColor(marks[.lineNumber])
+        let strong = Palette.nsColor(marks[.lineNumberActive])
         let textView = editor.textView
         let clip = editor.scrollView.contentView.bounds
         guard let manager = textView.textLayoutManager, let storage = textView.textContentStorage else { return }

@@ -1,12 +1,67 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%@ includes itself.": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ は自分自身を読み込んでいます。"
+          }
+        }
+      }
+    },
     "%@ is idle": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "%@は手すきです"
+          }
+        }
+      }
+    },
+    "%@ is missing or cannot be read.": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ が見つからないか、読み込めません。"
+          }
+        }
+      }
+    },
+    "%@ is not a colour theme (it is not JSON).": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ はカラーテーマではありません（JSON ではありません）。"
+          }
+        }
+      }
+    },
+    "%@ is not a colour theme.": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ はカラーテーマではありません。"
+          }
+        }
+      }
+    },
+    "%@ is outside the theme's folder.": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ はテーマのフォルダの外にあります。"
           }
         }
       }
@@ -701,6 +756,17 @@
         }
       }
     },
+    "The file could not be read.": {
+      "comment": "Importing a theme or adding a language: the chosen file or folder could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルを読み込めませんでした。"
+          }
+        }
+      }
+    },
     "The session ended.": {
       "localizations": {
         "ja": {
@@ -711,12 +777,78 @@
         }
       }
     },
+    "The settings file is not JSON.": {
+      "comment": "Importing VS Code or Cursor settings: why they could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定ファイルが JSON ではありません。"
+          }
+        }
+      }
+    },
+    "The theme's files could not be kept: %@": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テーマのファイルを保存できませんでした: %@"
+          }
+        }
+      }
+    },
     "Thinking": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "考えています"
+          }
+        }
+      }
+    },
+    "This .vsix could not be unpacked.": {
+      "comment": "Importing a theme: why it could not be read",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この .vsix を展開できませんでした。"
+          }
+        }
+      }
+    },
+    "This extension adds no languages or grammars.": {
+      "comment": "Adding a language: the extension holds nothing Whiskr can use (only code, themes or settings)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この拡張機能には言語も文法も含まれていません。"
+          }
+        }
+      }
+    },
+    "This is not a TextMate grammar (a .tmLanguage.json or .tmLanguage file).": {
+      "comment": "Adding a language: the chosen file is not a syntax colouring grammar",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TextMate の文法ファイル（.tmLanguage.json または .tmLanguage）ではありません。"
+          }
+        }
+      }
+    },
+    "This is not a VS Code extension, or its package.json could not be read.": {
+      "comment": "Adding a language: the chosen folder or .vsix is not an editor extension",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VS Code の拡張機能ではないか、package.json を読み込めませんでした。"
           }
         }
       }

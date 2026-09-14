@@ -111,8 +111,12 @@ final class PaletteController: NSObject, NSWindowDelegate {
             if let tab = workbench.workspaces.lazy.flatMap(\.tabs).first(where: { $0.id == id }) { workbench.select(tab: tab) }
         case .pane(let id, let agent):
             workbench.selectPane(id, agent: agent)
-        case .file(let path):
-            workbench.open(file: path, mode: .keep)
+        case .file(let path, let line, let column):
+            workbench.open(file: path, mode: .keep, line: line, column: column)
+        case .line(let line, let column):
+            // ":42": the file shown in the tab, at that line.
+            guard let id = workbench.focusedPageID, case .file(let path) = workbench.pages[id] else { return NSSound.beep() }
+            workbench.open(file: path, mode: .keep, line: line, column: column)
         }
     }
 
@@ -148,7 +152,9 @@ final class PaletteModel {
         case workspace(UUID)
         case tab(UUID)
         case pane(UUID, agent: String?)
-        case file(String)
+        case file(String, line: Int? = nil, column: Int? = nil)
+        /// ":42" in Go to: a line of the file shown.
+        case line(Int, column: Int?)
     }
 
     struct Row: Identifiable {
@@ -200,14 +206,46 @@ final class PaletteModel {
 
     var rows: [Row] { sections.flatMap(\.rows) }
 
+    /// What is typed, read for its prefix (`GoToQuery`): ">" lists the commands (deleting it comes back),
+    /// ":42" goes to a line of the file shown, "name:42" opens a file at a line. The palette itself takes
+    /// a leading ">" as typed out of habit.
+    private var parsed: GoToQuery {
+        guard mode == .goTo else {
+            let text = query.trimmingCharacters(in: .whitespaces)
+            return .commands(text.hasPrefix(">") ? String(text.dropFirst()).trimmingCharacters(in: .whitespaces) : text)
+        }
+        return GoToQuery(query)
+    }
+
+    /// The list being searched: commands after ">", else the overlay's own.
+    var listMode: PaletteController.Mode {
+        if case .commands = parsed { return .commands }
+        return mode
+    }
+
+    /// The words searched for, without a prefix or a line.
+    private var searchText: String {
+        switch parsed {
+        case .search(let text), .commands(let text), .fileAtLine(let text, _, _): text
+        case .line: ""
+        }
+    }
+
     var placeholder: String {
-        mode == .goTo
+        listMode == .goTo
             ? String(localized: "Go to a file, workspace, tab or Claude…", comment: "Go to's field, before anything is typed")
             : String(localized: "Type a command or a place…", comment: "The command palette's field, before anything is typed")
     }
 
     func refresh() {
         let now = Date()
+        let mode = listMode
+        let query = searchText
+        if case .line(let line, let column) = parsed {
+            sections = [Section(id: "line", title: nil, rows: [lineRow(line, column: column)])]
+            highlighted = rows.first?.id
+            return
+        }
         let usable = entries.filter { mode == .commands || $0.kind.isPlace }
         if query.trimmingCharacters(in: .whitespaces).isEmpty {
             let parts = PaletteRanking.sections(usable, recent: workbench.visitedTabs.dropFirst().map { "tab:\($0)" }, usage: workbench.paletteUsage, now: now)
@@ -251,14 +289,17 @@ final class PaletteModel {
     /// shown again when they are found (unless the query has moved on).
     private func searchFiles() {
         guard let repository = workbench.selectedRepository else { return }
-        let query = query
+        let query = searchText, typed = self.query
+        var line: Int?, column: Int?
+        if case .fileAtLine(_, let at, let col) = parsed { (line, column) = (at, col) }
         fileSearch?.cancel()
         fileSearch = Task { [weak self] in
             let index = await repository.pathIndex()
             let matches = await Task.detached(priority: .userInitiated) { index.search(query, limit: 30) }.value
-            guard let self, !Task.isCancelled, self.query == query else { return }
+            guard let self, !Task.isCancelled, self.query == typed else { return }
             let rows = matches.map { match in
-                self.fileRow(path: repository.root.appendingPathComponent(match.path).path, relative: match.path, offsets: match.nameOffsets)
+                self.fileRow(path: repository.root.appendingPathComponent(match.path).path, relative: match.path, offsets: match.nameOffsets,
+                             line: line, column: column)
             }
             guard rows.map(\.id) != self.fileRows.map(\.id) else { return }
             self.fileRows = rows
@@ -266,12 +307,27 @@ final class PaletteModel {
         }
     }
 
-    private func fileRow(path: String, relative: String, offsets: [Int]) -> Row {
+    private func fileRow(path: String, relative: String, offsets: [Int], line: Int? = nil, column: Int? = nil) -> Row {
         let name = (relative as NSString).lastPathComponent
         let folder = (relative as NSString).deletingLastPathComponent
-        let entry = PaletteEntry(id: "file:\(path)", kind: .file, title: name, detail: folder)
-        actions[entry.id] = .file(path)
-        return Row(id: entry.id, entry: entry, offsets: offsets, key: nil, action: .file(path))
+        let at = line.map { String(localized: "line \($0)", comment: "Go to: a file opens at this line") }
+        let entry = PaletteEntry(id: "file:\(path)", kind: .file, title: name, detail: [folder, at].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+        let action = Action.file(path, line: line, column: column)
+        actions[entry.id] = action
+        return Row(id: entry.id, entry: entry, offsets: offsets, key: nil, action: action)
+    }
+
+    /// ":42": the one row, saying which file it goes to (or that no file is shown).
+    private func lineRow(_ line: Int, column: Int?) -> Row {
+        let file: String? = workbench.focusedPageID.flatMap { id in
+            if case .file(let path) = workbench.pages[id] { return (path as NSString).lastPathComponent }
+            return nil
+        }
+        let title = column.map { String(localized: "Go to Line \(line), Column \($0)", comment: "Go to: \":42:3\"") }
+            ?? String(localized: "Go to Line \(line)", comment: "Go to: \":42\" in the file shown")
+        let detail = file ?? String(localized: "No file is shown: type a file's name before the colon", comment: "Go to: \":42\" with no file in the tab")
+        let entry = PaletteEntry(id: "line", kind: .command, title: title, detail: detail)
+        return Row(id: entry.id, entry: entry, offsets: [], key: nil, action: .line(line, column: column))
     }
 
     /// Files opened lately in this workspace, for Go to before anything is typed.
@@ -418,7 +474,7 @@ struct PaletteView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: model.mode == .goTo ? "arrow.right.circle" : "command")
+                Image(systemName: model.listMode == .goTo ? "arrow.right.circle" : "command")
                     .font(.system(size: 15))
                     .foregroundStyle(Color.ink3)
                 TextField(model.placeholder, text: $model.query)
@@ -524,16 +580,20 @@ private struct PaletteRowView: View {
     @ViewBuilder private var icon: some View {
         if let status = row.entry.status, status == .blocked || status == .done, row.entry.kind == .claude || row.entry.kind == .tab {
             StateMark(status: status, failed: failed)
-        } else {
+        } else if let symbol {
             Image(systemName: symbol)
                 .font(.system(size: 12))
+                .foregroundStyle(Color.ink2)
+        } else {
+            FileIconView(name: (row.entry.title as NSString).lastPathComponent, size: 13)
                 .foregroundStyle(Color.ink2)
         }
     }
 
-    private var symbol: String {
+    /// The symbol of what the row is; a file shows its own icon instead.
+    private var symbol: String? {
         switch row.entry.kind {
-        case .file: FileIcon.symbol(for: row.entry.title, folder: false)
+        case .file: nil
         case .workspace: "square.on.square"
         case .tab: "rectangle.topthird.inset.filled"
         case .claude: "pawprint"

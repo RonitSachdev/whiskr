@@ -17,6 +17,13 @@ enum AppPlaces {
     /// Running against a scratch folder and settings of its own (Debug only).
     private(set) static var isIsolated = false
 
+    /// The home folder other editors' settings and extensions are read from (Settings › General › Import
+    /// Settings): yours, or in an isolated run a `Home` folder inside its own, so a test run reads only
+    /// what was put there.
+    static var otherEditorsHome: URL {
+        isIsolated ? supportFolder.appendingPathComponent("Home", isDirectory: true) : FileManager.default.homeDirectoryForCurrentUser
+    }
+
     #if DEBUG
     /// The settings of an isolated run, one suite per folder: test runs side by side never share settings,
     /// and a relaunch on the same folder finds its own.

@@ -84,7 +84,7 @@ extension Village {
     /// A helper just launched beside its boss, on a blanket that was already there: the hand-over.
     func handOver(to helper: Actor, from boss: Actor) {
         guard !helper.cat.needsYou, !boss.cat.needsYou else { return }
-        if reduceMotion {
+        if hushed {
             helper.cat.attend(boss.head, 1.2)
             boss.cat.attend(helper.head, 1.2)
             return
@@ -98,7 +98,7 @@ extension Village {
     /// long until it leaves, or nil when it should leave as before (its boss is not there, or busy, or
     /// motion is reduced).
     func farewell(_ helper: Actor, to boss: Actor) -> Float? {
-        guard !reduceMotion, !helper.cat.needsYou, !boss.cat.needsYou, helper.errand == nil else { return nil }
+        guard !hushed, !helper.cat.needsYou, !boss.cat.needsYou, helper.errand == nil else { return nil }
         let errand = Errand(kind: .farewell, began: time, boss: boss, walk: walkTime(from: helper.rootLocal, to: beside(boss, helper), least: 0.5))
         start(errand, for: helper)
         return errand.end
@@ -115,7 +115,7 @@ extension Village {
             if waitingNotes.count < 2 { waitingNotes.append((sender, receiver)) }
             return
         }
-        if reduceMotion {
+        if hushed {
             from.cat.attend(to.head, 1.4)
             to.cat.attend(from.head, 1.4)
             return

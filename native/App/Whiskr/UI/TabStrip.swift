@@ -14,8 +14,9 @@ import WhiskrKit
 /// this one had closed. Each tab shows what it is (a terminal, a file, changes; a Claude's state mark in
 /// its place), its title, and a close button at its end: always on the selected tab, on the others under
 /// the pointer, a dot instead while a file is unsaved. "+" stays at the end of the row. The row's empty
-/// stretch is the window's (it drags, and a double-click zooms) and never opens a tab. On Home the row
-/// stays, calm: "Home" where the workspace button sits, with the same menu, and no tabs.
+/// stretch is the window's (it drags, and a double-click does what Desktop & Dock says a title bar's
+/// does) and never opens a tab. On Home the row stays, calm: "Home" where the workspace button sits, with
+/// the same menu, and no tabs.
 ///
 /// Clicks are AppKit's, not SwiftUI tap gestures: a tab is chosen the moment the button goes down (as
 /// in Safari), a second click renames it, the close button closes at once, and a middle click closes
@@ -49,6 +50,9 @@ struct TabStrip: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height)
+        // In a window that is not the one in use, the first click acts as well as bringing it forward, on
+        // every control of the row as on its tabs (`TabMouseView`), as the top bar and the status bar do.
+        .allowsWindowActivationEvents()
         // The line along the foot is under the tabs: the selected one covers it and opens into its panes.
         .background(alignment: .bottom) { Color.line.frame(height: 1) }
         .chromeBackground()
@@ -63,8 +67,8 @@ struct TabStrip: View {
 /// `minTab` each will not fit them all, as many as fit, a run that always holds the selected tab whole,
 /// and the list of every tab after them. No scrolling: every tab in sight is wholly there, its close
 /// button in reach, and every click is AppKit's (`TabMouse`). The stretch after the tabs belongs to the
-/// window, as the top bar's empty stretches do: it moves the window, and a double-click zooms it. It never
-/// opens a tab.
+/// window, as the top bar's empty stretches do: it moves the window, and a double-click does what a title
+/// bar's does. It never opens a tab.
 private struct TabCells: View {
     let workbench: Workbench
     let workspace: Workspace
@@ -89,6 +93,8 @@ private struct TabCells: View {
                 }
             }
             .frame(width: room.size.width, alignment: .leading)
+            // Never past the row's end, under "+" (`TabRowLayout` keeps within it; this is the guarantee).
+            .clipped()
             .background(WindowDragArea())
             .onChange(of: layout.start) { _, value in start = value }
         }
@@ -312,7 +318,7 @@ private struct TabListButton: View {
     static let width: CGFloat = 32
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: Look.Space.xxs) {
             Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
             Text(verbatim: "\(hidden)").font(.system(size: 11).monospacedDigit())
         }
@@ -372,23 +378,18 @@ private struct TabButton: View {
 
     var body: some View {
         let renaming = workbench.renamingTabID == tab.id
+        let title = workbench.title(of: tab)
+        let tasks = tasks
+        let progress = Self.progress(of: tasks)
         let status = workbench.status(of: tab)
         let failed = tab.tree.panes.compactMap { workbench.panes[$0] }.contains { workbench.session(of: $0)?.failed ?? false }
         let pinned = tab.tree.panes.contains(where: workbench.pinnedPanes.contains)
         let edited = workbench.hasEditedFile(in: tab)
         let preview = workbench.isPreview(tab)
-        let page = workbench.pages[tab.focusedPane]
         HStack(spacing: Look.Space.s) {
-            // What the tab is: a Claude's state when it has one to show, else a terminal, a file or changes.
-            Group {
-                if let status, status == .blocked || status == .done {
-                    StateMark(status: status, failed: failed)
-                } else {
-                    Image(systemName: page.map { $0.isDiff ? "arrow.left.arrow.right" : FileIcon.symbol(for: $0.title, folder: false) } ?? "terminal")
-                        .font(Look.smallIcon)
-                        .foregroundStyle(selected ? Color.ink2 : Color.ink3)
-                }
-            }
+            // What the tab is: a Claude's state when it has one to show, a bell rung out of sight, else a
+            // terminal, a file or changes.
+            TabKindMark(workbench: workbench, tab: tab, selected: selected)
             .frame(width: 14)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
@@ -407,11 +408,11 @@ private struct TabButton: View {
                     .onExitCommand { workbench.renamingTabID = nil }
                     .onChange(of: editing) { _, focused in if !focused { commit() } }
                     .onAppear {
-                        draft = workbench.title(of: tab)
+                        draft = title
                         editing = true
                     }
             } else {
-                Text(workbench.title(of: tab))
+                Text(title)
                     .font(.system(size: 13, weight: selected ? .medium : .regular))
                     .italic(preview)
                     .foregroundStyle(selected ? Color.ink : Color.ink2)
@@ -421,7 +422,7 @@ private struct TabButton: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .allowsHitTesting(false)
             }
-            if let progress = progress {
+            if let progress {
                 Button { showingTasks.toggle() } label: {
                     ProgressMark(done: progress.done, total: progress.total)
                 }
@@ -464,14 +465,20 @@ private struct TabButton: View {
         // anything it draws, a title or a close mark included, and does nothing with it); only the to-do
         // button keeps its own. `make perf`'s closing check clicks every part of every tab.
         .background(TabMouse(tab: tab.id, last: last, select: { workbench.select(tab: tab) }, close: { workbench.requestClose(tab: tab) },
+                             shown: { workbench.selectedTab?.id }, show: { id in
+                                 // A drag shows the panes it can be dropped beside: those of the tab shown before.
+                                 if let before = workbench.selectedWorkspace?.tabs.first(where: { $0.id == id }) { workbench.select(tab: before) }
+                             },
                              rename: {
                                  // A second click on a preview keeps it (as in Xcode); on any other tab it renames.
                                  if workbench.isPreview(tab) { workbench.keep(page: tab.focusedPane) } else { workbench.renamingTabID = tab.id }
-                             }, menu: { TabMenu.make(workbench: workbench, tab: tab) }))
-        .onHover { hovering = $0 }
-        .help(index < 8 ? String(localized: "\(workbench.title(of: tab)) (⌘\(index + 1))") : workbench.title(of: tab))
+                             }, menu: { TabMenu.make(workbench: workbench, tab: tab) },
+                             // One account of the pointer, AppKit's (in any window, key or not): the close button
+                             // is drawn where a click closes, and nowhere else.
+                             selected: selected, hover: { hovering = $0 }))
+        .help(index < 8 ? String(localized: "\(title) (⌘\(index + 1))") : title)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibility(status: status, failed: failed, pinned: pinned))
+        .accessibilityLabel(accessibility(title: title, status: status, failed: failed, pinned: pinned, edited: edited, preview: preview))
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { workbench.select(tab: tab) }
         .accessibilityAction(named: String(localized: "Close Tab")) { workbench.requestClose(tab: tab) }
@@ -488,18 +495,18 @@ private struct TabButton: View {
         return []
     }
 
-    private var progress: TaskProgress? {
-        let tasks = tasks
+    private static func progress(of tasks: [TaskItem]) -> TaskProgress? {
         guard !tasks.isEmpty else { return nil }
         return TaskProgress(done: tasks.filter { $0.state == .completed }.count, total: tasks.count)
     }
 
-    private func accessibility(status: AgentStatus?, failed: Bool, pinned: Bool) -> String {
-        var parts = [String(localized: "Tab \(index + 1), \(workbench.title(of: tab))", comment: "Accessibility: a tab's number and title")]
+    private func accessibility(title: String, status: AgentStatus?, failed: Bool, pinned: Bool, edited: Bool, preview: Bool) -> String {
+        var parts = [String(localized: "Tab \(index + 1), \(title)", comment: "Accessibility: a tab's number and title")]
         if let status, status == .blocked || status == .done { parts.append(failed ? String(localized: "Error") : status.label) }
+        if workbench.rang(in: tab) { parts.append(String(localized: "Bell", comment: "A terminal rang its bell while out of sight")) }
         if pinned { parts.append(String(localized: "Pinned")) }
-        if workbench.hasEditedFile(in: tab) { parts.append(String(localized: "Edited")) }
-        if workbench.isPreview(tab) { parts.append(String(localized: "Preview")) }
+        if edited { parts.append(String(localized: "Edited")) }
+        if preview { parts.append(String(localized: "Preview")) }
         return parts.joined(separator: ", ")
     }
 
@@ -584,8 +591,12 @@ private struct TabMouse: NSViewRepresentable {
     let last: Bool
     let select: () -> Void
     let close: () -> Void
+    let shown: () -> UUID?
+    let show: (UUID) -> Void
     let rename: () -> Void
     let menu: () -> NSMenu
+    let selected: Bool
+    let hover: (Bool) -> Void
 
     func makeNSView(context: Context) -> TabMouseView { TabMouseView() }
 
@@ -593,9 +604,13 @@ private struct TabMouse: NSViewRepresentable {
         view.tab = tab
         view.isLast = last
         view.onSelect = select
+        view.shownTab = shown
+        view.onShow = show
         view.onClose = close
         view.onRename = rename
         view.makeMenu = menu
+        view.isSelected = selected
+        view.onHover = hover
     }
 }
 
@@ -609,7 +624,19 @@ final class TabMouseView: NSView, NSDraggingSource {
     var onClose: () -> Void = {}
     var onRename: () -> Void = {}
     var makeMenu: () -> NSMenu = { NSMenu() }
+    var shownTab: () -> UUID? = { nil }
+    var onShow: (UUID) -> Void = { _ in }
+    /// The close button is drawn on the selected tab, and on another while the pointer is on it.
+    var isSelected = false
+    var onHover: (Bool) -> Void = { _ in }
+    private var isHovered = false {
+        didSet { if isHovered != oldValue { onHover(isHovered) } }
+    }
+    private var hoverArea: NSTrackingArea?
     private var downAt: NSPoint?
+    /// The tab shown before this one was pressed: a drag goes back to it, so the tab can be dropped
+    /// beside its panes.
+    private var shownBefore: UUID?
 
     /// The close button, drawn by the tab at its trailing end, and its reach: the button and the tab's
     /// padding after it, the row's full height.
@@ -627,9 +654,24 @@ final class TabMouseView: NSView, NSDraggingSource {
     /// and the Finder: the click is not spent on bringing the window forward.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    /// The pointer, followed in every window (key or not, the app active or not), so that a first click in
+    /// a background window finds the close button exactly where it is drawn.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        hoverArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) { isHovered = true }
+    override func mouseExited(with event: NSEvent) { isHovered = false }
+
     override func mouseDown(with event: NSEvent) {
-        if closeRect.contains(convert(event.locationInWindow, from: nil)) { return onClose() }
+        // The close button's reach closes only where the button is drawn; elsewhere the tab is chosen.
+        if isSelected || isHovered, closeRect.contains(convert(event.locationInWindow, from: nil)) { return onClose() }
         downAt = event.locationInWindow
+        shownBefore = shownTab()
         if event.clickCount == 2 { onRename() } else { onSelect() }
     }
 
@@ -665,6 +707,7 @@ final class TabMouseView: NSView, NSDraggingSource {
             dragging.setDraggingFrame(frame, contents: nil)
         }
         TabDrag.current = tab
+        if let before = shownBefore, before != tab { onShow(before) }
         beginDraggingSession(with: [dragging], event: event, source: self)
     }
 

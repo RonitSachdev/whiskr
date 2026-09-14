@@ -11,7 +11,8 @@ import simd
 /// fast, at 30 Hz when the window is not key or the scene is calm, and not at all while the window is
 /// hidden or covered. Left alone with nothing new for a few seconds it rests: the scene's time slows and it
 /// draws at a slow tick, so the meadow still sways; any input or change brings the full rate back at once.
-/// It lowers its own resolution, in steps, when frames take too long.
+/// It lowers its own resolution, in steps, when frames take too long. With `animatesAmbient` off it stops
+/// drawing altogether once a change has settled.
 @MainActor
 public final class MeadowView: MTKView {
     public enum Mode: Sendable { case meadow, catPlayground }
@@ -70,6 +71,23 @@ public final class MeadowView: MTKView {
     public var reduceMotion: Bool {
         get { stage.village?.reduceMotion ?? false }
         set { stage.village?.reduceMotion = newValue }
+    }
+
+    /// Whether the meadow's ambient motion plays (WCAG 2.2.2, Pause, Stop, Hide): grass and flowers
+    /// swaying, butterflies, bees and fireflies, drifting seeds and falling rain or snow, flickering
+    /// lights, the ladybirds, and each cat's breathing, blinks, glances, fidgets, tail and the loop of its
+    /// work. Off, all of that holds still where it is, and nothing hops, trots or carries a note. What
+    /// the meadow says still shows: cats change pose (easing into it), bubbles come and go, lanterns light
+    /// and blankets, cats and lanterns arrive and leave. Dragging, scrolling and zooming the view still
+    /// work. Once nothing is changing the view draws no frames until something does. Turned back on,
+    /// everything carries on from where it stood. On by default; a host keeps the user's choice (off by
+    /// default under Reduce Motion).
+    public var animatesAmbient = true {
+        didSet {
+            guard animatesAmbient != oldValue else { return }
+            stage.ambient = animatesAmbient
+            wake()
+        }
     }
 
     /// Where something is in the view, in its own coordinates (points, origin bottom left): a blanket
@@ -146,6 +164,7 @@ public final class MeadowView: MTKView {
             stage.update(Float(dt))
             left -= dt
             if pendingReveal != nil { revealWhenLanded() }
+            settle(Float(dt))
         }
         noticeView()
         tellViewChanged()
@@ -415,8 +434,35 @@ public final class MeadowView: MTKView {
     private var lastInput = CACurrentMediaTime()
     private func wake() {
         lastInput = CACurrentMediaTime()
+        unchanged = 0
         if !running, isVisibleOnScreen { setRunning(true) }
         updateRate()
+    }
+
+    /// Seconds of scene time with nothing new: no input, no change of world and the scene `still`.
+    private var unchanged: Float = 0
+    /// With ambient motion off, how long after the last change frames keep coming: long enough for
+    /// poses, bubbles and lanterns to finish easing in.
+    static let settleSeconds: Float = 3
+    /// Ambient motion is off and the last change has settled: every frame would be the same as the one
+    /// on screen, so none is drawn until something changes (`wake`).
+    var frozenAtRest: Bool { !animatesAmbient && unchanged >= Self.settleSeconds }
+    private func settle(_ dt: Float) {
+        unchanged = stage.still ? unchanged + dt : 0
+    }
+    /// While frozen at rest, a clock-driven sky still turns to evening: checked now and then, and drawn
+    /// when it has.
+    private var relightTimer: Timer?
+    private func restFrozen() {
+        setRunning(false)
+        guard relightTimer == nil else { return }
+        relightTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if !self.frozenAtRest || self.running { self.relightTimer?.invalidate(); self.relightTimer = nil; return }
+                if self.stage.relight() { self.wake() }
+            }
+        }
     }
 
     private var isVisibleOnScreen: Bool {
@@ -555,6 +601,7 @@ public final class MeadowView: MTKView {
         stage.pace = pace
         stage.update(dt)
         if pendingReveal != nil { revealWhenLanded() }
+        settle(dt * pace)
         noticeView()
         let t2 = CACurrentMediaTime()
         guard let cb = renderer.gpu.queue.makeCommandBuffer() else { renderer.semaphore.signal(); return }
@@ -583,6 +630,7 @@ public final class MeadowView: MTKView {
         judge(now: now)
         updateRate()
         tellViewChanged()
+        if frozenAtRest { restFrozen() }
     }
 
     // MARK: input
