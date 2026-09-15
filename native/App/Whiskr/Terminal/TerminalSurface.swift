@@ -104,6 +104,8 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
     var selectedCommandPrompt: Int?
     /// A ⌘-click opened a link: its release is not SwiftTerm's.
     var swallowsMouseUp = false
+    /// The click that brought the window forward (`acceptsFirstMouse`): it chooses the pane and nothing more.
+    var activatingClick: Int?
     /// A link the terminal printed, to be opened, shown in Files or copied (`PaneCard` resolves it).
     var onLink: ((TerminalLink, TerminalLinkAction) -> Void)?
     /// Whether a link names something there is (a path that exists, or any web link): only those are

@@ -259,7 +259,29 @@ extension TerminalSurface {
         // A click lands on SwiftTerm's drawing layer, which never takes the keyboard, and SwiftTerm's own
         // mouseDown does not ask for it: the terminal clicked takes it here, so clicking a pane chooses it.
         if window?.firstResponder !== self { window?.makeFirstResponder(self) }
+        if activatingClick == event.eventNumber {
+            activatingClick = nil
+            swallowsMouseUp = true
+            return
+        }
+        activatingClick = nil
         super.mouseDown(with: event)
+    }
+
+    /// The click that brings Whiskr forward also chooses the pane it lands on (as in VS Code), so coming
+    /// back from another app to the other side of a split takes one click, not two. It goes no further: no
+    /// selection starts and a program that asked for clicks does not hear it.
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        activatingClick = event?.eventNumber
+        return true
+    }
+
+    /// AppKit asks the view under the pointer whether it takes that first click, and SwiftTerm's drawing layer
+    /// says no: over it the terminal answers.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let hit = super.hitTest(point)
+        if let hit, hit !== self, hit.layer is CAMetalLayer { return self }
+        return hit
     }
 
     override func mouseUp(with event: NSEvent) {

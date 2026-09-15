@@ -330,7 +330,14 @@ enum KeyStandIn {
         // The key window among this app's own (the app stays inactive: nobody else's keyboard moves). Without
         // it the window takes the first click as the one that brings it forward, and drops it.
         window.makeKey()
+        // It stays so: the system takes key away from a window nobody sees when you change app or Space, and
+        // every click after that was dropped (the meadow flow's click on a terminal, on a Mac in use).
+        resigned = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification, object: window, queue: .main) { _ in
+            MainActor.assumeIsolated { if standsIn { KeyStandIn.window?.makeKey() } }
+        }
     }
+
+    nonisolated(unsafe) private static var resigned: NSObjectProtocol?
 }
 
 /// The window may be larger than the screen (it is never on it): AppKit would shrink it to fit.

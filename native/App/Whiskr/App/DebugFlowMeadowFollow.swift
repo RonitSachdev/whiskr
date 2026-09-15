@@ -64,6 +64,17 @@ extension PerfSuite {
         }
         await follows("⌘] (the next pane)", blanket(spaces[6].workspace), ring: lantern(spaces[6].workspace, split)) { self.shortcut("cmd+]") }
         await follows("⌘] again", cat(spaces[6]), ring: cat(spaces[6])) { self.shortcut("cmd+]") }
+        // The click that brings the window forward chooses the pane it lands on: the shell has the keyboard,
+        // the window is no longer key (you were in another app), and one click on the Claude's terminal is enough.
+        shortcut("cmd+]")
+        await follows("the click that brings the window forward", cat(spaces[6]), ring: cat(spaces[6])) {
+            let surface = spaces[6].pane.surface
+            KeyStandIn.standsIn = false
+            self.window.resignKey()
+            self.click(surface, at: NSPoint(x: surface.bounds.midX, y: surface.bounds.midY))
+            KeyStandIn.standsIn = true
+            self.window.makeKey()
+        }
         await follows("⌃⌘[", blanket(spaces[5].workspace), ring: blanket(spaces[5].workspace)) { self.shortcut("cmd+ctrl+[") }
         await follows("Go to (⌘P)", blanket(spaces[8].workspace), ring: nil) { await self.goTo(spaces[8].workspace.name) }
 
