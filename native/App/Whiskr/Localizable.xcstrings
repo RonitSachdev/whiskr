@@ -1231,6 +1231,28 @@
         }
       }
     },
+    "Close Pane (⌘W)": {
+      "comment": "Tooltip of a pane's close button (a split tab's segment, a pane header)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを閉じる（⌘W）"
+          }
+        }
+      }
+    },
+    "Close Tab (%lld Panes)": {
+      "comment": "A split tab's menu: closes every pane of it",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブを閉じる（%lldペイン）"
+          }
+        }
+      }
+    },
     "Code is coloured by the grammars VS Code uses, and VS Code's colour themes work here: Settings › Terminal › Add Theme…, or File › Import Themes and Languages…, takes a theme file, an extension folder or a .vsix. Settings › General › Import Settings reads your VS Code or Cursor settings once. Nothing from an extension is ever run.": {
       "comment": "Help page: what Whiskr takes from VS Code",
       "localizations": {
@@ -2067,6 +2089,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存しない"
+          }
+        }
+      }
+    },
+    "Drag a tab to move it: the tabs part where it would land, and over a pane a tinted area shows the half it would take, or the whole pane where it would take that tab's place. Let go somewhere else, or press Esc, and it goes back.": {
+      "comment": "Help page: dragging a tab",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブはドラッグして移動できます。置かれる場所ではほかのタブが左右に分かれ、ペインの上では、分割して入る半分、またはそのタブの場所に入れ替わる場合はペイン全体が色付きで示されます。ほかの場所で離すか Esc を押すと元に戻ります。"
           }
         }
       }
@@ -3490,6 +3523,17 @@
         }
       }
     },
+    "Move Here": {
+      "comment": "Dragging a tab over a pane's middle: it takes that tab's place",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここに移動"
+          }
+        }
+      }
+    },
     "Move Line Down": {
       "localizations": {
         "ja": {
@@ -3547,6 +3591,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ワークスペースに移動"
+          }
+        }
+      }
+    },
+    "Move to “%@”": {
+      "comment": "Dragging a tab over another workspace's blanket",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」に移動"
           }
         }
       }
@@ -4090,17 +4145,6 @@
         }
       }
     },
-    "Open a terminal and type `claude`: a cat sits down in the meadow.": {
-      "comment": "Home: how cats come (Markdown: `claude` is the command)",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ターミナルを開いて `claude` と入力すると、草原に猫が座ります。"
-          }
-        }
-      }
-    },
     "Open a worktree of %@": {
       "comment": "Open Worktree panel's title",
       "localizations": {
@@ -4153,17 +4197,6 @@
         }
       }
     },
-    "Or drop a folder here.": {
-      "comment": "Home: the last line",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "またはフォルダをここにドロップ。"
-          }
-        }
-      }
-    },
     "Pair with Dark Theme": {
       "comment": "Theme card's menu: makes one theme of this light one and a dark one",
       "localizations": {
@@ -4182,6 +4215,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ライトテーマと組み合わせる"
+          }
+        }
+      }
+    },
+    "Pane %@": {
+      "comment": "Accessibility: a pane's header in a split tab, or its segment in the tab row",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペイン：%@"
           }
         }
       }
@@ -5469,12 +5513,45 @@
         }
       }
     },
+    "Split Left": {
+      "comment": "Dragging a tab over a pane's left edge",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左に分割"
+          }
+        }
+      }
+    },
     "Split Right": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "右に分割"
+          }
+        }
+      }
+    },
+    "Split the pane you are in (⇧⌘D splits it down). A split tab shows each of its panes in the tab row: click one to go to it; its × or a middle click closes that pane alone. ⌘W closes the pane you are in, ⌥⌘W the whole tab.": {
+      "comment": "Help page: split tabs",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今いるペインを分割します（⇧⌘D で下に分割）。分割したタブは、タブの列にペインごとに表示されます。クリックするとそのペインへ移動し、× または中クリックでそのペインだけを閉じます。⌘W は今いるペインを、⌥⌘W はタブ全体を閉じます。"
+          }
+        }
+      }
+    },
+    "Split Up": {
+      "comment": "Dragging a tab over a pane's top edge",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上に分割"
           }
         }
       }
@@ -6234,17 +6311,6 @@
         }
       }
     },
-    "Type `claude` in a terminal and your cat appears here.": {
-      "comment": "First-run hint under the first blanket (Markdown: `claude` is the command)",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ターミナルで `claude` と入力すると、ここに猫が現れます。"
-          }
-        }
-      }
-    },
     "Type a command or a place…": {
       "comment": "The command palette's field, before anything is typed",
       "localizations": {
@@ -6743,6 +6809,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ペインを拡大"
+          }
+        }
+      }
+    },
+    "Zoom Pane (⇧⌘↩)": {
+      "comment": "Tooltip of a pane header's zoom button",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ペインを拡大（⇧⌘↩）"
           }
         }
       }
@@ -7423,16 +7500,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "詳細"
-          }
-        }
-      }
-    },
-    "Drag a tab onto the edge of a pane to split it there, or onto its middle to move it into that pane's tab.": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "タブをペインの端にドラッグするとそこで分割し、中央にドラッグするとそのペインのタブへ移動します。"
           }
         }
       }

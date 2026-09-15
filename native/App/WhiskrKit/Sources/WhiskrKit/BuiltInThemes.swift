@@ -1,13 +1,13 @@
 import Foundation
 
-/// The themes that come with the app: ours (the default), then well-known terminal schemes that are
+/// The themes that come with the app: ours (the default, and Graphite), then well-known terminal schemes that are
 /// freely licensed, each credited. The schemes' own terminal palettes are kept as published; app
 /// colours are worked out from them unless noted.
 public enum BuiltInThemes {
     public static let defaultID = "whiskr"
 
     public static let all: [Theme] = [
-        whiskr, bundled("modern"), catppuccin, tokyoNight, gruvbox, bundled("solarized"), rosePine, dracula, bundled("monokai"), nord,
+        whiskr, graphite, bundled("modern"), catppuccin, tokyoNight, gruvbox, bundled("solarized"), rosePine, dracula, bundled("monokai"), nord,
     ]
 
     public static func theme(id: String) -> Theme? { all.first { $0.id == id } }
@@ -52,6 +52,23 @@ public enum BuiltInThemes {
             app: app([.surface: 0x1e1e20, .chrome: 0x0f0f11, .line: 0x36363b, .lineStrong: 0x4a4a50,
                       .text: 0xececee, .textSecondary: 0xa9a9b0, .textTertiary: 0x7a7a82, .well: 0x0f0f11, .accent: 0x6fa3f2,
                       .working: 0x7a7a82, .needsYou: 0xe5564c, .done: 0xececee, .idle: 0x45454a, .error: 0xe5564c])),
+        isBuiltIn: true)
+
+    /// Ours, for working at night as in Cursor and VS Code's dark editors: neutral near-black surfaces with
+    /// no colour cast (every grey has equal red, green and blue), the bars a step darker, soft white text,
+    /// quiet separators and a restrained blue. Dark only. Code is coloured from its sixteen colours, which
+    /// are softened so that properties (red) and keywords (magenta) read as colour, not alarm.
+    static let graphite = Theme(
+        id: "graphite", name: "Graphite", author: "Whiskr", credit: "The app's own neutral dark palette",
+        light: nil,
+        dark: ThemeVariant(
+            terminal: terminal(0x181818, 0xd6d6d6, cursor: 0xcfcfcf, selection: 0x2f4664, [
+                0x262626, 0xe06c66, 0x7cc27c, 0xd9b766, 0x6aa2e8, 0xc58bd9, 0x5cbcc8, 0xcccccc,
+                0x707070, 0xf08a82, 0x98d898, 0xeccd85, 0x8cbaf2, 0xd9a8ea, 0x7fd2dc, 0xf0f0f0,
+            ]),
+            app: app([.surface: 0x1f1f1f, .chrome: 0x131313, .line: 0x303030, .lineStrong: 0x474747,
+                      .text: 0xe6e6e6, .textSecondary: 0xa8a8a8, .textTertiary: 0x7d7d7d, .well: 0x101010, .accent: 0x5b9bec,
+                      .working: 0x7d7d7d, .needsYou: 0xe8605a, .done: 0xe6e6e6, .idle: 0x474747, .error: 0xe8605a])),
         isBuiltIn: true)
 
     static let catppuccin = Theme(

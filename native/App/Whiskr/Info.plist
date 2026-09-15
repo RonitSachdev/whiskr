@@ -67,16 +67,6 @@
 	<array>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>app.whiskr.tab</string>
-			<key>UTTypeDescription</key>
-			<string>Whiskr Tab</string>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-		</dict>
-		<dict>
-			<key>UTTypeIdentifier</key>
 			<string>app.whiskr.theme</string>
 			<key>UTTypeDescription</key>
 			<string>Whiskr Theme</string>

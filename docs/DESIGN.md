@@ -55,9 +55,9 @@ sessions.
   every item short). Both are drawn by the app in the chrome colour, never as toolbar items. Between
   them the meadow is on the left and the work area on the right: a **tab row** led by the **workspace
   button** (its colour, its name, a chevron: a menu that opens as it is pressed, starting with New
-  Workspace and Open Folder…, then Home and every workspace), then the panes. Terminals have
-  no header; a file or a diff has a slim one with its path. Nothing in the bars repeats what is on
-  screen elsewhere.
+  Workspace and Open Folder…, then Home and every workspace), then the panes. A terminal alone in its
+  tab has no header; a file or a diff has a slim one with its path; in a tab of several panes every pane
+  has one (see "Where the keys go"). Nothing in the bars repeats what is on screen elsewhere.
 - **Sizes.** By default the meadow takes about 42 % of the window and the terminals keep at least 80
   columns. The divider drags from a 240 pt sidebar to the meadow alone. Below about 880 pt of window, the
   meadow steps aside; showing it then (⌃⌘S, the meadow button) gives it its narrowest sidebar beside the
@@ -82,14 +82,15 @@ sessions.
 - **Workspaces** are named after their repository (else their folder) and follow the first terminal's
   `cd` until renamed. The meadow follows what you choose (see "The meadow follows what you choose").
 - **Home** is a place, not a tab: no workspace selected. The meadow shows every blanket with none ringed,
-  and the work area shows the Home page: the app's cat, one line on where cats come from, Open Folder…
+  and the work area shows the Home page: the app's cat, Open Folder…
   (⌘O), New Terminal (↩), **Open** (the workspaces open now, in the meadow's order, each with its colour,
   name, branch, state and Claude count; Return takes you back in exactly where you left it) and
   **Recent** (folders not already open). The tab row shows "Home" and no tabs. It looks the same with no
   workspace or many. **Every launch lands on Home**; everything comes back running, one click away.
   Go › Home is ⇧⌘H; it is also the house in the top bar and the first place in the workspace button's
-  menu (after New Workspace and Open Folder…), and
-  ⌘N (New Workspace) goes there.
+  menu (after New Workspace and Open Folder…). From a workspace, ⌘N (New Workspace) goes there, New
+  Terminal ready for Return; on Home, it is New Terminal itself: a workspace with a terminal, at once.
+  Home teaches nothing in sentences: its rows are the actions, and an empty meadow simply shows itself.
 - **Nothing at launch asks.** Terminals still running in another version's session host, and the Claudes
   not resumed because of them, are a quiet bar on Home with Details and a close button, never a dialog.
 - **Go to (⌘P)** reads its field as VS Code's Quick Open does: a name finds workspaces, tabs, Claudes and
@@ -97,8 +98,9 @@ sessions.
   file at a line. Every space-separated word must match, and a quoted word matches as written. A match
   just after `/` beats one after `-` or `.`, and among names that start with what you typed, the shorter
   wins.
-- **Closing** asks nothing. ⌘Z brings back what was closed, with its process, for ten seconds, and ⇧⌘T
-  reopens it later. Closing a workspace's last tab closes the workspace; closing the workspace on screen
+- **Closing** asks nothing (only about a file with unsaved changes, by its name). ⌘Z brings back what was
+  closed, with its process, for ten seconds, and ⇧⌘T reopens it later; a pane comes back where it was,
+  beside whatever its tab holds by then. Closing a workspace's last tab closes the workspace; closing the workspace on screen
   returns Home, never into another workspace's terminal. Closing a workspace asks only when Claude or
   another program is running in it.
 - **Quitting** leaves every terminal running in the session host. ⌥⌘Q (Quit and Stop All Terminals) asks
@@ -332,7 +334,8 @@ every theme:
 |---|---|---|
 | **Content** | Panes (terminals, editors, diffs), Home, and the selected tab | The terminal's background |
 | **Chrome** | Top bar, tab row (and its unselected tabs), status bar, Files and Changes panel | `chrome`: a step below the content (toward the text in light themes, toward black in dark ones), 1.03–1.25:1 against it |
-| **Line** | Between any two regions: under the top bar, along the tab row's foot, after each tab, above the status bar, at the meadow's edge, between panes, before the side panel | `line`: at least 1.3:1 on both layers; 3:1 with Increase Contrast |
+| **Line** | Between any two regions: under the top bar, along the tab row's foot, after each tab, above the status bar, at the meadow's edge, before the side panel | `line`: at least 1.3:1 on both layers; 3:1 with Increase Contrast |
+| **Line between panes** | Between two panes of a tab, which share the content's colour on both sides | `lineStrong`, at least 1.5:1 on the content (an imported theme's moved toward its text if it falls short); `textTertiary` with Increase Contrast |
 
 The meadow is its own region, full height between the bars, edged by a line; nothing of the chrome is
 tinted toward its green. Colour in the chrome means state, never decoration.
@@ -343,16 +346,21 @@ with it; it goes as soon as the pointer leaves, and nothing of it stays behind. 
 at once. This holds for every divider: the meadow's edge, between panes, the side
 panel's edge.
 
-**Increase Contrast:** lines go to 3:1, secondary and tertiary text step up one level, the focused
-pane's border is 2.5 pt and the selected tab's line 3 pt. A theme that forces light or dark keeps it.
+**Increase Contrast:** lines go to 3:1, secondary and tertiary text step up one level, and the selected
+tab's line and the focused pane's header's are 3 pt. A theme that forces light or dark keeps it.
 
 ### Where the keys go
 
 - **The selected tab** is the content's colour and opens into its panes (no line under it), with a 2 pt
   accent line along its top: two signs, as VS Code's. Unselected tabs are the chrome's colour with
   secondary text.
-- **The focused pane of a split** has a 1.5 pt accent border; the others fade 10 % toward the background.
-  A pane alone shows neither.
+- **The panes of a split tab** each have a header: what the pane is (a Claude's state mark, a terminal, a
+  file with its place, changes), its title (a terminal's folder after it), and at its end Zoom Pane and
+  Close Pane. The pane you type in has its header tinted with the accent (9 %) and a 2 pt accent line
+  along its foot; the others fade 10 % toward the background. Not a line along the header's top (a pane at
+  the top of the tab would draw it under the tab row, shutting the selected tab off from its panes) and
+  not a border round the pane (it read as a stray box). A pane alone, or one zoomed, has no terminal
+  header and shows neither.
 - **When the window is not the one in use** (neither main nor key: the palette, a panel of its own, does
   not count), the accent turns grey (`lineStrong`) and the bars' content goes quieter, as every Mac title
   bar does. Hover and pressed fills are the primary colour at fixed strengths, not theme colours.
@@ -419,12 +427,27 @@ panel, the status bar; the meadow at its split view's own pace); all on one ease
 
 ### Tabs
 
-- Tabs share the row equally up to 220 pt. When even 128 pt each will not fit them all, the row shows as
-  many as fit, a run of neighbours that always holds the selected tab whole (it moves only when the
-  selected tab would leave it), and a chevron with how many are out of sight, whose menu lists every
-  tab. The row never scrolls: every tab in sight is whole, its close button in reach. "+" always stays
-  at the row's end. New tabs come only from "+", ⌘T and the menus: the row's empty stretch belongs to the
-  window, as the top bar's does. Tabs slide into place as others open, close or move.
+- Tabs share the row equally up to 220 pt. When even 128 pt each will not fit them all, split tabs keep
+  only their focused pane's title (their other panes become 36 pt icons); when that will not fit either,
+  the row shows as many as fit, a run of neighbours that always holds the selected tab whole (it moves
+  only when the selected tab would leave it), and a chevron with how many are out of sight, whose menu
+  lists every tab. The row never scrolls: every tab in sight is whole, its close buttons in reach. "+"
+  follows the last tab, as in Chrome (after the chevron when the row overflows), and moves with the tabs.
+  New tabs come only from "+", ⌘T and the menus: the row's empty stretch after "+" belongs to the window,
+  as the top bar's does. Tabs slide into place as others open, close or move. The top bar's "+" is a menu
+  of every way to start something (New Tab, New Workspace, Open Folder…, New Worktree…); the row's is New
+  Tab.
+- **A split tab is one tab of segments, one per pane** in the panes' order, as Chrome draws a split view:
+  each segment as a tab of one pane is (what it is, its title, its marks, its close button), a short line
+  between segments and the full line only after the tab, the selected tab's fill under all of it and its
+  focus line over the pane with the keyboard. A click on a segment shows that pane with the keyboard (the
+  meadow follows). A segment's ×, a middle click on it and Close Pane in its menu close that pane alone,
+  as ⌘W does; Close Tab (⌥⌘W, its menu's "Close Tab (2 Panes)") closes them all. There is no single
+  close button for the whole: on a split tab one read as closing the pane it named. A segment shown as
+  an icon has no close button (its tooltip names it; its menu and its pane's header close it). A name
+  given to a split tab leads its segments as a small label; a tab of one pane shows the name as its
+  title. Wherever a tab is named in a line (Go to, ⌃Tab, the list of every tab, VoiceOver) a split tab
+  is its panes' titles in order: "Claude Code, notes.md".
 - Each tab shows what it is (a terminal, a file, changes; a Claude's request or finished mark in its
   place), its title, and a close button at its **trailing** end, as in Cursor, VS Code and Zed: always on
   the selected tab, on the others under the pointer; an unsaved file shows a dot there until the pointer
@@ -437,9 +460,19 @@ panel, the status bar; the meadow at its split view's own pace); all on one ease
 - **⌃Tab goes by most recent use,** as in VS Code and Safari. A tap flips to the tab shown before. Held,
   ⌃ shows a small list of the workspace's tabs after 0.2 s: Tab, ⇧Tab, ↑ and ↓ move, letting go of ⌃
   opens the one chosen, Esc stays. Any other key opens the chosen tab and goes to it, so no key is lost.
-- **Drag a tab onto a pane to split it.** Dropped on a pane's outer tenth (right, left, top or bottom),
-  it splits there, with a tinted half showing where it will go; dropped in the middle, it moves into
-  that pane's tab. Terminals, files and diffs alike. Esc cancels.
+- **Drag a tab, and see what a drop will do before letting go.** Picked up, the tab (a split tab whole)
+  hangs from the pointer where it was grabbed, 3 % larger with a soft shadow, trailing on a critically
+  damped spring and swinging up to 4° with its speed across, level at rest. Over the tab row the other
+  tabs part where it would land (the gap is the preview; "+" moves with them). Over a pane's outer tenth
+  (right, left, top or bottom) a tinted, rounded area is exactly the half of the pane it would take,
+  labelled "Split Right" and so on; over the middle it is the whole pane, "Move Here" (the tab takes
+  that pane's tab's place in the row and shows), and the row shows that place too. The area glides from
+  zone to zone and holds a little past each boundary, so it never flickers. Over another workspace's
+  blanket in the meadow, "Move to “name”". Anywhere else, or over its own panes, it fades: let go there,
+  or press Esc, and it springs back to its place. Dropped, it springs into the place it went to (a pane
+  it became: it shrinks into it). With Reduce Motion it follows the pointer exactly and fades where it
+  lands. Terminals, files and diffs alike. When the row overflows, a drop in the row lands among the tabs
+  in sight.
 
 ### Elsewhere
 
@@ -447,7 +480,9 @@ Mac conventions throughout: every command in the menus with its key, standard Se
 categories on the left and one setting per row on the right, and standard Save / Don't Save / Cancel.
 Each theme's card in Settings shows it as it will look once chosen: on a light Mac, a theme with both
 versions shows its light one even while a dark-only theme holds the app dark; a card shows the chrome, a
-terminal sample with its selection and cursor, and the sixteen colours.
+terminal sample with its selection and cursor, and the sixteen colours. Two built-in themes are
+Whiskr's own: Whiskr (the default, light and dark) and Graphite (dark only: neutral near-black greys with
+no colour cast, the bars a step darker as the guarantees ask, soft white text, a restrained blue).
 English and Japanese, following the system language, for everything a person reads: menus, settings,
 notifications, Help, and the words in the scene. ⌘. interrupts the focused terminal; wherever text is
 typed (a rename, the commit message, Go to, a card) it is the Mac's Cancel. ⌥⌘W closes the tab and ⌘W a

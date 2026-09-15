@@ -29,6 +29,15 @@ final class PaletteController: NSObject, NSWindowDelegate {
 
     var isShown: Bool { panel != nil }
 
+    #if DEBUG
+    /// Debug builds (`DebugFlowHome`): chooses the first row titled `title`, as Return on it does.
+    func debugChoose(title: String) -> Bool {
+        guard let model, let row = model.rows.first(where: { $0.entry.title == title }) else { return false }
+        model.choose(row.id)
+        return true
+    }
+    #endif
+
     /// Shows the overlay in `mode` (or switches it, or closes it when it is already showing that mode).
     func toggle(_ mode: Mode, query: String = "") {
         if let model, panel != nil {

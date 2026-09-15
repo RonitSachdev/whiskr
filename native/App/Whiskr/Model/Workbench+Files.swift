@@ -182,6 +182,13 @@ extension Workbench {
         }
     }
 
+    /// One pane or page of a tab, by its segment's × or middle click in the tab row, its header's ×, or Close
+    /// Pane in the segment's menu: as ⌘W closes it (a file with unsaved changes asks first). The last one
+    /// closes its tab.
+    func requestClose(pane id: UUID) {
+        if pages[id] != nil { close(page: id) } else { close(pane: id) }
+    }
+
     /// The tab's ×, Close Tab: asks about unsaved files first, then closes as any tab closes (⌘Z brings it back).
     func requestClose(tab: Tab) {
         confirmClosing(documents(in: tab)) { [weak self] in

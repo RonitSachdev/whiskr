@@ -288,7 +288,7 @@ enum DebugScenario {
             if let image = meadow.renderImage(width: Int(rect.width * scale), height: Int(rect.height * scale)) {
                 context.draw(image, in: CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale))
             }
-            // What AppKit draws over the meadow (the first-run hint) goes back on top of it.
+            // What AppKit draws over the meadow (the edge capsules, a hover note) goes back on top of it.
             for over in meadow.superview?.subviews ?? [] where over !== meadow && !over.isHidden && over.frame.intersects(meadow.frame) {
                 guard let overRep = over.bitmapImageRepForCachingDisplay(in: over.bounds) else { continue }
                 over.cacheDisplay(in: over.bounds, to: overRep)
@@ -297,6 +297,15 @@ enum DebugScenario {
                     context.draw(picture, in: CGRect(x: box.minX * scale, y: box.minY * scale, width: box.width * scale, height: box.height * scale))
                 }
             }
+        }
+        // A tab being dragged (`TabDragging`): its layers, over everything, as the screen shows them.
+        if let overlay = TabDragging.shared.overlay, let layer = overlay.layer {
+            let box = overlay.convert(overlay.bounds, to: frameView)
+            context.saveGState()
+            context.translateBy(x: box.minX * scale, y: box.minY * scale)
+            context.scaleBy(x: scale, y: scale)
+            layer.render(in: context)
+            context.restoreGState()
         }
         guard let image = context.makeImage() else { return }
         try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: url)

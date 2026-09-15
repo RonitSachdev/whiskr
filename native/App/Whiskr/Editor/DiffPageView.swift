@@ -32,7 +32,7 @@ final class DiffPageView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         self.staged = staged
         self.workbench = workbench
         model = DiffModel(path: path, staged: staged, files: workbench.files)
-        header = NSHostingView(rootView: DiffHeader(model: model, workbench: workbench))
+        header = NSHostingView(rootView: DiffHeader(model: model, workbench: workbench, page: pageID))
         empty = NSHostingView(rootView: DiffEmpty(model: model, workbench: workbench))
         actions = NSHostingView(rootView: ChangeActions(staged: staged, perform: { _ in }))
         super.init(frame: .zero)
@@ -760,15 +760,18 @@ final class DiffRowView: NSView {
     }
 }
 
-/// The diff's header: the file, which changes these are, how many lines, the layout, and next/previous.
+/// The diff's header: the file, which changes these are, how many lines, the layout, and next/previous;
+/// in a split tab, Zoom Pane and Close Pane (`PaneHeaderTools`).
 private struct DiffHeader: View {
     let model: DiffModel
     let workbench: Workbench
+    let page: UUID
     @Bindable private var preferences = EditorPreferences.shared
 
-    init(model: DiffModel, workbench: Workbench) {
+    init(model: DiffModel, workbench: Workbench, page: UUID) {
         self.model = model
         self.workbench = workbench
+        self.page = page
     }
 
     var body: some View {
@@ -805,11 +808,12 @@ private struct DiffHeader: View {
             .controlSize(.small)
             .fixedSize()
             .accessibilityLabel(String(localized: "Side by side or inline"))
+            PaneHeaderTools(workbench: workbench, id: page)
         }
-        .padding(.horizontal, 12)
+        .padding(.leading, 12)
+        .padding(.trailing, PaneHeaderPlace.inSplit(workbench, page) ? Look.Space.s : 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: Colors.terminalBackground))
-        .overlay(alignment: .bottom) { Color.line.frame(height: 1) }
+        .paneHeaderFocus(workbench: workbench, id: page)
     }
 
     private var kind: String {

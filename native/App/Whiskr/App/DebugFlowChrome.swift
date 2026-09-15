@@ -415,7 +415,6 @@ extension PerfSuite {
 
     private func tabRowSweep(_ setup: ChromeSetup) async {
         let restore = { await self.chromeRestore(setup) }
-        let row = windowRect(controller.terminals.tabRow)
         let workspaceName = { setup.repo.name }
 
         await sweep("the workspace button", locate: { self.barControl("bar.workspace") }, reset: restore) {
@@ -479,11 +478,9 @@ extension PerfSuite {
             await PerfWait.until(1500) { !setup.repo.tabs.contains { $0 === closing } } == nil ? "not closed" : nil
         }
 
-        // The row's "+", at its end.
-        let plus = NSRect(x: row.maxX - Look.Space.xs - Look.Height.iconButton, y: row.midY - Look.Height.control / 2,
-                          width: Look.Height.iconButton, height: Look.Height.control)
+        // The row's "+", after the last tab (`DebugFlowSplit` checks where).
         var count = 0
-        await sweep("the tab row's +", locate: { (self.barView("bar.tabs.new"), plus) }, reset: {
+        await sweep("the tab row's +", locate: { self.barControl("bar.tabs.new") }, reset: {
             await restore()
             count = setup.repo.tabs.count
         }) {
@@ -523,7 +520,7 @@ extension PerfSuite {
         window.setContentSize(NSSize(width: 1800, height: size.height))
         await PerfWait.sleep(300)
         let wide = windowRect(controller.terminals.tabRow)
-        let stretch = NSPoint(x: ((tabViews.last.map(windowRect)?.maxX ?? wide.minX) + wide.maxX - Look.Space.xs - Look.Height.iconButton) / 2, y: wide.midY)
+        let stretch = NSPoint(x: ((barControl("bar.tabs.new")?.1.maxX ?? wide.minX) + wide.maxX) / 2, y: wide.midY)
         let drags = DragStandIn.drags
         let landed = landing(at: stretch)
         press(at: stretch)

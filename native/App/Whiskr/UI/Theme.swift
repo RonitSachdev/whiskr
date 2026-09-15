@@ -17,6 +17,8 @@ enum Colors {
     static var chrome: NSColor { palette[.chrome] }
     static var accent: NSColor { palette[.accent] }
     static var lineStrong: NSColor { palette[.lineStrong] }
+    /// The line between two panes of a tab (`ThemeVariant.paneDivider`).
+    static var paneDivider: NSColor { palette.paneDivider }
 
     /// Accounts are told apart by colour, as in the meadow: the blanket colours, handed out in the
     /// order the accounts are listed (default first). They identify, so they stay the same in every theme.
@@ -92,10 +94,9 @@ enum Look {
     static func focusLine(active: Bool) -> Color { active ? .accent : .lineStrong }
     static func focusLine(active: Bool) -> NSColor { active ? Colors.accent : Colors.lineStrong }
 
-    /// Width of the line along the selected tab's top, and of the border round the focused pane of a split;
-    /// a point wider each with Increase Contrast.
+    /// Width of the line along the selected tab's top, and along the foot of the focused pane's header in a
+    /// split; a point wider with Increase Contrast.
     static var focusLineWidth: CGFloat { increasesContrast ? 3 : 2 }
-    static var focusBorderWidth: CGFloat { increasesContrast ? 2.5 : 1.5 }
 
     /// The system's Increase Contrast (or a high-contrast appearance a debug run draws in).
     static var increasesContrast: Bool {

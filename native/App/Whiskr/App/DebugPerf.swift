@@ -19,7 +19,10 @@ import WhiskrKit
 ///                             checks, run only when named: closing, sizes, interactions (`DebugInteractions`),
 ///                             journey, files, layout, robust, alerts (`DebugFlowAlerts`),
 ///                             meadow (`DebugFlowMeadowFollow`), chrome (`DebugFlowChrome`) and resize
-///                             (dividers dragged, the window resized, regions shown and hidden: `DebugFlowResize`)
+///                             (dividers dragged, the window resized, regions shown and hidden: `DebugFlowResize`),
+///                             split (a tab split into panes: its segments, closing, "+", headers, the line between
+///                             panes: `DebugFlowSplit`), drag (tabs picked up and dropped: `DebugFlowDrag`) and home
+///                             (New Workspace and Open Folder… from every place: `DebugFlowHome`)
 ///   --perf-cats               four more workspaces with Claudes at work, so the meadow is busy
 ///   --perf-keys <n>           keystrokes timed in `typing` (150)
 ///   --perf-limits             checks the measurements against `PerfSuite`'s limits; exits with 1 when one
@@ -468,7 +471,8 @@ final class PerfSuite {
     }
 
     /// The correctness checks, run only when named.
-    private static let checkFlows: Set<String> = ["closing", "sizes", "interactions", "journey", "files", "layout", "robust", "alerts", "meadow", "chrome", "resize"]
+    private static let checkFlows: Set<String> = ["closing", "sizes", "interactions", "journey", "files", "layout", "robust", "alerts", "meadow", "chrome", "resize",
+                                                     "split", "drag", "home"]
 
     /// Without `--perf-flows`, every measurement; the checks only when named.
     private func wants(_ flow: String) -> Bool { flows?.contains(flow) ?? !Self.checkFlows.contains(flow) }
@@ -501,6 +505,9 @@ final class PerfSuite {
         if wants("meadow") { await meadowFollowCheck() }
         if wants("chrome") { await chromeCheck() }
         if wants("resize") { await resizeCheck() }
+        if wants("split") { await splitCheck() }
+        if wants("drag") { await dragCheck() }
+        if wants("home") { await homeEntryCheck() }
         guard flows.map({ !$0.subtracting(Self.checkFlows).isEmpty }) ?? true else { return }
         // From before the first terminal: making its view (its renderer among it) is main-thread work too.
         pinger.start()
@@ -1340,8 +1347,17 @@ final class PerfSuite {
             }
         }
         // × on each, in an order that leaves the first for last.
+        // A split tab's × (its focused pane's) closes that pane only; the tab stays, with the other.
+        if let split = workspace.tabs.first(where: { $0.tree.panes.count == 2 }) {
+            let count = workspace.tabs.count, focused = split.focusedPane
+            if await clickClose(split, "× split tab's focused pane") {
+                let closed = await PerfWait.until(2000) { split.tree.panes.count == 1 && !split.tree.contains(focused) }
+                check("× split tab's focused pane: that pane closed, the tab kept with the other", closed != nil && workspace.tabs.count == count,
+                      "panes \(split.tree.panes.count), tabs \(count) → \(workspace.tabs.count)")
+            }
+        }
         for (name, tab) in [("× edited file", editedTab), ("× file", workspace.tabs.first { $0 !== editedTab && workbench.pages[$0.focusedPane] != nil }),
-                            ("× split tab", workspace.tabs.first { $0.tree.panes.count == 2 }),
+                            ("× split tab, now of one pane", workspace.tabs.first { $0.tree.panes.count == 1 && workbench.panes[$0.focusedPane] != nil && !$0.tree.contains(busy.id) && $0 !== workspace.tabs.first }),
                             ("× busy shell", workspace.tabs.first { $0.tree.contains(busy.id) })] {
             guard let tab = name == "× edited file" ? editedTab : tab else { check("\(name): found", false); continue }
             let count = workspace.tabs.count

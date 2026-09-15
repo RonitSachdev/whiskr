@@ -97,6 +97,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         }
         split.onDividerReset = { [weak self] in self?.layout.resetSplit() }
         keyboardOrder(window)
+        TabDragging.shared.controller = self
         palette = PaletteController(workbench: workbench, window: window)
         tabSwitcher = TabSwitcher(workbench: workbench, window: window)
         applyLayout(animated: false)
@@ -357,10 +358,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     // MARK: Opening
 
-    /// File › New Workspace (⌘N): Home, with the keyboard on New Terminal (Open Folder… is one row up).
-    /// The workspaces stay as they are, one click away on their blankets and under Open.
+    /// File › New Workspace (⌘N): from a workspace, Home, with the keyboard on New Terminal (Return starts
+    /// it; Open Folder… is one row up), the workspaces staying as they are, one click away on their blankets
+    /// and under Open. On Home already, it is that New Terminal: a workspace in your home folder, its
+    /// terminal with the keyboard. (On Home it once did nothing at all, which read as broken.)
     @objc func newWorkspace(_ sender: Any?) {
-        workbench.goHome()
+        if workbench.isHome { workbench.newWorkspace() } else { workbench.goHome() }
     }
 
     /// Go › Home (⇧⌘H): no workspace selected; everything keeps running.

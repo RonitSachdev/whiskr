@@ -346,14 +346,9 @@ extension PerfSuite {
         // Above the regions: the bars (the top bar's toggles use the primary colour, never the accent, but
         // they are not what is looked at here).
         let regions = controller.terminals.view.superview.map { $0.convert($0.bounds, to: nil) } ?? content.frame
+        // The focused pane's header: tinted with the accent, the accent along its foot.
         for card in cards() where card.focus.state == .focused {
-            let box = card.focus.convert(card.focus.bounds, to: nil)
-            // The border's band, inside the card's edge.
-            let band = Look.focusBorderWidth + 1.5
-            allowed += [NSRect(x: box.minX - 1, y: box.minY - 1, width: box.width + 2, height: band + 1),
-                        NSRect(x: box.minX - 1, y: box.maxY - band, width: box.width + 2, height: band + 1),
-                        NSRect(x: box.minX - 1, y: box.minY - 1, width: band + 1, height: box.height + 2),
-                        NSRect(x: box.maxX - band, y: box.minY - 1, width: band + 1, height: box.height + 2)]
+            if let header = card.card.debugHeaderFrame { allowed.append(header.insetBy(dx: -1, dy: -1)) }
         }
         // The side panel's own content (a selected row is the system's accent) is not a divider's.
         let panel = controller.terminals.sidePanel.flatMap { $0.isHidden ? nil : $0.convert($0.bounds, to: nil).insetBy(dx: 0, dy: 0) }
@@ -419,7 +414,9 @@ extension PerfSuite {
         let background = rgb(Colors.terminalBackground)
         var wrong: [String] = []
         for (card, _) in cards() {
-            let box = card.convert(card.bounds, to: nil).insetBy(dx: Look.focusBorderWidth + 2, dy: Look.focusBorderWidth + 2)
+            let box = card.convert(card.bounds, to: nil).insetBy(dx: 2, dy: 2)
+            // A header in a split is not the terminal's ground.
+            let header = card.debugHeaderFrame?.insetBy(dx: -1, dy: -1) ?? .zero
             let surface = workbench.panes.values.first { $0.surface.isDescendant(of: card) }?.surface
             let terminal = surface.map { $0.convert($0.bounds, to: nil) } ?? .zero
             var bad = 0
@@ -427,7 +424,7 @@ extension PerfSuite {
             for y in stride(from: max(0, Int(box.minY * scale)), to: min(height, Int(box.maxY * scale)), by: 3) {
                 for x in stride(from: max(0, Int(box.minX * scale)), to: min(width, Int(box.maxX * scale)), by: 3) {
                     let point = NSPoint(x: (CGFloat(x) + 0.5) / scale, y: (CGFloat(y) + 0.5) / scale)
-                    if terminal.insetBy(dx: -1, dy: -1).contains(point) { continue }
+                    if terminal.insetBy(dx: -1, dy: -1).contains(point) || header.contains(point) { continue }
                     let i = (y * width + x) * 4
                     let ok = pixels[i + 3] > 250 && abs(Int(pixels[i]) - background.0) <= 6 && abs(Int(pixels[i + 1]) - background.1) <= 6 && abs(Int(pixels[i + 2]) - background.2) <= 6
                     if !ok { bad += 1; if first == nil { first = point } }

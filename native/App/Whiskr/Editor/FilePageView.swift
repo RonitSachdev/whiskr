@@ -29,7 +29,7 @@ final class FilePageView: NSView {
         self.document = document
         self.workbench = workbench
         state = FilePageState(document: document)
-        header = NSHostingView(rootView: FileHeader(document: document, workbench: workbench, state: state))
+        header = NSHostingView(rootView: FileHeader(document: document, workbench: workbench, state: state, page: pageID))
         banner = NSHostingView(rootView: DiskBanner(document: document, workbench: workbench, page: pageID))
         super.init(frame: .zero)
         header.sizingOptions = []
@@ -315,11 +315,12 @@ private struct SVGPreview: View {
 
 /// The header: the file's place in its repository (the folders faint, the name strong), then the view's
 /// tools: Source / Preview / Side by Side for Markdown and SVG, Fit / Actual Size for a picture, and Compare
-/// with HEAD for a file with changes.
+/// with HEAD for a file with changes; in a split tab, Zoom Pane and Close Pane (`PaneHeaderTools`).
 private struct FileHeader: View {
     let document: FileDocument
     let workbench: Workbench
     @Bindable var state: FilePageState
+    let page: UUID
 
     var body: some View {
         HStack(spacing: 8) {
@@ -352,11 +353,12 @@ private struct FileHeader: View {
                 .fixedSize()
                 .accessibilityLabel(String(localized: "Source, Preview or Side by Side"))
             }
+            PaneHeaderTools(workbench: workbench, id: page)
         }
-        .padding(.horizontal, 12)
+        .padding(.leading, 12)
+        .padding(.trailing, PaneHeaderPlace.inSplit(workbench, page) ? Look.Space.s : 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(nsColor: Colors.terminalBackground))
-        .overlay(alignment: .bottom) { Color.line.frame(height: 1) }
+        .paneHeaderFocus(workbench: workbench, id: page)
     }
 
     /// Whether the file has changes against HEAD (the Changes list's view of it).

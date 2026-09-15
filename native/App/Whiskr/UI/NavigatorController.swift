@@ -16,7 +16,6 @@ final class NavigatorController: NSViewController {
     private let workbench: Workbench
     private let list: NSHostingView<WhileShown<NavigatorList>>
     private let note = HoverNote()
-    private let hint = NSTextField(labelWithString: "")
     private var observers: [Observing] = []
     private var scene: SceneSnapshot?
     private lazy var answerCard = AnswerCardController(workbench: workbench)
@@ -28,15 +27,6 @@ final class NavigatorController: NSViewController {
     private var choicesFollowed = 0
 
     private static let cameraKey = "meadowCamera"
-    /// Set once a cat has ever appeared: the first-run hint never comes back.
-    private static let hintKey = "sawFirstCat"
-
-    /// The hint wraps to the meadow's width (its pill keeps 16 pt from each side), on one line where it fits.
-    override func viewDidLayout() {
-        super.viewDidLayout()
-        let width = max(80, view.bounds.width - 32 - 20)
-        if hint.preferredMaxLayoutWidth != width { hint.preferredMaxLayoutWidth = width }
-    }
 
     var kind: WindowLayout.Navigator = .meadow {
         didSet { if isViewLoaded { showKind() } }
@@ -57,7 +47,6 @@ final class NavigatorController: NSViewController {
         let container = DropView()
         container.onFolders = { [weak self] urls in urls.forEach { self?.workbench.open(folder: $0.path) } }
         container.onAppearance = { [weak self] in self?.applySettings() }
-        container.onTab = { [weak self] id, point in self?.dropped(tab: id, at: point) ?? false }
         meadow.onKeyDown = { [weak self] event in self?.key(event) ?? false }
         meadow.onViewChanged = { [weak self] in self?.updateEdges() }
         meadow.setAccessibilityLabel(String(localized: "Workspaces", comment: "Accessibility label of the sidebar's meadow"))
@@ -65,22 +54,7 @@ final class NavigatorController: NSViewController {
         meadow.onSelect = { [weak self] item in self?.chose(item) }
         meadow.onHover = { [weak self] item in self?.hovered(item) }
         meadow.onContextMenu = { [weak self] item in self?.menu(for: item) }
-        hint.font = .systemFont(ofSize: 11)
-        hint.textColor = .labelColor
-        hint.alignment = .center
-        // `claude` in the command's own type, as on the Home page.
-        hint.attributedStringValue = Self.codeStyled(AttributedString(localized: "Type `claude` in a terminal and your cat appears here.",
-                                                                      comment: "First-run hint under the first blanket (Markdown: `claude` is the command)"),
-                                                     font: .systemFont(ofSize: 11))
-        hint.maximumNumberOfLines = 2
-        hint.lineBreakMode = .byWordWrapping
-        // In the narrowest sidebar the hint wraps (`viewDidLayout`) rather than hold the meadow wider than
-        // it is asked to be.
-        hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        hint.drawsBackground = false
-        // The hint sits on a small solid pill so it reads on grass by day and by night.
-        let pill = HintPill(label: hint)
-        for part in [meadow, list, pill] as [NSView] {
+        for part in [meadow, list] as [NSView] {
             part.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(part)
         }
@@ -105,15 +79,12 @@ final class NavigatorController: NSViewController {
             list.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             list.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             list.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            pill.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-            pill.widthAnchor.constraint(lessThanOrEqualTo: container.widthAnchor, constant: -32),
-            pill.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -18),
             top.topAnchor.constraint(equalTo: container.topAnchor, constant: 12),
             top.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             bottom.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -16),
             bottom.centerXAnchor.constraint(equalTo: container.centerXAnchor),
         ])
-        container.registerForDraggedTypes([.fileURL, TabDrag.pasteboardType])
+        container.registerForDraggedTypes([.fileURL])
         view = container
         showKind()
         observers.append(Observing { [weak self] in
@@ -129,7 +100,6 @@ final class NavigatorController: NSViewController {
         meadow.isHidden = kind != .meadow
         list.isHidden = kind != .list
         if list.rootView.shown != (kind == .list) { list.rootView.shown = kind == .list }
-        updateHint()
         if kind != .meadow { note.hide() }
     }
 
@@ -151,28 +121,8 @@ final class NavigatorController: NSViewController {
             meadow.select(ring, origin: .event)
         }
         guard changed else { return }
-        if !AppPlaces.defaults.bool(forKey: Self.hintKey), snapshot.spaces.contains(where: { $0.blankets.contains { $0.panes.contains { if case .agent = $0.kind { true } else { false } } } }) {
-            AppPlaces.defaults.set(true, forKey: Self.hintKey)
-        }
-        updateHint()
         updateEdges()
         updateAccessibility(snapshot)
-    }
-
-    /// Inline Markdown text for an AppKit label: code spans in the monospaced system font, the rest in
-    /// `font`, centred, in the label colour.
-    static func codeStyled(_ text: AttributedString, font: NSFont) -> NSAttributedString {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        let result = NSMutableAttributedString()
-        for run in text.runs {
-            let code = run.inlinePresentationIntent?.contains(.code) == true
-            result.append(NSAttributedString(string: String(text[run.range].characters), attributes: [
-                .font: code ? NSFont.monospacedSystemFont(ofSize: font.pointSize, weight: .regular) : font,
-                .foregroundColor: NSColor.labelColor, .paragraphStyle: paragraph,
-            ]))
-        }
-        return result
     }
 
     /// Workspaces with a request or an error whose blanket is out of view, by edge.
@@ -185,12 +135,6 @@ final class NavigatorController: NSViewController {
         let out = meadow.blanketsOutOfView
         edges.set(above: out.above.filter(waiting.contains).compactMap(UUID.init(uuidString:)),
                   below: out.below.filter(waiting.contains).compactMap(UUID.init(uuidString:)))
-    }
-
-    /// The one line that teaches where cats come from, until the first one has come. Not beside the Home
-    /// page, which says the same.
-    private func updateHint() {
-        hint.superview?.isHidden = kind != .meadow || AppPlaces.defaults.bool(forKey: Self.hintKey) || workbench.isHome
     }
 
     private func applySettings() {
@@ -253,12 +197,18 @@ final class NavigatorController: NSViewController {
     var answerCardWindow: NSWindow? { answerCard.cardWindow }
 
     /// A tab dropped on a blanket moves to that workspace (§3).
-    private func dropped(tab id: UUID, at point: NSPoint) -> Bool {
-        let local = meadow.convert(point, from: view)
-        guard let target = workbench.workspaces.first(where: { meadow.screenRect(of: .blanket($0.id.uuidString))?.contains(local) ?? false }),
-              let tab = workbench.workspaces.lazy.flatMap(\.tabs).first(where: { $0.id == id }) else { return false }
-        workbench.move(tab: tab, to: target)
-        return true
+    /// The workspace whose blanket is under `point` (in the window), and the blanket's rect in the window,
+    /// while the meadow is shown: where a dragged tab would move to (`TabDragging`).
+    func blanket(at point: NSPoint) -> (Workspace, NSRect)? {
+        guard kind == .meadow, !meadow.isHiddenOrHasHiddenAncestor, meadow.window != nil else { return nil }
+        let local = meadow.convert(point, from: nil)
+        guard meadow.bounds.contains(local) else { return nil }
+        for workspace in workbench.workspaces {
+            if let rect = meadow.screenRect(of: .blanket(workspace.id.uuidString)), rect.contains(local) {
+                return (workspace, meadow.convert(rect, to: nil))
+            }
+        }
+        return nil
     }
 
     // MARK: The keyboard in the meadow (§4.5)
@@ -370,7 +320,8 @@ final class NavigatorController: NSViewController {
     // MARK: Pointing
 
     private func hovered(_ item: MeadowItem?, at spot: NSPoint? = nil) {
-        guard let item, let scene, let hover = MeadowMapping.hover(item, in: scene), let window = view.window else {
+        // A tab held over a blanket has its own label ("Move to …"); a name beside it would only crowd it.
+        guard let item, !TabDragState.shared.isDragging, let scene, let hover = MeadowMapping.hover(item, in: scene), let window = view.window else {
             note.hide()
             return
         }
@@ -524,27 +475,18 @@ final class MenuAction: NSObject {
     @objc func fire() { run() }
 }
 
-/// A view that opens folders dropped on it as workspaces (and, in the meadow, takes a tab dropped on a
-/// blanket).
+/// A view that opens folders dropped on it as workspaces.
 final class DropView: NSView {
     var onFolders: (([URL]) -> Void)?
     var onAppearance: (() -> Void)?
-    /// A tab dropped at a point in this view; returns whether it was taken.
-    var onTab: ((UUID, NSPoint) -> Bool)?
 
     private func folders(_ info: NSDraggingInfo) -> [URL] {
         let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         return urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
     }
 
-    private func tab(_ info: NSDraggingInfo) -> UUID? {
-        guard onTab != nil else { return nil }
-        return info.draggingPasteboard.string(forType: TabDrag.pasteboardType).flatMap(UUID.init(uuidString:))
-    }
-
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if tab(sender) != nil { return .move }
-        return folders(sender).isEmpty ? [] : .link
+        folders(sender).isEmpty ? [] : .link
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -552,7 +494,6 @@ final class DropView: NSView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        if let tab = tab(sender) { return onTab?(tab, convert(sender.draggingLocation, from: nil)) ?? false }
         let found = folders(sender)
         guard !found.isEmpty else { return false }
         onFolders?(found)
@@ -626,33 +567,6 @@ final class HoverNote: NSView {
 
     func hide() {
         isHidden = true
-    }
-}
-
-/// A label on a small solid rounded backing in the window's own colour.
-final class HintPill: NSView {
-    init(label: NSTextField) {
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.cornerRadius = 9
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
-        NSLayoutConstraint.activate([
-            label.topAnchor.constraint(equalTo: topAnchor, constant: 5),
-            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -5),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
-        ])
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("HintPill is created in code")
-    }
-
-    override var wantsUpdateLayer: Bool { true }
-
-    override func updateLayer() {
-        layer?.backgroundColor = Colors.surface.withAlphaComponent(0.94).cgColor
     }
 }
 

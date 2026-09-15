@@ -83,11 +83,35 @@ public indirect enum PaneTree: Sendable, Equatable, Codable {
     /// where it goes into the pane's tab instead. `frame` and `point` share a coordinate space whose y
     /// grows downward.
     public static func dropSide(at point: CGPoint, in frame: CGRect, edge: Double = 0.1) -> Direction? {
+        dropSide(at: point, in: frame, edge: edge, after: nil)
+    }
+
+    /// Where the pointer was over the same pane the moment before, while a tab is dragged.
+    public enum DropZone: Equatable, Sendable {
+        case middle
+        case side(Direction)
+    }
+
+    /// `dropSide`, steady under a pointer moving along a boundary, so the preview of where the tab goes
+    /// never flickers between two places: the side it was on holds until the pointer is half as far again
+    /// from that edge (`edge` × 1.5), and the middle holds until the pointer is a fifth nearer an edge than
+    /// the boundary (`edge` × 0.8). Two sides meeting in a corner change at the diagonal, a little past it.
+    public static func dropSide(at point: CGPoint, in frame: CGRect, edge: Double = 0.1, after previous: DropZone?) -> Direction? {
         guard frame.width > 0, frame.height > 0 else { return nil }
         let x = (point.x - frame.minX) / frame.width, y = (point.y - frame.minY) / frame.height
         let distances: [(Direction, Double)] = [(.left, x), (.right, 1 - x), (.up, y), (.down, 1 - y)]
-        guard let nearest = distances.min(by: { $0.1 < $1.1 }), nearest.1 < edge else { return nil }
-        return nearest.0
+        guard let nearest = distances.min(by: { $0.1 < $1.1 }) else { return nil }
+        switch previous {
+        case .side(let side)?:
+            let held = distances.first { $0.0 == side }!.1
+            // Still near its edge, and not clearly nearer another.
+            if held < edge * 1.5, held <= nearest.1 + edge * 0.2 { return side }
+            return nearest.1 < edge ? nearest.0 : nil
+        case .middle?:
+            return nearest.1 < edge * 0.8 ? nearest.0 : nil
+        case nil:
+            return nearest.1 < edge ? nearest.0 : nil
+        }
     }
 
     /// The part of a pane's `frame` a tab dropped on `side` will take (the whole of it for the middle).
@@ -115,6 +139,34 @@ public indirect enum PaneTree: Sendable, Equatable, Codable {
             split.second = second
             return .split(split)
         }
+    }
+
+    /// This arrangement with `pane` put back where it was in `before` (⌘Z after a pane closed): exactly
+    /// `before` while nothing else has changed since; otherwise beside the pane it was split from, on its
+    /// side, so whatever came or went meanwhile is kept; with none of those left, beside any pane it had
+    /// beside it then, else on the right of the first pane here. It is always put back somewhere (a pane
+    /// brought back to no place would run in no tab), unless it is here already.
+    public func restoring(_ pane: UUID, as before: PaneTree) -> PaneTree {
+        guard !contains(pane) else { return self }
+        if before.removing(pane) == self { return before }
+        if let (sibling, side, axis) = before.placement(of: pane) {
+            // The nearest of its old neighbours still here: the side of the split it was in, from its edge.
+            let near = side == .first ? sibling.panes : sibling.panes.reversed()
+            let direction: Direction = axis == .horizontal ? (side == .first ? .left : .right) : (side == .first ? .up : .down)
+            if let anchor = near.first(where: contains) { return inserting(.pane(pane), beside: anchor, on: direction) }
+        }
+        let anchor = before.panes.first(where: contains) ?? panes[0]
+        return inserting(.pane(pane), beside: anchor, on: .right)
+    }
+
+    private enum Place { case first, second }
+
+    /// Where a pane sits: the other half of the split that holds it, which half it is, and that split's axis.
+    private func placement(of pane: UUID) -> (sibling: PaneTree, side: Place, axis: Axis)? {
+        guard case .split(let split) = self else { return nil }
+        if split.first == .pane(pane) { return (split.second, .first, split.axis) }
+        if split.second == .pane(pane) { return (split.first, .second, split.axis) }
+        return split.first.placement(of: pane) ?? split.second.placement(of: pane)
     }
 
     /// This arrangement with two panes trading places.

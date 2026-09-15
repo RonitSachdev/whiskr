@@ -25,6 +25,17 @@ extension ThemeVariant {
     public func appColor(_ key: AppColorKey, increasedContrast: Bool) -> RGBColor {
         app[increasedContrast ? Self.increasedContrastColors[key] ?? key : key]
     }
+
+    /// How far the line between two panes of a tab stands from the content on either side of it.
+    public static let paneDividerContrast = 1.5
+
+    /// The line between two panes of a tab (docs/DESIGN.md, "Where the keys go"): panes share the
+    /// content's colour on both sides, so the strong separator draws it, at least `paneDividerContrast`
+    /// on the content in any theme (an imported one's moved toward its text if it falls short).
+    public func paneDivider(increasedContrast: Bool) -> RGBColor {
+        appColor(.lineStrong, increasedContrast: increasedContrast)
+            .ensuring(contrast: Self.paneDividerContrast, with: terminal.background, movingTo: terminal.foreground)
+    }
 }
 
 /// The colours a theme's preview draws: the version of the theme the app will show once it is chosen, its

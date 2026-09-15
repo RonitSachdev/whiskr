@@ -160,8 +160,7 @@ struct AnswerCard: View {
     }
 
     private var place: String {
-        guard let (workspace, tab) = workbench.workspace(of: request.paneID) else { return "" }
-        return "\(workspace.name) · \(workbench.title(of: tab))"
+        workbench.place(ofPane: request.paneID) ?? ""
     }
 
     /// What is asked, in a line, as Claude Code's own dialog words it.

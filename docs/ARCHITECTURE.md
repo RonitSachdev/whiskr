@@ -262,7 +262,6 @@ Code does.
 | Session host | `app.whiskr.Whiskr.host` (executable `whiskr-host`) |
 | `paw` | `app.whiskr.Whiskr.paw` |
 | Theme file type | `app.whiskr.theme` (`.whiskrtheme`) |
-| Dragged tab type | `app.whiskr.tab` |
 | Pane environment | `WHISKR_PANE`, `WHISKR_BIN`, `WHISKR_HOOKS`, `WHISKR_ZDOTDIR`, `WHISKR_XDG_DATA_DIRS`, `PAW_ID`, `PAW_SOCKET`, `PAW_PARENT`, `PAW_NAME`, `PAW_WORKTREES`, `PAW_TASK` (a `paw run` task on its way to Claude); `TERM_PROGRAM=Whiskr` |
 
 ## git
@@ -396,7 +395,23 @@ that lets the window move (`chrome`); a Claude stand-in started through a shell 
 with `--settings`, every event's real hook commands, and what would be heard and shown in each place a
 person can be (`alerts`); every way of choosing on the right, with the meadow moved away first, and agent
 events that must not move it (`meadow`); and every divider dragged, the window resized and each region
-shown and hidden, looked at mid-drag (`resize`).
+shown and hidden, looked at mid-drag (`resize`); a tab split into panes, as the owner used it, with real
+clicks on its segments, their close buttons, middle clicks, ⌘W, Close Tab and ⌘Z, "+" after the last tab,
+the panes' headers, and the line between panes and the focused header read from the drawn window in
+every built-in theme (`split`); tabs picked up and dropped by real press, drag and release events into the
+row, onto each side and the middle of a pane, onto another blanket, onto nothing and onto their own pane,
+and given up with Esc, each preview checked against what the drop did and the held tab's springs read
+every frame, with nothing left behind (`drag`); and New Workspace and Open Folder… from every place they
+are offered, on Home with and without workspaces (`home`).
+
+**Dragging a tab** is the app's own, not an AppKit drag session (whose picture the system moves, with no
+springs and no say in what it shows). `TabMouseView` starts it past 4 pt of movement; `TabDragging` then
+follows the mouse with a local event monitor (the tab's view may be rebuilt under the pointer), works out
+each frame what a drop would do (`PaneArea.dropTarget`, steadied by `PaneTree.dropSide(…after:)`;
+`NavigatorController.blanket(at:)`; a place in the row from the tabs' AppKit views), and tells the row
+through `TabDragState` (the row parts where the tab would land). The pictures are Core Animation layers
+in `TabDragOverlay`, above the whole window and taking no click, stepped by springs on the view's display
+link; nothing is laid out per frame.
 
 Nothing in `make perf` depends on when it runs: the runs show the meadow by day (`--time day`), and the
 idle flow sets the time of day itself, measuring by day and by night. Idle is measured once nothing is due

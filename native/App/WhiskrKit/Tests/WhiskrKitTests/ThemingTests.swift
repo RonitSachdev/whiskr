@@ -119,6 +119,42 @@ struct ThemingTests {
         }
     }
 
+    @Test("Graphite: dark only, neutral greys with no colour cast, every guarantee met as it is")
+    func graphite() throws {
+        let theme = try #require(BuiltInThemes.theme(id: "graphite"))
+        #expect(theme.fixedDarkness == true)
+        #expect(BuiltInThemes.defaultID == "whiskr")
+        let dark = try #require(theme.dark)
+        #expect(dark.guaranteeFailures.isEmpty, "\(dark.guaranteeFailures)")
+        #expect(dark.meetingGuarantees().repairs.isEmpty, "\(dark.meetingGuarantees().repairs)")
+        let greys = [dark.terminal.background, dark.terminal.foreground] + [AppColorKey.surface, .chrome, .line, .lineStrong, .text, .textSecondary, .textTertiary, .well].map { dark.app[$0] }
+        for grey in greys { #expect(grey.red == grey.green && grey.green == grey.blue, "\(grey.hex) has a colour cast") }
+        // Near black: the content darker than #1c1c1c, the bars darker still.
+        #expect(dark.terminal.background.luminance < RGBColor(0x1c1c1c).luminance)
+        // Every colour but black reads on the content (bright black too: hints and autosuggestions).
+        for (index, color) in dark.terminal.ansi.enumerated() where index != 0 {
+            #expect(color.contrast(with: dark.terminal.background) >= 3, "colour \(index) \(color.hex)")
+        }
+    }
+
+    @Test("the line between panes reads on the content in every built-in theme, as the theme gives it")
+    func paneDivider() {
+        for theme in BuiltInThemes.all {
+            for variant in [theme.light, theme.dark].compactMap({ $0 }) {
+                let name = "\(theme.name) \(variant.isDark ? "dark" : "light")"
+                let divider = variant.paneDivider(increasedContrast: false)
+                #expect(divider.contrast(with: variant.terminal.background) >= ThemeVariant.paneDividerContrast, "\(name)")
+                // A built-in theme's own strong separator already does: nothing is moved.
+                #expect(divider == variant.app[.lineStrong], "\(name)")
+                #expect(variant.paneDivider(increasedContrast: true).contrast(with: variant.terminal.background) >= 2.5, "\(name), Increase Contrast")
+            }
+        }
+        // An imported theme whose strong separator is the content's own colour gets one that reads.
+        var faint = ThemeVariant(terminal: TerminalColors(background: RGBColor(0x202020), foreground: RGBColor(0xdddddd), cursor: nil, selection: nil, ansi: Array(repeating: RGBColor(0x888888), count: 16)))
+        faint.app[.lineStrong] = RGBColor(0x222222)
+        #expect(faint.paneDivider(increasedContrast: false).contrast(with: RGBColor(0x202020)) >= ThemeVariant.paneDividerContrast)
+    }
+
     @Test("every built-in theme tells its layers apart: chrome a step below the content, a line visible on both")
     func builtInLayers() {
         for theme in BuiltInThemes.all {

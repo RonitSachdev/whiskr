@@ -322,13 +322,37 @@ final class Workbench {
         return folderName(pane.currentFolder)
     }
 
-    /// A tab's title: the name you gave it, else its agent's (or its focused pane's) title.
+    /// A tab's title, wherever a tab is named in a line (Go to, ⌃Tab, the list of every tab, VoiceOver): the
+    /// name you gave it, else its pane's title; a split tab's panes' titles in their order, "Claude Code,
+    /// notes.txt", as its segments in the tab row show them.
     func title(of tab: Tab) -> String {
         if let name = tab.name, !name.isEmpty { return name }
-        let ids = tab.tree.panes
-        if let page = pages[tab.focusedPane] { return page.title }
-        if let agent = ids.compactMap({ panes[$0] }).first(where: \.agentRunning) { return name(of: agent) }
-        return panes[tab.focusedPane].map(name(of:)) ?? String(localized: "Terminal")
+        return tab.tree.panes.map(name(ofLeaf:)).joined(separator: ", ")
+    }
+
+    /// The title of one pane or page of a tab, as its segment in the tab row and its header show it: a
+    /// file's name, a diff's ("x.swift · Changes"), else the terminal's (`name(of:)`).
+    func name(ofLeaf id: UUID) -> String {
+        if let page = pages[id] { return page.title }
+        return panes[id].map(name(of:)) ?? String(localized: "Terminal")
+    }
+
+    /// The most urgent state of one pane, with the helpers its Claude started that have no tab of their
+    /// own (their requests show on their boss's segment, as on its tab).
+    func status(ofLeaf id: UUID) -> AgentStatus? {
+        let helpers = panes.values.filter { isLooseHelper($0) && boss(of: $0).map { tabbedBoss($0) == id } == true }
+        return status(ofPanes: [id] + helpers.map(\.id))
+    }
+
+    /// The first pane up a helper's line of bosses that is in a tab.
+    private func tabbedBoss(_ pane: Pane) -> UUID? {
+        var current: Pane? = pane
+        var seen: Set<UUID> = []
+        while let each = current, seen.insert(each.id).inserted {
+            if workspace(of: each.id) != nil { return each.id }
+            current = boss(of: each)
+        }
+        return nil
     }
 
     func folderName(_ path: String) -> String {
@@ -541,11 +565,13 @@ final class Workbench {
         }
         let workspace = workspace(for: closed.workspace)
         if let pane = closed.onlyPane, workspace.tabs.contains(where: { $0 === closed.tab }) {
-            closed.tab.tree = closed.tree
+            // Where it was, keeping any pane that came or went since (its old tree set back whole dropped
+            // a file opened beside it after it closed).
+            closed.tab.tree = closed.tab.tree.restoring(pane, as: closed.tree)
             closed.tab.focus(pane)
             focus(pane: pane)
         } else {
-            if closed.onlyPane != nil { closed.tab.tree = closed.tree }
+            if let pane = closed.onlyPane { closed.tab.tree = closed.tab.tree.restoring(pane, as: closed.tree) }
             workspace.tabs.insert(closed.tab, at: min(closed.index, workspace.tabs.count))
             select(tab: closed.tab)
         }
@@ -674,6 +700,16 @@ final class Workbench {
         tab.zoomedPane = tab.zoomedPane == nil ? tab.focusedPane : nil
         if let pane = panes[tab.focusedPane] { onFocusPane?(pane) }
         scheduleSave()
+    }
+
+    /// A segment of a split tab clicked in the tab row: the tab is shown with that pane (or page) taking the
+    /// keyboard, as a click on the pane itself would.
+    func select(tab: Tab, pane id: UUID) {
+        guard tab.tree.contains(id) else { return select(tab: tab) }
+        if let zoomed = tab.zoomedPane, zoomed != id { tab.zoomedPane = nil }
+        tab.focus(id)
+        select(tab: tab)
+        if pages[id] != nil { focus(page: id) }
     }
 
     func select(tab: Tab) {
@@ -812,9 +848,14 @@ final class Workbench {
     }
 
     /// Where an alert is from, as its notification's title: "workspace · tab".
-    private func alertPlace(of paneID: UUID) -> String? {
+    private func alertPlace(of paneID: UUID) -> String? { place(ofPane: paneID) }
+
+    /// Where a pane is, in words: "workspace · tab", the pane's own title in a split tab (an alert, an
+    /// answer card, is about that pane, not the tab's others).
+    func place(ofPane paneID: UUID) -> String? {
         guard let (workspace, tab) = workspace(of: paneID) else { return nil }
-        return "\(workspace.name) · \(title(of: tab))"
+        let named = tab.name.map { !$0.isEmpty } ?? false
+        return "\(workspace.name) · \(tab.tree.panes.count > 1 && !named ? name(ofLeaf: paneID) : title(of: tab))"
     }
 
     /// Where you are, for an alert from `paneID`: in Whiskr or not, looking at that pane, typing into it.

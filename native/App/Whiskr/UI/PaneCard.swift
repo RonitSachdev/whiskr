@@ -2,15 +2,21 @@ import AppKit
 import SwiftUI
 import WhiskrKit
 
-/// One pane: its terminal with a little room around the text, no header. When its tab has several
-/// panes, the one you are typing in has a border in the accent and the others fade a little
-/// toward the background (`PaneFocusView`). A helper's story takes the boss's pane's place while you
-/// are looking at it.
+/// One pane: its terminal with a little room around the text. When its tab shows several panes it has a
+/// header (`TerminalHeader`), the one you are typing in with the accent along its top, and the others fade a
+/// little toward the background (`PaneFocusView`); a pane alone has no header. A helper's story takes the
+/// boss's pane's place while you are looking at it.
 final class PaneCard: NSView {
     let pane: Pane
     private let workbench: Workbench
     private let terminalHost = NSView()
     private let dim = PaneFocusView()
+    /// The header, shown while the tab shows several panes; the terminal starts under it.
+    private let header: PaneHeaderHost<TerminalHeader>
+    private var underHeader: NSLayoutConstraint!
+    private var atTop: NSLayoutConstraint!
+    /// The terminal's room above its text: less under a header, which already sets it apart.
+    private var textInset: NSLayoutConstraint?
     private var story: NSHostingView<StoryView>?
     private var observers: [Observing] = []
     /// The terminal follows the card's edges, except during a live resize (`LiveResize`), when it keeps
@@ -21,17 +27,28 @@ final class PaneCard: NSView {
     init(pane: Pane, workbench: Workbench) {
         self.pane = pane
         self.workbench = workbench
+        header = PaneHeaderHost(rootView: TerminalHeader(workbench: workbench, pane: pane))
         super.init(frame: .zero)
         wantsLayer = true
+        header.sizingOptions = []
+        header.translatesAutoresizingMaskIntoConstraints = false
+        header.isHidden = true
         // A terminal held at its size during a live resize never draws past its pane.
         clipsToBounds = true
         terminalHost.clipsToBounds = true
         terminalHost.translatesAutoresizingMaskIntoConstraints = false
         addSubview(terminalHost)
+        addSubview(header)
         dim.translatesAutoresizingMaskIntoConstraints = false
         addSubview(dim)
+        atTop = terminalHost.topAnchor.constraint(equalTo: topAnchor)
+        underHeader = terminalHost.topAnchor.constraint(equalTo: header.bottomAnchor)
         NSLayoutConstraint.activate([
-            terminalHost.topAnchor.constraint(equalTo: topAnchor),
+            atTop,
+            header.topAnchor.constraint(equalTo: topAnchor),
+            header.leadingAnchor.constraint(equalTo: leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: trailingAnchor),
+            header.heightAnchor.constraint(equalToConstant: FilePageView.headerHeight),
             terminalHost.leadingAnchor.constraint(equalTo: leadingAnchor),
             terminalHost.trailingAnchor.constraint(equalTo: trailingAnchor),
             terminalHost.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -91,13 +108,20 @@ final class PaneCard: NSView {
         fatalError("PaneCard is created in code")
     }
 
+    #if DEBUG
+    /// Debug builds (`DebugFlowResize`): the header's place in the window while it is shown.
+    var debugHeaderFrame: NSRect? { header.isHidden ? nil : header.convert(header.bounds, to: nil) }
+    #endif
+
     private func showSurface() {
         let surface = pane.surface
         guard surface.superview !== terminalHost else { return }
         surface.translatesAutoresizingMaskIntoConstraints = false
         terminalHost.addSubview(surface)
+        let inset = surface.topAnchor.constraint(equalTo: terminalHost.topAnchor, constant: header.isHidden ? 10 : 6)
+        textInset = inset
         NSLayoutConstraint.activate([
-            surface.topAnchor.constraint(equalTo: terminalHost.topAnchor, constant: 10),
+            inset,
             surface.leadingAnchor.constraint(equalTo: terminalHost.leadingAnchor, constant: 12),
         ])
         followEdges = [
@@ -130,6 +154,15 @@ final class PaneCard: NSView {
     private func updateLook() {
         let place = workbench.workspace(of: pane.id)
         dim.state = place.map { PaneFocusView.State(tab: $0.1, pane: pane.id) } ?? .alone
+        // A header only while the tab shows several panes; the terminal's grid is told its new size as the
+        // room changes, as for any resize.
+        let headed = dim.state != .alone
+        if header.isHidden == headed {
+            header.isHidden = !headed
+            atTop.isActive = !headed
+            underHeader.isActive = headed
+            textInset?.constant = headed ? 6 : 10
+        }
         effectiveAppearance.performAsCurrentDrawingAppearance {
             layer?.backgroundColor = Colors.terminalBackground.cgColor
         }
@@ -242,10 +275,10 @@ final class PaneCard: NSView {
     }
 }
 
-/// Which pane takes the keys, over a pane or a page in a split: the focused one has a border in the
-/// accent (grey while the window is not the one in use, as the selected tab's line), as herdr and tmux
-/// mark it; the others fade a tenth of the way to the background, enough to recede, not enough to
-/// hinder reading (Ghostty's 30 % proved heavy). A pane alone shows neither. Clicks pass through.
+/// Which pane takes the keys, over a pane or a page in a split: the others fade a tenth of the way to the
+/// background, header and all, enough to recede, not enough to hinder reading (Ghostty's 30 % proved
+/// heavy). The focused one is marked by the accent along its header's top (`paneHeaderFocus`), as the
+/// selected tab is; a border round it read as a stray box. A pane alone shows neither. Clicks pass through.
 final class PaneFocusView: NSView {
     enum State {
         case alone, focused, unfocused
@@ -265,8 +298,6 @@ final class PaneFocusView: NSView {
         }
     }
 
-    private var keyObservers: [NSObjectProtocol] = []
-
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
@@ -280,38 +311,11 @@ final class PaneFocusView: NSView {
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    /// The focus border greys while the window is not the one in use (neither main nor key).
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        keyObservers.forEach(NotificationCenter.default.removeObserver)
-        keyObservers = []
-        guard let window else { return }
-        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
-                     NSWindow.didBecomeMainNotification, NSWindow.didResignMainNotification] {
-            keyObservers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.needsDisplay = true }
-            })
-        }
-    }
-
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        guard let layer else { return }
-        let inUse = window?.isInUse ?? WindowChrome.drawsAsKey
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            switch state {
-            case .alone:
-                layer.backgroundColor = nil
-                layer.borderWidth = 0
-            case .focused:
-                layer.backgroundColor = nil
-                layer.borderWidth = Look.focusBorderWidth
-                layer.borderColor = (Look.focusLine(active: inUse) as NSColor).cgColor
-            case .unfocused:
-                layer.backgroundColor = Colors.terminalBackground.withAlphaComponent(0.1).cgColor
-                layer.borderWidth = 0
-            }
+            layer?.backgroundColor = state == .unfocused ? Colors.terminalBackground.withAlphaComponent(0.1).cgColor : nil
         }
     }
 }

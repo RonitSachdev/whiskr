@@ -2,8 +2,9 @@ import AppKit
 import SwiftUI
 import WhiskrKit
 
-/// The selected tab's panes, laid out by its split tree: real terminals with 1 pt dividers you drag
-/// (an 8 pt reach), no headers, the panes you are not typing in dimmed a little (docs/DESIGN.md).
+/// The selected tab's panes, laid out by its split tree: real terminals, files and diffs with 1 pt dividers
+/// you drag (an 8 pt reach) in the strong separator's colour, each with a header while there are several,
+/// the panes you are not typing in dimmed a little (docs/DESIGN.md).
 final class PaneArea: NSView {
     private let workbench: Workbench
     private var cards: [UUID: PaneCard] = [:]
@@ -25,17 +26,25 @@ final class PaneArea: NSView {
         setAccessibilityElement(true)
         setAccessibilityRole(.group)
         setAccessibilityLabel(String(localized: "Panes", comment: "Accessibility label of the terminal area"))
-        registerForDraggedTypes([TabDrag.pasteboardType])
-        preview.isHidden = true
-        addSubview(preview)
     }
 
-    // MARK: A tab dropped here
+    // MARK: A tab dragged over the panes (`TabDragging`)
 
-    /// Where a tab being dragged over the panes would go: tinted, over the half of the pane it takes, or
-    /// the whole pane when dropped in its middle (it then moves into that pane's tab).
-    private let preview = DropPreview()
-    private var drop: (leaf: UUID, side: PaneTree.Direction?)?
+    /// Where a tab held at `point` (in the window) would go if dropped: the pane or page under it, the side
+    /// of it it would split (nil: its middle, where the tab takes that pane's tab's place), the part of the
+    /// pane it would take, and the pane's frame, all in the window. `previous` steadies the answer at a
+    /// boundary (`PaneTree.dropSide`).
+    func dropTarget(at point: NSPoint, after previous: (leaf: UUID, zone: PaneTree.DropZone)?) -> (leaf: UUID, side: PaneTree.Direction?, area: NSRect, pane: NSRect)? {
+        let local = convert(point, from: nil)
+        guard let (id, frame) = leaf(at: local) else { return nil }
+        // Worked out with y downward, as the tree's rule counts it.
+        let flipped = NSPoint(x: local.x, y: bounds.height - local.y)
+        let flippedFrame = NSRect(x: frame.minX, y: bounds.height - frame.maxY, width: frame.width, height: frame.height)
+        let side = PaneTree.dropSide(at: flipped, in: flippedFrame, after: previous?.leaf == id ? previous?.zone : nil)
+        let area = PaneTree.dropPreview(side, in: flippedFrame)
+        let unflipped = NSRect(x: area.minX, y: bounds.height - area.maxY, width: area.width, height: area.height)
+        return (id, side, convert(unflipped, to: nil), convert(frame, to: nil))
+    }
 
     /// The pane or page under a point, and its frame here.
     private func leaf(at point: NSPoint) -> (UUID, NSRect)? {
@@ -45,46 +54,6 @@ final class PaneArea: NSView {
             if frame.contains(point) { return (id, frame) }
         }
         return nil
-    }
-
-    private func dragged() -> Tab? {
-        guard let id = TabDrag.current else { return nil }
-        return workbench.workspaces.lazy.flatMap(\.tabs).first { $0.id == id }
-    }
-
-    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation { draggingUpdated(sender) }
-
-    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        let point = convert(sender.draggingLocation, from: nil)
-        guard let tab = dragged(), let (id, frame) = leaf(at: point), !tab.tree.contains(id) else {
-            endDrop()
-            return []
-        }
-        // Worked out with y downward, as the tree's rule counts it.
-        let flipped = NSPoint(x: point.x, y: bounds.height - point.y)
-        let flippedFrame = NSRect(x: frame.minX, y: bounds.height - frame.maxY, width: frame.width, height: frame.height)
-        let side = PaneTree.dropSide(at: flipped, in: flippedFrame)
-        let area = PaneTree.dropPreview(side, in: flippedFrame)
-        drop = (id, side)
-        preview.frame = NSRect(x: area.minX, y: bounds.height - area.maxY, width: area.width, height: area.height)
-        preview.isHidden = false
-        addSubview(preview, positioned: .above, relativeTo: nil)
-        return .move
-    }
-
-    override func draggingExited(_ sender: (any NSDraggingInfo)?) { endDrop() }
-    override func draggingEnded(_ sender: any NSDraggingInfo) { endDrop() }
-
-    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        defer { endDrop() }
-        guard let tab = dragged(), let drop else { return false }
-        workbench.dropTab(tab, onto: drop.leaf, side: drop.side)
-        return true
-    }
-
-    private func endDrop() {
-        drop = nil
-        preview.isHidden = true
     }
 
     required init?(coder: NSCoder) {
@@ -125,7 +94,7 @@ final class PaneArea: NSView {
         let view = build(shown, path: [], tab: tab)
         view.frame = bounds
         view.autoresizingMask = [.width, .height]
-        addSubview(view, positioned: .below, relativeTo: preview)
+        addSubview(view)
         root = view
         // Laid out now, so a terminal that has just come has its size (and its shell can start) this turn.
         layoutSubtreeIfNeeded()
@@ -268,7 +237,8 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
         onRatio(ratio)
         place()
     }
-    override var dividerColor: NSColor { Colors.line }
+    /// The strong separator: the panes on either side share the content's colour (`Colors.paneDivider`).
+    override var dividerColor: NSColor { Colors.paneDivider }
 
     private var length: CGFloat { (isVertical ? bounds.width : bounds.height) - dividerThickness }
 
@@ -304,28 +274,4 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
     }
 
     func splitView(_ splitView: NSSplitView, canCollapseSubview subview: NSView) -> Bool { false }
-}
-
-/// The tinted half a dragged tab will take: the accent at a tenth, edged in the accent, square as panes
-/// are; it never takes a click.
-final class DropPreview: NSView {
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        wantsLayer = true
-        layer?.borderWidth = Look.focusBorderWidth
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("DropPreview is created in code")
-    }
-
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    override var wantsUpdateLayer: Bool { true }
-
-    override func updateLayer() {
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            layer?.backgroundColor = Colors.accent.withAlphaComponent(0.12).cgColor
-            layer?.borderColor = Colors.accent.cgColor
-        }
-    }
 }

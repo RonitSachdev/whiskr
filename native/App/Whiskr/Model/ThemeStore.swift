@@ -340,6 +340,13 @@ struct Palette {
     func color(_ key: AppColorKey) -> SwiftUI.Color { swiftUI[key]! }
 
     var terminalBackground: NSColor { Palette.dynamic(theme) { $0.terminal.background } }
+    /// The line between two panes, stronger with Increase Contrast (`ThemeVariant.paneDivider`).
+    var paneDivider: NSColor {
+        let theme = theme
+        return NSColor(name: nil) { appearance in
+            Palette.nsColor(theme.variant(dark: Palette.isDark(appearance)).paneDivider(increasedContrast: Palette.isHighContrast(appearance)))
+        }
+    }
     /// One of the editor's, the diffs' or the file list's colours (`EditorColorKey`).
     func editor(_ key: EditorColorKey) -> NSColor { Palette.dynamic(theme) { $0.editor[key] } }
     var terminalForeground: NSColor { Palette.dynamic(theme) { $0.terminal.foreground } }

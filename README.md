@@ -132,7 +132,7 @@ session starts.
 | Keys | Does |
 |---|---|
 | ⇧⌘H | Home: open a folder or a terminal, or go back into a workspace |
-| ⌘N / ⌘O / ⌘T | New workspace (Home) / open a folder / new tab |
+| ⌘N / ⌘O / ⌘T | New workspace (Home; on Home, a new terminal) / open a folder / new tab |
 | ⌘D / ⇧⌘D | Split right / split down |
 | ⌘W / ⌥⌘W | Close pane / close tab (⌘Z brings it back for ten seconds, ⇧⌘T later) |
 | ⌘J | Next request, then the next finished turn |

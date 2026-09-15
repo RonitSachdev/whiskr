@@ -154,8 +154,32 @@ Nothing has been released yet. This is what the first release will contain.
   The action never waits for the picture, and with Reduce Motion things fade instead of moving.
 - The workspace menu starts with New Workspace (⌘N) and Open Folder… (⌘O).
 - Theme previews show the theme's sixteen terminal colours and its selection colour.
+- A tab split into panes shows one segment per pane in the tab row, joined into one tab as Chrome draws a
+  split view: each with its pane's icon, title and state, and its own close button. A click on a segment
+  shows that pane with the keyboard; its ×, a middle click or Close Pane in its menu closes that pane
+  alone. Close Tab, which names how many panes it closes, closes them all. In a tight row a split tab keeps
+  its focused pane's title and shows the others as icons before any tab goes out of sight. A name given
+  to a split tab leads its segments as a small label.
+- In a tab of several panes every pane has a header (terminals too) with Zoom Pane and Close Pane. The
+  pane you type in has its header tinted with the accent and underlined in it; the others fade a little.
+  The line between panes is the theme's strong separator, at least 1.5:1 on the content in every theme.
+- "+" sits right after the last tab, as in Chrome, and moves with the tabs.
+- Dragging a tab picks it up: it hangs from the pointer where you grabbed it, a little lifted, trailing on
+  a spring and swinging slightly with its speed. Before you let go the window shows what a drop will do:
+  the other tabs part where it would land, a tinted area over a pane is exactly the half it would take
+  ("Split Right", "Split Down"…) or the whole pane ("Move Here"), and another workspace's blanket is
+  marked ("Move to “name”"). Anywhere else it fades, and let go there (or Esc) it springs back.
+- Graphite, a built-in dark theme of neutral near-black greys with no colour cast, soft white text and a
+  restrained blue.
 
 ### Fixed
+
+- The close button on a split tab, which showed only the focused pane's name, closed every pane in the tab.
+- New Workspace (⌘N, the File menu, the "+" and workspace menus, the command palette) did nothing on Home:
+  there it now starts a terminal in a new workspace, as Home's New Terminal does.
+- ⌘Z after closing a pane put the tab back as it was before, dropping any pane opened in it since.
+- The hint under the meadow ("Type claude in a terminal…"), Home's line on where cats come from and its
+  "Or drop a folder here." are gone; Home keeps its actions.
 
 - The workspace button in the tab row did nothing when clicked, nor did Home's place button, the top
   bar's "+" or the tab row's list of tabs: each now opens its menu as it is pressed, under it, as a pop-up

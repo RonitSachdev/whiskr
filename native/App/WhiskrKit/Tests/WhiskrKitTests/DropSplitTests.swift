@@ -20,6 +20,53 @@ struct DropSplitTests {
         #expect(PaneTree.dropSide(at: .zero, in: .zero) == nil)
     }
 
+    @Test("under a moving pointer the zone holds a little past its boundary, so its preview never flickers")
+    func steady() {
+        let frame = CGRect(x: 0, y: 0, width: 400, height: 200)
+        // 45 pt from the right (11 %): the middle when coming fresh or from the middle, still the right side
+        // when it was there (under 15 %), and the middle once past that.
+        let near = CGPoint(x: 355, y: 100)
+        #expect(PaneTree.dropSide(at: near, in: frame, after: nil) == nil)
+        #expect(PaneTree.dropSide(at: near, in: frame, after: .middle) == nil)
+        #expect(PaneTree.dropSide(at: near, in: frame, after: .side(.right)) == .right)
+        #expect(PaneTree.dropSide(at: CGPoint(x: 330, y: 100), in: frame, after: .side(.right)) == nil)
+        // From the middle, a side only once well inside its tenth (under 8 %).
+        #expect(PaneTree.dropSide(at: CGPoint(x: 365, y: 100), in: frame, after: .middle) == nil)
+        #expect(PaneTree.dropSide(at: CGPoint(x: 370, y: 100), in: frame, after: .middle) == .right)
+        // Along a boundary, back and forth by a point, the answer stays.
+        var zone: PaneTree.DropZone? = nil
+        var answers: [PaneTree.Direction?] = []
+        for x in [359.0, 361, 359, 361, 359, 361, 341, 339, 341, 339] {
+            let side = PaneTree.dropSide(at: CGPoint(x: x, y: 100), in: frame, after: zone)
+            answers.append(side)
+            zone = side.map { .side($0) } ?? .middle
+        }
+        let switches = zip(answers, answers.dropFirst()).filter { $0 != $1 }.count
+        #expect(switches <= 1, "\(answers)")
+    }
+
+    @Test("a closed pane brought back goes where it was, keeping what came since")
+    func restoring() {
+        let before = PaneTree.pane(a).splitting(a, axis: .horizontal, new: b)
+        let after = before.removing(b)!
+        // Nothing changed meanwhile: exactly as it was.
+        #expect(after.restoring(b, as: before) == before)
+        // A pane added since (c below a): b comes back to a's right, and c stays.
+        let changed = after.splitting(a, axis: .vertical, new: c)
+        let back = changed.restoring(b, as: before)
+        #expect(Set(back.panes) == [a, b, c])
+        #expect(back.neighbor(of: a, toward: .right) == b)
+        // Already there: unchanged.
+        #expect(before.restoring(b, as: before) == before)
+        // Nothing of its old place left: still put back, beside what is there.
+        #expect(PaneTree.pane(c).restoring(b, as: before).panes == [c, b])
+        // Split from a group that has gone: beside a pane it had beside it, wherever that is now.
+        let three = PaneTree.pane(a).splitting(a, axis: .horizontal, new: b).splitting(b, axis: .horizontal, new: c)
+        let d = UUID()
+        let now = PaneTree.pane(a).splitting(a, axis: .vertical, new: d)
+        #expect(Set(now.restoring(b, as: three).panes) == [a, b, d])
+    }
+
     @Test("the preview is the half the tab will take")
     func preview() {
         let frame = CGRect(x: 0, y: 0, width: 400, height: 200)

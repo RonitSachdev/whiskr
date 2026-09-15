@@ -129,11 +129,6 @@ struct HomePage: View {
                 }
                 .padding(.top, 16)
             }
-            Text(String(localized: "Or drop a folder here.", comment: "Home: the last line"))
-                .font(.system(size: 11))
-                .foregroundStyle(Color.ink3)
-                .padding(.top, 16)
-                .padding(.leading, 8)
         }
         .frame(maxWidth: 480, alignment: .leading)
     }
@@ -149,10 +144,6 @@ struct HomePage: View {
                 Text(String(localized: "Whiskr", comment: "The app's name on the Home page"))
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(Color.ink)
-                Text(AttributedString(localized: "Open a terminal and type `claude`: a cat sits down in the meadow.", comment: "Home: how cats come (Markdown: `claude` is the command)"))
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.ink2)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.leading, 8)
