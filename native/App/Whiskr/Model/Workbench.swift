@@ -90,6 +90,10 @@ final class Workbench {
     /// The agent last chosen in the focused pane's session: a helper's id after its cat was clicked, nil
     /// for the session's own agent. A helper has no terminal; its story shows in the pane's place.
     var focusedAgent: String?
+    /// Counts your own choices of what to look at (a workspace, tab, pane, helper or Home), whatever they
+    /// change: the meadow follows each one (docs/DESIGN.md, "The meadow follows what you choose"). Nothing an
+    /// agent does counts, nor focus moving on after a pane closes.
+    private(set) var choices = 0
     /// What a tab can show besides terminals (`TabPage`), by the id that holds its place in the tab's
     /// tree. A tree's leaf names a terminal in `panes` or a page here, never both. Changed only by the
     /// page methods (Workbench+Workspaces.swift).
@@ -104,8 +108,10 @@ final class Workbench {
     @ObservationIgnored var paletteUsage = PaletteUsage(data: AppPlaces.defaults.data(forKey: "paletteUsage"))
     @ObservationIgnored var visitedTabs: [UUID] = []
     @ObservationIgnored let git = GitWatcher()
-    /// When a key was last pressed in a pane: alert sounds wait for a pause in typing.
-    @ObservationIgnored var lastKeystroke: Date?
+    /// When a key was last pressed in a pane: alert sounds wait for a pause in typing, and none sounds
+    /// for the pane being typed into (`alertMoment`), which keys go to: the focused one.
+    @ObservationIgnored var lastKeystroke: Date? { didSet { lastTypedPane = focusedPane?.id } }
+    @ObservationIgnored private(set) var lastTypedPane: UUID?
 
     /// The window's undo manager: Edit › Undo Close Tab (⌘Z) goes through it, as any Mac undo does.
     @ObservationIgnored weak var undoManager: UndoManager?
@@ -170,6 +176,7 @@ final class Workbench {
         monitor.hasPane = { [weak self] paneID in UUID(uuidString: paneID).flatMap { self?.panes[$0] } != nil }
         monitor.accountName = { [weak self] configDir in self?.account(configDir: configDir).name ?? ClaudeAccount.defaultName }
         monitor.onChange = { [weak self] before, after in self?.agentsChanged(before: before, after: after) }
+        monitor.onHelperFinished = { [weak self] paneID, sessionID, agentID, title in self?.helperFinished(paneID: paneID, sessionID: sessionID, agentID: agentID, title: title) }
         git.onChange = { [weak self] id, head in
             guard let self, let workspace = self.workspaces.first(where: { $0.id == id }), workspace.git != head else { return }
             workspace.git = head
@@ -427,7 +434,7 @@ final class Workbench {
         panes[id] = nil
         keepClosed(ClosedTab(workspace: place(of: workspace), index: workspace.tabs.firstIndex { $0 === tab } ?? 0,
                              tab: tab, tree: before, onlyPane: id, panes: [pane], closedAt: Date(), reopen: [reopenInfo(pane)]))
-        if workspace.selectedTab === tab { focus(pane: tab.focusedPane) }
+        if workspace.selectedTab === tab { focus(pane: tab.focusedPane, chosen: false) }
         scheduleSave()
     }
 
@@ -572,7 +579,7 @@ final class Workbench {
         branches.stop(workspace.id)
         branchChanges[workspace.id] = nil
         workspaces.removeAll { $0 === workspace }
-        if HomeRules.selection(afterClosing: workspace.id, selected: selectedWorkspaceID) != selectedWorkspaceID { goHome() }
+        if HomeRules.selection(afterClosing: workspace.id, selected: selectedWorkspaceID) != selectedWorkspaceID { goHome(chosen: false) }
         // A workspace closed as a whole has no undo: its pages go now (a tab of it still in its ⌘Z moment keeps its own).
         prunePages()
         scheduleSave()
@@ -602,14 +609,15 @@ final class Workbench {
         if workspace.selectedTabID == tab.id {
             workspace.selectedTabID = workspace.tabs[min(index, workspace.tabs.count - 1)].id
         }
-        if selectedWorkspace === workspace, let next = workspace.selectedTab { focus(pane: next.focusedPane) }
+        if selectedWorkspace === workspace, let next = workspace.selectedTab { focus(pane: next.focusedPane, chosen: false) }
     }
 
     // MARK: Moving around
 
     /// Shows a pane and gives it the keyboard: its workspace and tab are selected, and a zoom on
     /// another pane is undone. Only ever called for something you did; no agent event moves focus.
-    func focus(pane id: UUID, agent: String? = nil) {
+    /// `chosen`: false when focus only moves on because the pane shown has closed.
+    func focus(pane id: UUID, agent: String? = nil, chosen: Bool = true) {
         if let helper = panes[id], isLooseHelper(helper) { return peek(id) }
         guard let (workspace, tab) = workspace(of: id), let pane = panes[id] else { return }
         if peekedPane != nil { peekedPane = nil }
@@ -619,13 +627,19 @@ final class Workbench {
         tab.focus(id)
         if focusedAgent != agent { focusedAgent = agent }
         noteVisit(tab)
+        if chosen { youChose() }
         onFocusPane?(pane)
         markVisibleSeen()
     }
 
+    /// Something you did chose what is shown (`choices`).
+    func youChose() { choices &+= 1 }
+
     /// The window says this pane's terminal took the keyboard (a click, say).
     func terminalTookFocus(_ id: UUID) {
         guard let (workspace, tab) = workspace(of: id) else { return }
+        // A click on another pane is a choice; the keyboard arriving where it was sent is not a new one.
+        if selectedWorkspaceID != workspace.id || workspace.selectedTabID != tab.id || tab.focusedPane != id || focusedAgent != nil { youChose() }
         if selectedWorkspaceID != workspace.id { selectedWorkspaceID = workspace.id }
         if workspace.selectedTabID != tab.id { workspace.selectedTabID = tab.id }
         if focusedAgent != nil { focusedAgent = nil }
@@ -664,6 +678,8 @@ final class Workbench {
 
     func select(tab: Tab) {
         guard let workspace = workspaces.first(where: { $0.tabs.contains { $0 === tab } }) else { return }
+        // A file's tab has no pane for `focus` to choose.
+        youChose()
         selectedWorkspaceID = workspace.id
         workspace.selectedTabID = tab.id
         noteVisit(tab)
@@ -777,20 +793,45 @@ final class Workbench {
         if layoutChanged { scheduleSave() }
     }
 
-    /// News about a Claude (`AlertCenter`): a sound while you are here and not typing in that very pane,
-    /// a notification while you are in another app, saying where and what. The meadow and the tab's
-    /// mark show it either way, and nothing moves.
+    /// News about a Claude (`AlertCenter`): a sound unless you are typing in that very pane, a
+    /// notification while Whiskr is in the background, saying where and what, as Settings › Alerts sets
+    /// them. The meadow and the tab's mark show it either way, and nothing moves.
     private func announce(_ session: SessionSnapshot, pane: Pane) {
-        guard let (workspace, tab) = workspace(of: pane.id) else { return }
-        let focusedHere = isLookingAtWindow && focusedPane?.id == pane.id || (session.status == .done && isVisible(pane.id))
-        let place = "\(workspace.name) · \(title(of: tab))"
-        AlertCenter.shared.changed(session, place: place, focusedHere: focusedHere) { [weak self] title, body, isRequest in
-            guard isRequest else { return self?.notifier.post(title: title, body: body, pane: pane.id, sound: false, request: false) ?? () }
-            // A request is announced only if it is still waiting two seconds later (it may have been answered).
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                guard let self, let pane = self.panes[pane.id], self.status(of: pane) == .blocked else { return }
-                self.notifier.post(title: title, body: body, pane: pane.id, sound: true, request: self.session(of: pane)?.failed == false)
-            }
+        guard let place = alertPlace(of: pane.id) else { return }
+        AlertCenter.shared.changed(session, place: place, moment: alertMoment(for: pane.id)) { [weak self] title, body, event in
+            self?.postAlert(title: title, body: body, pane: pane.id, event: event)
+        }
+    }
+
+    /// A helper of the Claude in `paneID` finished its task (SubagentStop).
+    private func helperFinished(paneID: UUID, sessionID: String, agentID: String, title: String) {
+        guard let place = alertPlace(of: paneID) else { return }
+        AlertCenter.shared.helperFinished(title, key: "\(sessionID)/\(agentID)", place: place, moment: alertMoment(for: paneID)) { [weak self] title, body, event in
+            self?.postAlert(title: title, body: body, pane: paneID, event: event)
+        }
+    }
+
+    /// Where an alert is from, as its notification's title: "workspace · tab".
+    private func alertPlace(of paneID: UUID) -> String? {
+        guard let (workspace, tab) = workspace(of: paneID) else { return nil }
+        return "\(workspace.name) · \(title(of: tab))"
+    }
+
+    /// Where you are, for an alert from `paneID`: in Whiskr or not, looking at that pane, typing into it.
+    func alertMoment(for paneID: UUID) -> AlertMoment {
+        let typedAgo = lastTypedPane == paneID ? lastKeystroke.map { Date().timeIntervalSince($0) } : nil
+        return AlertMoment(appActive: appIsActive(), watching: isVisible(paneID), typedAgo: typedAgo, paused: Preferences.shared.alertsPaused)
+    }
+
+    /// Whiskr is the app in front (a test run, never in front, says where it pretends to be).
+    @ObservationIgnored var appIsActive: () -> Bool = { NSApp.isActive }
+
+    private func postAlert(title: String, body: String, pane: UUID, event: AlertEvent) {
+        guard [.request, .question, .error].contains(event) else { return notifier.post(title: title, body: body, pane: pane) }
+        // A request is announced only if it is still waiting two seconds later (it may have been answered).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, let live = self.panes[pane], self.status(of: live) == .blocked else { return }
+            self.notifier.post(title: title, body: body, pane: pane, request: event == .request)
         }
     }
 
@@ -880,13 +921,21 @@ final class Workbench {
         return pane
     }
 
-    /// A terminal rang its bell: heard while you can see it (unless alerts are paused), else a bell on its
-    /// tab until you look. A Claude's own marks say more than a bell, so its tab shows none.
+    /// A terminal rang its bell: out of sight, a bell on its tab until you look; and its sound and
+    /// notification as Settings › Alerts › Bell sets them. A Claude's own marks and alerts say more than a
+    /// bell, so its tab shows none.
     private func rang(_ pane: Pane) {
-        if isVisible(pane.id) {
-            if !Preferences.shared.alertsPaused { AlertCenter.beep() }
-        } else if !pane.agentRunning {
-            pane.noteBell()
+        if pane.agentRunning {
+            // Claude's own events say more than its bell: heard only in sight, as before.
+            if isVisible(pane.id), !Preferences.shared.alertsPaused { AlertCenter.beep() }
+            return
+        }
+        // A notification only for the first ring out of sight: the rest until you look are the same news.
+        let news = !isVisible(pane.id) && !pane.rang
+        if !isVisible(pane.id) { pane.noteBell() }
+        guard let place = alertPlace(of: pane.id) else { return }
+        AlertCenter.shared.bell(place: place, moment: alertMoment(for: pane.id)) { [weak self] title, body, _ in
+            if news { self?.notifier.post(title: title, body: body, pane: pane.id) }
         }
     }
 

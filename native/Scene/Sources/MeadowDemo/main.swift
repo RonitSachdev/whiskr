@@ -8,7 +8,8 @@ import MeadowScene
 //              [--shot out.png --after 3] [--time day|night|clock|<hour>] [--picnic none|hamper|spread]
 //              [--crowd] [--measure seconds --out report.json]
 //   The sidebar (`--sidebar`, 300×820; any --size): [--rows n] [--more n] [--dark] [--branches] [--long] [--pin id]
-//              [--focus blanket[/agent]] [--select blanket[/agent]] [--reveal blanket] [--seed text] [--report]
+//              [--focus blanket[/agent]] [--select blanket[/agent]] [--reveal blanket] [--follow blanket[/agent]]
+//              [--seed text] [--report]
 
 struct Options {
     var playground = false
@@ -45,6 +46,8 @@ struct Options {
     var pins: [String] = []
     var focus: String?
     var reveal: String?
+    /// With --sidebar: chosen as the user chooses on the right, so the view follows it (shot where it lands).
+    var follow: String?
     /// With --sidebar: cats' ids get this suffix, so each sits and turns differently.
     var seed = ""
     /// Print where things are on screen and what is out of view.
@@ -79,6 +82,7 @@ struct Options {
             case "--pin": o.pins.append(args.next() ?? "")
             case "--focus": o.focus = args.next()
             case "--reveal": o.reveal = args.next()
+            case "--follow": o.follow = args.next()
             case "--seed": o.seed = args.next() ?? ""
             case "--report": o.report = true
             case "--worktrees": o.worktrees = true
@@ -176,6 +180,10 @@ final class DemoApp: NSObject, NSApplicationDelegate {
                 if let reveal = o.reveal {
                     view.advance(seconds: 1.5)
                     view.reveal(.blanket(reveal), animated: false)
+                }
+                if let follow = o.follow {
+                    view.advance(seconds: 1.5)
+                    view.select(Self.item(follow, seed: o.seed), origin: .user)
                 }
             } else if !o.playground {
                 view.advance(seconds: 0.5)

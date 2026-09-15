@@ -38,6 +38,7 @@ One word for each thing, the same in menus, tooltips, notifications, accessibili
 | A Claude Code process in a pane | **Claude** | Claude | agent, session, cat, bot |
 | One of Claude's subagents | **Helper** | ヘルパー | subagent, small cat, child |
 | A permission request, question or plan waiting on you | **Request** | リクエスト | prompt, blocker, alert |
+| The two kinds of request, where they differ (Settings › Alerts, Help) | **Permission request**, **Question** | 許可のリクエスト, 質問 | prompt, elicitation |
 | A turn that finished while you weren't looking | **Finished** | 完了 | done, idle, complete |
 
 "Blanket", "cat", "lantern", "meadow" and "flag" are pictures, never labels. Only the Help page that
@@ -53,7 +54,8 @@ sessions.
   details, ⌘P and ⇧⌘P; short of room it lets go of the two keys, then the folder, rather than cutting
   every item short). Both are drawn by the app in the chrome colour, never as toolbar items. Between
   them the meadow is on the left and the work area on the right: a **tab row** led by the **workspace
-  button** (its colour, its name, a chevron: the menu of every workspace), then the panes. Terminals have
+  button** (its colour, its name, a chevron: a menu that opens as it is pressed, starting with New
+  Workspace and Open Folder…, then Home and every workspace), then the panes. Terminals have
   no header; a file or a diff has a slim one with its path. Nothing in the bars repeats what is on
   screen elsewhere.
 - **Sizes.** By default the meadow takes about 42 % of the window and the terminals keep at least 80
@@ -78,14 +80,15 @@ sessions.
 - **The window title** is the workspace's name (for the Window menu and Mission Control), "Whiskr" on
   Home. It is never "Claude".
 - **Workspaces** are named after their repository (else their folder) and follow the first terminal's
-  `cd` until renamed. Choosing a workspace yourself scrolls its blanket into view.
+  `cd` until renamed. The meadow follows what you choose (see "The meadow follows what you choose").
 - **Home** is a place, not a tab: no workspace selected. The meadow shows every blanket with none ringed,
   and the work area shows the Home page: the app's cat, one line on where cats come from, Open Folder…
   (⌘O), New Terminal (↩), **Open** (the workspaces open now, in the meadow's order, each with its colour,
   name, branch, state and Claude count; Return takes you back in exactly where you left it) and
   **Recent** (folders not already open). The tab row shows "Home" and no tabs. It looks the same with no
   workspace or many. **Every launch lands on Home**; everything comes back running, one click away.
-  Go › Home is ⇧⌘H; it is also the house in the top bar and first in the workspace button's menu, and
+  Go › Home is ⇧⌘H; it is also the house in the top bar and the first place in the workspace button's
+  menu (after New Workspace and Open Folder…), and
   ⌘N (New Workspace) goes there.
 - **Nothing at launch asks.** Terminals still running in another version's session host, and the Claudes
   not resumed because of them, are a quiet bar on Home with Details and a close button, never a dialog.
@@ -157,16 +160,28 @@ Each state differs by **silhouette**, **mark**, **colour** (on the mark only, ne
   popover. Only the user's own actions do those.
 - **⌘J (Next Request)** goes to the oldest request, then the oldest finished turn, then back where you
   were.
-- **Sounds:** three soft, generated sounds: two rising notes for a request, two low notes for an error, one
-  soft knock for a finish. At most one every two seconds, the most important first, after a pause in
-  typing. Only while you are in the app and not typing in that Claude's pane.
-- **Notifications** only while you are in another app: requests (after a 2-second re-check), and finished
-  turns that took 30 seconds or more. Permission requests carry Allow and Deny.
+- **Alerts** (Settings › Alerts): one row per event, each with its sound and a Notify box: Permission
+  request (Claude Code's `PermissionRequest`, and `Notification` of a permission prompt), Question
+  (`AskUserQuestion`, `ExitPlanMode`, elicitation), Finished (`Stop`), Error (`StopFailure`), Helper
+  finished (`SubagentStop`), Bell (a plain terminal's bell). A sound is one of Whiskr's three (two rising
+  notes for a request, two low notes for an error, one soft knock for a finish), the Mac's alert sound,
+  one from `/System/Library/Sounds`, one you add (copied into the app's Sounds folder, at most 10 seconds,
+  not silent), or None. By default requests, questions, errors and finished turns sound and notify,
+  helpers are silent, and the bell rings the Mac's alert sound.
+- **Sounds** play wherever you are, unless you are at that very terminal: on screen in the window you use
+  and typed into in the last 8 seconds (you can see it). The bell rings even then, at most once a second.
+  At most one alert sound every two seconds, the most important first, after a pause in typing. "Play
+  sounds only when Whiskr is in the background" keeps them for when you are elsewhere.
+- **Notifications** only while Whiskr is in the background: requests and errors (after a 2-second
+  re-check), finished turns that took 30 seconds or more, and whatever else you tick. They are silent:
+  the alert's own sound plays. Permission requests carry Allow and Deny. Settings › Alerts says whether
+  macOS lets them through, with a way to turn them on; the question is asked when a Claude first works,
+  if macOS has not asked yet.
 - **Dock:** a badge counting requests, and a Dock menu listing who is waiting. **Pause Alerts** silences
   sounds and notifications for a while.
 - **The bell.** A plain terminal that rings its bell out of sight puts a bell on its tab until you have
-  seen the pane. The bell is heard (the system beep) only when its pane is in sight and alerts are not
-  paused. Claude's tabs keep their own marks.
+  seen the pane. It is heard as the Bell row says, at most once a second, unless alerts are paused, and
+  notifies (once, out of sight) only if ticked. Claude's tabs keep their own marks.
 - **The answer card.** Clicking a requesting cat whose terminal is not on screen opens a card beside the
   meadow, never over it: 1 Allow, 2 Deny, Go to Terminal (⌘↩). It is armed after 400 ms. It sends the key
   only if the same request is still open and the terminal's last lines have not changed.
@@ -286,8 +301,20 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
 - **Animate Meadow** (View, and Settings › Meadow › "Animate the meadow"; WCAG 2.2.2). Off, the grass,
   butterflies, fireflies and the cats' fidgets hold still; state changes still show, as cross-fades, and
   a still meadow draws nothing between changes. Until you choose, it follows Reduce Motion.
-- The camera never moves on its own. A drag turns the view, ⌘-drag slides it, and scroll or pinch zooms
-  toward the pointer. In a narrow sidebar, scrolling scrolls the column of blankets.
+- The camera moves only for you: a drag turns the view, ⌘-drag slides it, and scroll or pinch zooms
+  toward the pointer (in a narrow sidebar, scrolling scrolls the column of blankets); and it follows your
+  choices on the right (below). Once you have moved it yourself, it stays until you choose something
+  else, and it never moves while you hold it. No agent event moves it.
+
+### The meadow follows what you choose
+
+Choosing a workspace, tab or pane yourself (a click, a key, a menu, Go to, ⌃Tab) brings its blanket, and
+the cat of its Claude, comfortably into view: wholly inside the meadow with 12 pt to spare (in the
+sidebar's column, above and below). It glides there in under a second, moving no further than it must and
+keeping your angle and zoom; it backs off only when the blanket cannot fit. Already in view, nothing moves.
+A quick run of choices moves it once, to the last. The cat you are in is marked by a soft pool of light on
+the cloth and a pale ring; a plain terminal's blanket is ringed. Home frames the blankets again. Hidden,
+the meadow does nothing and is there at once when shown. With Reduce Motion or the animation off it cuts.
 
 ## Look of the interface
 
@@ -311,8 +338,9 @@ The meadow is its own region, full height between the bars, edged by a line; not
 tinted toward its green. Colour in the chrome means state, never decoration.
 
 **Dividers** show they can be dragged as VS Code's do: once the pointer has rested on one for 300 ms
-(passing over shows nothing), it turns the accent colour, 3 pt wide, and stays so while dragged. The
-resize cursor comes at once. This holds for every divider: the meadow's edge, between panes, the side
+(passing over shows nothing), it turns the accent colour, 3 pt wide, and stays so while dragged, moving
+with it; it goes as soon as the pointer leaves, and nothing of it stays behind. The resize cursor comes
+at once. This holds for every divider: the meadow's edge, between panes, the side
 panel's edge.
 
 **Increase Contrast:** lines go to 3:1, secondary and tertiary text step up one level, the focused
@@ -351,7 +379,8 @@ tab must join its panes, and the meadow beside them is already the window's one 
 - **Radii:** 4 for small things (key caps, badges), 6 for controls (buttons, fields, rows), 10 for what
   floats (palette, cards, popovers). Bars, tabs and panes are square: they meet edge to edge.
 - **Heights:** top bar 40 (the compact title bar's band: the traffic lights sit centred in it), tab row
-  34, file header 30, status bar 24; controls in the bars 26 tall, icon buttons 28 wide.
+  34, file header 30, status bar 24; controls in the bars 26 tall, icon buttons 28 wide. The status bar's
+  items keep 16 pt from the window's sides, clear of its rounded corners.
 - **Type:** tab titles 13 (medium when selected), the top bar's field 12, status bar, panel headers and
   breadcrumbs 11, Home's title 22. Nothing under 10.
 - **Icons:** SF Symbols, 13 pt regular in the bars, 11 pt in tabs, headers and the status bar. Files
@@ -362,8 +391,31 @@ tab must join its panes, and the meadow beside them is already the window's one 
 ### States
 
 Every control in the bars has the same hover (the primary colour at 6 %), pressed (11 %) and selected
-(9 %) fills, and a tooltip naming it with its key. Disabled controls are at 40 %. The search field is the
+(9 %) fills, and a tooltip naming it with its key. Disabled controls are at 40 %. A control acts as its
+Mac counterpart does: a menu opens as the button goes down, under it and aligned to it, the button shown
+pressed while it is open; a button acts when released over it. Pressing a control never moves the window;
+only the bars' empty stretches do. The search field is the
 content's colour inset in the chrome, its line darker under the pointer.
+
+### Motion of the interface
+
+One small set of durations and one curve (`Look.Motion`), so every change in the window feels like the
+same app: **quick** 120 ms for a control's own feedback (hover and pressed fills, the selected tab's mark
+moving over), **standard** 160 ms for something appearing or going in place (a tab, Go to and its list, a
+bar, a card, the ⌃Tab list, Home and back), **region** 200 ms for a region sliding in or out (the side
+panel, the status bar; the meadow at its split view's own pace); all on one ease-out. No springs.
+
+- **The action never waits.** A tab is chosen, opened or closed at once, the keyboard goes where it should
+  in the same moment, and a click lands on what is there now; only the picture eases. Nothing that is going
+  takes a click or a key: a closing tab has already left the row's reach, a fading overlay takes neither.
+- **Floating pieces** (Go to, the command palette, the worktree panel, the ⌃Tab list, the find bar) fade in
+  while growing from 98 % of their size, from where they are anchored, and go the same way reversed. Go to
+  opens out of the top bar's search field.
+- **Lists change at once; their edge moves.** When Go to's list grows or shrinks, the rows are there
+  immediately and the card's foot eases to its new place.
+- **Regions** slide by Core Animation and are laid out once, not on every frame.
+- **Reduce Motion:** nothing moves or scales; floating pieces only fade, Home and a workspace cross-fade,
+  tabs, edges and regions are where they end at once.
 
 ### Tabs
 
@@ -372,7 +424,7 @@ content's colour inset in the chrome, its line darker under the pointer.
   selected tab would leave it), and a chevron with how many are out of sight, whose menu lists every
   tab. The row never scrolls: every tab in sight is whole, its close button in reach. "+" always stays
   at the row's end. New tabs come only from "+", ⌘T and the menus: the row's empty stretch belongs to the
-  window, as the top bar's does.
+  window, as the top bar's does. Tabs slide into place as others open, close or move.
 - Each tab shows what it is (a terminal, a file, changes; a Claude's request or finished mark in its
   place), its title, and a close button at its **trailing** end, as in Cursor, VS Code and Zed: always on
   the selected tab, on the others under the pointer; an unsaved file shows a dot there until the pointer
@@ -393,6 +445,9 @@ content's colour inset in the chrome, its line darker under the pointer.
 
 Mac conventions throughout: every command in the menus with its key, standard Settings (⌘,) with
 categories on the left and one setting per row on the right, and standard Save / Don't Save / Cancel.
+Each theme's card in Settings shows it as it will look once chosen: on a light Mac, a theme with both
+versions shows its light one even while a dark-only theme holds the app dark; a card shows the chrome, a
+terminal sample with its selection and cursor, and the sixteen colours.
 English and Japanese, following the system language, for everything a person reads: menus, settings,
 notifications, Help, and the words in the scene. ⌘. interrupts the focused terminal; wherever text is
 typed (a rename, the commit message, Go to, a card) it is the Mac's Cancel. ⌥⌘W closes the tab and ⌘W a

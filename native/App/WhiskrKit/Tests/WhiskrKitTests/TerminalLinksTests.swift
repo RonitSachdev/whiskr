@@ -137,7 +137,8 @@ struct TerminalLinksTests {
             String(repeating: "資料/メモ.txt ", count: 200),
         ]
         for line in lines {
-            let elapsed = threadTime { _ = TerminalLink.links(in: line) }
+            // The best of three: the budget is on what the line costs, not on how busy the Mac is.
+            let elapsed = (0..<3).map { _ in threadTime { _ = TerminalLink.links(in: line) } }.min()!
             #expect(elapsed < .milliseconds(5), "\(line.prefix(8)): \(elapsed)")
             print("TerminalLink 2,000 characters:", line.prefix(8), elapsed)
         }

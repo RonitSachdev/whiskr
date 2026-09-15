@@ -61,6 +61,12 @@ private struct HelpPage: View {
                     HelpMark(mark: nil, title: String(localized: "Helpers", comment: "Help page: what the small cats are"),
                              text: String(localized: "Small cats beside a Claude are its helpers. Click one to see its terminal or its story.", comment: "Help page: helpers"))
                 }
+                HelpSection(title: String(localized: "Sounds and notifications", comment: "Help page heading")) {
+                    Text(String(localized: "Each of these can play a sound and show a notification; choose which, and the sound, in Settings › Alerts. A sound plays unless you are typing in that terminal. A notification shows while Whiskr is in the background. Pause Alerts, in the Whiskr menu and the Dock icon's menu, silences both for a while.", comment: "Help page: alerts"))
+                    ForEach(AlertEvent.allCases, id: \.self) { event in
+                        HelpMark(mark: nil, title: event.name, text: event.explanation)
+                    }
+                }
                 HelpSection(title: String(localized: "Terminals keep running", comment: "Help page heading")) {
                     Text(String(localized: "Quitting (⌘Q) leaves every terminal running, Claude included; the next launch puts them back as they were. To stop everything, hold Option and choose Quit and Stop All Terminals (⌥⌘Q).", comment: "Help page: what quitting does"))
                 }

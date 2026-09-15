@@ -172,33 +172,45 @@ final class PanelEdge: NSView {
         if event.clickCount == 2 { return onReset?() ?? () }
         startX = event.locationInWindow.x
         startWidth = currentWidth()
-        glow.show(line)
-        LiveResize.shared.during {
+        glow.drag({
             while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
                 if next.type == .leftMouseUp { break }
                 onDrag?(startWidth + (startX - next.locationInWindow.x))
             }
-        }
-        if let window, !bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil)) { glow.hide() }
+        }, pointerOnDivider: { [unowned self] in isPointerOnEdge })
     }
 
     // MARK: Showing it can be dragged (`DividerGlow`)
 
-    private lazy var glow = DividerGlow(in: self)
+    private lazy var glow = DividerGlow(in: self) { [unowned self] in line }
     private var area: NSTrackingArea?
     /// The panel's edge line, at the middle of this 7 pt reach.
     private var line: NSRect { NSRect(x: bounds.midX - 0.5, y: 0, width: 1, height: bounds.height) }
 
+    private var isPointerOnEdge: Bool {
+        guard let window else { return false }
+        return bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+    }
+
+    /// The strip's own bounds, not its visible rectangle: a view that does not clip (the default since
+    /// macOS 14) reports a visible rectangle reaching far past it, and the edge lit with the pointer over
+    /// the panes, nowhere near it.
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let area { removeTrackingArea(area) }
-        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        let area = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeInKeyWindow], owner: self, userInfo: nil)
         addTrackingArea(area)
         self.area = area
     }
 
-    override func mouseEntered(with event: NSEvent) { glow.pointerEntered(line) }
-    override func mouseExited(with event: NSEvent) { glow.hide() }
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        updateTrackingAreas()
+        glow.follow()
+    }
+
+    override func mouseEntered(with event: NSEvent) { glow.pointer(isOn: isPointerOnEdge) }
+    override func mouseExited(with event: NSEvent) { glow.pointer(isOn: isPointerOnEdge) }
 }
 
 /// Files | Changes, with the count of changed files, and the tree's own tools on the right.

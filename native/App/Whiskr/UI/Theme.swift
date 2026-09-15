@@ -101,6 +101,31 @@ enum Look {
     static var increasesContrast: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast || Palette.isHighContrast(NSApp.effectiveAppearance)
     }
+
+    /// How the interface moves (docs/DESIGN.md, "Motion"): one small set of durations and one curve, so
+    /// every transition in the window feels like the same app. The action itself never waits for them: a
+    /// tab is chosen or closed at once and only the picture eases. With Reduce Motion, things that would
+    /// move or scale cross-fade instead (`Look.Motion.animation(_:)` returns a plain fade's timing, and
+    /// callers drop offsets and scales).
+    enum Motion {
+        /// A control's own feedback: hover and pressed fills, the selected tab's line moving over.
+        static let quick: TimeInterval = 0.12
+        /// Something appearing or going in place: a tab, the palette and its field, a bar, a card, a list.
+        static let standard: TimeInterval = 0.16
+        /// A region of the window sliding in or out: the side panel, the meadow, the status bar.
+        static let region: TimeInterval = 0.2
+
+        /// The one curve: a quick start that settles (ease-out), as AppKit's own panels do.
+        static let curve = CAMediaTimingFunction(controlPoints: 0.2, 0.0, 0.0, 1.0)
+
+        /// SwiftUI's form of `duration` on the same curve.
+        static func animation(_ duration: TimeInterval) -> Animation {
+            .timingCurve(0.2, 0.0, 0.0, 1.0, duration: duration)
+        }
+
+        /// Whether to move at all: false with Reduce Motion (then only fades, or nothing).
+        @MainActor static var moves: Bool { !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    }
 }
 
 /// A control in the bars: its hover, pressed and selected fills, the same everywhere.
@@ -122,6 +147,9 @@ struct ChromeButtonStyle: ButtonStyle {
         var body: some View {
             configuration.label
                 .background(RoundedRectangle(cornerRadius: radius).fill(fill))
+                // The fill eases between rest, hover, pressed and selected (`Look.Motion.quick`); only the
+                // picture: the button acts on the click as before.
+                .animation(Look.Motion.animation(Look.Motion.quick), value: fill)
                 .contentShape(Rectangle())
                 .onHover { hovering = $0 }
         }

@@ -649,6 +649,28 @@
         }
       }
     },
+    "A helper finished": {
+      "comment": "Notification body: one of Claude's helpers is done",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーが完了しました"
+          }
+        }
+      }
+    },
+    "A helper finished · %@": {
+      "comment": "Notification body: one of Claude's helpers is done, then its task",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーが完了しました · %@"
+          }
+        }
+      }
+    },
     "A loaf, then curled up asleep after ten minutes.": {
       "localizations": {
         "ja": {
@@ -681,6 +703,17 @@
         }
       }
     },
+    "A permission request’s notification has Allow and Deny. Banners or alerts, and their sound, are set in System Settings › Notifications.": {
+      "comment": "Settings › Alerts: under the notifications row",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可のリクエストの通知には「許可」と「拒否」があります。バナーか通知パネルか、その音は、システム設定 › 通知で設定します。"
+          }
+        }
+      }
+    },
     "A program is still running. Closing stops it.": {
       "localizations": {
         "ja": {
@@ -701,12 +734,34 @@
         }
       }
     },
+    "A sound plays unless you are typing in that terminal. A notification shows while Whiskr is in the background, for a finished turn only after 30 seconds or more. Point at an event to see where it comes from.": {
+      "comment": "Settings › Alerts: under the list of events",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのターミナルに入力中でなければ、サウンドが鳴ります。通知はWhiskrがバックグラウンドのときに表示され、完了は30秒以上かかったターンのときだけです。項目にポインタを置くと、何から届くかが表示されます。"
+          }
+        }
+      }
+    },
     "A tab by its number.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "番号でタブを選びます。"
+          }
+        }
+      }
+    },
+    "A terminal without Claude rang its bell, for example at the end of a long command.": {
+      "comment": "Settings › Alerts: where an event comes from",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeのいないターミナルがベルを鳴らしました。たとえば長いコマンドの終わりに。"
           }
         }
       }
@@ -816,6 +871,17 @@
         }
       }
     },
+    "Alert Sound": {
+      "comment": "Settings › Alerts: the alert sound chosen in System Settings › Sound",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "警告音"
+          }
+        }
+      }
+    },
     "Alerts": {
       "comment": "Settings pane",
       "localizations": {
@@ -866,6 +932,27 @@
           "stringUnit": {
             "state": "translated",
             "value": "許可"
+          }
+        }
+      }
+    },
+    "Allow Notifications…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知を許可…"
+          }
+        }
+      }
+    },
+    "Allowed": {
+      "comment": "Settings › Alerts: notifications are on in System Settings",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可済み"
           }
         }
       }
@@ -1078,6 +1165,17 @@
         }
       }
     },
+    "Choose a sound for “%@”. A short one works best: at most %lld seconds.": {
+      "comment": "Settings › Alerts: the sound file picker's message",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」のサウンドを選んでください。短いものが向いています（最長%2$lld秒）。"
+          }
+        }
+      }
+    },
     "Choose themes (Whiskr, iTerm2, VS Code or TextMate), VS Code extensions (.vsix or a folder) or TextMate grammars.": {
       "comment": "Open panel of Add Theme… and File › Import",
       "localizations": {
@@ -1085,6 +1183,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "テーマ（Whiskr、iTerm2、VS Code、TextMate）、VS Code 拡張機能（.vsix またはフォルダ）、TextMate 文法を選んでください。"
+          }
+        }
+      }
+    },
+    "Claude asks a question, waits for its plan to be approved, or a tool’s form waits for you. From Claude Code’s PreToolUse hook (AskUserQuestion, ExitPlanMode), its Elicitation hook, and its Notification hook (elicitation_dialog).": {
+      "comment": "Settings › Alerts: where an event comes from",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeが質問している、計画の承認を待っている、またはツールのフォームが入力を待っています。Claude CodeのPreToolUseフック（AskUserQuestion、ExitPlanMode）、Elicitationフック、Notificationフック（elicitation_dialog）から届きます。"
+          }
+        }
+      }
+    },
+    "Claude asks to use a tool. From Claude Code’s PermissionRequest hook, and its Notification hook (permission_prompt).": {
+      "comment": "Settings › Alerts: where an event comes from",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeがツールの使用を求めています。Claude CodeのPermissionRequestフックと、Notificationフック（permission_prompt）から届きます。"
+          }
+        }
+      }
+    },
+    "Claude’s turn ended. From Claude Code’s Stop hook.": {
+      "comment": "Settings › Alerts: where an event comes from",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeのターンが終わりました。Claude CodeのStopフックから届きます。"
+          }
+        }
+      }
+    },
+    "Claude’s turn stopped on an error. From Claude Code’s StopFailure hook.": {
+      "comment": "Settings › Alerts: where an event comes from",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeのターンがエラーで止まりました。Claude CodeのStopFailureフックから届きます。"
           }
         }
       }
@@ -1186,7 +1328,7 @@
       }
     },
     "Choose": {
-      "comment": "Folder picker's button for the worktrees folder",
+      "comment": "Folder picker's button for the worktrees folder\nSound file picker's button",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -1197,6 +1339,7 @@
       }
     },
     "Choose…": {
+      "comment": "Settings › Alerts: add a sound file of yours",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -1948,6 +2091,17 @@
         }
       }
     },
+    "Each of these can play a sound and show a notification; choose which, and the sound, in Settings › Alerts. A sound plays unless you are typing in that terminal. A notification shows while Whiskr is in the background. Pause Alerts, in the Whiskr menu and the Dock icon's menu, silences both for a while.": {
+      "comment": "Help page: alerts",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "それぞれサウンドを鳴らし、通知を表示できます。どれにするか、どのサウンドにするかは、設定 › 通知で選びます。そのターミナルに入力中でなければサウンドが鳴り、Whiskrがバックグラウンドのときは通知が表示されます。WhiskrメニューとDockアイコンのメニューにある「通知を一時停止」で、しばらく両方を止められます。"
+          }
+        }
+      }
+    },
     "Each workspace is a picnic blanket. Each Claude is a black cat on it; small cats beside it are its helpers.": {
       "comment": "Help page: the one-line explanation",
       "localizations": {
@@ -2077,7 +2231,7 @@
       }
     },
     "Error": {
-      "comment": "Alert sound",
+      "comment": "Alert event: Claude's turn stopped on an error\nAlert sound",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2264,7 +2418,7 @@
       }
     },
     "Finished": {
-      "comment": "Alert sound\nNotification body: Claude's turn ended\nState: Claude finished a turn you have not seen",
+      "comment": "Alert event: Claude's turn ended\nAlert sound\nNotification body: Claude's turn ended\nState: Claude finished a turn you have not seen",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2560,6 +2714,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ヘルパー"
+          }
+        }
+      }
+    },
+    "Helper finished": {
+      "comment": "Alert event: one of Claude's helpers is done",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルパーの完了"
           }
         }
       }
@@ -3188,6 +3353,39 @@
         }
       }
     },
+    "Low Notes": {
+      "comment": "Alert sound: two low falling notes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "低い2音"
+          }
+        }
+      }
+    },
+    "Mac": {
+      "comment": "Settings › Alerts: the Mac's own sounds",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mac"
+          }
+        }
+      }
+    },
+    "macOS did not ask: %@": {
+      "comment": "Settings › Alerts: the system refused to ask about notifications, and its reason",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOSは確認しませんでした：%@"
+          }
+        }
+      }
+    },
     "Map": {
       "localizations": {
         "ja": {
@@ -3658,6 +3856,28 @@
         }
       }
     },
+    "None": {
+      "comment": "Settings › Alerts: no sound",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
+          }
+        }
+      }
+    },
+    "Not allowed yet": {
+      "comment": "Settings › Alerts: macOS has not asked about Whiskr's notifications",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ許可されていません"
+          }
+        }
+      }
+    },
     "Not applied: %@.": {
       "comment": "Import Settings summary: what was left as it is",
       "localizations": {
@@ -3713,42 +3933,67 @@
         }
       }
     },
-    "Notify when Claude finishes a long turn": {
+    "Notification Settings…": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claudeが長い作業を終えたら通知"
+            "value": "通知設定…"
           }
         }
       }
     },
-    "Notify when Claude needs you": {
+    "Notifications": {
+      "comment": "Settings › Alerts: whether macOS lets Whiskr's notifications through",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claudeが応答を待っているときに通知"
+            "value": "通知の許可"
           }
         }
       }
     },
-    "Only while you are in Whiskr and not typing in that Claude's terminal. A request plays two rising notes, an error two low ones, a finish one soft knock.": {
+    "Notify": {
+      "comment": "Settings › Alerts: show a notification for this event",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Whiskrを使っていて、そのClaudeのターミナルに入力していないときだけ鳴ります。リクエストは上がる2音、エラーは低い2音、完了はやわらかいノック1回です。"
+            "value": "通知"
           }
         }
       }
     },
-    "Only while you are in another app. A request's notification has Allow and Deny; a finish is announced quietly, and only after a turn of 30 seconds or more.": {
+    "Notify for %@": {
+      "comment": "Settings › Alerts: a Notify checkbox, for VoiceOver",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ほかのアプリを使っているときだけ届きます。リクエストの通知には「許可」と「拒否」があります。完了は30秒以上かかった作業のときだけ、音なしで知らせます。"
+            "value": "%@を通知"
+          }
+        }
+      }
+    },
+    "Off in System Settings": {
+      "comment": "Settings › Alerts: notifications are turned off for Whiskr",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム設定でオフ"
+          }
+        }
+      }
+    },
+    "One of Claude’s helpers finished its task. From Claude Code’s SubagentStop hook.": {
+      "comment": "Settings › Alerts: where an event comes from",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claudeのヘルパーがタスクを終えました。Claude CodeのSubagentStopフックから届きます。"
           }
         }
       }
@@ -3810,6 +4055,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "最近使った項目を開く"
+          }
+        }
+      }
+    },
+    "Open System Settings…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "システム設定を開く…"
           }
         }
       }
@@ -4002,6 +4257,17 @@
         }
       }
     },
+    "Permission request": {
+      "comment": "Alert event: Claude asks to use a tool",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "許可のリクエスト"
+          }
+        }
+      }
+    },
     "Picnic things": {
       "localizations": {
         "ja": {
@@ -4044,6 +4310,7 @@
       }
     },
     "Play": {
+      "comment": "Settings › Alerts: a Play button's tooltip",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -4053,13 +4320,24 @@
         }
       }
     },
-    "Play the %@ sound": {
-      "comment": "Settings: a Play button's tooltip",
+    "Play sounds only when Whiskr is in the background": {
+      "comment": "Settings › Alerts",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@の音を再生"
+            "value": "Whiskrがバックグラウンドのときだけサウンドを鳴らす"
+          }
+        }
+      }
+    },
+    "Play the sound for %@": {
+      "comment": "Settings › Alerts: a Play button, for VoiceOver",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@のサウンドを再生"
           }
         }
       }
@@ -4152,6 +4430,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "しまう（⌘W）。動き続けます"
+          }
+        }
+      }
+    },
+    "Question": {
+      "comment": "Alert event: Claude asks a question, a plan waits for approval, or a form waits",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "質問"
           }
         }
       }
@@ -4319,6 +4608,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ワークツリー「%@」を削除しますか？"
+          }
+        }
+      }
+    },
+    "Remove “%@”": {
+      "comment": "Settings › Alerts: remove a sound you added",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を削除"
           }
         }
       }
@@ -4543,6 +4843,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "右Option"
+          }
+        }
+      }
+    },
+    "Rising Notes": {
+      "comment": "Alert sound: two rising notes",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上がる2音"
           }
         }
       }
@@ -5042,6 +5353,17 @@
         }
       }
     },
+    "Soft Knock": {
+      "comment": "Alert sound: one soft wooden knock",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "やわらかいノック"
+          }
+        }
+      }
+    },
     "Some themes could not be imported": {
       "localizations": {
         "ja": {
@@ -5052,22 +5374,35 @@
         }
       }
     },
-    "Sound when Claude finishes": {
+    "Sound for %@": {
+      "comment": "Settings › Alerts: a sound menu's accessibility label",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claudeが完了したときの音"
+            "value": "%@のサウンド"
           }
         }
       }
     },
-    "Sound when Claude needs you": {
+    "Sounds and Notifications": {
+      "comment": "Settings › Alerts: the list of events",
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Claudeが応答を待っているときの音"
+            "value": "サウンドと通知"
+          }
+        }
+      }
+    },
+    "Sounds and notifications": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サウンドと通知"
           }
         }
       }
@@ -5585,6 +5920,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ステータスバーの言語はメニューです。このファイルを別の言語として、または名前どおりに色分けできます。リポジトリの .editorconfig が、インデント、改行コード、保存時の整形を決めます。"
+          }
+        }
+      }
+    },
+    "The Mac’s alert sound plays at the alert volume set in System Settings › Sound.": {
+      "comment": "Settings › Alerts: under the volume",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Macの警告音は、システム設定 › サウンドの警告音の音量で鳴ります。"
           }
         }
       }
@@ -6209,7 +6555,7 @@
       }
     },
     "Whiskr": {
-      "comment": "The app's name in its menus\nThe app's name on the Home page\nThe top bar's field on Home\nThe window's title while no workspace is open\nWindow menu: brings back the main window",
+      "comment": "Settings › Alerts: the app's own sounds\nThe app's name in its menus\nThe app's name on the Home page\nThe top bar's field on Home\nThe window's title while no workspace is open\nWindow menu: brings back the main window",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -6366,6 +6712,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "保存していない変更は失われます。"
+          }
+        }
+      }
+    },
+    "Yours": {
+      "comment": "Settings › Alerts: sounds you added",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加したサウンド"
           }
         }
       }
@@ -6790,6 +7147,39 @@
         }
       }
     },
+    "“%@” can’t be used: an alert sound can be %lld seconds long at most.": {
+      "comment": "Settings › Alerts: a chosen sound file is too long",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」は使えません：通知のサウンドは最長%2$lld秒です。"
+          }
+        }
+      }
+    },
+    "“%@” can’t be used: it is silent.": {
+      "comment": "Settings › Alerts: a chosen sound file has nothing to hear",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」は使えません：音が入っていません。"
+          }
+        }
+      }
+    },
+    "“%@” can’t be used: it isn’t a sound file Whiskr can play.": {
+      "comment": "Settings › Alerts: a chosen sound file does not decode",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」は使えません：Whiskrで再生できるサウンドファイルではありません。"
+          }
+        }
+      }
+    },
     "“%@” changed on disk while you were editing it.": {
       "localizations": {
         "ja": {
@@ -6987,6 +7377,7 @@
       }
     },
     "Bell": {
+      "comment": "Alert event: a terminal rang its bell\nNotification body: a terminal rang its bell",
       "localizations": {
         "ja": {
           "stringUnit": {

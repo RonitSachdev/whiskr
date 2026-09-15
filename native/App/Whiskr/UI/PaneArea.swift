@@ -217,14 +217,21 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
     /// double-click shares the room evenly again, as the meadow's divider goes back to its usual width.
     override func mouseDown(with event: NSEvent) {
         if event.clickCount == 2 { return resetRatio() }
-        glow.show(dividerLine)
-        LiveResize.shared.during { super.mouseDown(with: event) }
-        if !isPointerOnDivider { glow.hide() }
+        glow.drag({ super.mouseDown(with: event) }, pointerOnDivider: { [unowned self] in isPointerOnDivider })
     }
 
     // MARK: Showing it can be dragged (`DividerGlow`)
 
-    private lazy var glow = DividerGlow(in: self)
+    private lazy var glow = DividerGlow(in: self) { [unowned self] in dividerLine }
+
+    /// The divider moved (a drag, the window resized, the ratio reset): what follows the pointer and what
+    /// shows it, along with it.
+    private func dividerMoved() {
+        updateTrackingAreas()
+        glow.follow()
+    }
+
+    func splitViewDidResizeSubviews(_ notification: Notification) { dividerMoved() }
     private var dividerArea: NSTrackingArea?
 
     /// The line drawn between the two panes.
@@ -253,8 +260,8 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
         dividerArea = area
     }
 
-    override func mouseEntered(with event: NSEvent) { glow.pointerEntered(dividerLine) }
-    override func mouseExited(with event: NSEvent) { glow.hide() }
+    override func mouseEntered(with event: NSEvent) { glow.pointer(isOn: isPointerOnDivider) }
+    override func mouseExited(with event: NSEvent) { glow.pointer(isOn: isPointerOnDivider) }
 
     func resetRatio() {
         ratio = 0.5
@@ -270,7 +277,7 @@ final class RatioSplitView: NSSplitView, NSSplitViewDelegate {
     }
 
     private func place() {
-        defer { updateTrackingAreas() }
+        defer { dividerMoved() }
         guard subviews.count == 2 else { return }
         let first = (length * ratio).rounded()
         if isVertical {

@@ -137,8 +137,9 @@ public enum MeadowMapping {
         }
     }
 
-    /// What to ring for the app's selection: the blanket of the selected tab; a helper cat when one was
-    /// chosen; the focused cat or lantern when the blanket holds several panes.
+    /// What to ring for the app's selection: the cat of the focused pane's Claude (a helper's when one was
+    /// chosen), so you can see which terminal is which cat; the focused lantern when the blanket holds
+    /// several panes; else the blanket of the selected tab.
     public static func selection(in snapshot: SceneSnapshot) -> MeadowItem? {
         guard let tab = snapshot.selectedBlanket, let blanket = snapshot.blanket(tab) else { return nil }
         let blanketID = tab.uuidString
@@ -148,8 +149,7 @@ public enum MeadowMapping {
             if let helper = snapshot.focusedAgent, helper != AgentWorld.mainAgent, family.contains(where: { $0.id == helper }) {
                 return .cat(blanket: blanketID, agent: catID(pane: pane.id, agent: helper))
             }
-            let agentPanes = blanket.panes.filter { if case .agent = $0.kind { true } else { false } }
-            return agentPanes.count > 1 ? .cat(blanket: blanketID, agent: catID(pane: pane.id, agent: nil)) : .blanket(blanketID)
+            return .cat(blanket: blanketID, agent: catID(pane: pane.id, agent: nil))
         case .terminal:
             return blanket.panes.count > 1 ? .lantern(blanket: blanketID, lantern: pane.id.uuidString) : .blanket(blanketID)
         }

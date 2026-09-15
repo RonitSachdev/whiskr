@@ -26,22 +26,22 @@ extension TerminalSurface {
     func showFind() {
         let bar = findBar ?? makeFindBar()
         let selected = getSelection().flatMap { $0.contains("\n") ? nil : $0 }
-        if let initial = selected ?? (bar.isHidden || bar.text.isEmpty ? Self.findPasteboardText : nil), !initial.isEmpty {
+        if let initial = selected ?? (!bar.isShown || bar.text.isEmpty ? Self.findPasteboardText : nil), !initial.isEmpty {
             bar.text = initial
         }
-        bar.isHidden = false
+        bar.appear()
         bar.focus()
         if !bar.text.isEmpty { search(bar.text) }
     }
 
     /// Closes the bar and gives the keyboard back to the terminal; the match stays selected.
     func hideFind() {
-        guard let bar = findBar, !bar.isHidden else { return }
-        bar.isHidden = true
+        guard let bar = findBar, bar.isShown else { return }
+        bar.disappear()
         window?.makeFirstResponder(self)
     }
 
-    var isFindShown: Bool { findBar.map { !$0.isHidden } ?? false }
+    var isFindShown: Bool { findBar?.isShown ?? false }
 
     private func makeFindBar() -> TerminalFindBar {
         let bar = TerminalFindBar()
@@ -256,6 +256,9 @@ extension TerminalSurface {
             onLink?(found.link, .open)
             return
         }
+        // A click lands on SwiftTerm's drawing layer, which never takes the keyboard, and SwiftTerm's own
+        // mouseDown does not ask for it: the terminal clicked takes it here, so clicking a pane chooses it.
+        if window?.firstResponder !== self { window?.makeFirstResponder(self) }
         super.mouseDown(with: event)
     }
 

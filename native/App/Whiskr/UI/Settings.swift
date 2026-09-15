@@ -6,8 +6,8 @@ import WhiskrKit
 /// The settings window (⌘,), as Mac settings windows are: a pane per subject, chosen in the toolbar, each
 /// change applied at once (docs/DESIGN.md). General: restoring Claude, where new tabs open,
 /// asking before quitting. Terminal: the theme (with previews, editing and importing) and the font and
-/// cursor. Alerts: notifications and the Dock badge. Meadow: time of day, real weather, picnic things,
-/// flag size (and the map, once there is a second to choose).
+/// cursor. Alerts: each event's sound and notification, the Dock icon. Meadow: time of day, real weather,
+/// picnic things, flag size (and the map, once there is a second to choose).
 final class SettingsWindowController: NSWindowController {
     static let shared = SettingsWindowController()
 
@@ -204,7 +204,6 @@ struct TerminalSettings: View {
     @Bindable var store: ThemeStore
     @State private var editing: Theme?
     @State private var dropTargeted = false
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Form {
@@ -219,7 +218,8 @@ struct TerminalSettings: View {
             Section {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 196), spacing: 14)], spacing: 14) {
                     ForEach(store.themes) { theme in
-                        ThemeCard(theme: theme, dark: colorScheme == .dark, selected: theme.id == store.themeID)
+                        // Each as it will look once chosen, not in the appearance the chosen theme holds the app in.
+                        ThemeCard(theme: theme, colors: store.previewColors(theme), selected: theme.id == store.themeID)
                             .onTapGesture { store.themeID = theme.id }
                             .contextMenu { cardMenu(theme) }
                     }
@@ -325,16 +325,17 @@ struct TerminalSettings: View {
     }
 }
 
-/// A theme in the picker: its preview for the current appearance, its name and which versions it has.
+/// A theme in the picker: its preview as it will look once chosen (`ThemePreviewColors`), its name and
+/// which versions it has.
 struct ThemeCard: View {
     let theme: Theme
-    let dark: Bool
+    let colors: ThemePreviewColors
     let selected: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ThemePreview(variant: theme.variant(dark: dark))
-                .frame(height: 104)
+            ThemePreview(colors: colors)
+                .frame(height: ThemePreview.cardHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 2.5 : 1))
             HStack(spacing: 4) {
@@ -345,6 +346,9 @@ struct ThemeCard: View {
             }
         }
         .contentShape(Rectangle())
+        #if DEBUG
+        .background(DebugThemeSheet.Anchor(id: theme.id))
+        #endif
         .help(theme.credit ?? theme.name)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(selected ? String(localized: "\(theme.name) theme, selected") : String(localized: "\(theme.name) theme"))
@@ -352,13 +356,37 @@ struct ThemeCard: View {
     }
 }
 
-/// A miniature of a theme: a strip of the app's chrome with its state marks, a line, and a terminal.
+/// A miniature of a theme: a strip of the app's chrome with its state marks, a line, and a terminal with
+/// its sixteen colours below. Its colours are given whole (`ThemePreviewColors`), never read from the
+/// appearance it is drawn in.
 struct ThemePreview: View {
-    let variant: ThemeVariant
+    let colors: ThemePreviewColors
+
+    static let cardHeight: CGFloat = 104
+    /// The chrome strip's width, and the terminal's inset.
+    static let chromeWidth: CGFloat = 58
+    static let inset: CGFloat = 7
+    /// The sixteen colours: two rows of eight, at the terminal's foot.
+    static let swatchHeight: CGFloat = 5
+    static let swatchGap: CGFloat = 1
+
+    /// The middle of the swatch of ANSI colour `index` (0…15) in a preview of `size`: where a check looks.
+    static func swatchCenter(_ index: Int, in size: CGSize) -> CGPoint {
+        let left = chromeWidth + 1 + inset, width = size.width - left - inset
+        let swatch = (width - 7 * swatchGap) / 8
+        let row = CGFloat(index / 8), column = CGFloat(index % 8)
+        let top = size.height - inset - 2 * swatchHeight - swatchGap + row * (swatchHeight + swatchGap)
+        return CGPoint(x: left + column * (swatch + swatchGap) + swatch / 2, y: top + swatchHeight / 2)
+    }
+
+    /// A point of the terminal's background no text reaches, in a preview of `size`.
+    static func backgroundPoint(in size: CGSize) -> CGPoint {
+        CGPoint(x: size.width - inset / 2, y: inset + 20)
+    }
 
     private func color(_ value: WhiskrKit.RGBColor) -> SwiftUI.Color { SwiftUI.Color(nsColor: Palette.nsColor(value)) }
-    private func app(_ key: AppColorKey) -> SwiftUI.Color { color(variant.app[key]) }
-    private func ansi(_ index: Int) -> SwiftUI.Color { color(variant.terminal.ansi[index]) }
+    private func app(_ key: AppColorKey) -> SwiftUI.Color { color(colors[key]) }
+    private func ansi(_ index: Int) -> SwiftUI.Color { color(colors.terminal.ansi[index]) }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -371,21 +399,35 @@ struct ThemePreview: View {
                 Capsule().fill(app(.accent)).frame(width: 28, height: 4)
             }
             .padding(6)
-            .frame(width: 58)
+            .frame(width: Self.chromeWidth)
             .background(app(.chrome))
             Rectangle().fill(app(.line)).frame(width: 1)
             VStack(alignment: .leading, spacing: 1.5) {
-                Text("$ ").foregroundColor(ansi(2)) + Text("npm test").foregroundColor(color(variant.terminal.foreground))
+                Text("$ ").foregroundColor(ansi(2)) + Text("npm test").foregroundColor(color(colors.terminal.foreground))
                 Text("✓ 13 passing").foregroundColor(ansi(2))
                 Text("✗ 1 failing").foregroundColor(ansi(1))
                 Text("warn ").foregroundColor(ansi(3)) + Text("src/cart.ts").foregroundColor(ansi(4))
-                Text("~/shop ").foregroundColor(ansi(6)) + Text("main").foregroundColor(ansi(5))
-                (Text("> ").foregroundColor(color(variant.terminal.foreground)) + Text("█").foregroundColor(color(variant.terminal.cursor)))
+                HStack(spacing: 0) {
+                    Text("~/shop ").foregroundColor(ansi(6))
+                    // Selected, as a selection in the terminal shows.
+                    Text("main").foregroundColor(ansi(5)).background(color(colors.terminal.selection))
+                }
+                (Text("> ").foregroundColor(color(colors.terminal.foreground)) + Text("█").foregroundColor(color(colors.terminal.cursor)))
+                Spacer(minLength: 0)
+                VStack(spacing: Self.swatchGap) {
+                    ForEach(colors.ansiRows.indices, id: \.self) { row in
+                        HStack(spacing: Self.swatchGap) {
+                            ForEach(colors.ansiRows[row].indices, id: \.self) { column in
+                                Rectangle().fill(color(colors.ansiRows[row][column])).frame(height: Self.swatchHeight)
+                            }
+                        }
+                    }
+                }
             }
             .font(.system(size: 8.5, design: .monospaced))
-            .padding(7)
+            .padding(Self.inset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(color(variant.terminal.background))
+            .background(color(colors.terminal.background))
         }
         .accessibilityHidden(true)
     }
@@ -419,7 +461,8 @@ struct ThemeEditor: View {
             copy.credit = original.credit.map { "Based on \(original.name): \($0)" }
         }
         _theme = State(initialValue: copy)
-        _dark = State(initialValue: original.light == nil || (original.dark != nil && NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua))
+        // The version the app would show it in (not the one the chosen theme holds the app in).
+        _dark = State(initialValue: original.isDark(following: store.followedDark))
     }
 
     private var variant: ThemeVariant { theme.variant(dark: dark) }
@@ -439,7 +482,7 @@ struct ThemeEditor: View {
                     .frame(width: 140)
                 }
             }
-            ThemePreview(variant: variant)
+            ThemePreview(colors: ThemePreviewColors(theme: theme, followedDark: dark, increasedContrast: store.increasedContrast))
                 .frame(height: 120)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.primary.opacity(0.12)))
@@ -667,34 +710,75 @@ struct GeneralSettings: View {
     }
 }
 
-/// Settings › Alerts (§10): the three sounds with a Play button each, how loud, notifications while you
-/// are in another app, the Dock icon, and Pause Alerts.
+/// Settings › Alerts (docs/DESIGN.md, Attention): one row per event, each with its sound (the app's own,
+/// the Mac's, or one you add) and whether it shows a notification; how loud; whether sounds wait for
+/// Whiskr to be in the background; whether macOS lets notifications through; the Dock icon; Pause Alerts.
 struct AlertSettings: View {
     @Bindable var preferences: Preferences
+    private let access = NotificationAccess.shared
+    /// The sounds you added (the Sounds folder), looked at again after each change.
+    @State private var customSounds = AlertCenter.customSounds
+    /// Why the file last chosen was not taken.
+    @State private var refusal: String?
 
     var body: some View {
         Form {
             Section {
-                SoundRow(title: String(localized: "Sound when Claude needs you"), isOn: $preferences.soundRequests, sounds: [.request, .error])
-                SoundRow(title: String(localized: "Sound when Claude finishes"), isOn: $preferences.soundFinished, sounds: [.finished])
-                LabeledContent(String(localized: "Volume")) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "speaker.fill").foregroundStyle(.secondary).accessibilityHidden(true)
-                        Slider(value: $preferences.soundVolume, in: 0...1)
-                            .frame(maxWidth: 200)
-                            .accessibilityLabel(String(localized: "Volume"))
-                        Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary).accessibilityHidden(true)
-                    }
+                ForEach(AlertEvent.allCases, id: \.self) { event in
+                    AlertEventRow(event: event, setting: setting(event), customSounds: customSounds,
+                                  choose: { choose(for: event) }, remove: remove)
                 }
+                if let refusal {
+                    Text(refusal).font(.callout).foregroundStyle(.secondary)
+                }
+            } header: {
+                Text(String(localized: "Sounds and Notifications", comment: "Settings › Alerts: the list of events"))
             } footer: {
-                Text(String(localized: "Only while you are in Whiskr and not typing in that Claude's terminal. A request plays two rising notes, an error two low ones, a finish one soft knock."))
+                Text(String(localized: "A sound plays unless you are typing in that terminal. A notification shows while Whiskr is in the background, for a finished turn only after 30 seconds or more. Point at an event to see where it comes from.", comment: "Settings › Alerts: under the list of events"))
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section {
-                Toggle(String(localized: "Notify when Claude needs you"), isOn: $preferences.notifyRequests)
-                Toggle(String(localized: "Notify when Claude finishes a long turn"), isOn: $preferences.notifyFinished)
+                LabeledContent(String(localized: "Volume")) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "speaker.fill").foregroundStyle(.secondary).accessibilityHidden(true)
+                        Slider(value: $preferences.alerts.volume, in: 0...1) { editing in
+                            // Heard at the new volume once let go, as the Mac's own Sound settings do.
+                            if !editing { AlertCenter.shared.play(.request) }
+                        }
+                        .frame(maxWidth: 200)
+                        .accessibilityLabel(String(localized: "Volume"))
+                        Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary).accessibilityHidden(true)
+                    }
+                }
+                Toggle(String(localized: "Play sounds only when Whiskr is in the background", comment: "Settings › Alerts"), isOn: $preferences.alerts.soundsOnlyInBackground)
             } footer: {
-                Text(String(localized: "Only while you are in another app. A request's notification has Allow and Deny; a finish is announced quietly, and only after a turn of 30 seconds or more."))
+                Text(String(localized: "The Mac’s alert sound plays at the alert volume set in System Settings › Sound.", comment: "Settings › Alerts: under the volume"))
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Section {
+                LabeledContent(String(localized: "Notifications", comment: "Settings › Alerts: whether macOS lets Whiskr's notifications through")) {
+                    HStack(spacing: 8) {
+                        switch access.status {
+                        case .allowed:
+                            Text(String(localized: "Allowed", comment: "Settings › Alerts: notifications are on in System Settings")).foregroundStyle(.secondary)
+                            Button(String(localized: "Notification Settings…")) { access.openSystemSettings() }
+                        case .off:
+                            Text(String(localized: "Off in System Settings", comment: "Settings › Alerts: notifications are turned off for Whiskr")).foregroundStyle(.secondary)
+                            Button(String(localized: "Open System Settings…")) { access.openSystemSettings() }
+                        case .notAsked:
+                            Text(String(localized: "Not allowed yet", comment: "Settings › Alerts: macOS has not asked about Whiskr's notifications")).foregroundStyle(.secondary)
+                            Button(String(localized: "Allow Notifications…")) { Task { await access.request() } }
+                        case .unknown:
+                            EmptyView()
+                        }
+                    }
+                }
+                if access.status == .notAsked, let refusal = access.refusal {
+                    Text(String(localized: "macOS did not ask: \(refusal)", comment: "Settings › Alerts: the system refused to ask about notifications, and its reason"))
+                        .font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+            } footer: {
+                Text(String(localized: "A permission request’s notification has Allow and Deny. Banners or alerts, and their sound, are set in System Settings › Notifications.", comment: "Settings › Alerts: under the notifications row"))
                     .font(.callout).foregroundStyle(.secondary)
             }
             Section {
@@ -721,39 +805,173 @@ struct AlertSettings: View {
             }
         }
         .formStyle(.grouped)
+        .task { await access.refresh() }
+    }
+
+    /// One event's setting; turning a notification on asks macOS, if it has not been asked yet.
+    private func setting(_ event: AlertEvent) -> Binding<AlertEventSetting> {
+        Binding {
+            preferences.alerts[event]
+        } set: { new in
+            if new.notify, !preferences.alerts[event].notify, access.status == .notAsked { Task { await access.request() } }
+            preferences.alerts[event] = new
+        }
+    }
+
+    /// Choose…: a sound file of yours, checked and kept (`CustomSoundFiles`), then played.
+    private func choose(for event: AlertEvent) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.audio]
+        panel.prompt = String(localized: "Choose", comment: "Sound file picker's button")
+        panel.message = String(localized: "Choose a sound for “\(event.name)”. A short one works best: at most \(Int(CustomSounds.longest)) seconds.", comment: "Settings › Alerts: the sound file picker's message")
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let url = panel.url else { return }
+            switch CustomSoundFiles.add(url) {
+            case .success(let name):
+                refusal = nil
+                customSounds = AlertCenter.customSounds
+                preferences.alerts[event].sound = .custom(name)
+                AlertCenter.shared.play(.custom(name), for: event)
+            case .failure(let problem):
+                refusal = CustomSoundFiles.message(problem, file: url.lastPathComponent)
+            }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { finish(panel.runModal()) }
+    }
+
+    private func remove(_ name: String) {
+        CustomSoundFiles.remove(name)
+        customSounds = AlertCenter.customSounds
     }
 }
 
-/// A sound's switch with a Play button for each of its sounds.
-private struct SoundRow: View {
-    let title: String
-    @Binding var isOn: Bool
-    let sounds: [AlertSound]
+/// One event: its name (pointing at it says where it comes from), its sound with Play, and Notify.
+private struct AlertEventRow: View {
+    let event: AlertEvent
+    @Binding var setting: AlertEventSetting
+    let customSounds: [String]
+    let choose: () -> Void
+    let remove: (String) -> Void
+
+    /// What the sound menu holds: a sound, or one of its two commands.
+    enum Item: Hashable {
+        case sound(AlertSoundChoice)
+        case choose
+        case remove(String)
+    }
 
     var body: some View {
-        HStack {
-            Toggle(title, isOn: $isOn)
-            Spacer()
-            ForEach(sounds, id: \.self) { sound in
-                Button {
-                    AlertCenter.shared.play(sound)
+        LabeledContent {
+            HStack(spacing: 8) {
+                Picker(selection: selection) {
+                    Text(String(localized: "None", comment: "Settings › Alerts: no sound")).tag(Item.sound(.none))
+                    Section(String(localized: "Whiskr", comment: "Settings › Alerts: the app's own sounds")) {
+                        ForEach(AlertSound.allCases, id: \.self) { sound in Text(sound.name).tag(Item.sound(.whiskr(sound))) }
+                    }
+                    Section(String(localized: "Mac", comment: "Settings › Alerts: the Mac's own sounds")) {
+                        Text(String(localized: "Alert Sound", comment: "Settings › Alerts: the alert sound chosen in System Settings › Sound")).tag(Item.sound(.macAlert))
+                        ForEach(AlertCenter.systemSounds, id: \.self) { name in Text(name).tag(Item.sound(.system(name))) }
+                    }
+                    if !customSounds.isEmpty {
+                        Section(String(localized: "Yours", comment: "Settings › Alerts: sounds you added")) {
+                            ForEach(customSounds, id: \.self) { file in Text(CustomSounds.displayName(file)).tag(Item.sound(.custom(file))) }
+                        }
+                    }
+                    Divider()
+                    Text(String(localized: "Choose…", comment: "Settings › Alerts: add a sound file of yours")).tag(Item.choose)
+                    if case .custom(let file) = shown {
+                        Text(String(localized: "Remove “\(CustomSounds.displayName(file))”", comment: "Settings › Alerts: remove a sound you added")).tag(Item.remove(file))
+                    }
                 } label: {
-                    Label(sounds.count > 1 ? sound.name : String(localized: "Play"), systemImage: "play.fill")
+                    Text(String(localized: "Sound for \(event.name)", comment: "Settings › Alerts: a sound menu's accessibility label"))
                 }
-                .controlSize(.small)
-                .help(String(localized: "Play the \(sound.name.lowercased()) sound", comment: "Settings: a Play button's tooltip"))
+                .labelsHidden()
+                // Their chevrons in one column, as in System Settings.
+                .frame(width: 170, alignment: .trailing)
+                Button {
+                    AlertCenter.shared.play(shown, for: event)
+                } label: {
+                    Image(systemName: "play.fill")
+                }
+                .buttonStyle(.borderless)
+                .disabled(shown == .none)
+                .help(String(localized: "Play", comment: "Settings › Alerts: a Play button's tooltip"))
+                .accessibilityLabel(String(localized: "Play the sound for \(event.name)", comment: "Settings › Alerts: a Play button, for VoiceOver"))
+                Toggle(String(localized: "Notify", comment: "Settings › Alerts: show a notification for this event"), isOn: $setting.notify)
+                    .toggleStyle(.checkbox)
+                    .accessibilityLabel(String(localized: "Notify for \(event.name)", comment: "Settings › Alerts: a Notify checkbox, for VoiceOver"))
+            }
+        } label: {
+            Text(event.name)
+                .help(event.explanation)
+                .accessibilityHint(event.explanation)
+        }
+    }
+
+    /// The sound it plays now: a sound of yours that is gone shows (and plays) the default.
+    private var shown: AlertSoundChoice {
+        if case .custom(let file) = setting.sound, !customSounds.contains(file) { return AlertPreferences.standard[event].sound }
+        return setting.sound
+    }
+
+    private var selection: Binding<Item> {
+        Binding {
+            .sound(shown)
+        } set: { item in
+            switch item {
+            case .sound(let sound):
+                setting.sound = sound
+                // Heard as it is chosen, as the Mac's own Sound settings do.
+                AlertCenter.shared.play(sound, for: event)
+            case .choose:
+                // After the menu has closed.
+                DispatchQueue.main.async { choose() }
+            case .remove(let file):
+                remove(file)
             }
         }
     }
 }
 
 extension AlertSound {
-    /// The sound's name, as the Play buttons show it.
+    /// The sound's name, in Settings' sound menus.
     var name: String {
         switch self {
-        case .request: String(localized: "Request", comment: "Alert sound")
-        case .error: String(localized: "Error", comment: "Alert sound")
-        case .finished: String(localized: "Finished", comment: "Alert sound")
+        case .request: String(localized: "Rising Notes", comment: "Alert sound: two rising notes")
+        case .error: String(localized: "Low Notes", comment: "Alert sound: two low falling notes")
+        case .finished: String(localized: "Soft Knock", comment: "Alert sound: one soft wooden knock")
+        }
+    }
+}
+
+extension AlertEvent {
+    /// Its name, as Settings › Alerts and Help show it.
+    var name: String {
+        switch self {
+        case .request: String(localized: "Permission request", comment: "Alert event: Claude asks to use a tool")
+        case .question: String(localized: "Question", comment: "Alert event: Claude asks a question, a plan waits for approval, or a form waits")
+        case .finished: String(localized: "Finished", comment: "Alert event: Claude's turn ended")
+        case .error: String(localized: "Error", comment: "Alert event: Claude's turn stopped on an error")
+        case .helperFinished: String(localized: "Helper finished", comment: "Alert event: one of Claude's helpers is done")
+        case .bell: String(localized: "Bell", comment: "Alert event: a terminal rang its bell")
+        }
+    }
+
+    /// What it is, and the Claude Code hooks it comes from.
+    var explanation: String {
+        switch self {
+        case .request:
+            String(localized: "Claude asks to use a tool. From Claude Code’s PermissionRequest hook, and its Notification hook (permission_prompt).", comment: "Settings › Alerts: where an event comes from")
+        case .question:
+            String(localized: "Claude asks a question, waits for its plan to be approved, or a tool’s form waits for you. From Claude Code’s PreToolUse hook (AskUserQuestion, ExitPlanMode), its Elicitation hook, and its Notification hook (elicitation_dialog).", comment: "Settings › Alerts: where an event comes from")
+        case .finished:
+            String(localized: "Claude’s turn ended. From Claude Code’s Stop hook.", comment: "Settings › Alerts: where an event comes from")
+        case .error:
+            String(localized: "Claude’s turn stopped on an error. From Claude Code’s StopFailure hook.", comment: "Settings › Alerts: where an event comes from")
+        case .helperFinished:
+            String(localized: "One of Claude’s helpers finished its task. From Claude Code’s SubagentStop hook.", comment: "Settings › Alerts: where an event comes from")
+        case .bell:
+            String(localized: "A terminal without Claude rang its bell, for example at the end of a long command.", comment: "Settings › Alerts: where an event comes from")
         }
     }
 }

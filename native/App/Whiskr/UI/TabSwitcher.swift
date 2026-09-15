@@ -103,8 +103,11 @@ final class TabSwitcher {
         monitor = nil
         if let resign { NotificationCenter.default.removeObserver(resign) }
         resign = nil
-        list?.removeFromSuperview()
-        list = nil
+        // The tab is opened (or kept) at once; only the list's picture goes, fading out the way it came.
+        if let list {
+            self.list = nil
+            if let layer = list.layer { OverlayMotion.disappear(layer, anchor: .center) { list.removeFromSuperview() } } else { list.removeFromSuperview() }
+        }
         order = []
     }
 
@@ -113,17 +116,21 @@ final class TabSwitcher {
         return TabSwitcherList(workbench: workbench, tabs: order.compactMap { id in tabs.first { $0.id == id } }, chosen: index)
     }
 
-    /// Over the work area's middle, a little above centre; never takes a click.
+    /// Over the work area's middle, a little above centre; never takes a click. It fades in, growing a
+    /// little from its middle (`OverlayMotion`).
     private func showList() {
         guard let content = window?.contentView else { return }
         let host = NSHostingView(rootView: listView)
         host.sizingOptions = [.intrinsicContentSize]
         host.translatesAutoresizingMaskIntoConstraints = false
+        host.wantsLayer = true
         content.addSubview(host)
         NSLayoutConstraint.activate([
             host.centerXAnchor.constraint(equalTo: content.centerXAnchor),
             host.topAnchor.constraint(equalTo: content.topAnchor, constant: Look.Height.topBar + Look.Height.tabRow + Look.Space.xxl),
         ])
+        content.layoutSubtreeIfNeeded()
+        if let layer = host.layer { OverlayMotion.appear(layer, anchor: .center) }
         list = host
         NSAccessibility.post(element: host, notification: .layoutChanged)
     }

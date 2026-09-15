@@ -27,6 +27,8 @@ final class AgentMonitor {
     @ObservationIgnored var accountName: (String?) -> String = { _ in ClaudeAccount.defaultName }
     /// Called after every change, with the sessions before and after.
     @ObservationIgnored var onChange: ((_ before: [SessionSnapshot], _ after: [SessionSnapshot]) -> Void)?
+    /// Called when a helper the app knew of finishes (SubagentStop), with its pane, session, id and task.
+    @ObservationIgnored var onHelperFinished: ((_ paneID: UUID, _ sessionID: String, _ agentID: String, _ title: String) -> Void)?
 
     /// When a helper's meta file is looked for: at once, then twice more, as it can land a moment late.
     static let metaRetries: [Duration] = [.zero, .milliseconds(250), .seconds(1)]
@@ -163,9 +165,13 @@ final class AgentMonitor {
         let sessionID = payload["session_id"].text
         if !sessionID.isEmpty, let dir = Self.configDir(transcriptPath: payload["transcript_path"].text) { configDirs[sessionID] = dir }
         let account = accountName(configDirs[sessionID])
+        // A helper's SubagentStop: who it was is known only until the model lets it go.
+        let finishedHelper = payload["hook_event_name"].text == "SubagentStop"
+            ? sessions.first { $0.id == sessionID }?.agents.first { $0.id == payload["agent_id"].text && $0.depth > 0 } : nil
         var effects: [WorldEffect] = []
         update { effects = $0.ingest(payload, account: account, paneID: paneID, now: Date()) }
         for effect in effects { perform(effect) }
+        if let finishedHelper, let pane = UUID(uuidString: paneID) { onHelperFinished?(pane, sessionID, finishedHelper.id, finishedHelper.title) }
     }
 
     /// `<config folder>/projects/<project>/<session>.jsonl` → the config folder.

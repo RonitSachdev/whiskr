@@ -48,6 +48,13 @@ public enum WorldEffect: Sendable, Equatable {
     case readMeta(sessionID: String, agentID: String, transcriptPath: String)
 }
 
+/// What a request waits for, which Settings › Alerts can sound differently: a permission (Claude Code's
+/// PermissionRequest, or its permission_prompt notification), or a question, a plan to approve or a form
+/// to fill in (AskUserQuestion, ExitPlanMode, an MCP server's elicitation).
+public enum RequestKind: String, Sendable, Codable {
+    case permission, question
+}
+
 public struct AgentSnapshot: Sendable, Equatable, Identifiable {
     public let id: String
     public let kind: String           // agent type, e.g. "Explore"; "main" for the session's own Claude
@@ -59,6 +66,7 @@ public struct AgentSnapshot: Sendable, Equatable, Identifiable {
     public let status: AgentStatus
     public let line: String           // one plain line for the sidebar, e.g. "Running · npm test"
     public let since: Date            // when this activity began
+    public let request: RequestKind?  // what it waits for, while it asks
 }
 
 public struct SessionSnapshot: Sendable, Equatable, Identifiable {
@@ -79,6 +87,8 @@ public struct SessionSnapshot: Sendable, Equatable, Identifiable {
     /// hooks from a session running elsewhere (no pane), which the app can show but not type into.
     public var isOwned: Bool { paneID != nil }
     public var needsYou: Bool { status == .blocked }
+    /// What the session waits for: its own Claude's request first, else a helper's.
+    public var request: RequestKind? { agents.lazy.compactMap(\.request).first }
 }
 
 /// Turns the stream of Claude Code hook events into "who exists and what are they doing right now".
@@ -109,6 +119,8 @@ public struct AgentWorld: Sendable {
     private static let asking: Set = ["AskUserQuestion", "ExitPlanMode"]
     private static let planning: Set = ["TodoWrite", "TaskCreate", "TaskUpdate", "TaskList", "EnterPlanMode", "Skill"]
     private static let needsYouNotifications: Set = ["permission_prompt", "elicitation_dialog", "agent_needs_input"]
+    /// Of those, the one that asks for a permission; the others ask a question or for a form.
+    private static let permissionNotification = "permission_prompt"
 
     private struct PendingTool: Sendable, Codable {
         let id: String
@@ -134,6 +146,8 @@ public struct AgentWorld: Sendable {
         var parentID: String?
         var pending: [PendingTool] = []
         var needsYou = false
+        /// What `needsYou` waits for (optional, so agents kept by an earlier version still load).
+        var askKind: RequestKind?
         var ask = ""
         var errorUntil = Date.distantPast
         var lastSeen: Date
@@ -236,9 +250,15 @@ public struct AgentWorld: Sendable {
             if isMain { sessions[s].turnActive = true }
         case "PermissionRequest":
             sessions[s].agents[a].needsYou = true
+            sessions[s].agents[a].askKind = Self.asking.contains(payload["tool_name"].text) ? .question : .permission
             sessions[s].agents[a].ask = Describe.permissionSummary(tool: payload["tool_name"].text, input: payload["tool_input"].fields)
         case "Notification":
             if Self.needsYouNotifications.contains(payload["notification_type"].text) {
+                // Claude Code sends this after the PermissionRequest of the same ask, which knows the tool:
+                // that one's kind stands.
+                if !sessions[s].agents[a].needsYou {
+                    sessions[s].agents[a].askKind = payload["notification_type"].text == Self.permissionNotification ? .permission : .question
+                }
                 sessions[s].agents[a].needsYou = true
                 if sessions[s].agents[a].ask.isEmpty { sessions[s].agents[a].ask = Describe.clip(Describe.firstLine(payload["message"].text), 80) }
             }
@@ -263,6 +283,7 @@ public struct AgentWorld: Sendable {
             sessions[s].compacting = false
         case "Elicitation":
             sessions[s].agents[a].needsYou = true
+            sessions[s].agents[a].askKind = .question
             let message = Describe.clip(Describe.firstLine(payload["message"].text), 80)
             sessions[s].agents[a].ask = message.isEmpty ? String(localized: "An MCP server needs your input", bundle: .module, comment: "A request: a tool's form waits to be filled in") : message
         case "ElicitationResult":
@@ -532,6 +553,14 @@ public struct AgentWorld: Sendable {
         journals.sync(snapshots, now: now)
     }
 
+    /// What an asking agent waits for. An open AskUserQuestion or ExitPlanMode is a question whatever the
+    /// hook that said it is waiting (Claude Code may also announce it as a permission prompt).
+    private func request(of agent: Agent) -> RequestKind? {
+        guard agent.activity == .asking else { return nil }
+        if agent.pending.contains(where: { Self.asking.contains($0.tool) }) { return .question }
+        return agent.needsYou ? agent.askKind ?? .permission : .question
+    }
+
     private func snapshot(_ session: Session) -> SessionSnapshot {
         let agents = session.agents.map { agent -> AgentSnapshot in
             let detail = agent.detail
@@ -542,7 +571,7 @@ public struct AgentWorld: Sendable {
                 parentID: parent(of: agent, in: session), depth: depth(of: agent, in: session),
                 activity: agent.activity, detail: detail, status: status,
                 line: Self.line(activity: agent.activity, detail: detail, ask: agent.ask, status: status, failed: isMain && session.failed, helpers: session.agents.count - 1),
-                since: agent.since)
+                since: agent.since, request: request(of: agent))
         }
         return SessionSnapshot(
             id: session.id, account: session.account, paneID: session.paneID, cwd: session.cwd,

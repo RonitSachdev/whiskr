@@ -7,9 +7,10 @@ import WhiskrMeadow
 /// The sidebar (docs/DESIGN.md): the meadow, one blanket per workspace in a column, or with
 /// View › Show Workspaces as List the same workspaces as rows. It shows who needs you and takes you
 /// there; it never takes the keyboard from a terminal, and nothing an agent does moves its camera.
-/// Choosing a workspace yourself (anywhere: a click, a menu, Go to) scrolls its blanket into view; a
-/// request out of view shows as a capsule at that edge; a request whose terminal is not on screen is
-/// answered from a card beside its cat. ⌥⌘0 puts the keyboard here: arrows, Return, Space, Esc.
+/// What you choose on the right (a workspace, a tab, a pane, from anywhere: a click, a key, a menu, Go
+/// to) the meadow follows: its blanket and cat glide comfortably into view and are ringed. A request out of
+/// view shows as a capsule at that edge; a request whose terminal is not on screen is answered from a card
+/// beside its cat. ⌥⌘0 puts the keyboard here: arrows, Return, Space, Esc.
 final class NavigatorController: NSViewController {
     let meadow: MeadowView
     private let workbench: Workbench
@@ -22,8 +23,9 @@ final class NavigatorController: NSViewController {
     /// The "↑ 1 needs you" capsules at the meadow's edges.
     private let edges = MeadowEdges()
     private var capsules: [NSHostingView<EdgeCapsule>] = []
-    /// The workspace last shown, so a change of workspace (always yours) brings its blanket into view.
-    private var shownWorkspace: UUID?
+    /// Your choices followed so far (`Workbench.choices`): a new one is yours to follow; anything else
+    /// that changes the selection only moves the ring.
+    private var choicesFollowed = 0
 
     private static let cameraKey = "meadowCamera"
     /// Set once a cat has ever appeared: the first-run hint never comes back.
@@ -116,7 +118,7 @@ final class NavigatorController: NSViewController {
         showKind()
         observers.append(Observing { [weak self] in
             guard let self else { return }
-            self.sceneChanged(self.workbench.scene)
+            self.sceneChanged(self.workbench.scene, choices: self.workbench.choices)
         })
         observers.append(Observing { [weak self] in self?.applySettings() })
         // One terminal's program messaging another's (`paw`): their cats act it out.
@@ -133,21 +135,24 @@ final class NavigatorController: NSViewController {
 
     // MARK: The model, into the meadow
 
-    private func sceneChanged(_ snapshot: SceneSnapshot) {
-        guard snapshot != scene else { return }
+    private func sceneChanged(_ snapshot: SceneSnapshot, choices: Int) {
+        let chosen = choices != choicesFollowed
+        choicesFollowed = choices
+        let changed = snapshot != scene
+        guard changed || chosen else { return }
         scene = snapshot
-        meadow.world = MeadowMapping.world(snapshot, accountColors: Colors.accountColors, machineName: String(localized: "This Mac"))
-        // The current workspace is ringed; the camera stays where you left it.
+        if changed { meadow.world = MeadowMapping.world(snapshot, accountColors: Colors.accountColors, machineName: String(localized: "This Mac")) }
+        // What is shown is ringed: its cat, or its blanket. Your choice moves the camera to it; anything else
+        // (a Claude starting beside it, a pane closing) only moves the ring (§6.5: no agent event moves the camera).
         let ring = MeadowMapping.selection(in: snapshot)
-        if meadow.selection != ring { meadow.selection = ring }
+        if chosen {
+            meadow.select(ring, origin: .user)
+        } else if meadow.selection != ring {
+            meadow.select(ring, origin: .event)
+        }
+        guard changed else { return }
         if !AppPlaces.defaults.bool(forKey: Self.hintKey), snapshot.spaces.contains(where: { $0.blankets.contains { $0.panes.contains { if case .agent = $0.kind { true } else { false } } } }) {
             AppPlaces.defaults.set(true, forKey: Self.hintKey)
-        }
-        // Only you change the workspace shown (§6.5), so following it never moves the camera on its own.
-        // A launch selects none (Home); every later choice, back in from Home too, brings its blanket into view.
-        if snapshot.selectedSpace != shownWorkspace {
-            shownWorkspace = snapshot.selectedSpace
-            if let selected = snapshot.selectedSpace { meadow.reveal(.blanket(selected.uuidString)) }
         }
         updateHint()
         updateEdges()
@@ -494,7 +499,9 @@ final class NavigatorController: NSViewController {
     func restore() {
         _ = view
         scene = nil
-        sceneChanged(workbench.scene)
+        // A launch lands on Home, framing everything: nothing to follow yet.
+        choicesFollowed = workbench.choices
+        sceneChanged(workbench.scene, choices: workbench.choices)
         if let angle = AppPlaces.defaults.array(forKey: Self.cameraKey) as? [Double], angle.count == 2 {
             meadow.turn(toBearing: Float(angle[0]), pitch: Float(angle[1]))
         }

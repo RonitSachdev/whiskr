@@ -63,7 +63,10 @@ keeps on disk. For what the app should look and feel like, see [DESIGN.md](DESIG
 4. **Before any hook**, the host watches each terminal's foreground process group ten times a second while
    a window is connected. A cat appears as soon as `claude` is the foreground program.
 5. The `Workbench` builds a `SceneSnapshot`, `WhiskrMeadow` maps it to the scene's `World`, and
-   `MeadowView` animates the difference.
+   `MeadowView` animates the difference. A selection reaches the scene with its origin
+   (`MeadowView.select(_:origin:)`): `.user` when `Workbench.choices`, counted only for the user's own
+   choosing, has moved, which makes the camera follow (`Stage.follow` on `MapCamera.chase`); `.event`
+   otherwise, which only moves the ring.
 
 Helpers' own conversations are read from Claude Code's transcript files, because hooks do not carry them.
 
@@ -123,8 +126,17 @@ bytes, never inside JSON.
   size is replayed at that size.
 - **Sizes.** A new terminal starts at the size its view first takes in the window, in the turn the view is
   laid out. A resize reaches the program only after the size has held still for 80 ms. During a live
-  drag, terminals keep their size and take the new one once at the end, so a long scrollback re-wraps
-  once.
+  drag (a divider, the window's edge, a region sliding), terminals keep their size and take the new one
+  once at the end: a re-wrap costs about 3.4 ms per terminal with 12,000 lines (measured, `make perf`'s
+  resize run), times every pane on every step, and each size would reach the program. The pane around a
+  held terminal shows the terminal's background, and a Metal frame drawn for the old size is pinned at the
+  top left (`layerContentsPlacement`), never stretched, until the next is drawn. To SwiftTerm a terminal is
+  never in a live resize (it would apply a size held for its next frame after a later one). Region slides
+  (the meadow, the side panel, the status bar) go through `LiveResize.slide`, held until the animation's
+  completion or at the latest half a second after its duration, so a slide in a window that does not draw
+  cannot freeze terminal sizes; a layout change during a slide is applied at once and the slide's end
+  applies the layout again. The window's regions share its width
+  (`preferResizingSiblingsWithFixedSplitView`): opening or closing one never resizes the window.
 
 ## Files on disk
 
@@ -136,6 +148,7 @@ bytes, never inside JSON.
 | `…/Whiskr/Themes/Originals/<source>/` | The files an imported theme was read from (theme JSON and what it includes, or an extension's `package.json` and theme files) | Kept so a later version can import them again; moved to the Trash with the last theme made from them (only a folder directly in `Originals`: a theme file names its folder, and anyone can write one) |
 | `…/Whiskr/Languages/<set>/` | Languages and grammars the user added: an `index.json` and the grammar and configuration files, copied as data | Loaded at launch over the bundled ones (`LanguageRegistry.loadInstalled`); nothing in them is ever run |
 | `…/Whiskr/shell/` | The shim, zsh, bash and fish integration | Rewritten at every launch |
+| `…/Whiskr/Sounds/` | Sounds added in Settings › Alerts, copied in as they are | A missing one falls back to its event's default sound |
 | `…/Whiskr/hooks/` | The hooks settings and each pane's listener address | Mode 0700, files 0600; rewritten at every launch |
 | `…/Whiskr/host/` | The host's socket, lock and log | Mode 0700, socket 0600 |
 | `~/.whiskr/worktrees/<repo>/<branch>` | Git worktrees the app makes | Changeable in Settings › General |
@@ -219,7 +232,12 @@ Code does.
   theme's kind when absent; the editor's and git's and the diff's colours, `ThemeEditorColors`). Then
   `meetingGuarantees()` moves, in 1 % steps, only what falls short of the layer and contrast guarantees
   (DESIGN.md, "Layers"). Themes of one extension whose names differ only by "Light" and "Dark" become one
-  theme with both versions; two single themes can be paired by hand.
+  theme with both versions; two single themes can be paired by hand. Which version applies has one rule,
+  `Theme.isDark(following:)`: a theme with one version decides, else the app follows the Mac's appearance
+  (`ThemeStore.systemIsDark`, read from macOS, since the app's own cannot tell it while a one-version theme
+  holds it). A theme's card in Settings draws `ThemePreviewColors` (Kit), the colours the terminal and the
+  window will have once it is chosen, and the terminal is told the theme's light or dark
+  (`updateColorScheme`, for programs that ask).
 - **Settings from VS Code or Cursor** (`VSCodeSettings`, `OtherEditorImport`): on request only, their
   `settings.json` is read (never written), and the editor and terminal font, size, indentation, wrapping,
   invisibles, save fixes, cursor and the colour theme (imported from the extension on disk when it is not a
@@ -348,11 +366,37 @@ glass (about one refresh) is not seen. Main-thread stalls are a ping every 4 ms 
 timers late on purpose, and stacks taken at such moments showed the main thread asleep. Memory is the
 app's footprint with one tab and with 24, and again once the hidden tabs have given back their renderers.
 
+Four stand-ins keep the runs honest about what a person at the window gets. Menus are recorded, never shown
+(`MenuStandIn`: a real pop-up would block the run in its tracking loop and appear on screen), with each
+item as AppKit validates it and what its action reaches. Sounds and notifications are recorded as what
+would be played (which sound, how loud) and posted (title, body, actions), never played or posted. The
+meadow's own clock, a `CAMetalDisplayLink`, gives a window that is not on the active Space no frames
+after the first few, so in measuring runs (`assumesOnScreen`) the meadow is driven instead by the
+screen's display link, taking a drawable from its layer and drawing and presenting each frame through
+the same path and pacing; every idle stretch checks that the meadow drew, and fails "not measurable"
+when it did not. And the window is looked
+at mid-drag and mid-transition from the layer tree (`CALayer.render(in:)`, honouring `zPosition`), which,
+unlike `--snapshot`'s `cacheDisplay`, includes layers added beside a view's drawing, such as a divider's
+highlight. A divider's tracking loop does not drain the main queue, so a drag's pacing is each step's time
+to its commit and the run loop's longest turn, not the pings.
+
+The interface's own transitions are measured frame by frame (`motion`, `DebugAnimations.swift`, last of the
+measured flows): each is set off by its key or click, and the part of the window it moves is read at every
+refresh of the display (`NSScreen`'s display link) from Core Animation's presentation layers. Reported:
+frames, dropped refreshes, the longest frame, the first change after the action and the main thread's
+longest hold; a jump (one frame) fails where the design moves something.
+
 Before the measurements come the checks, each an invisible run of its own (`--perf-flows`): closing, sizes
 and interactions; the first five minutes (`journey`: Home, a folder, a terminal, a Claude through every
 state, tabs, splits, workspaces; three runs on one folder, across ⌘Q and ⌥⌘Q); files, the editor, diffs
 and Changes (`files`); the window's regions, sizes, themes and Settings (`layout`); and abuse (`robust`:
-floods, binary and wide text, pastes, resize storms, the session host going away).
+floods, binary and wide text, pastes, resize storms, the session host going away); every control of the
+bars clicked at its middle and edges, failing a press that lands on anything but the control or on a view
+that lets the window move (`chrome`); a Claude stand-in started through a shell function of the user's kind
+with `--settings`, every event's real hook commands, and what would be heard and shown in each place a
+person can be (`alerts`); every way of choosing on the right, with the meadow moved away first, and agent
+events that must not move it (`meadow`); and every divider dragged, the window resized and each region
+shown and hidden, looked at mid-drag (`resize`).
 
 Nothing in `make perf` depends on when it runs: the runs show the meadow by day (`--time day`), and the
 idle flow sets the time of day itself, measuring by day and by night. Idle is measured once nothing is due

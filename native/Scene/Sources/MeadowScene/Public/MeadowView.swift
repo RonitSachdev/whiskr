@@ -30,11 +30,39 @@ public final class MeadowView: MTKView {
         didSet { if settings != oldValue { stage.settings = settings; wake() } }
     }
     /// What is chosen: its blanket is ringed (or the cat, or the lantern). Setting it does not move the
-    /// camera; call `frame` for that.
+    /// camera (`select(_:origin:)` with `.user` does).
     public var selection: MeadowItem? {
         get { stage.selection }
         set { stage.selection = newValue; wake() }
     }
+
+    /// Who made a selection. Only your own choice moves the camera (docs/DESIGN.md, "Attention"): a
+    /// selection that changes because of something that happened by itself (a Claude starting beside the
+    /// one chosen, a pane closing) is ringed where it is and the view stays put.
+    public enum Origin: Sendable { case user, event }
+
+    /// Rings `item` (nil: nothing, as on Home). Chosen by the user (a workspace, tab or pane on the right, a
+    /// click here), the view follows it: its blanket and, for a cat, the cat glide comfortably into view
+    /// (nothing moves if they are already), or on Home the view goes back to framing every blanket.
+    /// - Choices in quick succession (⌃Tab, a held ⌘⇧]) move the view once, to the last: each waits
+    ///   `followSettle` for the next, and a glide under way bends toward a new one without a jolt.
+    /// - Your hand comes first: nothing follows while you drag the view, and once you have moved it yourself
+    ///   choosing the same thing again leaves it where you put it. The next different choice follows.
+    /// - Hidden, it does nothing; when it shows again it is there at once, with no glide from far away.
+    /// - With Reduce Motion, or the meadow's animation off, it cuts instead of gliding.
+    public func select(_ item: MeadowItem?, origin: Origin) {
+        stage.selection = item
+        guard origin == .user else { return wake() }
+        if stage.camera.held || (handMoved && followedOnce && item == lastFollowed) { return wake() }
+        pendingFollow = (item, clock())
+        if !isShownForFollowing { catchUp = true }
+        wake()
+    }
+    /// How long a choice waits for the next before the view follows it.
+    public static let followSettle: CFTimeInterval = 0.12
+    /// Points to spare between something chosen and the view's edges (in the column, its top and bottom
+    /// edges) for it to count as comfortably in view (`select`): closer than this, the view moves.
+    public static var comfortableInset: CGFloat { CGFloat(Stage.Comfort.edge) }
     /// What the pointer is over right now.
     public private(set) var hovered: MeadowItem?
     /// Called when the user clicks something (or empty ground: nil).
@@ -163,6 +191,7 @@ public final class MeadowView: MTKView {
         var left = seconds
         while left > 1e-9 {
             let dt = min(step, left)
+            followIfDue()
             stage.update(Float(dt))
             left -= dt
             if pendingReveal != nil { revealWhenLanded() }
@@ -218,6 +247,7 @@ public final class MeadowView: MTKView {
 
     /// Diagnostics: a drag of the view as if made with the mouse, for measuring how interaction feels.
     @_spi(Diagnostics) public func simulateDrag(dx: Float, dy: Float, slide: Bool = false) {
+        handTookOver()
         stage.camera.grab()
         if slide { stage.camera.slide(dx: dx, dy: dy) } else { stage.camera.turn(dx: dx, dy: dy) }
         stage.camera.release()
@@ -253,6 +283,7 @@ public final class MeadowView: MTKView {
     private var offscreenTarget: MTLTexture?
 
     @_spi(Diagnostics) public func simulateZoom(by factor: Float, at point: CGPoint) {
+        handTookOver()
         stage.camera.zoom(by: factor, at: Vec2(Float(point.x), Float(point.y)))
         wake(.input)
     }
@@ -265,6 +296,7 @@ public final class MeadowView: MTKView {
     /// Frames come from a CAMetalDisplayLink on the view's Metal layer, which calls back only when a
     /// drawable is ready, at the cadence the display really gives this window. MTKView's own loop (which
     /// asks for the drawable on the main thread and blocks there until one is free) stays switched off.
+    /// (A measuring run's meadow has a stand-in clock instead: `assumesOnScreen`.)
     private var link: CAMetalDisplayLink?
     /// The rate asked of the display link now.
     private(set) var targetRate = 60
@@ -296,15 +328,7 @@ public final class MeadowView: MTKView {
         isPaused = true
         enableSetNeedsDisplay = false
         driver.view = self
-        if let metal = layer as? CAMetalLayer {
-            let link = CAMetalDisplayLink(metalLayer: metal)
-            link.delegate = driver
-            link.preferredFrameLatency = 2
-            link.isPaused = true
-            // Common modes, so frames keep coming while a window is resized or a menu is open.
-            link.add(to: .main, forMode: .common)
-            self.link = link
-        }
+        makeLink()
         stage.settings = settings
         updateTrackingAreas()
         let center = NotificationCenter.default
@@ -320,6 +344,18 @@ public final class MeadowView: MTKView {
 
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    private func makeLink() {
+        guard link == nil, let metal = layer as? CAMetalLayer else { return }
+        let link = CAMetalDisplayLink(metalLayer: metal)
+        link.delegate = driver
+        link.preferredFrameLatency = 2
+        link.isPaused = !running
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: Float(min(30, targetRate)), maximum: Float(targetRate), preferred: Float(targetRate))
+        // Common modes, so frames keep coming while a window is resized or a menu is open.
+        link.add(to: .main, forMode: .common)
+        self.link = link
+    }
 
     public override var acceptsFirstResponder: Bool { takesKeyboardFocus }
     public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -358,6 +394,57 @@ public final class MeadowView: MTKView {
     // MARK: what is in view
 
     private var pendingReveal: (item: MeadowItem, animated: Bool)?
+
+    // MARK: following what you choose
+
+    /// A choice of yours the view has yet to follow, and when it was made.
+    private var pendingFollow: (item: MeadowItem?, at: CFTimeInterval)?
+    /// The view was not on screen when you chose: it follows at once, a cut, as soon as it is.
+    private var catchUp = false
+    /// What the view last followed, and whether you have moved the view yourself since.
+    private var lastFollowed: MeadowItem?
+    private var followedOnce = false
+    private var handMoved = false
+
+    /// You moved the view yourself (a drag, a scroll, a pinch, a turn): it is yours until you choose
+    /// something else, and a choice still waiting is dropped.
+    private func handTookOver() {
+        handMoved = true
+        pendingFollow = nil
+        catchUp = false
+    }
+
+    /// Whether a follow would be seen: the view is in a window, not hidden, and has some size. (Covered by
+    /// other windows counts as shown: it is drawn again the moment it is uncovered.)
+    private var isShownForFollowing: Bool {
+        if let shownForTests { return shownForTests }
+        guard let window, !window.isMiniaturized, !isHiddenOrHasHiddenAncestor, bounds.width >= 1, bounds.height >= 1 else { return false }
+        return true
+    }
+    /// Tests stand in for a window: shown or not.
+    var shownForTests: Bool?
+
+    /// Each frame: a choice that has waited `followSettle` for the next is followed, at once if the view
+    /// was hidden when it was made (it has just come back).
+    private func followIfDue() {
+        guard let (item, at) = pendingFollow, catchUp || clock() - at >= Self.followSettle else { return }
+        if stage.camera.held { pendingFollow = nil; catchUp = false; return }
+        let cut = catchUp || stage.camera.calm || !animatesAmbient
+        pendingFollow = nil
+        catchUp = false
+        lastFollowed = item
+        followedOnce = true
+        handMoved = false
+        stage.follow(item, cut: cut)
+        wake()
+    }
+
+    /// Diagnostics: where the camera stands (the spot it looks at, and how far back), what it is doing for a
+    /// follow, and what was followed last.
+    @_spi(Diagnostics) public var followState: (x: Float, z: Float, distance: Float, waiting: Bool, gliding: Bool, followed: MeadowItem?) {
+        let v = stage.camera.view
+        return (v.x, v.z, v.distance, pendingFollow != nil, stage.camera.chasing, stage.followed)
+    }
     /// The system's Reduce Motion as last seen, so only a change of it overrides `reduceMotion`.
     private var systemReducesMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     private var lastScrolled: CFTimeInterval = 0
@@ -426,14 +513,25 @@ public final class MeadowView: MTKView {
     /// The scene's pace now, eased toward 1 or `restPace`.
     private(set) var pace: Float = 1
     private var resting: Bool {
-        clock() - lastChange > Self.restAfter && pendingReveal == nil && stage.still
+        clock() - lastChange > Self.restAfter && pendingReveal == nil && pendingFollow == nil && stage.still
     }
     /// Diagnostics: resting at the slow tick now (`restRate`, the scene's time at `restPace`).
     @_spi(Diagnostics) public var isResting: Bool { resting && pace < Self.restPace + 0.05 }
 
     /// Diagnostics: draws as if the view were on screen even while its window is covered, for measuring
-    /// what the meadow costs in a run that must stay out of sight.
-    @_spi(Diagnostics) public var assumesOnScreen = false { didSet { pacingChanged() } }
+    /// what the meadow costs in a run that must stay out of sight. Such a window gets no frames from the
+    /// meadow's display link (a window on another Space, or wholly covered, gets a frame or two, then none),
+    /// so frames come from a stand-in clock instead, the screen's own display link, which ticks whatever the
+    /// window: each takes a drawable from the layer and is drawn and presented as the link's are, at the
+    /// same rate and pacing. The display link is set aside meanwhile (a layer it drives gives no drawables
+    /// to anyone else). A shipped app never sets this: its meadow has the display link alone.
+    @_spi(Diagnostics) public var assumesOnScreen = false {
+        didSet {
+            guard assumesOnScreen != oldValue else { return }
+            if assumesOnScreen { link?.invalidate(); link = nil } else { makeLink() }
+            pacingChanged()
+        }
+    }
 
     /// The clock pacing reads (tests give their own, which starts the view's timers afresh).
     var clock: () -> CFTimeInterval = { CACurrentMediaTime() } {
@@ -515,7 +613,9 @@ public final class MeadowView: MTKView {
                                   yielding: now < yieldUntil && !stage.camera.held, displayCap: displayCap)
         if targetRate != goal {
             targetRate = goal
-            link?.preferredFrameRateRange = CAFrameRateRange(minimum: Float(min(30, goal)), maximum: Float(goal), preferred: Float(goal))
+            let range = CAFrameRateRange(minimum: Float(min(30, goal)), maximum: Float(goal), preferred: Float(goal))
+            link?.preferredFrameRateRange = range
+            standIn?.preferredFrameRateRange = range
         }
     }
 
@@ -535,6 +635,41 @@ public final class MeadowView: MTKView {
     private func setRunning(_ on: Bool) {
         running = on
         link?.isPaused = !on
+        updateStandIn()
+    }
+
+    // MARK: the stand-in clock (`assumesOnScreen` only)
+
+    /// The screen's display link, ticking at the rate asked of the meadow's own link.
+    private var standIn: CADisplayLink?
+    private weak var standInScreen: NSScreen?
+
+    /// Runs while the view runs and stands for a visible one; follows the window to another screen.
+    private func updateStandIn() {
+        let screen = window?.screen ?? NSScreen.main
+        guard running, assumesOnScreen, let screen else {
+            standIn?.invalidate()
+            standIn = nil
+            return
+        }
+        if standIn != nil, standInScreen === screen { return }
+        standIn?.invalidate()
+        let clock = screen.displayLink(target: driver, selector: #selector(FrameDriver.standInTick(_:)))
+        clock.preferredFrameRateRange = CAFrameRateRange(minimum: Float(min(30, targetRate)), maximum: Float(targetRate), preferred: Float(targetRate))
+        clock.add(to: .main, forMode: .common)
+        standIn = clock
+        standInScreen = screen
+    }
+
+    /// A tick of the stand-in: a frame once one is due at the rate asked (the screen may tick faster), into
+    /// a drawable from the layer. Waiting for it blocks the main thread, as MTKView's own loop would: the
+    /// wait is reported apart (`Timings.drawableWaitMilliseconds`), not as the frame's work.
+    fileprivate func standInTick(refresh: CFTimeInterval) {
+        guard running, CACurrentMediaTime() - lastFrameAt >= 1 / Double(max(targetRate, 1)) - refresh / 2,
+              let metal = layer as? CAMetalLayer else { return }
+        let asked = CACurrentMediaTime()
+        guard let drawable = metal.nextDrawable() else { return }
+        drawFrame(drawable, waited: CACurrentMediaTime() - asked)
     }
 
     // Adaptive render scale, judged once a second on GPU time against the frame budget.
@@ -585,9 +720,10 @@ public final class MeadowView: MTKView {
                           worstIntervalMilliseconds: (report.intervals.max() ?? 0) * 1000, targetFramesPerSecond: targetRate,
                           renderScale: Double(renderScale), drawableSize: drawableSize, cats: stage.cats.count)
         sums = (0, 0, 0, 0, 0, 0, 0)
-        // Presented frames well short of those drawn, two seconds running: draw only what is shown.
+        // Presented frames well short of those drawn, two seconds running: draw only what is shown. (Not
+        // judged on the stand-in clock: what the compositor presents of a window nobody sees says nothing.)
         let presented = Double(report.intervals.count) / seconds, encoded = timings?.framesPerSecond ?? 0
-        if displayCap == nil, encoded > 40, presented < encoded * 0.7 {
+        if !assumesOnScreen, displayCap == nil, encoded > 40, presented < encoded * 0.7 {
             shortSeconds += 1
             if shortSeconds >= 2 { displayCap = presented > 75 ? 120 : presented > 40 ? 60 : 30; shortSeconds = 0; cappedSeconds = 0 }
         } else {
@@ -608,13 +744,16 @@ public final class MeadowView: MTKView {
         pace += ((calmer ? Self.restPace : 1) - pace) * min(1, dt * (calmer ? 1.5 : 8))
         if abs(pace - 1) < 0.002 { pace = 1 }
         stage.pace = pace
+        followIfDue()
         stage.update(dt)
         if pendingReveal != nil { revealWhenLanded() }
         settle(dt * pace)
         noticeView()
     }
 
-    fileprivate func drawFrame(_ drawable: CAMetalDrawable) {
+    /// One frame, into `drawable` (from the display link, or from the layer on the stand-in clock after
+    /// `waited` seconds asking for it).
+    fileprivate func drawFrame(_ drawable: CAMetalDrawable, waited: CFTimeInterval = 0) {
         guard let renderer else { return }
         let now = CACurrentMediaTime()
         let dt = Float(min(now - lastFrameAt, 0.05))
@@ -643,6 +782,7 @@ public final class MeadowView: MTKView {
         let t3 = CACurrentMediaTime()
         sums.frames += 1
         sums.slot += (t1 - now) * 1000
+        sums.drawable += waited * 1000
         sums.update += (t2 - t1) * 1000
         sums.pose += renderer.poseMilliseconds
         sums.encode += ((t3 - t2) * 1000 - renderer.poseMilliseconds)
@@ -712,6 +852,7 @@ public final class MeadowView: MTKView {
         if simd_distance(point(event), start) >= 5 { dragged = true }
         if case .cat = hovered, !dragged { return }
         if petTimer != nil, dragged { petTimer?.invalidate(); petTimer = nil; stage.setPetting(false); stage.camera.grab() }
+        if dragged { handTookOver() }
         let slide = !event.modifierFlags.intersection([.command, .control, .shift]).isEmpty
         if slide { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)) } else { stage.camera.turn(dx: Float(event.deltaX), dy: Float(event.deltaY)) }
         wake(.input)
@@ -738,31 +879,35 @@ public final class MeadowView: MTKView {
         stage.camera.grab()
         wake(.input)
     }
-    public override func rightMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake(.input) }
+    public override func rightMouseDragged(with event: NSEvent) { handTookOver(); stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake(.input) }
     public override func rightMouseUp(with event: NSEvent) { stage.camera.release() }
     public override func otherMouseDown(with event: NSEvent) { stage.camera.grab() }
-    public override func otherMouseDragged(with event: NSEvent) { stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake(.input) }
+    public override func otherMouseDragged(with event: NSEvent) { handTookOver(); stage.camera.slide(dx: Float(event.deltaX), dy: Float(event.deltaY)); wake(.input) }
     public override func otherMouseUp(with event: NSEvent) { stage.camera.release() }
 
     /// Scrolling zooms toward whatever is under the cursor; a trackpad's momentum carries on smoothly.
     public override func scrollWheel(with event: NSEvent) {
+        // A trackpad's momentum from before a follow began does not undo it: only a fresh touch does.
+        if stage.camera.chasing, !event.momentumPhase.isEmpty { return }
         let precise = event.hasPreciseScrollingDeltas
         // A sidebar's column scrolls, as any sidebar does; pinch (or ⌘-scroll) still zooms.
         if stage.settings.arrangement == .column, !event.modifierFlags.contains(.command) {
             let dy = precise ? Float(event.scrollingDeltaY) : Float(event.scrollingDeltaY) * 16
             lastScrolled = CACurrentMediaTime()
             pendingReveal = nil
-            if dy != 0 { stage.camera.scroll(dy: dy); wake(.input) }
+            if dy != 0 { handTookOver(); stage.camera.scroll(dy: dy); wake(.input) }
             return
         }
         let pixels = precise ? -Float(event.scrollingDeltaY) : -Float(event.scrollingDeltaY) * 16
         if pixels == 0 { return }
+        handTookOver()
         let factor = exp(clamp(pixels, -120, 120) * (precise ? 0.004 : 0.0022))
         stage.camera.zoom(by: factor, at: point(event), immediate: precise)
         wake(.input)
     }
     /// Pinching zooms toward the cursor.
     public override func magnify(with event: NSEvent) {
+        handTookOver()
         stage.camera.zoom(by: 1 / max(0.2, 1 + Float(event.magnification)), at: point(event), immediate: true)
         wake(.input)
     }
@@ -773,6 +918,7 @@ public final class MeadowView: MTKView {
 
     /// Turning two fingers turns the view.
     public override func rotate(with event: NSEvent) {
+        handTookOver()
         stage.camera.twist(-Float(event.rotation) * .pi / 180)
         wake(.input)
     }
@@ -786,5 +932,11 @@ private final class FrameDriver: NSObject, CAMetalDisplayLinkDelegate {
         nonisolated(unsafe) let drawable = update.drawable
         nonisolated(unsafe) let me = self
         MainActor.assumeIsolated { me.view?.drawFrame(drawable) }
+    }
+    /// The stand-in clock's tick (`MeadowView.assumesOnScreen`), on the main run loop too.
+    @objc func standInTick(_ link: CADisplayLink) {
+        let refresh = link.duration
+        nonisolated(unsafe) let me = self
+        MainActor.assumeIsolated { me.view?.standInTick(refresh: refresh) }
     }
 }

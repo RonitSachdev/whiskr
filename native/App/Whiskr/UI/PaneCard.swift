@@ -184,18 +184,34 @@ final class PaneCard: NSView {
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let pointerArea { removeTrackingArea(pointerArea) }
-        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        // Its own bounds, not `.inVisibleRect`: views do not clip since macOS 14, so a visible rectangle can reach
+        // over the neighbouring panes.
+        let area = NSTrackingArea(rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow], owner: self, userInfo: nil)
         addTrackingArea(area)
         pointerArea = area
     }
 
     override func mouseEntered(with event: NSEvent) {
+        watchCommand()
+        pointerChanged(command: event.modifierFlags.contains(.command))
+    }
+
+    /// Starts watching ⌘ while the pointer is over the pane.
+    private func watchCommand() {
         guard flagsMonitor == nil else { return }
         flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.pointerChanged(command: event.modifierFlags.contains(.command))
             return event
         }
-        pointerChanged(command: event.modifierFlags.contains(.command))
+    }
+
+    /// A pane shown again under a pointer that has not moved (its tab chosen with a key, or back from a file
+    /// opened by ⌘-click) gets no `mouseEntered` until the pointer moves: it watches ⌘ at once, so ⌘ over a
+    /// link underlines it as it did before the pane left.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window, bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil)) else { return }
+        watchCommand()
     }
 
     override func mouseExited(with event: NSEvent) {

@@ -90,6 +90,8 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
 
     private var themeObserver: Observing?
     private var appliedCursor: (ThemeStore.CursorShape, Bool)?
+    /// What the terminal last told programs it is: light or dark (`applyColors`).
+    private var appliedScheme: TerminalColorScheme?
     nonisolated private let outputHandler = OutputHandler()
     /// Command marks, read off SwiftTerm's own queue (`observeOscEvents`) and brought to the main thread.
     private var commandMarks: TerminalOscObservation?
@@ -212,11 +214,29 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         metalRested = false
         do {
             try setUseMetal(true)
+            keepFramesUnscaled()
             // A new renderer's layer is empty until its first frame: drawn now, before the window shows it,
             // the terminal never flashes blank.
             if returning { drawMetalFrameNow() }
         } catch {
             NSLog("Whiskr: terminals draw without Metal: \(error)")
+        }
+    }
+
+    /// SwiftTerm hands a size change made during a live resize to the renderer's next frame instead of resizing
+    /// the grid, and that frame applies it even after a later, immediate change: after a divider's drag the grid
+    /// went back to its size from before the drag, the program never told the new one (`make perf`'s sizes
+    /// check, about one run in two). The app holds each terminal's size through a live resize itself
+    /// (`LiveResize`, `PaneCard`), so to SwiftTerm the view is never in one and every change is applied at once.
+    override var inLiveResize: Bool { false }
+
+    /// The renderer's frames are drawn on its own thread and reach the screen a frame after the view's new
+    /// size does (a drag's end, a split, the window resized). Meanwhile the layer would stretch the frame it
+    /// has to the new size, the text swelling or squashing for a moment; pinned at the top left instead, the
+    /// text stays where it is and the new room shows the terminal's background until the next frame.
+    private func keepFramesUnscaled() {
+        for view in subviews where view.layer is CAMetalLayer {
+            view.layerContentsPlacement = .topLeft
         }
     }
 
@@ -335,6 +355,13 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
         nativeForegroundColor = Palette.nsColor(colors.foreground)
         caretColor = Palette.nsColor(colors.cursor)
         selectedTextBackgroundColor = Palette.nsColor(colors.selection)
+        // A program that asks whether the terminal is light or dark (`CSI ? 996 n`, or told as it changes after
+        // `CSI ? 2031 h`) picks its colours for that background: SwiftTerm says dark until told.
+        let scheme: TerminalColorScheme = colors.isDark ? .dark : .light
+        if appliedScheme != scheme {
+            appliedScheme = scheme
+            updateColorScheme(scheme)
+        }
     }
 
     private static func cursorStyle(_ shape: ThemeStore.CursorShape, blinks: Bool) -> CursorStyle {

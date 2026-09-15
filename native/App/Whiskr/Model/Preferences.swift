@@ -24,17 +24,17 @@ final class Preferences {
     var resumeClaude: Bool { didSet { save(resumeClaude, "resumeClaude") } }
     /// Where a new tab or split opens: the focused pane's folder, or your home folder.
     var newTerminalFolder: NewTerminalFolder { didSet { AppPlaces.defaults.set(newTerminalFolder.rawValue, forKey: "newTerminalFolder") } }
-    /// While you are in another app: a notification when Claude needs you, and when it finishes.
-    var notifyRequests: Bool { didSet { save(notifyRequests, "notifyRequests") } }
-    var notifyFinished: Bool { didSet { save(notifyFinished, "notifyFinished") } }
+    /// Settings › Alerts: each event's sound and notification, the volume (`AlertPreferences`).
+    var alerts: AlertPreferences {
+        didSet {
+            guard alerts != oldValue else { return }
+            for (key, value) in alerts.stored { AppPlaces.defaults.set(value, forKey: key) }
+        }
+    }
     /// The Dock icon counts requests.
     var dockBadge: Bool { didSet { save(dockBadge, "dockBadge") } }
     /// The Dock icon bounces once for a request while you are in another app.
     var dockBounce: Bool { didSet { save(dockBounce, "dockBounce") } }
-    /// The alert sounds (§6.4): a request (an error has its own sound, under the same switch), a finish.
-    var soundRequests: Bool { didSet { save(soundRequests, "soundRequests") } }
-    var soundFinished: Bool { didSet { save(soundFinished, "soundFinished") } }
-    var soundVolume: Double { didSet { AppPlaces.defaults.set(soundVolume, forKey: "soundVolume") } }
     /// Pause Alerts (§6.6): no sounds and no notifications until then; nil when not paused.
     var alertsPausedUntil: Date? { didSet { AppPlaces.defaults.set(alertsPausedUntil, forKey: "alertsPausedUntil") } }
     var optionKey: OptionKey { didSet { AppPlaces.defaults.set(optionKey.rawValue, forKey: "optionKey") } }
@@ -60,13 +60,15 @@ final class Preferences {
         func flag(_ key: String, _ fallback: Bool) -> Bool { defaults.object(forKey: key) as? Bool ?? fallback }
         resumeClaude = flag("resumeClaude", true)
         newTerminalFolder = defaults.string(forKey: "newTerminalFolder").flatMap(NewTerminalFolder.init(rawValue:)) ?? .current
-        notifyRequests = flag("notifyRequests", true)
-        notifyFinished = flag("notifyFinished", true)
+        let alerts = AlertPreferences(stored: defaults.dictionaryRepresentation())
+        self.alerts = alerts
+        // The earlier version's alert switches, carried over just above: kept once in the new keys, then gone.
+        if AlertPreferences.Key.earlier.contains(where: { defaults.object(forKey: $0) != nil }) {
+            for (key, value) in alerts.stored { defaults.set(value, forKey: key) }
+            for key in AlertPreferences.Key.earlier { defaults.removeObject(forKey: key) }
+        }
         dockBadge = flag("dockBadge", true)
         dockBounce = flag("dockBounce", false)
-        soundRequests = flag("soundRequests", true)
-        soundFinished = flag("soundFinished", true)
-        soundVolume = defaults.object(forKey: "soundVolume") as? Double ?? 0.4
         alertsPausedUntil = defaults.object(forKey: "alertsPausedUntil") as? Date
         optionKey = defaults.string(forKey: "optionKey").flatMap(OptionKey.init(rawValue:)) ?? .left
         worktreeFolderChoice = defaults.string(forKey: "worktreeFolder")

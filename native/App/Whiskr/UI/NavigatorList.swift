@@ -9,6 +9,16 @@ struct NavigatorList: View {
     let workbench: Workbench
 
     var body: some View {
+        ScrollViewReader { proxy in
+            list
+                // What you choose on the right is scrolled into sight, as the meadow brings its blanket in.
+                .onChange(of: workbench.choices) {
+                    if let id = workbench.selectedWorkspace?.id { proxy.scrollTo(id) }
+                }
+        }
+    }
+
+    private var list: some View {
         List(selection: Binding(
             get: { workbench.selectedWorkspace?.id },
             set: { id in
@@ -18,6 +28,7 @@ struct NavigatorList: View {
                 ForEach(Array(workbench.workspaces.enumerated()), id: \.element.id) { index, workspace in
                     WorkspaceRow(workbench: workbench, workspace: workspace, number: index + 1)
                         .tag(workspace.id)
+                        .id(workspace.id)
                 }
             }
         }

@@ -14,8 +14,12 @@ import WhiskrKit
 /// view under the pointer or with the keyboard), never through the model.
 ///
 ///   --perf <file>             runs the measurements, writes the table to <file> and stdout, then quits
-///   --perf-flows <a,b,…>      only these: typing, yes, cat, stream, newtab, close, switch, memory, idle; and the
-///                             checks, run only when named: closing, sizes, interactions (`DebugInteractions`)
+///   --perf-flows <a,b,…>      only these: typing, yes, cat, stream, newtab, close, switch, memory, idle, motion
+///                             (the interface's transitions, frame by frame: `DebugAnimations`); and the
+///                             checks, run only when named: closing, sizes, interactions (`DebugInteractions`),
+///                             journey, files, layout, robust, alerts (`DebugFlowAlerts`),
+///                             meadow (`DebugFlowMeadowFollow`), chrome (`DebugFlowChrome`) and resize
+///                             (dividers dragged, the window resized, regions shown and hidden: `DebugFlowResize`)
 ///   --perf-cats               four more workspaces with Claudes at work, so the meadow is busy
 ///   --perf-keys <n>           keystrokes timed in `typing` (150)
 ///   --perf-limits             checks the measurements against `PerfSuite`'s limits; exits with 1 when one
@@ -55,6 +59,9 @@ enum DebugPerf {
         guard let out = DebugScenario.value("--perf"), let window = controller.window else { return }
         setvbuf(stdout, nil, _IONBF, 0)
         KeyStandIn.install(window)
+        // The run's own pointer for every flow, from the start: without it, what the views ask of the pointer
+        // (a tab that slid under it, a link under ⌘) was the real pointer of whoever sits at this Mac.
+        PointerStandIn.install()
         // `--window` larger than this Mac's screen (a 2560×1440 display's window, on a laptop): kept as asked.
         if let size = DebugScenario.value("--window")?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
             UnconstrainedFrame.install()
@@ -454,7 +461,7 @@ final class PerfSuite {
     }
 
     /// The correctness checks, run only when named.
-    private static let checkFlows: Set<String> = ["closing", "sizes", "interactions", "journey", "files", "layout", "robust"]
+    private static let checkFlows: Set<String> = ["closing", "sizes", "interactions", "journey", "files", "layout", "robust", "alerts", "meadow", "chrome", "resize"]
 
     /// Without `--perf-flows`, every measurement; the checks only when named.
     private func wants(_ flow: String) -> Bool { flows?.contains(flow) ?? !Self.checkFlows.contains(flow) }
@@ -483,6 +490,10 @@ final class PerfSuite {
         if wants("files") { await filesCheck() }
         if wants("layout") { await layoutCheck() }
         if wants("robust") { await robustCheck() }
+        if wants("alerts") { await alertsCheck() }
+        if wants("meadow") { await meadowFollowCheck() }
+        if wants("chrome") { await chromeCheck() }
+        if wants("resize") { await resizeCheck() }
         guard flows.map({ !$0.subtracting(Self.checkFlows).isEmpty }) ?? true else { return }
         // From before the first terminal: making its view (its renderer among it) is main-thread work too.
         pinger.start()
@@ -504,6 +515,8 @@ final class PerfSuite {
             ("cat", { await self.flood("cat", command: "cat \(ShellQuote.quote(self.bigFile().path))", switchMidway: true) }),
             ("stream", { await self.flood("stream", command: "perl \(ShellQuote.quote(self.streamScript().path)) 6", switchMidway: true, typeMidway: true) }),
             ("idle", idle),
+            // Last: the workspace it opens and closes again changes nothing measured before it.
+            ("motion", motion),
         ]
         for (name, flow) in measured where wants(name) || (name == "newtab" && wants("close")) {
             flowStart = perfNow()
@@ -1105,16 +1118,25 @@ final class PerfSuite {
         let gpu = drawn.isEmpty ? 0 : drawn.map { $0.gpuMilliseconds * $0.framesPerSecond }.reduce(0, +) / Double(drawn.count)
         let fps = drawn.isEmpty ? 0 : drawn.map(\.framesPerSecond).reduce(0, +) / Double(drawn.count)
         let others = MachineLoad.shared.others(from: start, to: end)
+        // Standing in for a visible window, the meadow always draws (at rest, 12 times a second): none drawn
+        // means nothing of its cost was measured, whatever the numbers say. A failed check, not a limit, so a
+        // busy Mac cannot make it "not comparable".
+        let unmeasured = meadow.assumesOnScreen && drawn.allSatisfy { $0.framesPerSecond == 0 }
+        if meadow.assumesOnScreen {
+            check("\(name): the meadow drew frames, as on a visible window", !unmeasured,
+                  unmeasured ? "not measurable: the meadow got no frames from the display" : "")
+        }
         func f(_ value: Double?) -> String { value.map { String(format: "%.1f", $0) } ?? "-" }
         rows.append(PerfRow(name: name, values: [
             ("cpu %", f(appCPU)), ("wakeups/s", wakeups(appBefore, appAfter)),
             ("host cpu %", f(hostCPU)), ("host wakeups/s", wakeups(hostBefore, hostAfter)),
             ("terminal frames/s", f(Double(frames.count) / seconds)), ("chrome updates/s", f(chrome)),
-            ("meadow at rest after", rested.map { f(($0 - begun) / 1000) + " s" } ?? (meadow.assumesOnScreen ? "never (20 s)" : "-")),
+            ("meadow at rest after", unmeasured ? "not measurable (no frames)"
+                : rested.map { f(($0 - begun) / 1000) + " s" } ?? (meadow.assumesOnScreen ? "never (20 s)" : "-")),
             ("meadow frames/s", String(format: "%.0f/%d", fps, drawn.last?.targetFramesPerSecond ?? 0)),
             ("meadow gpu ms/s", f(gpu)), ("others' load cores", f(others)),
         ]))
-        guard limits else { return }
+        guard limits, !unmeasured else { return }
         limit("\(name): process CPU %", appCPU, atMost: 15)
         limit("\(name): the session host's CPU %", hostCPU, atMost: 3)
         limit("\(name): chrome updates a second", chrome, atMost: 1)
@@ -1146,7 +1168,8 @@ final class PerfSuite {
         check("\(name): program, terminal and view agree on the size", told != nil && program == "\(grid.cols)x\(grid.rows)"
               && grid.cols == room.columns && grid.rows == room.rows,
               "program \(program), terminal \(grid.cols)x\(grid.rows), view room \(room.columns)x\(room.rows), "
-              + "view \(pane.surface.convert(pane.surface.bounds, to: nil).integral) in its card \(pane.surface.superview.map { $0.convert($0.bounds, to: nil).integral } ?? .zero)")
+              + "view \(pane.surface.convert(pane.surface.bounds, to: nil).integral) in its card \(pane.surface.superview.map { $0.convert($0.bounds, to: nil).integral } ?? .zero), "
+              + "held for a live resize \(LiveResize.shared.isActive), the view in a live resize \(pane.surface.inLiveResize)")
     }
 
     /// New tabs, splits right and down, a three-way split, a divider dragged, the meadow's divider dragged:

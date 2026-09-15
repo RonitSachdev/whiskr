@@ -3,10 +3,15 @@ import SwiftUI
 import WhiskrKit
 
 /// The command palette (Go › Command Palette…, ⇧⌘P) and Go to (⌘P), as one overlay (docs/DESIGN.md;
-/// as herdr has them): a field over the terminals and a list below it. Go to finds any workspace,
-/// tab, Claude or helper by name, folder, branch or state ("needs you", "finished", "working", "idle");
-/// the palette finds those and every menu command, with its key. ↑ ↓ move, Return opens, Esc closes and
-/// the keyboard goes back where it was.
+/// as herdr has them): a field and a list below it, opening out of the top bar's search field as the
+/// command centres of VS Code and Cursor do. Go to finds any workspace, tab, Claude or helper by name,
+/// folder, branch or state ("needs you", "finished", "working", "idle"); the palette finds those and every
+/// menu command, with its key. ↑ ↓ move, Return opens, Esc closes and the keyboard goes back where it was.
+///
+/// It comes in with a quick fade and grow from the field and goes out the same way, reversed
+/// (`OverlayMotion`); the keyboard is in its field from the first frame, and back where it was the moment
+/// it is put away. The list growing or shrinking moves the card's foot rather than jumping
+/// (`PaletteView`).
 @MainActor
 final class PaletteController: NSObject, NSWindowDelegate {
     enum Mode { case commands, goTo }
@@ -46,51 +51,92 @@ final class PaletteController: NSObject, NSWindowDelegate {
         model.onClose = { [weak self] in self?.close() }
         model.refresh()
         self.model = model
-        let panel = PalettePanel(contentRect: NSRect(x: 0, y: 0, width: PaletteView.width, height: 420),
+        let (panel, host) = kept ?? makePanel(model)
+        kept = (panel, host)
+        host.rootView = PaletteView(model: model)
+        panel.card = { [weak model] in model.map(PaletteView.cardFrame) ?? .zero }
+        panel.isLeaving = false
+        panel.ignoresMouseEvents = false
+        Self.place(panel, over: parent, margin: PaletteView.margin)
+        if panel.parent !== parent { parent.addChildWindow(panel, ordered: .above) }
+        panel.makeKey()
+        // The field has the keyboard now, before the first frame: a key typed straight after ⌘P is the
+        // query's first letter (a kept panel's view has appeared already, so its `onAppear` is not enough).
+        host.view.layoutSubtreeIfNeeded()
+        if let field = Self.field(in: host.view), !(panel.firstResponder is NSTextView) { panel.makeFirstResponder(field) }
+        self.panel = panel
+        if parent.isVisible && !DebugPlaces.isBackground { panel.orderFront(nil) }
+        if let layer = host.view.layer { OverlayMotion.appear(layer) }
+    }
+
+    /// The overlay's panel and its SwiftUI host, made once and kept between showings: making them on every
+    /// ⌘P held the main thread 20 to 30 ms before Go to's first frame.
+    private var kept: (panel: PalettePanel, host: NSHostingController<PaletteView>)?
+
+    /// The panel keeps one size, room for the longest list; the card inside it draws its own shadow and
+    /// takes the list's height as it changes, so neither the window nor its shadow is resized as you type.
+    private func makePanel(_ model: PaletteModel) -> (PalettePanel, NSHostingController<PaletteView>) {
+        let panel = PalettePanel(contentRect: NSRect(origin: .zero, size: PaletteView.panelSize),
                                  styleMask: [.borderless, .fullSizeContentView], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.hasShadow = false
         panel.isReleasedWhenClosed = false
-        panel.animationBehavior = .utilityWindow
+        panel.animationBehavior = .none
         panel.delegate = self
-        // The panel takes the list's height as it changes (fewer results, a shorter panel), its top fixed.
         let host = NSHostingController(rootView: PaletteView(model: model))
-        host.sizingOptions = [.preferredContentSize]
+        host.sizingOptions = []
         panel.contentViewController = host
-        panel.setContentSize(host.view.fittingSize)
-        place(panel)
-        parent.addChildWindow(panel, ordered: .above)
-        panel.makeKey()
-        self.panel = panel
-        if parent.isVisible && !DebugPlaces.isBackground { panel.orderFront(nil) }
+        panel.setContentSize(PaletteView.panelSize)
+        host.view.wantsLayer = true
+        return (panel, host)
     }
 
-    /// Centred over the terminals, a fifth of the way down (where Spotlight and Xcode's Open Quickly sit).
-    private func place(_ panel: NSPanel) {
-        guard let parent else { return }
-        let frame = parent.frame
-        let terminals = parent.contentViewController.flatMap { ($0 as? NSSplitViewController)?.splitViewItems.last?.viewController.view }
-        let region = terminals.flatMap { view -> NSRect? in
-            guard let window = view.window, !view.isHiddenOrHasHiddenAncestor else { return nil }
-            return window.convertToScreen(view.convert(view.bounds, to: nil))
-        } ?? frame
+    /// The first text field in `view` (SwiftUI's field is AppKit's underneath).
+    private static func field(in view: NSView) -> NSTextField? {
+        if let field = view as? NSTextField, field.isEditable { return field }
+        for subview in view.subviews { if let found = field(in: subview) { return found } }
+        return nil
+    }
+
+    /// Hung from the top bar's search field, as VS Code's and Cursor's command centres open: the card's top
+    /// on the field's, centred on it, so the field seems to open into the list. `margin` is the room the
+    /// panel keeps round its card for the shadow. (The worktree panel opens in the same place.)
+    static func place(_ panel: NSPanel, over window: NSWindow, margin: CGFloat) {
+        let frame = window.frame
+        let bar = (window.contentViewController as? FrameController)?.topBar
+        let anchor = bar.flatMap { bar -> NSRect? in
+            guard bar.window === window else { return nil }
+            return window.convertToScreen(bar.convert(bar.bounds, to: nil))
+        }
         let size = panel.frame.size
-        let x = region.midX - size.width / 2
-        let top = region.maxY - min(140, region.height * 0.18)
-        panel.setFrameTopLeftPoint(NSPoint(x: max(frame.minX + 12, x), y: top))
+        let middle = anchor?.midX ?? frame.midX
+        let top = (anchor?.maxY ?? frame.maxY) - GoToField.inset + margin
+        let x = min(max(middle - size.width / 2, frame.minX + Look.Space.m - margin), frame.maxX - Look.Space.m + margin - size.width)
+        panel.setFrameTopLeftPoint(NSPoint(x: x, y: top))
     }
 
+    /// Put away: the keyboard back where it was at once, the picture going out the way it came in. While
+    /// it fades it takes no click and no key, and a new one can open over it.
     func close() {
         guard let panel else { return }
         self.panel = nil
         model = nil
-        parent?.removeChildWindow(panel)
-        panel.orderOut(nil)
+        panel.isLeaving = true
+        panel.ignoresMouseEvents = true
         if let parent, parent.isVisible {
             parent.makeKey()
             if let returnFocus { parent.makeFirstResponder(returnFocus) }
         }
+        let parent = parent
+        let gone = { @MainActor [weak self, weak parent] in
+            // Opened again while it faded: it stays.
+            guard self?.panel !== panel else { return }
+            parent?.removeChildWindow(panel)
+            panel.orderOut(nil)
+        }
+        guard panel.isVisible, let layer = panel.contentView?.layer else { return gone() }
+        OverlayMotion.disappear(layer, done: gone)
     }
 
     func windowDidResignKey(_ notification: Notification) {
@@ -137,9 +183,29 @@ enum DebugPlaces {
 
 /// A panel that takes the keyboard although it has no title bar.
 final class PalettePanel: NSPanel {
-    override var canBecomeKey: Bool { true }
+    /// Where the card is in the panel's content (the rest of the panel is the shadow's room, and clear).
+    var card: () -> NSRect = { .zero }
+    /// Put away and fading out: it never takes the keyboard back.
+    var isLeaving = false
+
+    override var canBecomeKey: Bool { !isLeaving }
     override func cancelOperation(_ sender: Any?) {
         (delegate as? PaletteController)?.close()
+    }
+
+    /// A click in the clear room round the card is a click outside it: it puts the overlay away, as one on
+    /// the window behind does.
+    override func sendEvent(_ event: NSEvent) {
+        if [.leftMouseDown, .rightMouseDown, .otherMouseDown].contains(event.type), let content = contentView,
+           !card().contains(Self.fromTop(content.convert(event.locationInWindow, from: nil), in: content)) {
+            return (delegate as? PaletteController)?.close() ?? ()
+        }
+        super.sendEvent(event)
+    }
+
+    /// A point in `view`, measured from its top.
+    private static func fromTop(_ point: NSPoint, in view: NSView) -> NSPoint {
+        view.isFlipped ? point : NSPoint(x: point.x, y: view.bounds.height - point.y)
     }
 }
 
@@ -205,6 +271,14 @@ final class PaletteModel {
     }
 
     var rows: [Row] { sections.flatMap(\.rows) }
+
+    /// The list's height under the field: every row and section title, up to twelve rows (then it
+    /// scrolls); "Nothing matches." when empty.
+    var listHeight: CGFloat {
+        guard !rows.isEmpty else { return PaletteView.emptyHeight }
+        let titles = sections.filter { $0.title != nil }.count
+        return min(CGFloat(rows.count) * PaletteView.rowHeight + CGFloat(titles) * PaletteView.titleHeight + 12, PaletteView.listMost)
+    }
 
     /// What is typed, read for its prefix (`GoToQuery`): ">" lists the commands (deleting it comes back),
     /// ":42" goes to a line of the file shown, "name:42" opens a file at a line. The palette itself takes
@@ -463,20 +537,65 @@ final class PaletteModel {
     }
 }
 
-/// The overlay itself: a field, then the rows in sections; solid, in the app's surface colour.
+/// The overlay itself: a card with a field, then the rows in sections; solid, in the app's surface colour,
+/// with the shadow of what floats. The panel is the size of the longest list; the card takes the list's
+/// height. When the list grows or shrinks (a letter typed, ">" for the commands), the rows change at once
+/// and only the card's edge moves to its new place, at `Look.Motion.standard`: the list is laid out once,
+/// not on every frame.
 struct PaletteView: View {
     @Bindable var model: PaletteModel
     @FocusState private var fieldFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     static let width: CGFloat = 560
     static let rowHeight: CGFloat = 34
+    static let titleHeight: CGFloat = 27
+    static let fieldHeight: CGFloat = 52
+    static let emptyHeight: CGFloat = 64
+    /// Twelve rows; more scroll.
+    static let listMost: CGFloat = rowHeight * 12
+    /// Room round the card, inside the panel, for its shadow.
+    static let margin: CGFloat = 24
+    static let panelSize = NSSize(width: width + 2 * margin, height: fieldHeight + 1 + listMost + 2 * margin)
+
+    /// The card's place in the panel, measured from its top left.
+    static func cardFrame(_ model: PaletteModel) -> NSRect {
+        NSRect(x: margin, y: margin, width: width, height: fieldHeight + 1 + model.listHeight)
+    }
 
     var body: some View {
+        let height = Self.fieldHeight + 1 + model.listHeight
+        let shape = RoundedRectangle(cornerRadius: Look.Radius.card + 2)
+        // The edge moves; the rows inside are where they end from the first frame (revealed or covered).
+        let edge = reduceMotion ? nil : Look.Motion.animation(Look.Motion.standard)
+        ZStack(alignment: .top) {
+            shape.fill(Color.surface)
+                .overlay(shape.strokeBorder(Color.line))
+                .frame(height: height)
+                .shadow(color: .black.opacity(0.2), radius: 16, y: 8)
+                .animation(edge, value: height)
+            content
+                .frame(height: height, alignment: .top)
+                .mask(alignment: .top) { shape.frame(height: height).animation(edge, value: height) }
+        }
+        .frame(width: Self.width, height: Self.fieldHeight + 1 + Self.listMost, alignment: .top)
+        .padding(Self.margin)
+        .onAppear { fieldFocused = true }
+        // Each showing is a card of its own (the panel is kept): it opens at its height, not easing from
+        // the last one's, and its field takes the keyboard as it appears.
+        .id(ObjectIdentifier(model))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(model.mode == .goTo ? String(localized: "Go to") : String(localized: "Command Palette"))
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: model.listMode == .goTo ? "arrow.right.circle" : "command")
                     .font(.system(size: 15))
                     .foregroundStyle(Color.ink3)
+                    .contentTransition(.symbolEffect(.replace))
+                    .animation(Look.Motion.animation(Look.Motion.quick), value: model.listMode == .goTo)
                 TextField(model.placeholder, text: $model.query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 17))
@@ -488,14 +607,14 @@ struct PaletteView: View {
                     .accessibilityLabel(model.placeholder)
             }
             .padding(.horizontal, 16)
-            .frame(height: 52)
+            .frame(height: Self.fieldHeight)
             Color.line.frame(height: 1)
             if model.rows.isEmpty {
                 Text(String(localized: "Nothing matches.", comment: "Palette: no results"))
                     .font(.system(size: 13))
                     .foregroundStyle(Color.ink3)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 64)
+                    .frame(height: Self.emptyHeight)
             } else {
                 ScrollViewReader { reader in
                     ScrollView {
@@ -520,19 +639,12 @@ struct PaletteView: View {
                         }
                         .padding(.vertical, 6)
                     }
-                    .frame(height: min(CGFloat(model.rows.count) * Self.rowHeight + CGFloat(model.sections.filter { $0.title != nil }.count) * 27 + 12,
-                                       Self.rowHeight * 12))
+                    .frame(height: model.listHeight)
                     .onChange(of: model.highlighted) { _, id in if let id { reader.scrollTo(id) } }
                 }
             }
         }
         .frame(width: Self.width)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.surface))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.line))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .onAppear { fieldFocused = true }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(model.mode == .goTo ? String(localized: "Go to") : String(localized: "Command Palette"))
     }
 }
 

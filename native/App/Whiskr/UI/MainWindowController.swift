@@ -36,6 +36,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     private static let layoutKey = "windowLayout"
+    /// The regions are sliding open or shut (`applyLayout`).
+    private var sliding = false
 
     init(workbench: Workbench) {
         self.workbench = workbench
@@ -61,6 +63,12 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         terminalItem = NSSplitViewItem(viewController: terminals)
         terminalItem.minimumThickness = CGFloat(WindowLayout.terminalMinimum)
         terminalItem.canCollapse = true
+        // A region opening or closing gives its room to the other one, inside the window as it is. Left to
+        // the default, the split view keeps the other region's width and resizes the window instead: wider
+        // to open the meadow beside terminals that already fill it, narrower (to nothing, with both regions
+        // closing) as one closes. The window then no longer has the size it was given, nor its regions the
+        // layout's widths.
+        for item in [navigatorItem, terminalItem] { item.collapseBehavior = .preferResizingSiblingsWithFixedSplitView }
         split.splitViewItems = [navigatorItem, terminalItem]
 
         super.init(window: window)
@@ -192,20 +200,21 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     private func applyLayout(animated: Bool) {
         guard let window else { return }
-        let animate = animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion && window.isVisible
+        let animate = animated && Look.Motion.moves && window.isVisible && !sliding
         navigator.kind = layout.navigator
         let frame = layout.frame(window: Double(window.frame.width))
         let showNavigator = frame.navigator > 0
         if chrome.showsStatusBar != layout.showsStatusBar { chrome.showsStatusBar = layout.showsStatusBar }
         if chrome.meadowShown != showNavigator { chrome.meadowShown = showNavigator }
-        keepKeyboard(meadowShown: showNavigator, terminalsShown: frame.showsTerminals)
+        let handKeyboard = keyboardHandover(meadowShown: showNavigator, terminalsShown: frame.showsTerminals)
+        defer { handKeyboard?() }
         let width: @MainActor () -> Void = { [weak self] in
             guard let self, showNavigator, frame.showsTerminals else { return }
             self.split.setNavigatorWidth(CGFloat(frame.navigator))
         }
         // A region coming back opens at the width it is to have. Left at the one it had when it went (the
-        // meadow 600 pt wide in a window since narrowed to 720), the split view would widen the window to
-        // make room for it rather than narrow the other region.
+        // meadow 600 pt wide in a window since narrowed to 720), it would slide open to that width, taking
+        // the other region under its least.
         if showNavigator, frame.showsTerminals {
             let height = navigator.view.frame.height
             if navigatorItem.isCollapsed { navigator.view.setFrameSize(NSSize(width: frame.navigator, height: height)) }
@@ -213,20 +222,25 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         }
         let changes = navigatorItem.isCollapsed == showNavigator || terminalItem.isCollapsed == frame.showsTerminals
         if animate && changes {
-            // The divider goes where it belongs once the regions have finished opening or closing. Meanwhile
-            // terminals keep their size, as in a live resize, and one waiting to start waits for the end:
-            // a shell would draw its first prompt for a width the region only passed through.
-            LiveResize.shared.begin()
-            NSAnimationContext.runAnimationGroup { _ in
+            // The split view's own slide. The divider goes where it belongs once the regions have finished
+            // opening or closing. Meanwhile terminals keep their size, as in a live resize, and one waiting
+            // to start waits for the end: a shell would draw its first prompt for a width the region only
+            // passed through.
+            sliding = true
+            LiveResize.shared.slide { _ in
                 if terminalItem.isCollapsed == frame.showsTerminals { terminalItem.animator().isCollapsed = !frame.showsTerminals }
                 if navigatorItem.isCollapsed == showNavigator { navigatorItem.animator().isCollapsed = !showNavigator }
-            } completionHandler: {
-                MainActor.assumeIsolated {
-                    width()
-                    LiveResize.shared.end()
-                }
+            } done: { [weak self] in
+                // The regions where the layout says now, at the window's width now: it may have changed
+                // while they slid (⌃⌘S twice in quick succession, the window resized).
+                self?.sliding = false
+                self?.applyLayout(animated: false)
             }
         } else {
+            // At once: with Reduce Motion, in a window out of sight, and over a slide still on its way (the
+            // split view, asked to slide again before its last slide has ended, left both stalled and then
+            // resized the window to fit what it was left with: to 1 pt wide, measured). That slide's end
+            // settles the rest.
             if terminalItem.isCollapsed == frame.showsTerminals { terminalItem.isCollapsed = !frame.showsTerminals }
             if navigatorItem.isCollapsed == showNavigator { navigatorItem.isCollapsed = !showNavigator }
             width()
@@ -234,15 +248,21 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     /// A region going away with the keyboard in it hands the keyboard to the one that stays: the meadow's
-    /// to the focused terminal (or Home), the terminals' to the meadow.
-    private func keepKeyboard(meadowShown: Bool, terminalsShown: Bool) {
-        guard let window, let responder = window.firstResponder as? NSView else { return }
+    /// to the focused terminal (or Home), the terminals' to the meadow. Where the keyboard is is read now,
+    /// and it is handed over once the regions have been told what to show: a region that is closed at once
+    /// takes the keyboard out of the window, and one still closed cannot take it.
+    private func keyboardHandover(meadowShown: Bool, terminalsShown: Bool) -> (() -> Void)? {
+        guard let window, let responder = window.firstResponder as? NSView else { return nil }
         if !meadowShown, responder.isDescendant(of: navigator.view) {
-            navigator.keyboardLeft()
-            if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else { terminals.focusHome() }
+            return { [weak self] in
+                guard let self else { return }
+                navigator.keyboardLeft()
+                if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else { terminals.focusHome() }
+            }
         } else if !terminalsShown, responder.isDescendant(of: terminals.view) {
-            navigator.takeKeyboard()
+            return { [weak self] in self?.navigator.takeKeyboard() }
         }
+        return nil
     }
 
     /// View › Hide Status Bar / Show Status Bar (⌥⌘/).
@@ -312,6 +332,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     func debugSetLayout(_ change: (inout WindowLayout) -> Void) {
         change(&layout)
     }
+
+    /// Debug builds: which regions the split view has closed (a closed one keeps its view, and its last
+    /// width, out of sight).
+    var debugCollapsed: (meadow: Bool, terminals: Bool) { (navigatorItem.isCollapsed, terminalItem.isCollapsed) }
     #endif
 
     @objc private func lookingChanged() {
@@ -650,9 +674,12 @@ final class RegionsController: NSSplitViewController {
 
     override func splitViewDidResizeSubviews(_ notification: Notification) {
         super.splitViewDidResizeSubviews(notification)
+        (splitView as? RegionsSplitView)?.dividerMoved()
         // Only a drag of the divider itself, by the mouse, says where you want it (collapsing or opening a
         // region resizes too, with the same notification).
-        let byHand = [.leftMouseDragged, .leftMouseUp].contains(NSApp.currentEvent?.type)
+        // (Not told by the event being handled: a click's release stays the app's current event until the
+        // next one, all through a slide the click began.)
+        let byHand = (splitView as? RegionsSplitView)?.isDraggingDivider == true
         guard !settingWidth, byHand, notification.userInfo?["NSSplitViewDividerIndex"] != nil, splitViewItems.count == 2 else { return }
         // Where the divider is now: 0 when the meadow was dragged shut, the whole width when the terminals were.
         let width = splitViewItems[0].isCollapsed ? 0 : splitViewItems[1].isCollapsed ? splitView.bounds.width : splitViewItems[0].viewController.view.frame.width
@@ -677,15 +704,26 @@ final class RegionsSplitView: NSSplitView {
             }
         }
         // Anything else that reaches the split view itself is a drag of its divider.
-        glow.show(dividerLine)
-        LiveResize.shared.during { super.mouseDown(with: event) }
-        if let window, !dividerReach.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil)) { glow.hide() }
+        isDraggingDivider = true
+        glow.drag({ super.mouseDown(with: event) }, pointerOnDivider: { [unowned self] in isPointerOnDivider })
+        isDraggingDivider = false
     }
+
+    /// The divider is being dragged by the mouse (its tracking loop is running): what the regions' resizing
+    /// meanwhile says is where you want it.
+    private(set) var isDraggingDivider = false
 
     // MARK: Showing it can be dragged (`DividerGlow`)
 
-    private lazy var glow = DividerGlow(in: self)
+    private lazy var glow = DividerGlow(in: self) { [unowned self] in dividerLine }
     private var dividerArea: NSTrackingArea?
+
+    /// The divider moved (a drag, the window resized, a region opened or closed): what follows the pointer
+    /// and what shows it, along with it.
+    func dividerMoved() {
+        updateTrackingAreas()
+        glow.follow()
+    }
 
     /// The meadow's edge, while both regions show.
     private var dividerLine: NSRect {
@@ -695,6 +733,11 @@ final class RegionsSplitView: NSSplitView {
     }
 
     private var dividerReach: NSRect { dividerLine.insetBy(dx: -4, dy: 0) }
+
+    private var isPointerOnDivider: Bool {
+        guard let window, dividerLine != .zero else { return false }
+        return dividerReach.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+    }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -708,9 +751,14 @@ final class RegionsSplitView: NSSplitView {
 
     override func resizeSubviews(withOldSize oldSize: NSSize) {
         super.resizeSubviews(withOldSize: oldSize)
-        updateTrackingAreas()
+        dividerMoved()
     }
 
-    override func mouseEntered(with event: NSEvent) { glow.pointerEntered(dividerLine) }
-    override func mouseExited(with event: NSEvent) { glow.hide() }
+    override func layout() {
+        super.layout()
+        dividerMoved()
+    }
+
+    override func mouseEntered(with event: NSEvent) { glow.pointer(isOn: isPointerOnDivider) }
+    override func mouseExited(with event: NSEvent) { glow.pointer(isOn: isPointerOnDivider) }
 }

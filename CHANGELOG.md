@@ -138,8 +138,48 @@ Nothing has been released yet. This is what the first release will contain.
   (`~/.workers-factory`) becomes `~/.whiskr` when it holds no checkout; checkouts stay where they are. A
   session host the old app left running is never stopped, and its terminals are counted and left alone.
 
+- Settings › Alerts: for each event (permission request, question, finished, error, helper finished, a
+  terminal's bell) its sound (Whiskr's, the Mac's, one of your own files, or none) and whether it
+  notifies, each with Play; a volume; sounds only while Whiskr is in the background; and whether macOS
+  lets Whiskr's notifications through, with a way to turn them on.
+- The meadow follows what you choose on the right: a workspace, tab or pane chosen by click, key, menu,
+  Go to or ⌃Tab glides its blanket and its cat into view (once a quick run of choices has stopped, and
+  not at all when it is already in view). The cat of the terminal you are in is marked by a soft pool of
+  light and a ring. Nothing an agent does moves the view, and once you move it yourself it stays until
+  you choose something else.
+- The interface moves on one small set of timings: tabs open out, close by folding as their neighbours
+  slide over, and move when dragged, with the selected tab's mark sliding to the tab you choose; Go to
+  opens out of the top bar's field and closes the same way; the ⌃Tab list, the find bar, the worktree
+  panel and Home's note fade; going Home and back cross-fades; the side panel and the status bar slide.
+  The action never waits for the picture, and with Reduce Motion things fade instead of moving.
+- The workspace menu starts with New Workspace (⌘N) and Open Folder… (⌘O).
+- Theme previews show the theme's sixteen terminal colours and its selection colour.
+
 ### Fixed
 
+- The workspace button in the tab row did nothing when clicked, nor did Home's place button, the top
+  bar's "+" or the tab row's list of tabs: each now opens its menu as it is pressed, under it, as a pop-up
+  button does. Every control in the bars shows its hover and pressed fills, and pressing one never moves
+  the window.
+- Alert sounds were never heard while you watched the Claude you had typed to, or while you were in
+  another app, and notifications never appeared: macOS was asked once and its answer never looked at
+  again.
+- Dragging a divider left a blue line where the drag began; the highlight now moves with the divider and
+  goes when the pointer leaves. The side panel's edge no longer lights with the pointer over the panes,
+  and a pane divider's highlight is one 3 pt line, not two stripes.
+- While a dark-only theme such as Nord was chosen, Settings showed the themes that have a light version
+  dark; each preview now shows its theme as it will look once chosen.
+- With a light theme, the terminal told programs that ask (`CSI ? 996 n`) that it was dark.
+- The pointer on one tab showed every tab's close button.
+- Clicking a terminal in a split gives it the keyboard; Show Workspaces as List scrolls to the workspace
+  you choose.
+- A terminal no longer stretches for a moment as it takes a new size.
+- After a divider was dragged, a terminal could go back to its size from before the drag, its program
+  told the old size.
+- Hiding and showing the meadow or the terminals could resize the window (even to nothing) instead of
+  sharing it between them, and quick toggles could leave the regions no longer following the window.
+- A region's slide that never finished (in a window out of sight) no longer leaves terminals at their old
+  size.
 - Undo Revert Change works after its diff has closed or been replaced (a preview tab gives way to the next
   file chosen in Changes); it did nothing, and the reverted lines were lost.
 - A file opened through a link (`CLAUDE.md` pointing at `AGENTS.md`) reloads when Claude edits it.

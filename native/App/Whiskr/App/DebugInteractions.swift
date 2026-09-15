@@ -666,7 +666,7 @@ enum PointerStandIn {
     nonisolated(unsafe) static var location: NSPoint? {
         didSet {
             guard let location, let window = KeyStandIn.window else { return }
-            MainActor.assumeIsolated { TrackingStandIn.move(to: location, in: window) }
+            MainActor.assumeIsolated { TrackingStandIn.move(from: oldValue, to: location, in: window) }
         }
     }
     private static var installed = false
@@ -694,39 +694,66 @@ extension NSWindow {
 /// area the pointer comes into hears `mouseEntered`, one it leaves `mouseExited`, and one that asked for
 /// moves `mouseMoved` (hover marks, the diff's change buttons, a link under ⌘). A covered window's real
 /// pointer never moves over it, so without this nothing that follows the pointer could be checked.
+///
+/// As AppKit does, an area put under a pointer that has not moved (a view laid out anew, a tab that slid
+/// under it) starts inside without an entered event, and hears `mouseExited` when the pointer leaves; an
+/// area removed hears nothing more (a view that replaces its area under the pointer hears its exit through
+/// the new one).
 @MainActor
 enum TrackingStandIn {
-    private static var inside: [ObjectIdentifier: NSTrackingArea] = [:]
-
-    static func move(to location: NSPoint, in window: NSWindow) {
+    /// Where the pointer is: each area (held, so its identity is never reused while it counts) and its
+    /// owner (held weakly: a view may go meanwhile).
+    private struct Inside {
+        let area: NSTrackingArea
+        weak var owner: NSResponder?
+        weak var view: NSView?
+        /// Still installed: AppKit sends nothing to an area once it is removed (a view that replaces its
+        /// area under the pointer hears no exit for the old one; the new one starts inside).
+        var installed: Bool { view?.trackingAreas.contains { $0 === area } ?? false }
+    }
+    private static var inside: [ObjectIdentifier: Inside] = [:]
+    /// `from`: where the pointer was until now, whether or not that reached the window.
+    static func move(from last: NSPoint?, to location: NSPoint, in window: NSWindow) {
         guard let root = window.contentView?.superview else { return }
-        var now: [ObjectIdentifier: (NSTrackingArea, NSView)] = [:]
-        func walk(_ view: NSView) {
-            guard !view.isHidden else { return }
-            for area in view.trackingAreas where area.owner != nil {
-                let rect = area.options.contains(.inVisibleRect) ? view.visibleRect : area.rect
-                if view.convert(rect, to: nil).contains(location) { now[ObjectIdentifier(area)] = (area, view) }
+        func areas(at point: NSPoint) -> [ObjectIdentifier: (NSTrackingArea, NSView)] {
+            var found: [ObjectIdentifier: (NSTrackingArea, NSView)] = [:]
+            func walk(_ view: NSView) {
+                guard !view.isHidden else { return }
+                for area in view.trackingAreas where area.owner != nil {
+                    let rect = area.options.contains(.inVisibleRect) ? view.visibleRect : area.rect
+                    if view.convert(rect, to: nil).contains(point) { found[ObjectIdentifier(area)] = (area, view) }
+                }
+                view.subviews.forEach(walk)
             }
-            view.subviews.forEach(walk)
+            walk(root)
+            return found
         }
-        walk(root)
+        // AppKit's rule for an area added since the last move (a view laid out anew, a tab that slid under the
+        // pointer): its first state is where the pointer is, so it starts inside without an entered event,
+        // and the move that leaves it sends it an exit.
+        if let last {
+            for (id, (area, view)) in areas(at: last) where inside[id] == nil {
+                inside[id] = Inside(area: area, owner: area.owner as? NSResponder, view: view)
+            }
+        }
+        let now = areas(at: location)
         let flags = HeldKeys.flags ?? []
-        func event(_ type: NSEvent.EventType, _ area: NSTrackingArea) -> NSEvent? {
+        func event(_ type: NSEvent.EventType) -> NSEvent? {
             type == .mouseMoved
                 ? NSEvent.mouseEvent(with: .mouseMoved, location: location, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                      windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 0, pressure: 0)
                 : NSEvent.enterExitEvent(with: type, location: location, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                          windowNumber: window.windowNumber, context: nil, eventNumber: 0, trackingNumber: 0, userData: nil)
         }
-        for (id, area) in inside where now[id] == nil {
-            if area.options.contains(.mouseEnteredAndExited), let event = event(.mouseExited, area) { (area.owner as? NSResponder)?.mouseExited(with: event) }
+        for (id, area) in inside where now[id] == nil && area.installed {
+            if area.area.options.contains(.mouseEnteredAndExited), let event = event(.mouseExited) { area.owner?.mouseExited(with: event) }
         }
         for (id, (area, _)) in now {
             let owner = area.owner as? NSResponder
-            if inside[id] == nil, area.options.contains(.mouseEnteredAndExited), let event = event(.mouseEntered, area) { owner?.mouseEntered(with: event) }
-            if area.options.contains(.mouseMoved), let event = event(.mouseMoved, area) { owner?.mouseMoved(with: event) }
+            if inside[id] == nil, area.options.contains(.mouseEnteredAndExited), let event = event(.mouseEntered) { owner?.mouseEntered(with: event) }
+            if area.options.contains(.mouseMoved), let event = event(.mouseMoved) { owner?.mouseMoved(with: event) }
         }
-        inside = now.mapValues(\.0)
+        inside = now.mapValues { Inside(area: $0.0, owner: $0.0.owner as? NSResponder, view: $0.1) }
     }
 }
 #endif

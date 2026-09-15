@@ -39,6 +39,8 @@ enum DebugScript {
     static func keepOutOfSight() {
         guard DebugScenario.keepsInBackground else { return }
         NSApp.setActivationPolicy(.accessory)
+        // A menu a click pops is recorded, not shown on this Mac's screen (`MenuStandIn`).
+        MenuStandIn.install()
         let swaps: [(AnyClass, Selector, Selector)] = [
             (NSWindow.self, #selector(NSWindow.toggleFullScreen(_:)), #selector(NSWindow.debugRefusedFullScreen(_:))),
             (NSWindow.self, #selector(NSWindow.order(_:relativeTo:)), #selector(NSWindow.debugOrderUnseen(_:relativeTo:))),
@@ -168,7 +170,7 @@ enum DebugScript {
             NSApp.terminate(nil)
         default:
             // Commands of the scripted flows, each in its own file (`DebugFlow*.swift`).
-            for more in [journeyCommand, filesCommand, layoutCommand, robustCommand] where more(command, argument, workbench, controller) { return }
+            for more in [journeyCommand, filesCommand, layoutCommand, robustCommand, themeSheetCommand, alertsCommand] where more(command, argument, workbench, controller) { return }
             print("  unknown command")
         }
     }

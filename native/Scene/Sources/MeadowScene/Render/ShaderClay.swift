@@ -165,6 +165,22 @@ vertex ShadowOut shadowVertex(uint vid [[vertex_id]], uint iid [[instance_id]], 
     o.opacity = inst[iid].extra.x;
     return o;
 }
+// The soft pool of light on the ground under the chosen cat: its colour in extra.yzw (linear), full in the
+// middle and fading out smoothly to its edge, so it reads as light on the cloth and not as a drawn shape.
+struct HaloOut { float4 position [[position]]; float2 uv; float4 color; };
+vertex HaloOut haloVertex(uint vid [[vertex_id]], uint iid [[instance_id]], device const ShadowInstance* inst [[buffer(3)]], constant Frame& F [[buffer(0)]]) {
+    float2 c = float2((vid & 1) ? 0.5 : -0.5, (vid & 2) ? 0.5 : -0.5);
+    HaloOut o;
+    o.position = F.viewProj * (inst[iid].model * float4(c.x, 0, c.y, 1));
+    o.uv = c * 2.0;
+    o.color = float4(inst[iid].extra.yzw, inst[iid].extra.x);
+    return o;
+}
+fragment float4 haloFragment(HaloOut in [[stage_in]]) {
+    float d = length(in.uv);
+    float a = 1.0 - smoothstep(0.3, 1.0, d);
+    return float4(in.color.rgb, a * a * in.color.a);
+}
 fragment float4 shadowFragment(ShadowOut in [[stage_in]]) {
     float d = length(in.uv);
     float a = d < 0.55 ? mix(0.32, 0.14, d / 0.55) : mix(0.14, 0.0, saturate((d - 0.55) / 0.45));

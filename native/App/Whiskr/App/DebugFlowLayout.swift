@@ -17,6 +17,7 @@ extension PerfSuite {
         await sizesSweep()
         await fullScreenCheck()
         await themesCheck()
+        await themePreviewsCheck()
         await appearanceCheck()
         await settingsCheck()
         controller.resetLayout(nil)
@@ -25,16 +26,35 @@ extension PerfSuite {
 
     // MARK: Looking at the window
 
-    /// The meadow (or the list) is on screen, at least its narrowest.
+    /// The meadow (or the list) is on screen, at least its narrowest. (A region the split view has closed
+    /// keeps its view, unhidden and at its last width.)
     var meadowShown: Bool {
         let view = controller.navigator.view
-        return !view.isHiddenOrHasHiddenAncestor && view.frame.width >= CGFloat(WindowLayout.navigatorMinimum) - 1
+        return !controller.debugCollapsed.meadow && !view.isHiddenOrHasHiddenAncestor && view.frame.width >= CGFloat(WindowLayout.navigatorMinimum) - 1
     }
 
     /// The terminals' region is on screen, at least its least width.
     var terminalsShown: Bool {
         let view = controller.terminals.view
-        return !view.isHiddenOrHasHiddenAncestor && view.frame.width >= CGFloat(WindowLayout.terminalMinimum) - 1
+        return !controller.debugCollapsed.terminals && !view.isHiddenOrHasHiddenAncestor && view.frame.width >= CGFloat(WindowLayout.terminalMinimum) - 1
+    }
+
+    /// The window as the layout says it should be, `width` points wide and settled: no slide or live
+    /// resize left holding the terminals, the meadow shown or not and as wide as the layout gives it, the
+    /// terminals taking the rest, the two (and the line between them) filling the window. What is wrong, or
+    /// nil.
+    func regionsOff(width: CGFloat) -> String? {
+        let frame = controller.layout.frame(window: Double(width))
+        let meadow = meadowShown ? controller.navigator.view.frame.width : 0
+        let terminals = terminalsShown ? controller.terminals.view.frame.width : 0
+        let line = meadow > 0 && terminals > 0 ? 1.0 : 0
+        var off: [String] = []
+        if abs(window.frame.width - width) > 0.5 { off.append("window \(Int(window.frame.width)) wide") }
+        if LiveResize.shared.isActive { off.append("a live resize still held") }
+        if (meadow > 0) != (frame.navigator > 0) || (terminals > 0) != frame.showsTerminals { off.append("meadow shown \(meadow > 0), terminals shown \(terminals > 0)") }
+        if frame.navigator > 0, frame.showsTerminals, abs(meadow - CGFloat(frame.navigator)) > 1 { off.append("meadow \(Int(meadow)) pt, not \(Int(frame.navigator))") }
+        if abs(meadow + line + terminals - width) > 1 { off.append("meadow \(Int(meadow)) and terminals \(Int(terminals)) in \(Int(width))") }
+        return off.isEmpty ? nil : off.joined(separator: "; ")
     }
 
     var frameController: FrameController? { window.contentViewController as? FrameController }
@@ -122,6 +142,7 @@ extension PerfSuite {
     /// the keyboard handed on when its region hides; Reset Layout bringing everything back.
     private func regionsCheck(_ pane: Pane) async {
         guard let workspace = workbench.selectedWorkspace else { return check("regions: a workspace", false) }
+        let width = window.frame.width
         _ = await PerfWait.until(2000) { self.meadowShown && self.terminalsShown }
         check("regions: at 1440 pt the meadow and the terminals are both shown", meadowShown && terminalsShown,
               "meadow \(Int(controller.navigator.view.frame.width)) pt, terminals \(Int(controller.terminals.view.frame.width)) pt")
@@ -157,6 +178,11 @@ extension PerfSuite {
               "first responder \(window.firstResponder.map { String(describing: type(of: $0)) } ?? "none")")
         shortcut("ctrl+cmd+s")
         _ = await PerfWait.until(2000) { self.meadowShown }
+        // Each of those came as soon as the last was seen to hold, its slide often still on its way (as a
+        // person pressing ⌃⌘S twice does): the window keeps its size, and the regions settle as the layout says.
+        _ = await PerfWait.until(2000) { self.regionsOff(width: width) == nil }
+        check("regions: hidden and shown in quick succession, the window keeps its size and the regions settle as the layout says",
+              regionsOff(width: width) == nil, regionsOff(width: width) ?? "meadow \(Int(controller.navigator.view.frame.width)), terminals \(Int(controller.terminals.view.frame.width))")
 
         // Files and Changes: ⇧⌘E, ⇧⌘C, the top bar's button, the edge dragged shut, a double-click on it.
         let panel = { self.workbench.files.panel(workspace.id) }
@@ -232,10 +258,16 @@ extension PerfSuite {
     private func sizesSweep() async {
         let sizes: [(Double, Double)] = [(720, 440), (720, 900), (800, 600), (880, 700), (1024, 768), (1280, 480), (1440, 900), (2200, 1200), (3400, 1400)]
         for (width, height) in sizes {
+            // Straight after the meadow's toggle below: its slide may still be on its way, as when a person
+            // resizes the window at once.
             window.setContentSize(NSSize(width: width, height: height))
             window.contentView?.superview?.layoutSubtreeIfNeeded()
             await PerfWait.sleep(250)
             let name = "\(Int(width))×\(Int(height))"
+            // The window keeps the size it was given, its regions the layout's widths for it, nothing held.
+            _ = await PerfWait.until(2000) { self.regionsOff(width: width) == nil }
+            check("sizes \(name): the window takes this size, the meadow and the terminals filling it as the layout says, settled",
+                  regionsOff(width: width) == nil, regionsOff(width: width) ?? "meadow \(Int(controller.navigator.view.frame.width)), terminals \(Int(controller.terminals.view.frame.width))")
             // The top bar: two controls before the search field, three after it, all inside the window, the
             // field wide enough to read and clear of its neighbours.
             if let bar = topBar {
@@ -281,7 +313,7 @@ extension PerfSuite {
             let terminalsWidth = min(controller.terminals.view.frame.width, other.terminals)
             check("sizes \(name): ⌃⌘S hides and shows the meadow, the meadow at least 240 pt and the terminals at least 320 pt",
                   toggled != nil && back != nil && meadowWidth >= CGFloat(WindowLayout.navigatorMinimum) - 1 && terminalsWidth >= CGFloat(WindowLayout.terminalMinimum) - 1,
-                  "meadow at first \(wasShown ? "shown" : "stepped aside"), widths meadow \(Int(meadowWidth)) terminals \(Int(terminalsWidth))")
+                  "meadow at first \(wasShown ? "shown" : "stepped aside"), hidden \(toggled != nil), back \(back != nil), widths meadow \(Int(meadowWidth)) terminals \(Int(terminalsWidth))")
             // Nothing too short to use: the panes keep room under the tab row.
             let panes = controller.terminals.paneArea.frame.height
             check("sizes \(name): the panes keep room under the tab row", panes >= 200, "panes \(Int(panes)) pt tall")
@@ -308,14 +340,17 @@ extension PerfSuite {
         let first = { self.topBar.map { self.inkRuns($0).first?.lowerBound ?? -1 } ?? -1 }
         let windowed = first()
         controller.windowDidEnterFullScreen(Notification(name: NSWindow.didEnterFullScreenNotification, object: window))
-        let closedUp = await PerfWait.until(2000) { first() < windowed - 40 }
+        // By the room kept for the traffic lights, less the edge's own margin: what is drawn first is the
+        // button's icon, or its fill while the meadow is shown, so where it starts is not the button's edge.
+        let shift = (window.standardWindowButton(.zoomButton)?.frame.maxX ?? 72) + Look.Space.s - Look.Space.m
+        let closedUp = await PerfWait.until(2000) { abs(windowed - first() - shift) <= 1 }
         await PerfWait.sleep(300)
         let inFullScreen = first()
         controller.windowDidExitFullScreen(Notification(name: NSWindow.didExitFullScreenNotification, object: window))
         let back = await PerfWait.until(2000) { abs(first() - windowed) < 1 }
         check("full screen: the top bar's first button moves to the edge in full screen and back after the traffic lights",
-              closedUp != nil && back != nil && inFullScreen <= Look.Space.m + 1 && windowed > 60,
-              "button at \(Int(windowed)) pt, in full screen \(Int(inFullScreen)) pt")
+              closedUp != nil && back != nil && abs(windowed - inFullScreen - shift) <= 1 && windowed > 60,
+              "button at \(Int(windowed)) pt, in full screen \(Int(inFullScreen)) pt, \(Int(shift)) pt closer expected")
     }
 
     // MARK: Themes

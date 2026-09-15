@@ -120,6 +120,9 @@ final class VillageDrawer {
         enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: n)
     }
 
+    /// The chosen cat's pool of light: a warm cream by day, the fireflies' gold by night.
+    private static let haloDay = linear(0xfffaf0), haloNight = linear(0xffd27a)
+
     /// A circle one unit across from the middle, for rings round cats and lanterns.
     private static let circle: [Vec2] = (0..<48).map { i in let a = Float(i) / 48 * 2 * .pi; return Vec2(cos(a), sin(a)) }
 
@@ -141,9 +144,18 @@ final class VillageDrawer {
             let inner = mix(chrome.surface.linearRGB, linear(0x3a3a32), t: night), outer = mix(chrome.ink.linearRGB, linear(0xf3d9a6), t: night)
             band(outlines[plot.cloth], size: plot.blanketSize, (Self.ringRows[0], Self.ringRows[1], inner), (Self.ringRows[2], Self.ringRows[3], outer),
                  model: blanketModel(plot), arena: arena, enc: enc)
-            // The chosen cat's ring.
+            // The chosen cat: a soft pool of light on the cloth under it (warm cream by day, the fireflies' gold
+            // by night), and its pale ring round it, breathing a little.
             if case .cat(_, let a) = item, let actor = plot.actors[a], !actor.leaving {
                 let p = actor.cat.position
+                let pool = (mix(Self.haloDay, Self.haloNight, t: night), 0.85 - 0.15 * night)
+                let halo = arena.alloc(ShadowInstance.self, 1)
+                halo.pointer[0] = ShadowInstance(model: .translation(Vec3(p.x, 0.03, p.z)) * .scale(Vec3(1, 1, 1) * actor.shownSize * 5),
+                                                 extra: Vec4(pool.1, pool.0.x, pool.0.y, pool.0.z))
+                enc.setRenderPipelineState(gpu.halo)
+                enc.setVertexBuffer(halo.buffer, offset: halo.offset, index: 3)
+                enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+                enc.setRenderPipelineState(gpu.clayBlend)
                 one(arena, ClayInstance(.translation(Vec3(p.x, 0.02, p.z)) * .scale(actor.shownSize * (1.3 + sin(stage.time * 3) * 0.04)), tint: Vec4(1, 1, 1, 0.9), lit: .unlit), enc)
                 draw(catRing, 1, enc)
             }

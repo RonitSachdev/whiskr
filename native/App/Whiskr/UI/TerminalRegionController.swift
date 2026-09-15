@@ -15,7 +15,10 @@ final class TerminalRegionController: NSViewController {
     private(set) var home: NSHostingView<HomeHost>!
     private var homeObserver: Observing?
     private(set) var sidePanel: SidePanelView!
+    /// The panel's width, kept while it is closed: it slides out and back in at that width.
     private var panelWidth: NSLayoutConstraint!
+    /// How far the panel stands past the work area's trailing edge: 0 while open, its width while closed.
+    private var panelOffset: NSLayoutConstraint!
     private var panelObserver: Observing?
     private var shownPanel: (workspace: UUID?, shown: Bool)?
     /// The panel's leading edge, the work area's own (above the panes and the panel). Hidden while the
@@ -65,7 +68,6 @@ final class TerminalRegionController: NSViewController {
             panes.trailingAnchor.constraint(equalTo: panel.leadingAnchor),
             panes.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             panel.topAnchor.constraint(equalTo: tabs.bottomAnchor),
-            panel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             panel.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             home.topAnchor.constraint(equalTo: tabs.bottomAnchor),
             home.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -75,8 +77,9 @@ final class TerminalRegionController: NSViewController {
             undo.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             undo.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
         ])
-        panelWidth = panel.widthAnchor.constraint(equalToConstant: 0)
-        panelWidth.isActive = true
+        panelWidth = panel.widthAnchor.constraint(equalToConstant: CGFloat(FilesCenter.panelDefault))
+        panelOffset = panel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: panelWidth.constant)
+        NSLayoutConstraint.activate([panelWidth, panelOffset])
         panel.isHidden = true
         workbench.files.onReveal = { [weak panel] url in panel?.reveal(url) }
         // A helper terminal with no tab of its own, looked at over the panes.
@@ -94,6 +97,7 @@ final class TerminalRegionController: NSViewController {
         panelEdge.onReset = { [weak self] in self?.resetPanelWidth() }
         panelEdge.currentWidth = { [weak self] in
             guard let self else { return 0 }
+            guard !self.sidePanel.isHidden else { return 0 }
             self.dragStartWidth = Double(self.panelWidth.constant)
             return self.panelWidth.constant
         }
@@ -114,10 +118,19 @@ final class TerminalRegionController: NSViewController {
         homeObserver = Observing { [weak self] in self?.showHome() }
     }
 
-    /// Home's page shown while no workspace is selected.
+    /// Home's page shown while no workspace is selected. Going Home or back cross-fades the work area
+    /// (`Look.Motion.standard`, in the render server); what is shown has the keyboard at once.
     private func showHome() {
         let isHome = workbench.isHome
-        if home.isHidden == isHome { home.isHidden = !isHome }
+        guard home.isHidden == isHome else { return }
+        if view.window?.isVisible == true, let layer = view.layer {
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = Look.Motion.standard
+            fade.timingFunction = Look.Motion.curve
+            layer.add(fade, forKey: "home")
+        }
+        home.isHidden = !isHome
     }
 
     /// Home takes the keyboard (at launch, ⌘N, Go › Home, a workspace closing): ↑ ↓ and Return. Shown,
@@ -131,35 +144,43 @@ final class TerminalRegionController: NSViewController {
     }
 
     /// The selected workspace's panel: shown or not (sliding in and out), at its width.
+    ///
+    /// The slide is Core Animation's: everything is laid out once, where it ends, inside an animation context
+    /// that eases each view's layer from where it was (`Look.Motion.region`, `Look.Motion.curve`). The panel
+    /// keeps its width and only moves, so its list is never laid out again on the way, and nothing is laid
+    /// out frame by frame on the main thread. Terminals keep their size meanwhile and take the new one once,
+    /// at the end. With Reduce Motion it is shown or put away at once.
     private func updatePanel() {
         let workspace = workbench.selectedWorkspace
         let state = workspace.map { workbench.files.panel($0.id) } ?? FilesCenter.Panel()
-        let width = state.shown ? CGFloat(clamped(state.width)) : 0
+        let width = CGFloat(clamped(state.width))
         let animate = shownPanel?.workspace == workspace?.id && shownPanel?.shown != state.shown
-            && view.window?.isVisible == true && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            && view.window?.isVisible == true && Look.Motion.moves
         shownPanel = (workspace?.id, state.shown)
         panelEdge.isHidden = workspace == nil || !state.shown
-        if state.shown { sidePanel.isHidden = false } else { giveBackKeyboard() }
+        if !state.shown { giveBackKeyboard() }
         guard animate else {
             panelWidth.constant = width
+            panelOffset.constant = state.shown ? 0 : width
             sidePanel.isHidden = !state.shown
             return
         }
-        // Terminals take their new size once, at the end, rather than re-wrapping on every frame.
-        LiveResize.shared.begin()
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.18
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            context.allowsImplicitAnimation = true
-            panelWidth.animator().constant = width
+        if state.shown, sidePanel.isHidden {
+            // From just past the edge, at the width it opens at.
+            panelWidth.constant = width
+            panelOffset.constant = width
             view.layoutSubtreeIfNeeded()
-        } completionHandler: {
-            MainActor.assumeIsolated {
-                // Hidden only if it is still meant to be: shown again during the slide (⇧⌘E, then ⇧⌘C at
-                // once), it stays.
-                if self.shownPanel?.shown == false { self.sidePanel.isHidden = true }
-                LiveResize.shared.end()
-            }
+            sidePanel.isHidden = false
+        }
+        LiveResize.shared.slide { context in
+            context.allowsImplicitAnimation = true
+            panelWidth.constant = width
+            panelOffset.constant = state.shown ? 0 : width
+            view.layoutSubtreeIfNeeded()
+        } done: { [weak self] in
+            // Hidden only if it is still meant to be: shown again during the slide (⇧⌘E, then ⇧⌘C at
+            // once), it stays.
+            if self?.shownPanel?.shown == false { self?.sidePanel.isHidden = true }
         }
     }
 
@@ -176,9 +197,10 @@ final class TerminalRegionController: NSViewController {
             let width = clamped(Double(width))
             sidePanel.isHidden = false
             panelWidth.constant = CGFloat(width)
+            panelOffset.constant = 0
             workbench.files.setPanel(workspace.id) { $0.width = width; $0.shown = true }
         } else if state.shown {
-            panelWidth.constant = 0
+            panelOffset.constant = panelWidth.constant
             sidePanel.isHidden = true
             let width = max(dragStartWidth, FilesCenter.panelMinimum)
             workbench.files.setPanel(workspace.id) { $0.shown = false; $0.width = width }
@@ -190,7 +212,7 @@ final class TerminalRegionController: NSViewController {
     private func resetPanelWidth() {
         guard let workspace = workbench.selectedWorkspace else { return }
         workbench.files.setPanel(workspace.id) { $0.width = FilesCenter.panelDefault; $0.shown = true }
-        if panelWidth.constant > 0 { panelWidth.constant = CGFloat(clamped(FilesCenter.panelDefault)) }
+        if !sidePanel.isHidden { panelWidth.constant = CGFloat(clamped(FilesCenter.panelDefault)) }
         workbench.scheduleSave()
     }
 

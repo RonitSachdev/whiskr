@@ -20,6 +20,10 @@ final class TerminalFindBar: NSView, NSTextFieldDelegate {
 
     static let width: CGFloat = 340
 
+    /// Shown: true from `appear` on, false from `disappear` on (while it fades out it is no longer shown,
+    /// and takes no click).
+    private(set) var isShown = false
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
@@ -117,6 +121,32 @@ final class TerminalFindBar: NSView, NSTextFieldDelegate {
     var text: String {
         get { field.stringValue }
         set { field.stringValue = newValue }
+    }
+
+    /// Comes in at the terminal's top right, fading and growing a little from its top (`OverlayMotion`);
+    /// its field can take the keyboard at once.
+    func appear() {
+        guard !isShown else { return }
+        isShown = true
+        isHidden = false
+        if let layer { OverlayMotion.appear(layer) }
+    }
+
+    /// Goes the way it came, then hides; the keyboard has already gone back to the terminal.
+    func disappear() {
+        guard isShown else { return }
+        isShown = false
+        guard let layer, window?.isVisible == true else { return isHidden = true }
+        // Hidden under its last, clear frame (held until it next appears): never a frame of it whole again.
+        OverlayMotion.disappear(layer) { [weak self] in
+            guard let self, !self.isShown else { return }
+            self.isHidden = true
+        }
+    }
+
+    /// Fading out, it is no longer there for the pointer.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        isShown ? super.hitTest(point) : nil
     }
 
     /// The keyboard into the field, its text selected so typing replaces it.

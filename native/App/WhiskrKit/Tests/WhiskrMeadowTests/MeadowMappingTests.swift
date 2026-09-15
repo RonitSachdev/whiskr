@@ -123,15 +123,20 @@ struct MeadowMappingTests {
         #expect(MeadowMapping.target(of: .blanket("not-an-id")) == nil)
     }
 
-    @Test("the ring: the blanket, a chosen helper, or the focused pane of several")
+    @Test("the ring: the focused Claude's cat (a chosen helper's), the focused lantern of several panes, else the blanket")
     func selection() {
         let agents = family([prompt, launch, helperStarts]).agents
         let kind = SceneSnapshot.Kind.agent(status: .working, accountIndex: 0, failed: false, agents: agents)
-        #expect(MeadowMapping.selection(in: snapshot(agent: kind)) == .blanket(tab.uuidString))
+        let cat = MeadowItem.cat(blanket: tab.uuidString, agent: claude.uuidString)
+        // The one Claude on its blanket is ringed too: which terminal is which cat shows at a glance.
+        #expect(MeadowMapping.selection(in: snapshot(agent: kind)) == cat)
         #expect(MeadowMapping.selection(in: snapshot(agent: kind, helper: "a1")) == .cat(blanket: tab.uuidString, agent: "\(claude.uuidString)/a1"))
-        #expect(MeadowMapping.selection(in: snapshot(agent: kind, helper: "gone")) == .blanket(tab.uuidString))
+        #expect(MeadowMapping.selection(in: snapshot(agent: kind, helper: "gone")) == cat)
         #expect(MeadowMapping.selection(in: snapshot(agent: kind, lanterns: [(shell, .lit)], focused: shell)) == .lantern(blanket: tab.uuidString, lantern: shell.uuidString))
-        #expect(MeadowMapping.selection(in: snapshot(agent: kind, lanterns: [(shell, .lit)])) == .blanket(tab.uuidString))
+        #expect(MeadowMapping.selection(in: snapshot(agent: kind, lanterns: [(shell, .lit)])) == cat)
+        // Claude just started, not reported yet: its cat all the same.
+        let fresh = SceneSnapshot.Kind.agent(status: .idle, accountIndex: 0, failed: false, agents: [])
+        #expect(MeadowMapping.selection(in: snapshot(agent: fresh)) == cat)
         var none = snapshot(agent: kind)
         none.selectedBlanket = nil
         #expect(MeadowMapping.selection(in: none) == nil)

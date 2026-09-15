@@ -44,6 +44,8 @@ struct TabStrip: View {
                 TabCells(workbench: workbench, workspace: workspace)
                 NewTabButton { workbench.newTab() }
                     .padding(.horizontal, Look.Space.xs)
+                    // The room round "+" moves the window, as the rest of the row's empty stretch does.
+                    .background(WindowDragArea())
                     .onDrop(of: [TabDrag.type], delegate: TabDropTarget(workbench: workbench, workspace: workspace, index: workspace.tabs.count))
             } else {
                 WindowDragArea()
@@ -56,8 +58,9 @@ struct TabStrip: View {
         // The line along the foot is under the tabs: the selected one covers it and opens into its panes.
         .background(alignment: .bottom) { Color.line.frame(height: 1) }
         .chromeBackground()
-        // No animation as tabs come, go or move: a closed tab leaves the row in the next frame (a fade kept
-        // it, unclickable, under the pointer for the next click), and a new one is there with its terminal.
+        // Tabs move (`TabCells`), but only their pictures: where a click lands is where the tabs end up, at
+        // once, so a closed tab is never under the pointer for the next click (an earlier fade left it
+        // there, unclickable, and took the click).
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Tabs", comment: "Accessibility label of the tab strip"))
     }
@@ -69,11 +72,30 @@ struct TabStrip: View {
 /// button in reach, and every click is AppKit's (`TabMouse`). The stretch after the tabs belongs to the
 /// window, as the top bar's empty stretches do: it moves the window, and a double-click does what a title
 /// bar's does. It never opens a tab.
+///
+/// The row is drawn twice over the same places (docs/DESIGN.md, "Motion of the interface"). Underneath,
+/// where clicks and drops land (`TabHit`): every tab at its new place the moment the tabs change, never
+/// animated, so a click goes to the tab that is there now and a closed tab takes none. On top, what you
+/// see (`TabButton`, which takes no click but its own to-do button's): the same tabs easing into those
+/// places at `Look.Motion.standard`, a new one opening out from its leading edge, a closed one folding
+/// into it as its neighbour slides over, and the selected tab's fill and line moving across at
+/// `Look.Motion.quick`. With Reduce Motion the pictures are where the tabs are, at once.
 private struct TabCells: View {
     let workbench: Workbench
     let workspace: Workspace
     /// Where the run of tabs began last time: it moves only when the selected tab would leave it.
     @State private var start = 0
+    /// The tab under the pointer, as AppKit follows it (`TabMouseView`).
+    @State private var hovered: UUID?
+    @Namespace private var selection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// What moves the tabs' pictures when it changes: which tabs are in sight, in what order, how wide.
+    private struct Arrangement: Equatable {
+        let tabs: [UUID]
+        let width: Double
+        let overflowing: Bool
+    }
 
     var body: some View {
         GeometryReader { room in
@@ -81,16 +103,39 @@ private struct TabCells: View {
             let selected = tabs.firstIndex { $0 === workspace.selectedTab } ?? 0
             let layout = TabRowLayout(width: Double(room.size.width), tabs: tabs.count, selected: selected, previousStart: start,
                                       minimum: Double(TabStrip.minTab), maximum: Double(TabStrip.maxTab), listWidth: Double(TabListButton.width))
-            HStack(spacing: 0) {
-                // Each tab keeps its views by its own id, so a tab opened or closed before it rebuilds nothing.
-                ForEach(layout.range.map { (index: $0, tab: tabs[$0]) }, id: \.tab.id) { index, tab in
-                    TabButton(workbench: workbench, tab: tab, index: index, selected: workspace.selectedTab === tab, last: tabs.count == 1)
-                        .frame(width: CGFloat(layout.tabWidth))
-                        .onDrop(of: [TabDrag.type], delegate: TabDropTarget(workbench: workbench, workspace: workspace, index: index))
+            // Each tab keeps its views by its own id, so a tab opened or closed before it rebuilds nothing.
+            let shown = layout.range.map { (index: $0, tab: tabs[$0]) }
+            let arrangement = Arrangement(tabs: shown.map(\.tab.id), width: layout.tabWidth, overflowing: layout.overflowing)
+            ZStack(alignment: .leading) {
+                HStack(spacing: 0) {
+                    ForEach(shown, id: \.tab.id) { index, tab in
+                        TabHit(workbench: workbench, tab: tab, index: index, selected: workspace.selectedTab === tab, last: tabs.count == 1,
+                               hover: { inside in
+                                   if inside { hovered = tab.id } else if hovered == tab.id { hovered = nil }
+                               })
+                            .frame(width: CGFloat(layout.tabWidth))
+                            .onDrop(of: [TabDrag.type], delegate: TabDropTarget(workbench: workbench, workspace: workspace, index: index))
+                    }
+                    if layout.overflowing { Color.clear.frame(width: TabListButton.width) }
                 }
-                if layout.overflowing {
-                    TabListButton(workbench: workbench, workspace: workspace, hidden: tabs.count - layout.count)
+                .transaction { $0.animation = nil }
+                HStack(spacing: 0) {
+                    ForEach(shown, id: \.tab.id) { index, tab in
+                        TabButton(workbench: workbench, tab: tab, index: index, selected: workspace.selectedTab === tab,
+                                  hovering: hovered == tab.id, selection: selection)
+                            .frame(width: CGFloat(layout.tabWidth))
+                            .transition(.tabOpening)
+                    }
+                    if layout.overflowing {
+                        TabListButton(workbench: workbench, workspace: workspace, hidden: tabs.count - layout.count)
+                            // It fades in, but goes at once: fading where a tab now is, it would take that tab's
+                            // click (`make perf`'s rapid × found it).
+                            .transition(.asymmetric(insertion: .opacity, removal: .identity))
+                    }
                 }
+                // The arrangement's ease wins over the selection's when both change (a new tab chosen).
+                .animation(reduceMotion ? nil : Look.Motion.animation(Look.Motion.standard), value: arrangement)
+                .animation(reduceMotion ? nil : Look.Motion.animation(Look.Motion.quick), value: workspace.selectedTab?.id)
             }
             .frame(width: room.size.width, alignment: .leading)
             // Never past the row's end, under "+" (`TabRowLayout` keeps within it; this is the guarantee).
@@ -101,13 +146,34 @@ private struct TabCells: View {
     }
 }
 
+private extension AnyTransition {
+    /// A tab opening out from its leading edge, or folding into it as it closes: revealed rather than
+    /// squeezed, so its title never stretches.
+    static var tabOpening: AnyTransition {
+        .modifier(active: TabReveal(shown: 0), identity: TabReveal(shown: 1))
+    }
+}
+
+/// How much of a tab is shown, from its leading edge (`AnyTransition.tabOpening`).
+private struct TabReveal: ViewModifier {
+    let shown: CGFloat
+
+    func body(content: Content) -> some View {
+        content.mask(alignment: .leading) {
+            Rectangle().scaleEffect(x: shown, y: 1, anchor: .leading)
+        }
+    }
+}
+
 /// Where the workspace button sits while on Home: a house and "Home", whose menu is the workspace
-/// button's (Home, then every open workspace).
+/// button's (New Workspace and Open Folder…, Home, then every open workspace).
 private struct HomeButton: View {
     let workbench: Workbench
 
     var body: some View {
-        PlaceButton(menu: { WorkspaceMenu.make(workbench: workbench) }, chevron: !workbench.workspaces.isEmpty) {
+        PlaceButton(id: "bar.place-home", label: String(localized: "Home", comment: "The tab row's place name while on Home"),
+                    help: String(localized: "Home: every open workspace is in this menu (⌥⌘1…9) and in the meadow"),
+                    menu: { WorkspaceMenu.make(workbench: workbench) }) {
             Image(systemName: "house")
                 .font(Look.smallIcon.weight(.medium))
                 .foregroundStyle(Color.ink2)
@@ -115,38 +181,29 @@ private struct HomeButton: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.ink)
         }
-        .help(String(localized: "Home: every open workspace is in this menu (⌥⌘1…9) and in the meadow"))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Home", comment: "The tab row's place name while on Home"))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityHint(String(localized: "Shows every open workspace"))
     }
 }
 
 /// The button at the start of the tab row naming the place the tabs belong to, with a chevron saying it
-/// opens a menu: a popup button, as Xcode's scheme and VS Code's window picker are.
+/// opens a menu: a pop-up button, as Xcode's scheme and VS Code's window picker are (`barMenu`).
 private struct PlaceButton<Label: View>: View {
+    let id: String
+    let label: String
+    let help: String
     let menu: () -> NSMenu
     var onDoubleClick: (() -> Void)?
-    var chevron = true
-    @ViewBuilder let label: Label
-    @State private var hovering = false
+    @ViewBuilder let content: Label
 
     var body: some View {
         HStack(spacing: Look.Space.s) {
-            label
-            if chevron {
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Color.ink3)
-            }
+            content
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Color.ink3)
         }
         .padding(.horizontal, Look.Space.m)
         .frame(height: Look.Height.control)
-        .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(hovering ? Look.Fill.hover : .clear))
-        .contentShape(Rectangle())
-        .background(MenuAnchor(menu: menu, onDoubleClick: onDoubleClick))
-        .onHover { hovering = $0 }
+        .barMenu(id, label: label, help: help, hint: String(localized: "Shows every open workspace"), onDoubleClick: onDoubleClick, menu: menu)
     }
 }
 
@@ -159,13 +216,10 @@ private struct WorkspaceButton: View {
     @FocusState private var editing: Bool
 
     var body: some View {
-        let count = workbench.workspaces.count
-        PlaceButton(menu: { WorkspaceMenu.make(workbench: workbench) }, onDoubleClick: { workbench.renamingWorkspaceID = workspace.id },
-                    chevron: workbench.renamingWorkspaceID != workspace.id) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Colors.accountColor(index: workspace.colorIndex))
-                .frame(width: 10, height: 10)
-            if workbench.renamingWorkspaceID == workspace.id {
+        if workbench.renamingWorkspaceID == workspace.id {
+            // The name in a field where the button was: the field is the control while it lasts.
+            HStack(spacing: Look.Space.s) {
+                swatch
                 TextField(String(localized: "Workspace name"), text: $draft)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12, weight: .semibold))
@@ -183,7 +237,15 @@ private struct WorkspaceButton: View {
                         draft = workspace.customName ?? workspace.name
                         editing = true
                     }
-            } else {
+            }
+            .padding(.horizontal, Look.Space.m)
+            .frame(height: Look.Height.control)
+        } else {
+            PlaceButton(id: "bar.workspace",
+                        label: String(localized: "Workspace \(workspace.name), \(index + 1) of \(workbench.workspaces.count)", comment: "Accessibility: the tab bar's workspace button"),
+                        help: String(localized: "\(workspace.displayPath): every open workspace is in this menu (⌥⌘1…9) and in the meadow"),
+                        menu: { WorkspaceMenu.make(workbench: workbench) }, onDoubleClick: { workbench.renamingWorkspaceID = workspace.id }) {
+                swatch
                 Text(workspace.name)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.ink)
@@ -193,11 +255,13 @@ private struct WorkspaceButton: View {
                     .fixedSize(horizontal: true, vertical: false)
             }
         }
-        .help(String(localized: "\(workspace.displayPath): every open workspace is in this menu (⌥⌘1…9) and in the meadow"))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Workspace \(workspace.name), \(index + 1) of \(count)", comment: "Accessibility: the tab bar's workspace button"))
-        .accessibilityAddTraits(.isButton)
-        .accessibilityHint(String(localized: "Shows every open workspace"))
+    }
+
+    /// The blanket's colour.
+    private var swatch: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(Colors.accountColor(index: workspace.colorIndex))
+            .frame(width: 10, height: 10)
     }
 
     private var index: Int { workbench.workspaces.firstIndex { $0 === workspace } ?? 0 }
@@ -211,18 +275,25 @@ private struct WorkspaceButton: View {
     }
 }
 
-/// The workspaces menu: Home, then every open workspace (colour, name, where and which branch, a count
-/// of its requests, ⌥⌘ and its number), then New Workspace, Go to…, Rename and Close.
+/// The workspaces menu, as the workspace button and Home's button open it: first the ways to open one
+/// (New Workspace, Open Folder…); Home and every open workspace (colour, name, where and which branch, a
+/// count of its requests, ⌥⌘ and its number, the terminals its Claudes started); the selected workspace's
+/// worktrees; Go to…; then Rename and Close for the workspace shown.
 enum WorkspaceMenu {
     static func make(workbench: Workbench) -> NSMenu {
         let menu = NSMenu()
+        menu.addItem(actionItem(String(localized: "New Workspace"), #selector(MainWindowController.newWorkspace(_:)), "n", [.command]))
+        menu.addItem(actionItem(String(localized: "Open Folder…"), #selector(MainWindowController.openFolder(_:)), "o", [.command]))
+        menu.addItem(.separator())
         let home = closureMenuItem(title: String(localized: "Home", comment: "Go menu and the workspace menu: no workspace selected")) { workbench.goHome() }
         home.image = NSImage(systemSymbolName: "house", accessibilityDescription: nil)
         home.keyEquivalent = "h"
         home.keyEquivalentModifierMask = [.command, .shift]
         home.state = workbench.isHome ? .on : .off
         menu.addItem(home)
-        if !workbench.workspaces.isEmpty { menu.addItem(.separator()) }
+        if !workbench.workspaces.isEmpty {
+            menu.addItem(.sectionHeader(title: String(localized: "Workspaces", comment: "Sidebar list heading")))
+        }
         for (index, workspace) in workbench.workspaces.enumerated() {
             let item = closureMenuItem(title: workspace.name) { workbench.select(workspace: workspace) }
             item.image = swatch(workspace.colorIndex)
@@ -248,11 +319,8 @@ enum WorkspaceMenu {
                 menu.addItem(entry)
             }
         }
-        menu.addItem(.separator())
-        menu.addItem(actionItem(String(localized: "New Workspace"), #selector(MainWindowController.newWorkspace(_:)), "n", [.command]))
-        menu.addItem(actionItem(String(localized: "Go to…"), #selector(MainWindowController.goTo(_:)), "p", [.command]))
-        guard let selected = workbench.selectedWorkspace else { return menu }
-        if workbench.repositoryRoot(of: selected) != nil {
+        let selected = workbench.selectedWorkspace
+        if let selected, workbench.repositoryRoot(of: selected) != nil {
             menu.addItem(.separator())
             menu.addItem(actionItem(String(localized: "New Worktree…"), #selector(MainWindowController.newWorktree(_:)), "n", [.command, .shift]))
             menu.addItem(actionItem(String(localized: "Open Worktree…"), #selector(MainWindowController.openWorktree(_:)), "", []))
@@ -261,11 +329,15 @@ enum WorkspaceMenu {
             }
         }
         menu.addItem(.separator())
+        menu.addItem(actionItem(String(localized: "Go to…"), #selector(MainWindowController.goTo(_:)), "p", [.command]))
+        guard selected != nil else { return menu }
+        menu.addItem(.separator())
         menu.addItem(actionItem(String(localized: "Rename Workspace…"), #selector(MainWindowController.renameWorkspace(_:)), "", []))
         menu.addItem(actionItem(String(localized: "Close Workspace"), #selector(MainWindowController.closeWorkspace(_:)), "", []))
         return menu
     }
 
+    /// An item for an action of the window (its controller takes it, through the responder chain).
     private static func actionItem(_ title: String, _ action: Selector, _ key: String, _ modifiers: NSEvent.ModifierFlags) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.keyEquivalentModifierMask = modifiers
@@ -283,44 +355,12 @@ enum WorkspaceMenu {
     }
 }
 
-/// Pops a menu under the view it backs when clicked (and calls `onDoubleClick` on a second click).
-struct MenuAnchor: NSViewRepresentable {
-    let menu: () -> NSMenu
-    var onDoubleClick: (() -> Void)?
-
-    func makeNSView(context: Context) -> AnchorView { AnchorView() }
-
-    func updateNSView(_ view: AnchorView, context: Context) {
-        view.menu = nil
-        view.makeMenu = menu
-        view.onDoubleClick = onDoubleClick
-    }
-
-    final class AnchorView: NSView {
-        var makeMenu: () -> NSMenu = { NSMenu() }
-        var onDoubleClick: (() -> Void)?
-
-        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-
-        override func mouseDown(with event: NSEvent) {
-            if event.clickCount == 2, let onDoubleClick { return onDoubleClick() }
-            makeMenu().popUp(positioning: nil, at: NSPoint(x: 0, y: bounds.height + 4), in: self)
-        }
-
-        /// A right click opens the same menu.
-        override func menu(for event: NSEvent) -> NSMenu? { makeMenu() }
-
-        override var isFlipped: Bool { true }
-    }
-}
-
 /// Every tab of the workspace in a menu, for a row too full to show them all: the way to reach a tab
 /// out of sight and to read each title whole. Shown only while some tabs are out of sight, with how many.
 private struct TabListButton: View {
     let workbench: Workbench
     let workspace: Workspace
     let hidden: Int
-    @State private var hovering = false
 
     static let width: CGFloat = 32
 
@@ -331,15 +371,9 @@ private struct TabListButton: View {
         }
         .foregroundStyle(Color.ink2)
         .frame(width: Self.width, height: Look.Height.control)
-        .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(hovering ? Look.Fill.hover : .clear))
-        .contentShape(Rectangle())
-        .background(MenuAnchor(menu: menu))
-        .onHover { hovering = $0 }
-        .help(String(localized: "All tabs: \(hidden) more out of sight", comment: "Tab row: the menu listing every tab when they do not fit"))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "All tabs", comment: "Tab row: the menu listing every tab when they do not fit"))
-        .accessibilityValue(String(localized: "\(hidden) more out of sight", comment: "Tab row: how many tabs do not fit"))
-        .accessibilityAddTraits(.isButton)
+        .barMenu("bar.tabs.all", label: String(localized: "All tabs", comment: "Tab row: the menu listing every tab when they do not fit"),
+                 help: String(localized: "All tabs: \(hidden) more out of sight", comment: "Tab row: the menu listing every tab when they do not fit"),
+                 value: String(localized: "\(hidden) more out of sight", comment: "Tab row: how many tabs do not fit"), menu: menu)
     }
 
     private func menu() -> NSMenu {
@@ -361,23 +395,23 @@ private struct NewTabButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            ChromeIcon(symbol: "plus")
-        }
-        .buttonStyle(ChromeButtonStyle())
-        .help(String(localized: "New Tab (⌘T)"))
-        .accessibilityLabel(String(localized: "New Tab"))
+        ChromeIcon(symbol: "plus")
+            .barButton("bar.tabs.new", label: String(localized: "New Tab"), help: String(localized: "New Tab (⌘T)"), action: action)
     }
 }
 
+/// A tab as you see it (`TabCells` draws it over its `TabHit`): what it is, its title, its close button,
+/// and, chosen, the content's fill with the focus line along its top. It takes no click itself (they
+/// reach `TabMouse` under it), but its to-do button's and its rename field's.
 private struct TabButton: View {
     let workbench: Workbench
     let tab: Tab
     let index: Int
     let selected: Bool
-    /// The workspace's only tab: closing it closes the workspace and goes Home, which its close button says.
-    let last: Bool
-    @State private var hovering = false
+    /// The pointer is on the tab (AppKit's account of it, from `TabMouse`).
+    let hovering: Bool
+    /// Where the selected tab's fill and line move between tabs.
+    let selection: Namespace.ID
     @State private var draft = ""
     @State private var showingTasks = false
     @FocusState private var editing: Bool
@@ -463,32 +497,19 @@ private struct TabButton: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             if selected {
-                Color.content.allowsHitTesting(false)
+                // The content's fill and, where the keys go, the focus line along the top (as the focused
+                // pane has): one mark, which moves to the tab chosen.
+                Color.content
+                    .overlay(alignment: .top) { Look.focusLine(active: activeState.inUse).frame(height: Look.focusLineWidth) }
+                    .matchedGeometryEffect(id: "selection", in: selection)
+                    // One mark that moves, not two crossing fades.
+                    .transition(.identity)
+                    .allowsHitTesting(false)
             } else if hovering {
                 Look.Fill.hover.allowsHitTesting(false)
             }
         }
-        // Where the keys go: the selected tab carries the focus line, as the focused pane does.
-        .overlay(alignment: .top) {
-            if selected { Look.focusLine(active: activeState.inUse).frame(height: Look.focusLineWidth).allowsHitTesting(false) }
-        }
         .overlay(alignment: .trailing) { Color.line.frame(width: 1).allowsHitTesting(false) }
-        // Under everything drawn above, which lets every click through to it (SwiftUI takes a click on
-        // anything it draws, a title or a close mark included, and does nothing with it); only the to-do
-        // button keeps its own. `make perf`'s closing check clicks every part of every tab.
-        .background(TabMouse(tab: tab.id, last: last, select: { workbench.select(tab: tab) }, close: { workbench.requestClose(tab: tab) },
-                             shown: { workbench.selectedTab?.id }, show: { id in
-                                 // A drag shows the panes it can be dropped beside: those of the tab shown before.
-                                 if let before = workbench.selectedWorkspace?.tabs.first(where: { $0.id == id }) { workbench.select(tab: before) }
-                             },
-                             rename: {
-                                 // A second click on a preview keeps it (as in Xcode); on any other tab it renames.
-                                 if workbench.isPreview(tab) { workbench.keep(page: tab.focusedPane) } else { workbench.renamingTabID = tab.id }
-                             }, menu: { TabMenu.make(workbench: workbench, tab: tab) },
-                             // One account of the pointer, AppKit's (in any window, key or not): the close button
-                             // is drawn where a click closes, and nowhere else.
-                             selected: selected, hover: { hovering = $0 }))
-        .help(index < 8 ? String(localized: "\(title) (⌘\(index + 1))") : title)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibility(title: title, status: status, failed: failed, pinned: pinned, edited: edited, preview: preview))
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
@@ -528,6 +549,37 @@ private struct TabButton: View {
         workbench.renamingTabID = nil
         // Let go of the field's focus as it goes: still set, the next rename's field would not take the keyboard.
         editing = false
+    }
+}
+
+/// Where a tab takes its clicks, drags and drops (`TabCells` lays these out under the tabs' pictures, at
+/// the tabs' places at once): AppKit's `TabMouse`, and the tab's tooltip. `make perf`'s closing check
+/// clicks every part of every tab.
+private struct TabHit: View {
+    let workbench: Workbench
+    let tab: Tab
+    let index: Int
+    let selected: Bool
+    /// The workspace's only tab: closing it closes the workspace and goes Home, which its close button says.
+    let last: Bool
+    let hover: (Bool) -> Void
+
+    var body: some View {
+        let title = workbench.title(of: tab)
+        TabMouse(tab: tab.id, last: last, select: { workbench.select(tab: tab) }, close: { workbench.requestClose(tab: tab) },
+                 shown: { workbench.selectedTab?.id }, show: { id in
+                     // A drag shows the panes it can be dropped beside: those of the tab shown before.
+                     if let before = workbench.selectedWorkspace?.tabs.first(where: { $0.id == id }) { workbench.select(tab: before) }
+                 },
+                 rename: {
+                     // A second click on a preview keeps it (as in Xcode); on any other tab it renames.
+                     if workbench.isPreview(tab) { workbench.keep(page: tab.focusedPane) } else { workbench.renamingTabID = tab.id }
+                 }, menu: { TabMenu.make(workbench: workbench, tab: tab) },
+                 // One account of the pointer, AppKit's (in any window, key or not): the close button is drawn
+                 // where a click closes, and nowhere else.
+                 selected: selected, hover: hover)
+            .help(index < 8 ? String(localized: "\(title) (⌘\(index + 1))") : title)
+            .accessibilityHidden(true)
     }
 }
 
@@ -669,17 +721,46 @@ final class TabMouseView: NSView, NSDraggingSource, NSViewToolTipOwner {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     /// The pointer, followed in every window (key or not, the app active or not), so that a first click in
-    /// a background window finds the close button exactly where it is drawn.
+    /// a background window finds the close button exactly where it is drawn. Over the tab's own bounds, set
+    /// again whenever they change: inside a hosting view a platform view's visible rectangle can reach far
+    /// past it (`.inVisibleRect` then hovered tabs the pointer was not on).
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let hoverArea { removeTrackingArea(hoverArea) }
-        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self, userInfo: nil)
+        let area = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self, userInfo: nil)
         addTrackingArea(area)
         hoverArea = area
+        hoverFromPointer()
+    }
+
+    /// The tabs moved under a pointer that did not (one closed and the next took its place): the tab now
+    /// under it shows its close button at once, ready for the next click, without waiting for a move. AppKit
+    /// sends no entered event for an area that comes under a resting pointer, and does not always ask a view
+    /// that only moved to update its areas, so every change of place asks where the pointer is (in any window,
+    /// key or not: the tracking is `.activeAlways`, so a first click in a window behind others closes too).
+    private func hoverFromPointer() {
+        guard let window else { return }
+        isHovered = bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
     }
 
     override func mouseEntered(with event: NSEvent) { isHovered = true }
     override func mouseExited(with event: NSEvent) { isHovered = false }
+
+    override func setFrameOrigin(_ newOrigin: NSPoint) {
+        super.setFrameOrigin(newOrigin)
+        hoverFromPointer()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        hoverFromPointer()
+    }
+
+    #if DEBUG
+    /// Debug builds (`DebugAnimations`): the tab counts the pointer as on it.
+    var debugIsHovered: Bool { isHovered }
+    #endif
+
 
     override func mouseDown(with event: NSEvent) {
         // The close button's reach closes only where the button is drawn; elsewhere the tab is chosen.
@@ -780,6 +861,8 @@ private struct ProgressMark: View {
                 .rotationEffect(.degrees(-90))
         }
         .frame(width: 12, height: 12)
+        // The whole ring is the button, not only its stroke: a click in its middle went to the tab.
+        .contentShape(Rectangle())
         .accessibilityLabel(String(localized: "\(done) of \(total) to-dos done"))
     }
 }

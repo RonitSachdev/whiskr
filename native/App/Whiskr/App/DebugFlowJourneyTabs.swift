@@ -213,8 +213,8 @@ extension Journey {
         await PerfWait.sleep(500)
         step("tabs: more than fit")
         let views = suite.tabViews
-        // The chevron: a menu anchor in the row beside the workspace button's.
-        let anchors = allViews(in: controller.terminals.tabRow) { $0 is MenuAnchor.AnchorView && !$0.isHiddenOrHasHiddenAncestor }.count
+        // The chevron: a menu button in the row beside the workspace button.
+        let anchors = allViews(in: controller.terminals.tabRow) { ["bar.workspace", "bar.tabs.all"].contains($0.identifier?.rawValue) && !$0.isHiddenOrHasHiddenAncestor }.count
         let selectedWhole = workbench.selectedTab.flatMap(suite.tabView).map { window.contentView!.bounds.contains($0.convert($0.bounds, to: nil).insetBy(dx: 0.5, dy: 0.5)) } ?? false
         check("fourteen tabs: some shown, the selected one whole, and the chevron counts the rest",
               views.count < 14 && selectedWhole && anchors == 2,
@@ -420,9 +420,15 @@ extension Journey {
         }
 
         step("workspaces: the workspace button's menu")
-        // What choosing the item does (the menu itself pops up on screen).
-        if let item = WorkspaceMenu.make(workbench: workbench).items.first(where: { $0.title == thirdSpace.name }), let action = item.action {
-            NSApp.sendAction(action, to: item.target, from: item)
+        // A click on the button, as a person's: its menu (recorded by `MenuStandIn`, never shown), then the item.
+        _ = MenuStandIn.take()
+        if let button = suite.barView("bar.workspace") {
+            suite.click(button, at: NSPoint(x: button.bounds.midX, y: button.bounds.midY))
+        }
+        let popped = MenuStandIn.take().first?.menu
+        check("a click on the workspace button opens its menu", popped != nil)
+        if let popped, let index = popped.items.firstIndex(where: { $0.title == thirdSpace.name }) {
+            popped.performActionForItem(at: index)
             check("the workspace menu's item shows that workspace", await PerfWait.until(2000) { shown(thirdSpace) } != nil)
         }
 

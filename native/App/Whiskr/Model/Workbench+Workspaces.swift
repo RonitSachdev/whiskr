@@ -40,7 +40,9 @@ extension Workbench {
     /// Home (docs/DESIGN.md) is no workspace selected: every workspace waits on its blanket and in the
     /// Home page's Open list, still running. Go › Home, the workspace button's menu, New Workspace (⌘N),
     /// and closing the workspace on screen all come here; the Home page takes the keyboard, on New Terminal.
-    func goHome() {
+    /// `chosen`: false when Home comes because the workspace shown has closed.
+    func goHome(chosen: Bool = true) {
+        if chosen { youChose() }
         if peekedPane != nil { peekedPane = nil }
         if focusedAgent != nil { focusedAgent = nil }
         if selectedWorkspaceID != nil { selectedWorkspaceID = nil }

@@ -35,6 +35,13 @@ final class ThemeStore {
     var cursorShape: CursorShape { didSet { save() } }
     var cursorBlinks: Bool { didSet { save() } }
 
+    /// The Mac's own appearance, whatever a theme with one version makes the app: what a theme with both
+    /// versions follows, and so what its preview in Settings shows while another theme holds the app dark
+    /// or light.
+    private(set) var systemIsDark = ThemeStore.readSystemIsDark()
+    /// The system's Increase Contrast, which the window's lines and quieter text step up for.
+    private(set) var increasedContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+
     private(set) var userThemes: [Theme] = []
     /// The active theme's colours, as appearance-aware colours. Replaced whenever the theme changes.
     private(set) var palette: Palette
@@ -70,8 +77,23 @@ final class ThemeStore {
         loadUserThemes()
         rebuild()
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { _ in
-            MainActor.assumeIsolated { ThemeStore.shared.applyAppearance() }
+            MainActor.assumeIsolated {
+                ThemeStore.shared.increasedContrast = NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
+                ThemeStore.shared.applyAppearance()
+            }
         }
+        // The app's own appearance cannot tell the Mac's while a theme with one version holds it, so the
+        // Mac's is read where macOS keeps it, again each time it changes (by hand or by the time of day).
+        DistributedNotificationCenter.default().addObserver(forName: Self.systemAppearanceChanged, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { ThemeStore.shared.systemIsDark = ThemeStore.readSystemIsDark() }
+        }
+    }
+
+    private static let systemAppearanceChanged = Notification.Name("AppleInterfaceThemeChangedNotification")
+
+    /// The Mac is in Dark Mode (System Settings › Appearance; "Auto" sets the same as it switches).
+    private static func readSystemIsDark() -> Bool {
+        UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
     }
 
     // MARK: Reading
@@ -80,6 +102,14 @@ final class ThemeStore {
 
     var theme: Theme {
         themes.first { $0.id == themeID } ?? BuiltInThemes.theme(id: BuiltInThemes.defaultID)!
+    }
+
+    /// The appearance a theme with both versions follows: the Mac's, or the one a debug run sets.
+    var followedDark: Bool { appearance == .system ? systemIsDark : appearance == .dark }
+
+    /// What a theme's preview draws: the theme as it will look once chosen (`ThemePreviewColors`).
+    func previewColors(_ theme: Theme) -> ThemePreviewColors {
+        ThemePreviewColors(theme: theme, followedDark: followedDark, increasedContrast: increasedContrast)
     }
 
     func font(size: CGFloat? = nil) -> NSFont {
@@ -291,17 +321,11 @@ struct Palette {
 
     init(theme: Theme) {
         self.theme = theme
+        // With Increase Contrast, lines and quieter text step up (`ThemeVariant.appColor`).
         var app: [AppColorKey: NSColor] = [:]
         for key in AppColorKey.allCases {
-            app[key] = Palette.dynamic(theme) { $0.app[key] }
-        }
-        // With Increase Contrast (docs/DESIGN.md), every line between regions reaches 3:1 on the chrome (the
-        // hint colour, which the theme keeps at 3:1 there), and each quieter text steps up one level.
-        let stronger: [AppColorKey: AppColorKey] = [.line: .textTertiary, .lineStrong: .textTertiary, .textSecondary: .text, .textTertiary: .textSecondary]
-        for (key, raised) in stronger {
             app[key] = NSColor(name: nil) { appearance in
-                let variant = theme.variant(dark: Palette.isDark(appearance))
-                return Palette.nsColor(Palette.isHighContrast(appearance) ? variant.app[raised] : variant.app[key])
+                Palette.nsColor(theme.variant(dark: Palette.isDark(appearance)).appColor(key, increasedContrast: Palette.isHighContrast(appearance)))
             }
         }
         self.app = app

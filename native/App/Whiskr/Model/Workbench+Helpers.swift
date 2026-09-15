@@ -54,6 +54,7 @@ extension Workbench {
         }
         if focusedAgent != nil { focusedAgent = nil }
         peekedPane = id
+        youChose()
         onFocusPane?(pane)
     }
 

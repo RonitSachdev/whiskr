@@ -1,21 +1,10 @@
 import Foundation
 
-/// The three alert sounds (docs/DESIGN.md): soft wooden notes, made here from sine waves rather
+/// The app's own three alert sounds (docs/DESIGN.md): soft wooden notes, made here from sine waves rather
 /// than recorded, so they belong to nobody else. A request is two rising notes (about 350 ms), an error
 /// two low falling ones, a finished turn one short wood-block "tok" (about 150 ms).
-public enum AlertSound: String, Sendable, CaseIterable, Comparable {
-    case finished, error, request
-
-    /// How much it matters: when two would play at once, the more important one wins.
-    var importance: Int {
-        switch self {
-        case .finished: 0
-        case .error: 1
-        case .request: 2
-        }
-    }
-
-    public static func < (lhs: AlertSound, rhs: AlertSound) -> Bool { lhs.importance < rhs.importance }
+public enum AlertSound: String, Sendable, CaseIterable {
+    case request, error, finished
 
     public static let sampleRate = 44_100
 
@@ -55,7 +44,8 @@ public enum AlertSound: String, Sendable, CaseIterable, Comparable {
         return out
     }
 
-    static func wav(_ samples: [Float]) -> Data {
+    /// Mono samples in -1…1 at `sampleRate` as a WAV file (16-bit PCM).
+    public static func wav(_ samples: [Float]) -> Data {
         var data = Data()
         func put<T: FixedWidthInteger>(_ value: T) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
         let bytes = UInt32(samples.count * 2)
@@ -68,15 +58,16 @@ public enum AlertSound: String, Sendable, CaseIterable, Comparable {
     }
 }
 
-/// When an alert sound may play (§6.4): at most one every two seconds, the most important waiting one
+/// When an alert's sound may play (§6.4): at most one every two seconds, the most important waiting one
 /// winning; never while you are typing (it waits for a one-second pause, at most five seconds); never
-/// twice for the same request; nothing while alerts are paused.
+/// twice for the same request; nothing while alerts are paused. Which sound an event plays is looked up
+/// when it plays (`AlertPreferences`).
 public struct AlertQueue: Sendable {
     public static let spacing: TimeInterval = 2
     public static let typingPause: TimeInterval = 1
     public static let longestWait: TimeInterval = 5
 
-    private var waiting: (sound: AlertSound, since: Date)?
+    private var waiting: (event: AlertEvent, since: Date)?
     private var lastPlayed: Date = .distantPast
     private var announced: Set<String> = []
 
@@ -84,16 +75,16 @@ public struct AlertQueue: Sendable {
 
     /// Something happened that has a sound. `key` names the very request or turn, so it is never
     /// sounded twice.
-    public mutating func offer(_ sound: AlertSound, key: String, now: Date) {
+    public mutating func offer(_ event: AlertEvent, key: String, now: Date) {
         guard announced.insert(key).inserted else { return }
         if announced.count > 500 { announced = [key] }
-        if let waiting, waiting.sound >= sound { return }
-        waiting = (sound, waiting?.since ?? now)
+        if let waiting, waiting.event.importance >= event.importance { return }
+        waiting = (event, waiting?.since ?? now)
     }
 
-    /// The sound to play now, if any (and it is then taken); `lastKey` is when a key was last pressed in
-    /// any pane.
-    public mutating func take(now: Date, lastKey: Date?, paused: Bool) -> AlertSound? {
+    /// The event whose sound plays now, if any (and it is then taken); `lastKey` is when a key was last
+    /// pressed in any pane.
+    public mutating func take(now: Date, lastKey: Date?, paused: Bool) -> AlertEvent? {
         guard let waiting else { return nil }
         if paused {
             self.waiting = nil
@@ -104,7 +95,7 @@ public struct AlertQueue: Sendable {
         if typing && now.timeIntervalSince(waiting.since) < Self.longestWait { return nil }
         self.waiting = nil
         lastPlayed = now
-        return waiting.sound
+        return waiting.event
     }
 
     /// Whether something is waiting to play (so the caller looks again shortly).

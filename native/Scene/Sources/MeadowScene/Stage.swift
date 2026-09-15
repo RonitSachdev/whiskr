@@ -64,6 +64,7 @@ final class Stage {
         if mode == .meadow {
             camera.aim = { [unowned self] in self.aim() }
             camera.bounds = { [unowned self] in self.everything(0) }
+            camera.adjust = { [unowned self] in self.keepingFollowed($0) }
         }
         surroundings.gust = { [unowned self] x, z in self.meadow?.gust(x, z, time: self.time) ?? 0 }
     }
@@ -133,20 +134,7 @@ final class Stage {
             return Self.emptyMeadow
         }
         if village.arrangement == .column, let frame = framedColumn(village) {
-            // The workspaces centred in the open part of the view when they fit in it, else the first row's
-            // flags a little below its top edge (the rest scroll). Where the content's top and bottom land is
-            // measured with the camera's own projection each frame and the aim corrected by what is left, so
-            // this holds exactly for any width, height and number of rows. The content is as laid out when
-            // the workspaces or the view last changed: helpers coming and going never move the camera.
-            let open = Swift.max(camera.viewport.y - camera.coverGoal.y, 1)
-            let top = screen(frame.top), bottom = screen(frame.bottom)
-            let flagTop = top.y - FLAG_PIXELS * settings.flagSize
-            let perPoint = 2 * tan(MapCamera.fovY / 2) * camera.view.distance / open / Swift.max(sin(camera.view.pitch), 0.3)
-            let tall = bottom.z > 1 ? Float.infinity : bottom.y - flagTop
-            let wanted = tall + 2 * Self.columnTopMargin <= open ? (open - tall) / 2 : Self.columnTopMargin
-            let error = top.z > 1 ? -open / 2 : flagTop - wanted
-            let z = camera.view.z + error * perPoint
-            return Ground(x: frame.x, z: z, across: frame.across, deep: frame.deep, least: sidesDistance(frame, x: frame.x, z: z))
+            return columnGround(frame, from: camera.view, flagTop: followedColumnTop(frame))
         }
         let only = village.count == 1 ? village.plots.first?.view.id : nil
         guard let id = focus?.blanketID ?? only, let spot = village.ground(of: id) else { return everything(1.5) }
@@ -155,6 +143,28 @@ final class Stage {
         let lean: Float = cat == nil ? 0 : 0.3
         return Ground(x: lerp(spot.x, cat?.x ?? 0, lean), z: lerp(spot.z - 0.5, cat?.z ?? 0, lean), across: spot.r + 0.8, deep: spot.r + 1.4)
     }
+
+    /// The column's framing as seen from `view`: the workspaces centred in the open part of the view when
+    /// they fit in it, else the first row's flags a little below its top edge (the rest scroll), or the flags'
+    /// top at `flagTop` points when given (to keep a chosen workspace in view, `Follow.swift`). Where the
+    /// content's top and bottom land is measured with the camera's own projection each frame and the aim
+    /// corrected by what is left, so this holds exactly for any width, height and number of rows. The content
+    /// is as laid out when the workspaces or the view last changed: helpers coming and going never move the
+    /// camera.
+    func columnGround(_ frame: Village.ColumnFrame, from view: CameraView, flagTop wantedTop: Float?) -> Ground {
+        let open = Swift.max(camera.viewport.y - camera.coverGoal.y, 1)
+        let top = screen(frame.top, from: view), bottom = screen(frame.bottom, from: view)
+        let flagTop = top.y - FLAG_PIXELS * settings.flagSize
+        let perPoint = 2 * tan(MapCamera.fovY / 2) * view.distance / open / Swift.max(sin(view.pitch), 0.3)
+        let tall = bottom.z > 1 ? Float.infinity : bottom.y - flagTop
+        let wanted = wantedTop ?? (tall + 2 * Self.columnTopMargin <= open ? (open - tall) / 2 : Self.columnTopMargin)
+        let error = top.z > 1 ? -open / 2 : flagTop - wanted
+        let z = view.z + error * perPoint
+        return Ground(x: frame.x, z: z, across: frame.across, deep: frame.deep, least: sidesDistance(frame, x: frame.x, z: z))
+    }
+
+    /// The column as laid out now, framed (`framedColumn`).
+    var columnFrame: Village.ColumnFrame? { village.flatMap { $0.arrangement == .column ? framedColumn($0) : nil } }
 
     /// The calm view over an empty meadow, waiting for the first blanket.
     static let emptyMeadow = Ground(x: 0, z: 2, across: 20, deep: 14)
@@ -172,6 +182,13 @@ final class Stage {
     var keyboardFocus: MeadowItem?
     /// What the camera frames when it flies (nil: everything).
     var focus: MeadowItem?
+    /// What you last chose, which the camera follows (`Follow.swift`): kept in comfortable view whenever
+    /// the framing is worked out again (a resize, a blanket arriving), never because of what agents do.
+    var followed: MeadowItem? { didSet { followedShift = nil; followedTop = nil } }
+    /// How far the framing is moved to keep `followed` comfortable, and what that was worked out for.
+    var followedShift: (key: FollowKey, shift: CameraShift)?
+    /// In a column, where the flags' top goes on screen to keep `followed` comfortable (nil: as framed).
+    var followedTop: (key: FollowKey, y: Float?)?
     private var hoveredCat: Cat?
     private var pettedCat: Cat?
 
@@ -208,6 +225,7 @@ final class Stage {
         if let item = focus, village.plot(item.blanketID) == nil { focus = nil }
         if let item = selection, village.plot(item.blanketID) == nil { selection = nil }
         if let item = keyboardFocus, village.plot(item.blanketID) == nil { keyboardFocus = nil }
+        if let item = followed, village.plot(item.blanketID) == nil { followed = nil }
         // A blanket arriving or leaving changes the picture: unless you are in close on one, show them all.
         if village.count != before && focus == nil { camera.fly() }
     }

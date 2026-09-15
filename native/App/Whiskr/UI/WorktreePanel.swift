@@ -33,43 +33,44 @@ final class WorktreeController: NSObject, NSWindowDelegate {
                                  styleMask: [.borderless, .fullSizeContentView], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        // The card draws its own shadow, so it fades and grows with it (`OverlayMotion`).
+        panel.hasShadow = false
         panel.isReleasedWhenClosed = false
-        panel.animationBehavior = .utilityWindow
+        panel.animationBehavior = .none
         panel.delegate = self
         panel.onCancel = { [weak self] in self?.close() }
         let host = NSHostingController(rootView: WorktreeView(model: model))
         host.sizingOptions = [.preferredContentSize]
         panel.contentViewController = host
         panel.setContentSize(host.view.fittingSize)
-        place(panel, over: window)
+        host.view.wantsLayer = true
+        // Where Go to opens: out of the top bar's search field.
+        PaletteController.place(panel, over: window, margin: WorktreeView.margin)
         window.addChildWindow(panel, ordered: .above)
         panel.makeKey()
         self.panel = panel
         if window.isVisible && !DebugPlaces.isBackground { panel.orderFront(nil) }
+        if let layer = host.view.layer { OverlayMotion.appear(layer) }
         model.load()
     }
 
-    /// Centred over the terminals, a fifth of the way down, where the palette shows.
-    private func place(_ panel: NSPanel, over window: NSWindow) {
-        let terminals = window.contentViewController.flatMap { ($0 as? NSSplitViewController)?.splitViewItems.last?.viewController.view }
-        let region = terminals.flatMap { view -> NSRect? in
-            guard let host = view.window, !view.isHiddenOrHasHiddenAncestor else { return nil }
-            return host.convertToScreen(view.convert(view.bounds, to: nil))
-        } ?? window.frame
-        let size = panel.frame.size
-        panel.setFrameTopLeftPoint(NSPoint(x: max(window.frame.minX + 12, region.midX - size.width / 2), y: region.maxY - min(140, region.height * 0.18)))
-    }
-
+    /// Put away: the keyboard back where it was at once, the panel fading out the way it came in.
     func close() {
         guard let panel else { return }
         self.panel = nil
-        parent?.removeChildWindow(panel)
-        panel.orderOut(nil)
+        panel.isLeaving = true
+        panel.ignoresMouseEvents = true
         if let parent, parent.isVisible {
             parent.makeKey()
             if let returnFocus { parent.makeFirstResponder(returnFocus) }
         }
+        let parent = parent
+        let gone = { @MainActor [weak parent] in
+            parent?.removeChildWindow(panel)
+            panel.orderOut(nil)
+        }
+        guard panel.isVisible, let layer = panel.contentView?.layer else { return gone() }
+        OverlayMotion.disappear(layer, done: gone)
     }
 
     func windowDidResignKey(_ notification: Notification) {
@@ -198,11 +199,22 @@ final class WorktreeModel {
     }
 }
 
-/// A panel that takes the keyboard although it has no title bar; Esc puts it away.
+/// A panel that takes the keyboard although it has no title bar; Esc puts it away, as does a click in the
+/// clear room round its card (the shadow's).
 final class WorktreePanelWindow: NSPanel {
     var onCancel: () -> Void = {}
-    override var canBecomeKey: Bool { true }
+    /// Put away and fading out: it never takes the keyboard back.
+    var isLeaving = false
+    override var canBecomeKey: Bool { !isLeaving }
     override func cancelOperation(_ sender: Any?) { onCancel() }
+
+    override func sendEvent(_ event: NSEvent) {
+        if [.leftMouseDown, .rightMouseDown, .otherMouseDown].contains(event.type), let content = contentView,
+           !content.bounds.insetBy(dx: WorktreeView.margin, dy: WorktreeView.margin).contains(content.convert(event.locationInWindow, from: nil)) {
+            return onCancel()
+        }
+        super.sendEvent(event)
+    }
 }
 
 /// The panel itself.
@@ -211,6 +223,8 @@ struct WorktreeView: View {
     @FocusState private var fieldFocused: Bool
 
     static let width: CGFloat = 520
+    /// Room round the card, inside the panel, for its shadow.
+    static let margin: CGFloat = 24
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -246,6 +260,8 @@ struct WorktreeView: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.surface))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.line))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.surface).shadow(color: .black.opacity(0.2), radius: 16, y: 8))
+        .padding(Self.margin)
         .onAppear { fieldFocused = true }
         .accessibilityElement(children: .contain)
     }

@@ -60,9 +60,22 @@ final class MapCamera {
     private(set) var maxDistance: Float = 160
     /// A scroll along the ground being eased in (`glide`): from where, to where, how far through.
     private var glide: (from: Vec2, to: Vec2, t: Float, seconds: Float)? = nil
+    /// A glide toward a goal that may change on the way (`chase`), for following what you choose.
+    private var pursuit: Pursuit? = nil
+    /// How fast the view moved last frame (x, z, and distance in scale), so a chase starting while it
+    /// moves carries on at that speed instead of stopping dead first.
+    private var velocity = Pose.zero
+    /// Where the framing lands (`wanted`) once worked out: the owner may nudge it, as the stage does to keep
+    /// what you chose in comfortable view. Asked every frame of a flight, so it must be cheap.
+    var adjust: ((CameraView) -> CameraView)?
 
-    var moving: Bool { flight != nil || zoom != nil || glide != nil || simd_length(turnVelocity) > 0 || simd_length(slideVelocity) > 0 }
+    var moving: Bool { flight != nil || zoom != nil || glide != nil || pursuit != nil || simd_length(turnVelocity) > 0 || simd_length(slideVelocity) > 0 }
     var flying: Bool { flight != nil }
+    /// A chase is under way (`chase`).
+    var chasing: Bool { pursuit != nil }
+    /// Resting on the framing, or on its way there: the camera keeps the aimed ground framed until you
+    /// move it yourself.
+    var framing: Bool { (settled || pursuit?.framing == true) && !held }
 
     var target: Vec3 { Vec3(view.x, Self.height, view.z) }
     var eye: Vec3 { Self.eye(of: view) }
@@ -230,6 +243,7 @@ final class MapCamera {
         flight = (view, 0)
         zoom = nil
         glide = nil
+        pursuit = nil
         settled = true
     }
 
@@ -238,6 +252,7 @@ final class MapCamera {
         flight = nil
         zoom = nil
         glide = nil
+        pursuit = nil
         settled = true
         view = wanted(from: view)
     }
@@ -246,8 +261,50 @@ final class MapCamera {
         view = v
         flight = nil
         glide = nil
+        pursuit = nil
         settled = false
     }
+
+    /// Where the camera is headed: the end of a flight, a scroll or a chase under way, else where it is.
+    var destination: CameraView {
+        if let goal = pursuit?.goal { return goal }
+        if flight != nil { return wanted(from: view) }
+        if let g = glide { var v = view; v.x = g.to.x; v.z = g.to.y; return v }
+        return view
+    }
+
+    /// Glides to `goal`, at the angle the view has now, then stays there; with `framing`, it then rests on
+    /// the framing (`wanted`) as a flight's end does, the goal being where that framing lands. Three easing
+    /// stages in a row: it sets off gently, at the speed the view already had, and comes in softly; a new
+    /// goal on the way bends the path without a jolt. Lands in about `chaseSeconds`. At once when calm
+    /// (`cut`). Anything you do to the view takes over from it.
+    func chase(to goal: CameraView, framing: Bool, cut: Bool = false) {
+        if held { return }
+        flight = nil
+        zoom = nil
+        glide = nil
+        turnVelocity = .zero
+        slideVelocity = .zero
+        // Resting on the framing waits for the landing, so the two never pull the view at once.
+        settled = false
+        if cut || calm {
+            pursuit = nil
+            view = goal
+            settled = framing
+            return
+        }
+        if pursuit != nil {
+            pursuit?.goal = goal
+            pursuit?.framing = framing
+            return
+        }
+        // Set off at the speed the view had: the last stage's lead is that speed over the rate.
+        let now = Pose(view), lead = now + velocity * (1 / Self.chaseRate)
+        pursuit = Pursuit(goal: goal, framing: framing, first: lead, second: lead)
+    }
+    /// Each stage's rate (per second): three in a row land within a hundredth of the way in about 0.85 s.
+    static let chaseRate: Float = 10
+    static var chaseSeconds: Float { 8.4 / chaseRate }
 
     // MARK: - each frame
 
@@ -256,8 +313,28 @@ final class MapCamera {
         let ease = calm ? 1 : min(1, dt * 8)
         cover += (coverGoal - cover) * ease
         maxDistance = max(fit(bounds(), view) * 1.6, Self.nearest * 2)
+        let before = Pose(view)
 
-        if var f = flight {
+        if var p = pursuit {
+            let goal = p.goal, to = Pose(goal)
+            let k = 1 - exp(-dt * Self.chaseRate)
+            p.first = p.first + (to - p.first) * k
+            p.second = p.second + (p.first - p.second) * k
+            let at = Pose(view) + (p.second - Pose(view)) * k
+            view.x = at.x
+            view.z = at.z
+            view.distance = exp(at.scale)
+            // Landed: within a hair of the goal, all three stages.
+            if at.near(to) && p.first.near(to) && p.second.near(to) {
+                view.x = goal.x
+                view.z = goal.z
+                view.distance = goal.distance
+                pursuit = nil
+                settled = p.framing
+            } else {
+                pursuit = p
+            }
+        } else if var f = flight {
             // Ease away, glide, ease in: slow at both ends so nothing lurches.
             f.t = calm ? 1 : min(1, f.t + dt / Self.flightSeconds)
             let t = f.t, eased = t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2
@@ -276,6 +353,7 @@ final class MapCamera {
         if zoom != nil { glideZoom(dt) }
         applyDamped(dt)
         keepInBounds(dt)
+        if dt > 0 { velocity = (Pose(view) - before) * (1 / dt) }
     }
 
     /// After you let go, the view coasts on at the speed it had and slows to a stop.
@@ -300,6 +378,7 @@ final class MapCamera {
     private func letGo() {
         flight = nil
         glide = nil
+        pursuit = nil
         settled = false
     }
 
@@ -333,10 +412,19 @@ final class MapCamera {
         return max(wide / openWide, (long * sin(v.pitch)) / openTall) + long * cos(v.pitch)
     }
 
-    // Where a flight should end: framing the aimed ground from the angle the flight began at.
-    private func wanted(from: CameraView) -> CameraView {
-        let g = aim()
-        return CameraView(x: g.x, z: g.z, distance: clamp(max(fit(g, from), g.least), Self.nearest, maxDistance), pitch: from.pitch, bearing: from.bearing)
+    // Where a flight should end: framing the aimed ground from the angle the flight began at, as the owner
+    // adjusts it.
+    func wanted(from: CameraView) -> CameraView {
+        let framed = framed(from: from)
+        return adjust?(framed) ?? framed
+    }
+
+    /// The aimed ground framed from that angle, before the owner's adjustment.
+    func framed(from: CameraView) -> CameraView { framing(aim(), from: from) }
+
+    /// A patch of ground framed from that angle.
+    func framing(_ g: Ground, from: CameraView) -> CameraView {
+        CameraView(x: g.x, z: g.z, distance: clamp(max(fit(g, from), g.least), Self.nearest, maxDistance), pitch: from.pitch, bearing: from.bearing)
     }
 
     // Part-way from one view to another, turning the short way round. Distance eases in scale.
@@ -344,4 +432,25 @@ final class MapCamera {
         CameraView(x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, distance: a.distance * pow(b.distance / a.distance, t),
                    pitch: a.pitch + (b.pitch - a.pitch) * t, bearing: a.bearing + turnFrom(a.bearing, b.bearing) * t)
     }
+}
+
+/// Where the camera stands across the ground, and how far back as a logarithm (so distance eases in
+/// scale): what a chase eases.
+private struct Pose {
+    var x: Float, z: Float, scale: Float
+    static let zero = Pose(x: 0, z: 0, scale: 0)
+    init(x: Float, z: Float, scale: Float) { self.x = x; self.z = z; self.scale = scale }
+    init(_ v: CameraView) { self.init(x: v.x, z: v.z, scale: log(max(v.distance, 1e-3))) }
+    static func + (a: Pose, b: Pose) -> Pose { Pose(x: a.x + b.x, z: a.z + b.z, scale: a.scale + b.scale) }
+    static func - (a: Pose, b: Pose) -> Pose { Pose(x: a.x - b.x, z: a.z - b.z, scale: a.scale - b.scale) }
+    static func * (a: Pose, k: Float) -> Pose { Pose(x: a.x * k, z: a.z * k, scale: a.scale * k) }
+    /// Close enough to stop: a thousandth of a unit across, a ten-thousandth in scale.
+    func near(_ o: Pose) -> Bool { abs(x - o.x) < 1e-3 && abs(z - o.z) < 1e-3 && abs(scale - o.scale) < 1e-4 }
+}
+
+/// A chase's goal, whether it then rests on the framing, and its two leading stages.
+private struct Pursuit {
+    var goal: CameraView
+    var framing: Bool
+    var first: Pose, second: Pose
 }

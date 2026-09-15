@@ -11,6 +11,7 @@ struct HomePage: View {
     let workbench: Workbench
 
     @State private var highlighted = 1
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var typed = ""
     @State private var typedAt = Date.distantPast
     @FocusState private var focused: Bool
@@ -26,9 +27,13 @@ struct HomePage: View {
         VStack(spacing: 0) {
             if let notice = workbench.launchNotice {
                 LaunchNoteBar(notice: notice) { workbench.launchNotice = nil }
+                    // Down from under the tab row, and back up as it goes (a fade alone with Reduce Motion).
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
             list
         }
+        .animation(Look.Motion.animation(Look.Motion.standard), value: workbench.launchNotice != nil)
+        .clipped()
         .background(Color(nsColor: Colors.terminalBackground))
     }
 

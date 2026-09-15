@@ -13,7 +13,9 @@ extension FilesFlow {
     func fileTree() async -> FileTreeView? {
         _ = await PerfWait.until(5000) {
             guard let tree = self.controller.terminals.sidePanel.fileTree, tree.window != nil, !tree.isHiddenOrHasHiddenAncestor else { return false }
-            return tree.outline.numberOfRows > 3
+            // Once the panel has slid in: a click aimed at a row while it still moves lands on another (a person
+            // does not click into a panel 200 ms after asking for it, a run does).
+            return tree.outline.numberOfRows > 3 && !LiveResize.shared.isActive
         }
         return controller.terminals.sidePanel.fileTree
     }

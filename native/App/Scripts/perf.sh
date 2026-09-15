@@ -1,8 +1,10 @@
 #!/bin/zsh
 # make perf: the profile build in isolated, invisible runs (`DebugPerf`), one after another so they never
-# compete: the checks (closing tabs, sizes, interactions), then the measurements with working cats in the
-# meadow, then the editor on big files. Prints each run's table; fails when a check fails or a measurement
-# passes its limit (`--perf-limits`, `--measure-limits`). Timings are only comparable on a quiet Mac: each run
+# compete: the checks (closing tabs, sizes, interactions; resizing; the bars' controls; alerts; the meadow
+# following what you choose), then the measurements with working cats in the meadow (the last of them the
+# interface's transitions, frame by frame: `DebugAnimations`), then the editor on big files. Prints each run's
+# table; fails when a check fails or a measurement passes its limit (`--perf-limits`, `--measure-limits`).
+# Timings are only comparable on a quiet Mac: each run
 # waits (up to ten minutes) until other programs keep at most one core busy, says how busy the Mac was, and
 # a limit passed while it was busy (`MachineLoad`, measured by the run itself) makes the run "not
 # comparable" (exit 3) rather than failed or passed. The meadow is shown by day (the idle flow measures day
@@ -190,7 +192,11 @@ run checks --window 1440x900 --perf-flows closing,sizes,interactions
 journey
 run files --window 1440x900 --perf-flows files
 run layout --window 1440x900 --perf-flows layout
+run chrome --window 1440x900 --perf-flows chrome
 run robust --window 1440x900 --perf-flows robust
+run alerts --window 1440x900 --perf-flows alerts
+run meadow --window 1440x900 --perf-flows meadow
+run resize --window 1440x900 --perf-flows resize
 run measure --window 1440x900 --perf-cats
 make_editor_files "$runs/editor-files"
 editor editor-swift "$runs/editor-files/big50k.swift"

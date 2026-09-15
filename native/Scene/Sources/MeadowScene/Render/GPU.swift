@@ -133,7 +133,7 @@ final class GPU {
     let compileMilliseconds: Double
 
     let clay, clayBlend, clayDepth, clayFade, skin, skinTwoSided: MTLRenderPipelineState
-    let shadow, sky, ground, grass, water, stars, sprite, glow, firefly: MTLRenderPipelineState
+    let shadow, halo, sky, ground, grass, water, stars, sprite, glow, firefly: MTLRenderPipelineState
     let depthWrite, depthRead, depthEqual, depthNone: MTLDepthStencilState
     let rootKernel: MTLComputePipelineState
     /// Bound where a shader declares a buffer it does not read for this draw.
@@ -185,6 +185,7 @@ final class GPU {
         skin = try pipe("skinVertex", "clayFragment", label: "cat skin")
         skinTwoSided = try pipe("skinVertex", "clayFragment", label: "cat tail")
         shadow = try pipe("shadowVertex", "shadowFragment", blend: .alpha, label: "blob shadow")
+        halo = try pipe("haloVertex", "haloFragment", blend: .alpha, label: "chosen cat's halo")
         sky = try pipe("skyVertex", "skyFragment", label: "sky")
         ground = try pipe("groundVertex", "groundFragment", label: "ground")
         grass = try pipe("grassVertex", "grassFragment", label: "grass")

@@ -21,7 +21,8 @@ extension Workbench {
                         colorIndex: workspace.colorIndex, branch: workspace.branch, pinned: isPinned(workspace),
                         changes: workspace.git == nil ? nil : branchChanges[workspace.id], joinedTo: repositoryWorkspace(of: workspace)?.id)])
             },
-            selectedSpace: selectedWorkspace?.id, selectedBlanket: selectedWorkspace?.id, focusedPane: focusedPane?.id, focusedAgent: focusedAgent)
+            // A helper peeked at over the panes is what is shown, so its cat is the one ringed.
+            selectedSpace: selectedWorkspace?.id, selectedBlanket: selectedWorkspace?.id, focusedPane: peekedPane ?? focusedPane?.id, focusedAgent: focusedAgent)
     }
 
     private func scenePane(_ pane: Pane) -> SceneSnapshot.Pane {
