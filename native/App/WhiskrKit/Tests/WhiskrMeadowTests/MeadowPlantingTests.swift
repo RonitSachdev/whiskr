@@ -57,7 +57,7 @@ private func item(_ id: String, _ x: Double, _ z: Double, seed: UInt32? = nil) -
             let made = try #require(session.fresh(id, at: .zero, turn: 0.5, using: &random), "\(id)")
             #expect(made.size == nil && made.tilt == nil && made.seed == nil && made.variant == 0 && made.turn == 0.5, "\(id)")
         }
-        #expect(session.fresh("work.desk", at: .zero, turn: 0, using: &random) == nil, "not drawn yet")
+        #expect(session.fresh("work.lampPost", at: .zero, turn: 0, using: &random) == nil, "not drawn yet")
         #expect(session.fresh("garden.fence", at: .zero, turn: 0, using: &random) == nil, "a run, not placed at a spot")
     }
 

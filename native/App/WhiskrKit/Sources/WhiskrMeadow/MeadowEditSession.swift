@@ -163,11 +163,7 @@ public struct MeadowEditSession: Sendable {
 
     /// The scene's form of an item, when it is one the scene draws (at a spot, of an id it has a builder for).
     static func thing(_ item: MeadowFile.MeadowItem, _ catalog: MeadowCatalog) -> MeadowScenery.Thing? {
-        guard case .at(let at) = item.placement, MeadowScenery.draws(item.asset) else { return nil }
-        let size = item.size.map { Vec3(Float($0[0]), Float($0[1]), Float($0[2])) } ?? Vec3(1, 1, 1)
-        let tilt = item.tilt.map { Vec2(Float($0[0]), Float($0[1])) } ?? .zero
-        return MeadowScenery.Thing(id: item.asset, x: Float(at.x), z: Float(at.z), turn: Float(item.turn), size: size, tilt: tilt,
-                                   seed: item.seed ?? 0, variant: item.drawnVariant(catalog))
+        MeadowScenery.Thing(item, catalog)
     }
 
     // MARK: Looking things up
@@ -278,8 +274,7 @@ public struct MeadowEditSession: Sendable {
         var moved = scenery
         for id in ids {
             guard let i = drawnIndex[id] else { continue }
-            moved.things[i].x += offset.x
-            moved.things[i].z += offset.y
+            moved.things[i].move(by: offset)
         }
         return moved
     }
@@ -307,8 +302,7 @@ public struct MeadowEditSession: Sendable {
         var found: [Int: MeadowEditRefusal] = [:]
         for moved in check.moved {
             var thing = moved.thing
-            thing.x += offset.x
-            thing.z += offset.y
+            thing.move(by: offset)
             if let refusal = check.field.refusal(for: thing, excusing: moved.excused, wasOnPicnicGround: moved.onPicnic) {
                 found[moved.id] = said(refusal)
             }
@@ -332,17 +326,34 @@ public struct MeadowEditSession: Sendable {
     }
 
     /// Turns `ids` by `radians` about up (positive turns counter-clockwise, seen from above): one thing about
-    /// its own middle, several about the middle of the group, which keeps its shape.
+    /// its own middle, several about the middle of the group, which keeps its shape. A run (a fence) is turned by
+    /// its points, alone about their middle; it has no turn of its own.
     public mutating func turn(_ ids: Set<Int>, by radians: Double) -> Result<MeadowChange, MeadowEditRefused> {
         let middle = ids.count > 1 ? self.middle(of: ids) : nil
+        let c = cos(radians), s = sin(radians)
+        // As the scene turns things about up: x' = x cos + z sin, z' = −x sin + z cos.
+        func turned(_ p: MeadowPoint, about m: SIMD2<Double>) -> MeadowPoint {
+            let dx = p.x - m.x, dz = p.z - m.y
+            return MeadowPoint(m.x + dx * c + dz * s, m.y - dx * s + dz * c)
+        }
         return edit(ids) { item, _ in
-            item.turn = Self.normalTurn(item.turn + radians)
-            if let middle, case .at(let at) = item.placement {
-                // As the scene turns things about up: x' = x cos + z sin, z' = −x sin + z cos.
-                let dx = at.x - middle.x, dz = at.z - middle.y, c = cos(radians), s = sin(radians)
-                item.placement = .at(MeadowPoint(middle.x + dx * c + dz * s, middle.y - dx * s + dz * c))
+            switch item.placement {
+            case .at(let at):
+                item.turn = Self.normalTurn(item.turn + radians)
+                if let middle { item.placement = .at(turned(at, about: middle)) }
+            case .run(let points):
+                let about = middle ?? Self.middle(of: points)
+                item.placement = .run(points.map { turned($0, about: about) })
             }
         }
+    }
+
+    /// The middle of a run's points (its first point not counted twice when it closes on itself).
+    static func middle(of points: [MeadowPoint]) -> SIMD2<Double> {
+        let closes = points.count > 2 && points.first == points.last
+        let counted = closes ? Array(points.dropLast()) : points
+        guard !counted.isEmpty else { return .zero }
+        return SIMD2(counted.map(\.x).reduce(0, +), counted.map(\.z).reduce(0, +)) / Double(counted.count)
     }
 
     /// Grows or shrinks `ids` by `factor` on every axis (living things only, within what their kind grows to).
@@ -410,8 +421,7 @@ public struct MeadowEditSession: Sendable {
         for id in ids {
             guard let i = drawnIndex[id] else { continue }
             var thing = scenery.things[i]
-            thing.x += offset.x
-            thing.z += offset.y
+            thing.move(by: offset)
             if let refusal = field.refusal(for: thing) { found[id] = said(refusal) }
         }
         return found
@@ -425,8 +435,7 @@ public struct MeadowEditSession: Sendable {
         for id in shown where ids.contains(id) {
             guard let i = drawnIndex[id] else { continue }
             var thing = scenery.things[i]
-            thing.x += offset.x
-            thing.z += offset.y
+            thing.move(by: offset)
             copies.append(withCopies.things.count)
             withCopies.things.append(thing)
         }
@@ -527,8 +536,8 @@ public struct MeadowEditSession: Sendable {
 
     /// Changes `ids` with `change` (and the things from a newer Whiskr among them with `parcels`, when given)
     /// when each may stand where it ends up; refused, nothing changes.
-    private mutating func edit(_ ids: Set<Int>, parcels: ((inout MeadowParcel) -> Void)? = nil,
-                               _ change: (inout MeadowFile.MeadowItem, Int) -> Void) -> Result<MeadowChange, MeadowEditRefused> {
+    mutating func edit(_ ids: Set<Int>, parcels: ((inout MeadowParcel) -> Void)? = nil,
+                       _ change: (inout MeadowFile.MeadowItem, Int) -> Void) -> Result<MeadowChange, MeadowEditRefused> {
         let leaving = Set(ids.compactMap { drawnIndex[$0] })
         let field = SceneryRules.Field(scenery, leavingOut: leaving)
         var edited: [MeadowChange.Edited] = []
