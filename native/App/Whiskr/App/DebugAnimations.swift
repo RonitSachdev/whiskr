@@ -264,7 +264,7 @@ extension PerfSuite {
         }
         if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .control, timestamp: ProcessInfo.processInfo.systemUptime,
                                         windowNumber: window.windowNumber, context: nil, characters: "\t", charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48) {
-            NSApp.postEvent(event, atStart: false)
+            QueuedEvents.post(event)
         }
         _ = await PerfWait.until(1000) { taken }
         if let menus { NSEvent.removeMonitor(menus) }

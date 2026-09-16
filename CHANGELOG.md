@@ -36,13 +36,14 @@ Nothing has been released yet. This is what the first release will contain.
   and the log with a click, ⇧-click, ⌘-click (all of a kind nearby) or a marquee; drag to move them (⌥-drag
   copies), with a ring under each and, where one cannot stand, a dashed ring and the reason by the pointer;
   arrows nudge, R turns, [ and ] size living things, ⌘D duplicates, ⌫ deletes, and ⌘C, ⌘X and ⌘V copy and
-  paste. A bar floats over what is chosen; a compass turns the view back to north. Every gesture is one
+  paste. A bar floats over what is chosen; `,` `.` and `0` (or View › Editor View, or the grass's menu) turn
+  the view, face it north and frame the workspaces again. Every gesture is one
   step of ⌘Z and ⇧⌘Z. Everything is saved as you go: the first change makes "My Meadow", a copy of the
   Default, which never changes, and Revert to Default (the meadow's name in the top bar, or Settings ›
   Meadow) shows it again. Done (⌘↩) or Esc brings the window back exactly as it was; terminals, Claudes and
   alerts carry on throughout, and ⌘J, ⌘T and choosing anything on the right leave editing first.
-- The meadow's editor has a tray along its bottom edge: Select (V), Brush (B) and Erase (E), the shelf of
-  everything the meadow can hold, each pictured by the meadow itself in its clay, by category (1–3) or by
+- The meadow's editor has a tray along its bottom edge: Select (V), Brush (B), Erase (E) and Ground (G), the
+  shelf of everything the meadow can hold, each pictured by the meadow itself in its clay, by category (1–4) or by
   filter (⌘F), folded to one row with ⌥⌘T. Click a thing and its ghost follows the pointer, greyed with the
   reason where it cannot stand; a click places it (⇧-click places more), or drag it straight out of the tray;
   each one grows its own size, lean and shape (no two oaks alike) and settles into the meadow. The Brush
@@ -52,8 +53,27 @@ Nothing has been released yet. This is what the first release will contain.
   how full the meadow is before a cap is reached (5,000 things, 48 trees, 120 tall things) and why at one.
   All of it works from the keyboard alone (Tab to the shelf, Return to arm, arrows to move, Return to place)
   and with VoiceOver.
-- A chosen tree in the editor is ringed round its crown's shade as well as its trunk and lit a little, and
-  the bar for what is chosen hangs just under its rings instead of high above the crown.
+- A chosen tree in the editor is ringed round its crown's shade as well as its trunk and lit a little
+  brighter in its own colours (no longer tinted blue), and the bar for what is chosen hangs just under its
+  rings instead of high above the crown.
+- The editor's Ground tool (G): paint paths of worn earth (the grass closing in over their edges, so they
+  look walked rather than drawn), lawn mown short with the mower's stripes, and soil for flower beds, and
+  bring the wild grass back with Wild Grass or ⌥-drag. The brush follows the ground, `[` and `]` or the
+  slider size it, each stroke is one step of ⌘Z, and the meadow keeps its frame rate while you paint. Plants
+  are left as they are; blankets always lie on their own ground. The painting is saved in the meadow's file.
+- Stepping stones: on the Stones & Wood shelf; a click places one, a drag lays a row a stride apart, each
+  set its own way across the path with the turf trodden short round it, as one step.
+- More to make the meadow theirs, each modelled on the real thing in the meadow's clay: an apple tree hung
+  with apples (a few windfalls in the grass) and a tall Scots pine, orange high on its trunk; cornflowers,
+  foxgloves, ferns and clover for the Brush; a boulder to sit on, a tree stump with its rings and a log
+  pile; a floor cushion; and Cat Things: a cardboard box with its flaps open, a scratching post, a ball of
+  yarn, a cat bed and a food bowl, the grass trodden short round them. The shelf scrolls with a mouse's
+  wheel as well as a trackpad, the filter finds things by other names too ("firewood", "zabuton"; in
+  Japanese, hiragana or katakana), and the Eraser's sweep leaves made things, wood and boulders alone (a
+  click takes one).
+- Painted paths now read as pale, dry, trodden earth with a few pebbles and short tufts along their sides,
+  and soil as a dark tilled bed in ridges, so the two are told apart at a glance; the earth's flecks are
+  soft and round instead of small blocks.
 - Trees and the fallen log make way where a blanket comes, as flowers and stones always did, and come back
   when it goes. The workspaces' column always runs down the middle of the meadow.
 - The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset

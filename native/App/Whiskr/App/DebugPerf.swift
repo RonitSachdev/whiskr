@@ -422,6 +422,72 @@ enum PerfWait {
     }
 }
 
+/// The run's own events queued for the app (`NSApplication.postEvent`), as the window server queues a
+/// person's: a click's release behind its press, a drag's moves, a key. AppKit does not hand out the event
+/// it was given: it takes a copy off the queue, and on a busy Mac (a few runs in ten) a mouse event's copy
+/// came off it with its x moved by hundreds or thousands of points (a release made at 1,355.5 taken at
+/// 3,063.5; once its y too), its time, number and screen point as made. The release then lay outside the
+/// control it pressed, and the control rightly did nothing (`BarControlView` and `TabMouseView` act only on
+/// a release over them): a check failed now and then, never for a person, whose events come from the
+/// window server, not `postEvent`. So wherever a queued event's copy goes (`nextEvent`, to the run loop or
+/// a tracking loop; then `sendEvent`, from the run loop, which sends the copy it took), the event the run
+/// made goes instead.
+@MainActor
+enum QueuedEvents {
+    /// Queued and not yet sent, in order, with AppKit's copy once it has come off the queue. One a tracking
+    /// loop takes and handles itself is never sent, and stays (a drag's moves and release: a few in a run).
+    private static var waiting: [(made: NSEvent, copy: NSEvent?)] = []
+    private static var installed = false
+    /// The kinds of event that have a place in the window.
+    private static let pointed: Set<NSEvent.EventType> = [.leftMouseDown, .leftMouseUp, .leftMouseDragged, .rightMouseDown, .rightMouseUp,
+                                                          .otherMouseDown, .otherMouseUp, .mouseMoved]
+
+    static func post(_ event: NSEvent) {
+        install()
+        waiting.append((event, nil))
+        NSApp.postEvent(event, atStart: false)
+    }
+
+    /// The event the run made for `taken`, if it is AppKit's copy of one queued here: one seen before, or
+    /// one of the same kind and time (to the nanosecond the copy keeps) just come off the queue. Once sent,
+    /// it is no longer waiting. A copy that came off changed is said so.
+    fileprivate static func made(for taken: NSEvent, sending: Bool) -> NSEvent? {
+        guard !waiting.isEmpty, let index = waiting.firstIndex(where: { $0.copy === taken })
+            ?? waiting.firstIndex(where: { $0.copy == nil && $0.made.type == taken.type && abs($0.made.timestamp - taken.timestamp) < 0.000_001 }) else { return nil }
+        let made = waiting[index].made
+        if waiting[index].copy == nil, pointed.contains(made.type), made.locationInWindow != taken.locationInWindow {
+            print("queued events: a \(made.type) made at \(made.locationInWindow) came off the queue at \(taken.locationInWindow); the one made goes on")
+        }
+        if sending { waiting.remove(at: index) } else { waiting[index].copy = taken }
+        return made
+    }
+
+    private static func install() {
+        guard !installed else { return }
+        installed = true
+        for (original, replacement) in [(#selector(NSApplication.sendEvent(_:)), #selector(NSApplication.debugQueuedSendEvent(_:))),
+                                        (#selector(NSApplication.nextEvent(matching:until:inMode:dequeue:)),
+                                         #selector(NSApplication.debugQueuedNextEvent(matching:until:inMode:dequeue:)))] {
+            guard let from = class_getInstanceMethod(NSApplication.self, original), let to = class_getInstanceMethod(NSApplication.self, replacement) else { continue }
+            method_exchangeImplementations(from, to)
+        }
+    }
+}
+
+extension NSApplication {
+    /// Stands in for `sendEvent(_:)` (`QueuedEvents`).
+    @objc func debugQueuedSendEvent(_ event: NSEvent) {
+        debugQueuedSendEvent(QueuedEvents.made(for: event, sending: true) ?? event)     // the original, exchanged
+    }
+
+    /// Stands in for `nextEvent(matching:until:inMode:dequeue:)` (`QueuedEvents`).
+    @objc func debugQueuedNextEvent(matching mask: NSEvent.EventTypeMask, until date: Date?, inMode mode: RunLoop.Mode, dequeue: Bool) -> NSEvent? {
+        let event = debugQueuedNextEvent(matching: mask, until: date, inMode: mode, dequeue: dequeue)     // the original, exchanged
+        guard dequeue, let event else { return event }
+        return QueuedEvents.made(for: event, sending: false) ?? event
+    }
+}
+
 /// One row of the report.
 struct PerfRow {
     var name: String
@@ -1111,7 +1177,7 @@ final class PerfSuite {
     /// One idle stretch: once the meadow has come to rest (waiting up to 20 s, which is itself a finding;
     /// not waited for while it is hidden), 5 s of the process's CPU time and wakeups, its session host's, the
     /// meadow's frames and GPU time, terminal frames and chrome updates.
-    private func idleStretch(_ name: String, limits: Bool) async {
+    func idleStretch(_ name: String, limits: Bool) async {
         let meadow = controller.navigator.meadow
         let begun = perfNow()
         let rested = meadow.assumesOnScreen ? await PerfWait.until(20000) { meadow.isResting } : nil
@@ -1219,7 +1285,7 @@ final class PerfSuite {
                 let point = NSPoint(x: start.x - CGFloat(step * 10), y: start.y)
                 if let drag = NSEvent.mouseEvent(with: step == 12 ? .leftMouseUp : .leftMouseDragged, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                                                  windowNumber: window.windowNumber, context: nil, eventNumber: nextEventNumber(), clickCount: 1, pressure: step == 12 ? 0 : 1) {
-                    NSApp.postEvent(drag, atStart: false)
+                    QueuedEvents.post(drag)
                 }
             }
             if let down = NSEvent.mouseEvent(with: .leftMouseDown, location: start, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,

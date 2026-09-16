@@ -72,7 +72,7 @@ import simd
         #expect(abs(Float(512) * GroundMap.cell - 300) < 1e-4)
         // The widest crown a landmark tree grows, at its largest size (1.2 in the catalog).
         var widest: Float = 0
-        for species in [Species.oak, .birch, .cherry] {
+        for species in [Species.oak, .birch, .cherry, .apple, .pine] {
             for seed in UInt32(0)..<200 {
                 var random = Seeded(seed &* 2_654_435_761)
                 widest = max(widest, Trees.grow(species, &random).crown * 1.1 * 1.2)
@@ -125,7 +125,7 @@ import simd
         #expect(m.treeShapes[0].shape.positions == Trees.grow(.oak, &random).shape.roughened(0.85).positions)
         #expect(m.beds[0].matrices == [Meadow.matrix(of: daisy)] && m.plantKeys[0] == ShapeKey(id: "flower.daisy", variant: 1))
         // A shape it does not have draws as the first; an id the scene does not know is left out.
-        let other = Meadow(scenery: MeadowScenery(things: [thing("flower.daisy", 0, 0, variant: 9), thing("cat.box", 1, 1), thing("garden.pond", 2, 2)]))
+        let other = Meadow(scenery: MeadowScenery(things: [thing("flower.daisy", 0, 0, variant: 9), thing("work.desk", 1, 1), thing("garden.pond", 2, 2)]))
         #expect(other.beds.count == 1 && other.plantKeys == [ShapeKey(id: "flower.daisy", variant: 0)])
     }
 

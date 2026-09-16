@@ -181,15 +181,22 @@ enum MainMenu {
         menu.addItem(item(String(localized: "Animate Meadow"), #selector(MainWindowController.toggleAnimateMeadow(_:))))
         // The meadow fills the window and its scenery can be moved, turned, copied and taken away.
         menu.addItem(item(String(localized: "Edit Meadow"), #selector(MainWindowController.toggleMeadowEditing(_:)), "e", [.command, .control]))
-        // While editing: the tray's tools (their keys, V B E, are the meadow's own, so a terminal keeps them),
+        // While editing: the tray's tools (their keys, V B E G, are the meadow's own, so a terminal keeps them),
         // and the tray folded to its top row.
         let tools = NSMenu(title: String(localized: "Editor Tools", comment: "View menu: the meadow editor's tools"))
         for (index, title) in [String(localized: "Select", comment: "Meadow editor's tool: choose, move and place things"),
                                String(localized: "Brush", comment: "Meadow editor's tool: paints flowers"),
-                               String(localized: "Erase", comment: "Meadow editor's tool: takes things away")].enumerated() {
+                               String(localized: "Erase", comment: "Meadow editor's tool: takes things away"),
+                               String(localized: "Ground", comment: "Meadow editor's tool: paints paths, lawn and soil")].enumerated() {
             tools.addItem(item(title, #selector(MainWindowController.chooseEditorTool(_:)), tag: index))
         }
         menu.addItem(submenu(tools))
+        // The view while editing, for a pointer alone (the keys are the meadow's own: , . 0).
+        let view = NSMenu(title: String(localized: "Editor View", comment: "View menu: turning and framing the meadow while it is edited"))
+        for command in EditModeController.ViewCommand.allCases {
+            view.addItem(item(command.title, #selector(MainWindowController.performEditorView(_:)), tag: command.rawValue))
+        }
+        menu.addItem(submenu(view))
         menu.addItem(item(String(localized: "Hide Editor Tray", comment: "View menu: folds the meadow editor's tray to its top row"),
                           #selector(MainWindowController.toggleEditorTray(_:)), "t", [.command, .option]))
         menu.addItem(.separator())

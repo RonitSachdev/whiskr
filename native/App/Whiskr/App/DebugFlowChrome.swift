@@ -248,7 +248,7 @@ extension PerfSuite {
                                                 windowNumber: window.windowNumber, context: nil, eventNumber: nextEventNumber(), clickCount: number, pressure: 1),
                   let up = NSEvent.mouseEvent(with: .leftMouseUp, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                                               windowNumber: window.windowNumber, context: nil, eventNumber: nextEventNumber(), clickCount: number, pressure: 0) else { continue }
-            NSApp.postEvent(up, atStart: false)
+            QueuedEvents.post(up)
             NSApp.sendEvent(down)
         }
     }

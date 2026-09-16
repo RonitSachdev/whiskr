@@ -6,11 +6,12 @@ import WhiskrKit
 import WhiskrMeadow
 
 // The tray and its tools (docs/DESIGN.md, "Edit Meadow"): placing a thing chosen in the tray (a click, a drag
-// out of the tray, or the keys), the Brush that plants clumps of flowers and the Eraser that takes things
-// away. Each placing, each stroke and each sweep is one step of the history.
+// out of the tray, or the keys), stepping stones laid a stride apart along a drag, the Brush that plants clumps
+// of flowers, the Eraser that takes things away and the Ground tool that paints paths, lawn and soil. Each
+// placing, each row of stones, each stroke and each sweep is one step of the history.
 
-/// A Brush stroke or an Eraser sweep under way: the meadow as the stroke leaves it (drawn, not yet a step),
-/// what it has added or taken away, and where it last dabbed.
+/// A Brush stroke, an Eraser sweep, a Ground stroke or a row of stepping stones under way: the meadow as the
+/// stroke leaves it (drawn, not yet a step), what it has added or taken away, and where it last dabbed.
 struct Stroke {
     var erasing: Bool
     /// The Brush's: the meadow with the plants laid so far. The Eraser's: the meadow as it was.
@@ -28,6 +29,12 @@ struct Stroke {
     var kind: String?
     /// The meadow's caps reached on the way, said once.
     var full: MeadowEditRefusal?
+    /// The Ground tool's: what it paints (`ground.wild` brings the long grass back), and the cells painted so far.
+    var paint: String?
+    var ground: MeadowGroundStroke?
+    /// Stepping stones laid along the drag: where the last was laid.
+    var laying = false
+    var lastStone: SIMD2<Double>?
 }
 
 extension EditModeController {
@@ -37,6 +44,9 @@ extension EditModeController {
     func trayAction(_ action: EditorTray.Action) {
         switch action {
         case .tool(let tool): use(tool)
+        case .category(.ground):
+            // The ground's paints are the Ground tool's shelf.
+            use(.ground)
         case .category(let category):
             if tray.tool != .select { use(.select) }
             tray.category = category
@@ -60,7 +70,7 @@ extension EditModeController {
         }
     }
 
-    /// V, B, E, the tray's buttons, View › Editor Tools: the tool, with what it holds put down first.
+    /// V, B, E, G, the tray's buttons, View › Editor Tools: the tool, with what it holds put down first.
     func use(_ tool: EditorTray.Tool) {
         finishStroke()
         if tool != .select { disarm() }
@@ -89,6 +99,10 @@ extension EditModeController {
         case .erase:
             tray.eraseKind = id
             rememberTray()
+        case .ground:
+            tray.groundPaint = id
+            rememberTray()
+            announce(MeadowWords.name(id))
         }
         tray.highlighted = id
         updateTools()
@@ -291,30 +305,44 @@ extension EditModeController {
     }
 
     /// The circle's radius now, for the tool in hand.
-    var radius: Double { tray.tool == .erase ? tray.eraseRadius : tray.brushRadius }
+    var radius: Double {
+        switch tray.tool {
+        case .erase: tray.eraseRadius
+        case .ground: tray.groundRadius
+        default: tray.brushRadius
+        }
+    }
 
     func setRadius(_ radius: Double) {
-        if tray.tool == .erase {
-            tray.eraseRadius = min(max(radius, EditorTray.eraseRadii.lowerBound), EditorTray.eraseRadii.upperBound)
-        } else {
-            tray.brushRadius = min(max(radius, MeadowBrush.radii.lowerBound), MeadowBrush.radii.upperBound)
+        switch tray.tool {
+        case .erase: tray.eraseRadius = min(max(radius, EditorTray.eraseRadii.lowerBound), EditorTray.eraseRadii.upperBound)
+        case .ground: tray.groundRadius = min(max(radius, MeadowEditSession.groundRadii.lowerBound), MeadowEditSession.groundRadii.upperBound)
+        default: tray.brushRadius = min(max(radius, MeadowBrush.radii.lowerBound), MeadowBrush.radii.upperBound)
         }
         rememberTray()
         updateMarks()
     }
 
-    /// `[` and `]` with the Brush or the Eraser: the circle a unit smaller or larger.
+    /// `[` and `]` with the Brush, the Eraser or the Ground tool: the circle a unit smaller or larger.
     func stepRadius(_ by: Double) {
         setRadius((radius + by).rounded())
         announce(String(localized: "Size \(Int(radius.rounded()))", comment: "VoiceOver: the Brush's or the Eraser's size, in units"))
     }
 
-    /// A stroke begins at `spot` (pressed on the grass with the Brush, ⌥-pressed for clearing what it paints, or
-    /// with the Eraser): the meadow from now on drawn as the stroke leaves it.
+    /// A stroke begins at `spot` (pressed on the grass with the Brush, ⌥-pressed for clearing what it paints, with
+    /// the Eraser, or with the Ground tool, ⌥ painting the wild grass back): the meadow from now on drawn as the
+    /// stroke leaves it.
     func beginStroke(at spot: SIMD2<Float>, erasing: Bool) {
         finishStroke()
         let session = library.session
         let at = SIMD2(Double(spot.x), Double(spot.y))
+        if tray.tool == .ground {
+            var stroke = Stroke(erasing: false, working: session, field: SceneryRules.Field(MeadowScenery()), last: at)
+            stroke.paint = erasing ? MeadowWords.wildGround : tray.groundPaint
+            stroke.ground = session.beginGroundStroke()
+            self.stroke = stroke
+            return dab(at: at)
+        }
         var stroke = Stroke(erasing: erasing, working: session, field: erasing ? SceneryRules.Field(MeadowScenery()) : session.placingField, last: at)
         stroke.preview = session.scenery
         if erasing {
@@ -330,11 +358,12 @@ extension EditModeController {
         dab(at: at)
     }
 
-    /// The stroke carries on to `spot`: a dab each half radius along the way.
+    /// The stroke carries on to `spot`: a dab each half radius along the way (a Ground stroke's each quarter
+    /// radius, so its edge stays smooth however fast it is drawn).
     func continueStroke(to spot: SIMD2<Float>) {
         guard let stroke else { return }
         let at = SIMD2(Double(spot.x), Double(spot.y))
-        let gap = max(radius / 2, 0.5)
+        let gap = stroke.paint != nil ? max(radius / 4, 0.3) : max(radius / 2, 0.5)
         var from = stroke.last
         while simd_distance(from, at) >= gap {
             from += simd_normalize(at - from) * gap
@@ -347,6 +376,19 @@ extension EditModeController {
     private func dab(at spot: SIMD2<Double>) {
         guard var stroke else { return }
         stroke.last = spot
+        if let paint = stroke.paint, var ground = stroke.ground {
+            let refusal = stroke.working.paintGround(paint, at: spot, radius: radius, stroke: &ground)
+            stroke.ground = ground
+            if let refusal, stroke.full == nil {
+                stroke.full = refusal
+                let text = MeadowWords.refusal(refusal)
+                showReason(text, at: meadow.viewPoint(ofGround: SIMD2(Float(spot.x), Float(spot.y))) ?? pointerOrMiddle(), lasting: 3)
+                announce(text)
+            }
+            self.stroke = stroke
+            meadow.scenery = stroke.working.scenery
+            return
+        }
         if stroke.erasing {
             var ids = stroke.working.swept(at: spot, radius: radius, kind: stroke.kind).filter { !stroke.removed.contains($0) }
             if let brush = stroke.brush, stroke.kind == nil {
@@ -378,12 +420,32 @@ extension EditModeController {
     /// The size a swept thing is drawn at until the sweep is let go: nothing to see.
     static let swept = SIMD3<Float>(repeating: 1e-4)
 
-    /// The stroke let go: what it added or took away is one step ("Brush Daisies", "Erase 12 Things").
+    /// The stroke let go: what it added, took away or painted is one step ("Brush Daisies", "Erase 12 Things",
+    /// "Paint Path", "Lay 9 Stepping Stones").
     func finishStroke() {
         guard let stroke else { return }
         self.stroke = nil
         let session = library.session
-        if stroke.erasing {
+        if let paint = stroke.paint, let ground = stroke.ground {
+            let change = stroke.working.change(of: ground)
+            if !change.isEmpty {
+                let name = MeadowWords.paint(paint)
+                library.edit(name) { session in
+                    session.apply(change)
+                    return .success(change)
+                }
+                announce(name)
+            }
+        } else if stroke.laying {
+            if !stroke.added.isEmpty {
+                let name = MeadowWords.lay(stroke.added.count)
+                library.edit(name) { session in
+                    session.apply(MeadowChange(added: stroke.added))
+                    return .success(MeadowChange(added: stroke.added))
+                }
+                announce(name)
+            }
+        } else if stroke.erasing {
             let names = session.drawnIDs.filter(stroke.removed.contains).compactMap { session.item($0)?.asset }
             if !stroke.removed.isEmpty {
                 let name = MeadowWords.erase(names)
@@ -429,12 +491,76 @@ extension EditModeController {
         announce(name)
     }
 
-    /// Return with the Brush or the Eraser: one dab at the keyboard's cursor, as its own step.
+    /// Return with the Brush, the Eraser or the Ground tool: one dab at the keyboard's cursor, as its own step.
     func dabAtCursor() {
         let spot = cursor ?? viewMiddle() ?? .zero
         cursor = spot
         beginStroke(at: spot, erasing: tray.tool == .erase)
         finishStroke()
+    }
+
+    // MARK: Stepping stones
+
+    /// Whether the thing armed is laid in a row along a drag (stepping stones) rather than placed where it is let go.
+    var laysInRows: Bool { tray.armed == MeadowEditSession.steppingStone }
+
+    /// A drag with stepping stones armed: a stone where it was pressed, then one each stride along the drag
+    /// (`MeadowEditSession.steppingStride`), each set across the way as a person lays them; one that may not
+    /// stand where it falls (too close to something, outside the meadow) is left out and the next laid on.
+    func beginLaying(at spot: SIMD2<Float>, toward: SIMD2<Float>) {
+        finishStroke()
+        let session = library.session
+        let at = SIMD2(Double(spot.x), Double(spot.y))
+        var stroke = Stroke(erasing: false, working: session, field: session.placingField, last: at)
+        stroke.laying = true
+        self.stroke = stroke
+        lay(at: at, heading: SIMD2(Double(toward.x - spot.x), Double(toward.y - spot.y)))
+    }
+
+    /// The row carries on toward `spot`: a stone at each stride from the last one laid.
+    func continueLaying(to spot: SIMD2<Float>) {
+        guard let stroke else { return }
+        let at = SIMD2(Double(spot.x), Double(spot.y))
+        var from = stroke.lastStone ?? stroke.last
+        while simd_distance(from, at) >= MeadowEditSession.steppingStride {
+            let heading = simd_normalize(at - from)
+            from += heading * MeadowEditSession.steppingStride
+            lay(at: from, heading: heading)
+        }
+    }
+
+    /// One stone of the row at `spot` (when it may stand there; else the first left out says why, for a moment),
+    /// heading along `heading`.
+    private func lay(at spot: SIMD2<Double>, heading: SIMD2<Double>) {
+        guard var stroke else { return }
+        stroke.lastStone = spot
+        stroke.last = spot
+        let axes = meadow.groundAxes
+        let way = simd_length(heading) > 1e-6 ? heading : SIMD2(Double(axes.forward.x), Double(axes.forward.y))
+        if let item = stroke.working.steppingStone(at: spot, heading: way, using: &random) {
+            if let full = stroke.working.capacity(for: [item]) {
+                if stroke.full == nil {
+                    stroke.full = full
+                    let text = MeadowWords.refusal(full)
+                    showReason(text, at: meadow.viewPoint(ofGround: SIMD2(Float(spot.x), Float(spot.y))) ?? pointerOrMiddle(), lasting: 3)
+                    announce(text)
+                }
+            } else if let thing = stroke.working.thing(item) {
+                if let refusal = stroke.field.refusal(for: thing) {
+                    // Left out, and why said once by it, so the gap in the row is never a mystery.
+                    if stroke.full == nil {
+                        stroke.full = stroke.working.said(refusal)
+                        showReason(MeadowWords.refusal(stroke.working.said(refusal)), at: meadow.viewPoint(ofGround: SIMD2(Float(spot.x), Float(spot.y))) ?? pointerOrMiddle(),
+                                   lasting: 2.5)
+                    }
+                } else {
+                    stroke.field.add(thing)
+                    stroke.added += stroke.working.append([item]).added
+                }
+            }
+        }
+        self.stroke = stroke
+        meadow.scenery = stroke.working.scenery
     }
 
     // MARK: How full the meadow is
@@ -466,12 +592,16 @@ extension EditModeController {
 
     private static let trayKey = "meadowEditorTray"
 
-    /// The tray as it was left: folded or not, the tool's sizes, the Brush's density and kinds.
+    /// The tray as it was left: folded or not, the tools' sizes, the Brush's density and kinds, the Ground tool's paint.
     func restoreTray() {
         guard let saved = AppPlaces.defaults.dictionary(forKey: Self.trayKey) else { return }
         tray.collapsed = saved["collapsed"] as? Bool ?? false
         if let radius = saved["brushRadius"] as? Double { tray.brushRadius = min(max(radius, MeadowBrush.radii.lowerBound), MeadowBrush.radii.upperBound) }
         if let radius = saved["eraseRadius"] as? Double { tray.eraseRadius = min(max(radius, EditorTray.eraseRadii.lowerBound), EditorTray.eraseRadii.upperBound) }
+        if let radius = saved["groundRadius"] as? Double {
+            tray.groundRadius = min(max(radius, MeadowEditSession.groundRadii.lowerBound), MeadowEditSession.groundRadii.upperBound)
+        }
+        if let paint = saved["groundPaint"] as? String, EditorTray.paints.contains(where: { $0.id == paint }) { tray.groundPaint = paint }
         if let density = (saved["density"] as? String).flatMap(MeadowBrush.Density.init(rawValue:)) { tray.density = density }
         let brushes = Set(EditorTray.brushes.map(\.id)), erasers = Set(EditorTray.erasers.map(\.id))
         if let kind = saved["brushKind"] as? String, brushes.contains(kind) { tray.brushKind = kind }
@@ -479,8 +609,9 @@ extension EditModeController {
     }
 
     func rememberTray() {
-        AppPlaces.defaults.set(["collapsed": tray.collapsed, "brushRadius": tray.brushRadius, "eraseRadius": tray.eraseRadius,
-                                "density": tray.density.rawValue, "brushKind": tray.brushKind, "eraseKind": tray.eraseKind] as [String: Any], forKey: Self.trayKey)
+        AppPlaces.defaults.set(["collapsed": tray.collapsed, "brushRadius": tray.brushRadius, "eraseRadius": tray.eraseRadius, "groundRadius": tray.groundRadius,
+                                "density": tray.density.rawValue, "brushKind": tray.brushKind, "eraseKind": tray.eraseKind, "groundPaint": tray.groundPaint] as [String: Any],
+                                forKey: Self.trayKey)
     }
 
     /// View › Hide Editor Tray (⌥⌘T) and the tray's fold: only its top row, or all of it. Remembered.
@@ -523,7 +654,7 @@ extension EditModeController {
             behind = MeadowColor(red: Float(background.redComponent), green: Float(background.greenComponent), blue: Float(background.blueComponent))
         }
         var pictures: [String: CGImage] = [:]
-        let items = EditorTray.things + EditorTray.brushes.filter { $0.id == EditorTray.wildflowers }
+        let items = EditorTray.things + EditorTray.brushes.filter { $0.id == EditorTray.wildflowers } + EditorTray.paints
         for item in items where !item.pictured.isEmpty {
             let key = EditorTray.pictureKey(item, pixels: pixels, background: behind)
             if let made = pictureCache[key] ?? meadow.portrait(of: item.pictured, pixels: pixels, background: behind) {

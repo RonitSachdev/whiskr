@@ -188,7 +188,7 @@ enum DebugScript {
         }
         for number in 1...max(count, 1) {
             guard let down = event(.leftMouseDown, number), let up = event(.leftMouseUp, number) else { continue }
-            NSApp.postEvent(up, atStart: false)
+            QueuedEvents.post(up)
             window.sendEvent(down)
         }
     }
@@ -204,9 +204,9 @@ enum DebugScript {
         }
         for step in 1...10 {
             let t = CGFloat(step) / 10
-            if let moved = event(.leftMouseDragged, NSPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t)) { NSApp.postEvent(moved, atStart: false) }
+            if let moved = event(.leftMouseDragged, NSPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t)) { QueuedEvents.post(moved) }
         }
-        if let up = event(.leftMouseUp, end) { NSApp.postEvent(up, atStart: false) }
+        if let up = event(.leftMouseUp, end) { QueuedEvents.post(up) }
         if let down = event(.leftMouseDown, start) { window.sendEvent(down) }
     }
 

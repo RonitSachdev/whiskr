@@ -120,7 +120,7 @@ extension PerfSuite {
             let point = NSPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t)
             if let event = NSEvent.mouseEvent(with: step == steps ? .leftMouseUp : .leftMouseDragged, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                                               windowNumber: window.windowNumber, context: nil, eventNumber: nextEventNumber(), clickCount: 1, pressure: step == steps ? 0 : 1) {
-                NSApp.postEvent(event, atStart: false)
+                QueuedEvents.post(event)
             }
         }
         if let down = NSEvent.mouseEvent(with: .leftMouseDown, location: start, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,

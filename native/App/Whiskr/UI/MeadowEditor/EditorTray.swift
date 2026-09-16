@@ -5,15 +5,16 @@ import SwiftUI
 import WhiskrMeadow
 
 /// What the editor's tray shows and holds (docs/DESIGN.md, "Edit Meadow"): the tool, the shelf's category, the
-/// item armed for placing, what the Brush paints and the Eraser clears, how wide and how thickly, the filter,
-/// whether it is folded to its top row, and the pictures of the things on its shelf.
+/// item armed for placing, what the Brush paints, the Eraser clears and the Ground tool paints, how wide and how
+/// thickly, the filter, whether it is folded to its top row, and the pictures of the things on its shelf.
 @MainActor @Observable
 final class EditorTray {
     enum Tool: String, CaseIterable {
-        case select, brush, erase
+        case select, brush, erase, ground
     }
 
-    /// One tile of the shelf: a thing of the catalog, the Brush's wildflower mix, or the Eraser's "any kind".
+    /// One tile of the shelf: a thing of the catalog, the Brush's wildflower mix, the Eraser's "any kind", or a
+    /// ground paint (the wild grass among them).
     struct Item: Identifiable, Equatable {
         /// The asset's id, or `wildflowers` or `anyKind`.
         let id: String
@@ -32,8 +33,11 @@ final class EditorTray {
     var armed: String?
     var brushKind = EditorTray.wildflowers
     var eraseKind = EditorTray.anyKind
+    /// What the Ground tool paints: a paint's id, or the wild grass's (`ground.wild`).
+    var groundPaint = "ground.path"
     var brushRadius = MeadowBrush.usualRadius
     var eraseRadius = EditorTray.usualEraseRadius
+    var groundRadius = MeadowEditSession.usualGroundRadius
     var density: MeadowBrush.Density = .natural
     var filter = ""
     var collapsed = false
@@ -87,10 +91,16 @@ final class EditorTray {
         asset.inTray && asset.shape == .single && MeadowScenery.draws(asset.id)
     }.map { Item(id: $0.id, name: MeadowWords.name($0.id), category: $0.category, pictured: [$0.id]) }
 
-    /// The categories that hold something, in the catalog's order.
+    /// The categories that hold something, in the catalog's order: those of things, and the ground's paints
+    /// (whose tab is the Ground tool's).
     static var categories: [MeadowAsset.Category] {
-        MeadowAsset.Category.allCases.filter { category in things.contains { $0.category == category } }
+        MeadowAsset.Category.allCases.filter { category in category == .ground || things.contains { $0.category == category } }
     }
+
+    /// The Ground tool's shelf: path, lawn and soil, then the wild grass that paints them away.
+    static let paints: [Item] = MeadowCatalog.current.assets.filter { asset in
+        asset.inTray && asset.category == .ground && MeadowScenery.Ground.Paint(id: asset.id) != nil
+    }.map { Item(id: $0.id, name: MeadowWords.name($0.id), category: .ground, pictured: [$0.id]) }
 
     /// What the shelf shows now: the Select tool's things of the category (or every match while filtering),
     /// the Brush's plants after its wildflower mix, the Eraser's kinds after "any kind".
@@ -98,11 +108,22 @@ final class EditorTray {
         switch tool {
         case .select:
             let query = filter.trimmingCharacters(in: .whitespaces)
-            if !query.isEmpty { return Self.things.filter { $0.name.localizedStandardContains(query) || MeadowWords.categoryName($0.category).localizedStandardContains(query) } }
+            if !query.isEmpty { return Self.things.filter { Self.matches($0, query) } }
             return Self.things.filter { $0.category == category }
         case .brush: return Self.brushes
         case .erase: return Self.erasers
+        case .ground: return Self.paints
         }
+    }
+
+    /// Whether the filter's `query` finds `item`: in its name, its shelf's name, the other words it goes by
+    /// (`MeadowWords.keywords`) or its id (so "cat" and "post" find their things in any language), ignoring case,
+    /// accents and, in Japanese, hiragana against katakana.
+    static func matches(_ item: Item, _ query: String) -> Bool {
+        func folded(_ text: String) -> String { text.applyingTransform(.hiraganaToKatakana, reverse: false) ?? text }
+        let words = [item.name, MeadowWords.categoryName(item.category), MeadowWords.keywords(item.id), item.id].map(folded)
+        let wanted = folded(query)
+        return words.contains { $0.localizedStandardContains(wanted) }
     }
 
     /// The Brush's shelf: its wildflower mix, then the plants it paints.
@@ -111,9 +132,9 @@ final class EditorTray {
             + things.filter { MeadowCatalog.current.asset($0.id).map(MeadowBrush.paints) ?? false }
     }
 
-    /// The Eraser's shelf: any kind, then each small kind it can be kept to.
+    /// The Eraser's shelf: any kind, then each small kind it can be kept to (what its sweep takes).
     static var erasers: [Item] {
-        [Item(id: anyKind, name: MeadowWords.anyKind, category: nil, pictured: [])] + things.filter { !SceneryRules.isBig($0.id) }
+        [Item(id: anyKind, name: MeadowWords.anyKind, category: nil, pictured: [])] + things.filter { SceneryRules.isSmall($0.id) }
     }
 
     /// The tile chosen on the shelf now: the armed thing, or the Brush's or the Eraser's kind.
@@ -122,6 +143,7 @@ final class EditorTray {
         case .select: armed
         case .brush: brushKind
         case .erase: eraseKind
+        case .ground: groundPaint
         }
     }
 
@@ -142,8 +164,8 @@ final class EditorTray {
 }
 
 /// The editor's tray (docs/DESIGN.md, "Edit Meadow"): a floating piece along the meadow's bottom edge. Its top
-/// row holds the tools (Select V, Brush B, Erase E), the Brush's and the Eraser's size and the Brush's
-/// density, how full the meadow is (past 80 % of a cap), the filter field (⌘F) and the fold; below, the
+/// row holds the tools (Select V, Brush B, Erase E, Ground G), the Brush's, the Eraser's and the Ground tool's
+/// size and the Brush's density, how full the meadow is (past 80 % of a cap), the filter field (⌘F) and the fold; below, the
 /// categories (1–7) and a line saying what to do now; then the shelf of things, each pictured by the scene in its
 /// own clay. Folded, only the top row shows. The chrome's colour, a line round it, radius 10, the one soft
 /// shadow; its buttons are the bars'.
@@ -229,6 +251,7 @@ struct EditorTrayView: View {
         case .select: (String(localized: "Select", comment: "Meadow editor's tool: choose, move and place things"), "cursorarrow", "V")
         case .brush: (String(localized: "Brush", comment: "Meadow editor's tool: paints flowers"), "paintbrush.pointed", "B")
         case .erase: (String(localized: "Erase", comment: "Meadow editor's tool: takes things away"), "eraser", "E")
+        case .ground: (String(localized: "Ground", comment: "Meadow editor's tool: paints paths, lawn and soil"), "square.split.diagonal.2x2", "G")
         }
     }
 
@@ -237,9 +260,18 @@ struct EditorTrayView: View {
     }
 
     private var sizeControl: some View {
-        let erasing = tray.tool == .erase
-        let range = erasing ? EditorTray.eraseRadii : MeadowBrush.radii
-        let value = Binding(get: { erasing ? tray.eraseRadius : tray.brushRadius }, set: { tray.act(.radius($0)) })
+        let range = switch tray.tool {
+        case .erase: EditorTray.eraseRadii
+        case .ground: MeadowEditSession.groundRadii
+        default: MeadowBrush.radii
+        }
+        let value = Binding(get: {
+            switch tray.tool {
+            case .erase: tray.eraseRadius
+            case .ground: tray.groundRadius
+            default: tray.brushRadius
+            }
+        }, set: { tray.act(.radius($0)) })
         return HStack(spacing: Look.Space.s) {
             if !tray.narrow {
                 Text(String(localized: "Size", comment: "Meadow editor's tray: the Brush's or the Eraser's size"))
@@ -249,9 +281,16 @@ struct EditorTrayView: View {
                 .controlSize(.mini)
                 .frame(width: tray.narrow ? 64 : 96)
                 .help(String(localized: "Size ([ and ])", comment: "Meadow editor's tray: the size slider's tooltip"))
-                .accessibilityLabel(erasing ? String(localized: "Eraser size", comment: "VoiceOver: the Eraser's size slider")
-                                            : String(localized: "Brush size", comment: "VoiceOver: the Brush's size slider"))
+                .accessibilityLabel(sizeLabel)
                 .accessibilityValue(String(localized: "\(Int(value.wrappedValue.rounded())) units across", comment: "VoiceOver: the brush's radius in the meadow's units"))
+        }
+    }
+
+    private var sizeLabel: String {
+        switch tray.tool {
+        case .erase: String(localized: "Eraser size", comment: "VoiceOver: the Eraser's size slider")
+        case .ground: String(localized: "Ground brush size", comment: "VoiceOver: the Ground tool's size slider")
+        default: String(localized: "Brush size", comment: "VoiceOver: the Brush's size slider")
         }
     }
 
@@ -298,10 +337,10 @@ struct EditorTrayView: View {
 
     private var categoriesRow: some View {
         HStack(spacing: Look.Space.xxs) {
-            if tray.tool == .select {
-                let filtering = !tray.filter.trimmingCharacters(in: .whitespaces).isEmpty
+            if tray.tool == .select || tray.tool == .ground {
+                let filtering = tray.tool == .select && !tray.filter.trimmingCharacters(in: .whitespaces).isEmpty
                 ForEach(Array(EditorTray.categories.enumerated()), id: \.element) { index, category in
-                    categoryButton(category, number: index + 1, selected: !filtering && tray.category == category)
+                    categoryButton(category, number: index + 1, selected: !filtering && (tray.tool == .ground ? category == .ground : tray.category == category))
                 }
             }
             Spacer(minLength: Look.Space.m)
@@ -400,6 +439,8 @@ private struct TrayTile: View {
                 .font(.system(size: 11))
                 .foregroundStyle(chosen ? Color.ink : Color.ink2)
                 .lineLimit(1)
+                // A longer name ("Stepping stone") a little smaller rather than cut short.
+                .minimumScaleFactor(0.8)
                 .truncationMode(.tail)
                 .frame(width: EditorTray.tile + Look.Space.m)
         }
@@ -456,6 +497,16 @@ final class TrayTileView: NSView {
         tray?.act(.drag(item, event.locationInWindow, ended: false))
     }
 
+    /// A mouse's wheel turns up and down only: over the shelf it scrolls the shelf along. A trackpad's sideways
+    /// swipe is the shelf's own.
+    override func scrollWheel(with event: NSEvent) {
+        if abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX), let shelf = enclosingScrollView {
+            EditorTrayHost.scrollAlong(shelf, by: event)
+        } else {
+            super.scrollWheel(with: event)
+        }
+    }
+
     override func mouseUp(with event: NSEvent) {
         defer { pressedAt = nil; dragging = false }
         guard pressedAt != nil else { return }
@@ -488,6 +539,30 @@ final class EditorTrayHost: BarHostingView<EditorTrayView> {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    /// The wheel over the tray is the tray's: what reaches the card scrolls the shelf, and never zooms the meadow
+    /// behind it.
+    override func scrollWheel(with event: NSEvent) {
+        if let shelf = shelf(in: self) { Self.scrollAlong(shelf, by: event) }
+    }
+
+    private func shelf(in view: NSView) -> NSScrollView? {
+        for sub in view.subviews {
+            if let scroll = sub as? NSScrollView { return scroll }
+            if let found = shelf(in: sub) { return found }
+        }
+        return nil
+    }
+
+    /// Scrolls the shelf along by a wheel's turn: down or right goes on along it, up or left back; a line of a
+    /// mouse's wheel is a tile's width.
+    static func scrollAlong(_ shelf: NSScrollView, by event: NSEvent) {
+        let delta = abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX) ? event.scrollingDeltaY : event.scrollingDeltaX
+        let step = event.hasPreciseScrollingDeltas ? delta : delta * (EditorTray.tile + Look.Space.m) / 3
+        let clip = shelf.contentView, width = shelf.documentView?.frame.width ?? 0
+        let x = min(max(clip.bounds.origin.x - step, 0), max(width - clip.bounds.width, 0))
+        clip.scroll(to: NSPoint(x: x, y: clip.bounds.origin.y))
+        shelf.reflectScrolledClipView(clip)
+    }
 }
 
 /// The shelf with the keyboard (Tab from the meadow): ← and → go from tile to tile, Return chooses (an armed

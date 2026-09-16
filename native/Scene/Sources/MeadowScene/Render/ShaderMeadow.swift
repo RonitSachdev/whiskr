@@ -49,12 +49,21 @@ fragment float4 groundFragment(GroundOut in [[stage_in]], constant Frame& F [[bu
                                texture2d<float> groundMap [[texture(0)]]) {
     float2 g = in.world.xz;
     float3 land = meadowColor(g, F);
-    // The land: paler where it has been trodden round a blanket, deeper under standing grass.
-    float3 c = mix(land * float3(1.06, 1.04, 0.86), land * 0.8, smoothstep(0.16, 1.0, openGround(g, F, W)));
+    float blankets;
+    float open = openGround(g, F, W, blankets);
+    float4 map = groundMapAt(g + paintWarp(g), groundMap);
+    Painted painted = paintedAt(g, map, blankets);
+    // The land: paler where it has been trodden (round a blanket, a path's edges, a stepping stone's), deeper
+    // under standing grass.
+    float3 c = mix(land * float3(1.06, 1.04, 0.86), land * 0.8, smoothstep(0.16, 1.0, min(open, 1.0 - 0.75 * smoothstep(0.1, 0.5, painted.worn))));
     // A space's mown patch: lighter, cut short, with the mower's stripes.
     float stripe;
     float mown = mownAt(g, F, W, stripe);
     c = mix(c, land * (1.04 + 0.05 * stripe) * float3(1.04, 1.04, 0.92), mown * 0.85);
+    // The painted ground: a lawn mown the same way, a path worn to bare earth, soil tilled for beds.
+    c = mix(c, land * (0.94 + 0.04 * lawnStripe(g)), painted.lawn * 0.85);
+    c = mix(c, pathEarth(g, painted.worn), smoothstep(0.38, 0.62, painted.worn));
+    c = mix(c, soilEarth(g, painted.soil), painted.soil);
     // A path's worn earth: warm and bare in the middle, the grass closing in over its edges.
     if (F.counts.w > 0.0) {
         float worn = 1.0 - smoothstep(0.3, 1.0, pathDistance(g, F, W) + (mNoise(g * 2.3) - 0.5) * 0.35);
@@ -65,7 +74,7 @@ fragment float4 groundFragment(GroundOut in [[stage_in]], constant Frame& F [[bu
         float s = streamDistance(g, F, W);
         c = mix(c, float3(0.16, 0.14, 0.09), (1.0 - smoothstep(0.0, 0.9, s)) * 0.6);
     }
-    c *= shadeAt(g, F, groundMap);
+    c *= shadeFrom(g, F, map.a);
     float3 lit = c * in.irr + c * WARM * picnicLight2(g, F, W) * 0.8;
     return float4(mix(lit, F.horizon.rgb, in.fog), 1);
 }
@@ -80,13 +89,21 @@ vertex GrassOut grassVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     Tuft t = tufts[iid];
     float3 root = t.rootYaw.xyz;
     root.y = mix(root.y, LAND_GROUND, levelAt(root.xz, F, W));
-    float open = openGround(root.xz, F, W);
-    // Mown grass is cut to a short even sward.
+    float blankets;
+    float open = openGround(root.xz, F, W, blankets);
+    float4 map = groundMapAt(root.xz + paintWarp(root.xz), groundMap);
+    Painted painted = paintedAt(root.xz, map, blankets);
+    // Mown grass (a space's patch, a painted lawn) is cut to a short even sward; on a path or soil there is
+    // none, and at their edges it is short and thins out, closing in over them.
     float stripe;
     float mown = mownAt(root.xz, F, W, stripe);
     float3 position = float3(shape[vid].p);
-    float cut = mix(1.0, 0.42, mown);
-    float3 transformed = position * float3(mix(0.55, 1.0, open), open * cut, mix(0.55, 1.0, open));
+    float cut = min(mix(1.0, 0.42, mown), mix(1.0, 0.3, painted.lawn));
+    float bare = 1.0 - smoothstep(0.22, 0.55, max(painted.worn, painted.soil));
+    // Short tufts hold on along a path's sides, where it is walked less, never in its middle or in soil.
+    float tuft = smoothstep(0.62, 0.8, mNoise(root.xz * 1.9 + 4.0)) * (1.0 - smoothstep(0.7, 0.92, painted.worn)) * (1.0 - painted.soil);
+    bare = max(bare, tuft * 0.4);
+    float3 transformed = position * bare * float3(mix(0.55, 1.0, open), open * cut, mix(0.55, 1.0, open));
     float cy = cos(t.rootYaw.w), sy = sin(t.rootYaw.w);
     float3 s = float3(t.scale.x, t.scale.y, t.scale.x);
     float3 q = transformed * s;
@@ -101,7 +118,8 @@ vertex GrassOut grassVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     o.position = F.viewProj * float4(w, 1);
     float3 land = meadowColor(root.xz, F);
     o.land = mix(land, land * (1.06 + 0.05 * stripe), mown * 0.8);
-    o.lit = shadeAt(root.xz, F, groundMap) * (0.93 + 0.14 * mHash(floor(root.xz * 2.0))) * lambertIrradiance(n, F);
+    o.land = mix(o.land, land * (1.07 + 0.05 * lawnStripe(root.xz)), painted.lawn * 0.85);
+    o.lit = shadeFrom(root.xz, F, map.a) * (0.93 + 0.14 * mHash(floor(root.xz * 2.0))) * lambertIrradiance(n, F);
     o.glow = WARM * picnicLight2(root.xz, F, W);
     o.blade = position.y;
     o.fog = fogFactor(w, F);

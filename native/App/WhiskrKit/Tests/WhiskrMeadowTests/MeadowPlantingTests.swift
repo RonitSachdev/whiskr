@@ -45,7 +45,19 @@ private func item(_ id: String, _ x: Double, _ z: Double, seed: UInt32? = nil) -
         #expect(stone.size.map { $0.allSatisfy { (0.69...1.36).contains($0) } } == true && stone.seed == nil)
         let log = try #require(session.fresh("wood.fallenLog", at: SIMD2(-40, 0), turn: 1, using: &random))
         #expect(log.size == nil && log.tilt == nil && log.seed == nil)
-        #expect(session.fresh("cat.box", at: .zero, turn: 0, using: &random) == nil, "not drawn yet")
+        // Stage 7's: a pine from a seed of its own within a tree's sizes; a boulder found at a size of its own; a
+        // stump, a log pile and made things as they are (never scaled, leant or seeded).
+        let pine = try #require(session.fresh("tree.pine", at: .zero, turn: 0, using: &random))
+        #expect(pine.seed != nil && pine.size.map { $0.allSatisfy { (0.73...1.3).contains($0) } } != false && pine.tilt != nil)
+        let boulder = try #require(session.fresh("stone.boulder", at: .zero, turn: 0, using: &random))
+        #expect(boulder.size.map { $0.allSatisfy { (0.75...1.3).contains($0) } } == true && boulder.seed == nil)
+        let fern = try #require(session.fresh("plant.fern", at: .zero, turn: 0, using: &random))
+        #expect(fern.size != nil && fern.variant == 0)
+        for id in ["wood.stump", "wood.logPile", "work.cushion", "cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"] {
+            let made = try #require(session.fresh(id, at: .zero, turn: 0.5, using: &random), "\(id)")
+            #expect(made.size == nil && made.tilt == nil && made.seed == nil && made.variant == 0 && made.turn == 0.5, "\(id)")
+        }
+        #expect(session.fresh("work.desk", at: .zero, turn: 0, using: &random) == nil, "not drawn yet")
         #expect(session.fresh("garden.fence", at: .zero, turn: 0, using: &random) == nil, "a run, not placed at a spot")
     }
 
@@ -180,7 +192,7 @@ private func item(_ id: String, _ x: Double, _ z: Double, seed: UInt32? = nil) -
 }
 
 @Suite struct Erasing {
-    @Test("a sweep takes the plants, mushrooms and stones within it (of one kind, if asked), never a tree, a young tree or the log")
+    @Test("a sweep takes the plants, mushrooms and stones within it (of one kind, if asked), never a tree, a young tree, the log or a made thing")
     func sweep() throws {
         let session = MeadowEditSession(MeadowDocument(entries: [
             item("tree.young", 0, 0, seed: 1), item("flower.daisy", 1, 1), item("flower.poppy", -1, 2), item("stone.stone", 2, -2),

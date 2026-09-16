@@ -159,14 +159,39 @@ extension MeadowEditSession {
         return change
     }
 
+    // MARK: Stepping stones
+
+    /// The stepping stones' id, laid in a row along a drag rather than one by one.
+    public static let steppingStone = "stone.stepping"
+    /// How far apart stepping stones are laid along a drag, middle to middle, in units: a cat's easy stride,
+    /// a strip of grass between each two, as a garden's are laid a person's stride apart.
+    public static let steppingStride = 1.1
+
+    /// A stepping stone laid at `spot` on a path heading along `heading`, as a person sets one: across the way
+    /// (its long side square to the path, give or take a little), a hair off the line, a found stone's own
+    /// size, a little wider than deep so the path reads as slabs a stride apart and not as a strip.
+    public func steppingStone(at spot: SIMD2<Double>, heading: SIMD2<Double>, using random: inout some RandomNumberGenerator) -> MeadowFile.MeadowItem? {
+        guard let kind = catalog.asset(Self.steppingStone), let range = kind.size, simd_length(heading) > 0 else { return nil }
+        let along = simd_normalize(heading), across = SIMD2(-along.y, along.x)
+        let at = spot + across * Double.random(in: -0.1...0.1, using: &random) + along * Double.random(in: -0.03...0.03, using: &random)
+        // The stone's long side is its own x, which a turn t lays along (cos t, −sin t).
+        let turn = atan2(-across.y, across.x) + Double.random(in: -0.3...0.3, using: &random)
+        guard var item = fresh(Self.steppingStone, at: at, turn: turn, using: &random) else { return nil }
+        let size = [Double.random(in: 0.92...1.15, using: &random), .random(in: 0.9...1.1, using: &random), .random(in: 0.82...0.95, using: &random)]
+            .map { MeadowJSON.quantized(min(max($0, range.lowerBound), range.upperBound)) }
+        item.size = size
+        return item
+    }
+
     // MARK: The Eraser
 
     /// What one sweep of the Eraser at `spot` takes: the plants, mushrooms and stones standing within `radius`
-    /// of it (of `kind` only, when one is given). Trees, young trees and the log are never swept away: only a
-    /// click takes one, so none is lost by a stroke passing it. Things kept from a newer Whiskr are never taken.
+    /// of it (of `kind` only, when one is given; `SceneryRules.isSmall`). Trees, wood, a boulder and made things
+    /// are never swept away: only a click takes one, so none is lost by a stroke passing it. Things kept from a
+    /// newer Whiskr are never taken.
     public func swept(at spot: SIMD2<Double>, radius: Double, kind: String?) -> [Int] {
         shown.filter { id in
-            guard let item = item(id), !SceneryRules.isBig(item.asset), kind == nil || item.asset == kind else { return false }
+            guard let item = item(id), SceneryRules.isSmall(item.asset), kind == nil || item.asset == kind else { return false }
             return hypot(item.at.x - spot.x, item.at.z - spot.y) <= radius
         }
     }

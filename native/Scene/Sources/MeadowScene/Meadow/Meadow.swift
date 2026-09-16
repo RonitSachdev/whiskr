@@ -80,6 +80,10 @@ final class Meadow {
     private(set) var obstacles: [Clearing] = []
     /// Trees whose shade dapples the ground: x, z, reach.
     private(set) var shade: [Vec4] = []
+    /// Stones walked on (stepping stones), which wear the turf round them; and which of the scenery's things
+    /// each is, by its index there.
+    private(set) var treads: [GroundMap.Tread] = []
+    private var treadOf: [Int: Int] = [:]
     /// The ground's map, baked from the scenery when it is laid (`GroundMap`).
     private(set) var groundMap = GroundMap()
     /// The part of the ground's map changed since it was last drawn by moving trees (nil: none); a new
@@ -135,9 +139,23 @@ final class Meadow {
     /// moved, turned, leant or changed size (an edit, a drag under way), only those are placed again and the
     /// ground's shade is baked again only where a tree moved; anything else lays the scenery afresh (the
     /// ground's map only if the trees' shade changed).
+    /// A change of the painted ground alone (a stroke of the Ground tool) paints again only the cells that
+    /// changed.
     func show(_ scenery: MeadowScenery) {
         guard scenery != self.scenery else { return }
-        if !move(to: scenery) { critters.bloom(lay(scenery)) }
+        let ground = self.scenery.ground
+        if scenery.things == self.scenery.things {
+            self.scenery = scenery
+        } else if !move(to: scenery) {
+            critters.bloom(lay(scenery))
+        }
+        if scenery.ground != ground, let changed = GroundMap.difference(ground, scenery.ground) { repaint(changed) }
+    }
+
+    /// The painted ground and the wear round stones walked on painted again in `region`, to be drawn.
+    private func repaint(_ region: GroundMap.Region) {
+        let changed = groundMap.paint(scenery.ground, treads: treads, in: region)
+        groundChanged = groundChanged.map { $0.union(changed) } ?? changed
     }
 
     /// The part of the ground's map moved trees have changed since this was last asked, and forgets it
@@ -243,9 +261,9 @@ final class Meadow {
         let oldPlants = Dictionary(zip(plantKeys, plants)) { first, _ in first }
         let oldTrees = Dictionary(treeShapes.map { ($0.key, $0.shape) }) { first, _ in first }
         let oldFades = Dictionary(screens.map { (ScreenKey($0), $0.fade) }) { first, _ in first }
-        let oldShade = shade
+        let oldShade = shade, oldTreads = treads
         self.scenery = scenery
-        plants = []; plantKeys = []; beds = []; treeShapes = []; logs = []; screens = []; obstacles = []; shade = []
+        plants = []; plantKeys = []; beds = []; treeShapes = []; logs = []; screens = []; obstacles = []; shade = []; treads = []; treadOf = [:]
         laid = []; blooms = []; bloomOf = []
         laid.reserveCapacity(scenery.things.count)
         bloomOf.reserveCapacity(scenery.things.count)
@@ -308,6 +326,10 @@ final class Meadow {
                 let all = shapes()
                 let variant = all.indices.contains(thing.variant) ? thing.variant : 0
                 let at = instance(ShapeKey(id: thing.id, variant: variant), { all[variant] }, sway: sway, m, screened: false)
+                if SceneryCatalog.isTread(thing.id) {
+                    treadOf[laid.count] = treads.count
+                    treads.append(Self.tread(thing))
+                }
                 if blooming {
                     blooms.append(m.point(plants[beds[at.bed].plant].top))
                     bloom = blooms.count - 1
@@ -323,9 +345,13 @@ final class Meadow {
         // The shade as it was (a plant brushed in or swept away, a thing taken away beside the trees): the
         // map stands, with any part still to be drawn from moved trees.
         if shade != oldShade || groundVersion == 0 {
-            groundMap = GroundMap.baked(shade: shade)
+            groundMap = GroundMap.baked(shade: shade, ground: scenery.ground, treads: treads)
             groundVersion += 1
             groundChanged = nil
+        } else if treads != oldTreads {
+            // Stepping stones laid or taken up: the turf round each worn again, or grown back.
+            let changed = Set(oldTreads).symmetricDifference(Set(treads)).compactMap(GroundMap.Region.init(tread:))
+            if let first = changed.first { repaint(changed.dropFirst().reduce(first) { $0.union($1) }) }
         }
         sceneryVersion += 1
         return blooms
@@ -347,6 +373,7 @@ final class Meadow {
         }
         scenery = new
         var shaded: GroundMap.Region?
+        var worn: GroundMap.Region?
         var bloomsMoved = false
         var obstaclesMoved = false
         for i in changed {
@@ -365,6 +392,12 @@ final class Meadow {
                 if bloomOf[i] >= 0 {
                     blooms[bloomOf[i]] = m.point(plants[beds[b].plant].top)
                     bloomsMoved = true
+                }
+                if let t = treadOf[i] {
+                    for region in [GroundMap.Region(tread: treads[t]), GroundMap.Region(tread: Self.tread(thing))].compactMap({ $0 }) {
+                        worn = worn.map { $0.union(region) } ?? region
+                    }
+                    treads[t] = Self.tread(thing)
                 }
             case .tree(let t):
                 guard case .tree(let species) = SceneryCatalog.kinds[thing.id] else { continue }
@@ -400,6 +433,7 @@ final class Meadow {
             groundMap.rebake(shade: shade, in: shaded)
             groundChanged = groundChanged.map { $0.union(shaded) } ?? shaded
         }
+        if let worn { repaint(worn) }
         if bloomsMoved { critters.bloom(blooms) }
         return true
     }
@@ -413,6 +447,12 @@ final class Meadow {
         let crown = at + pose.point(tree.middle), spread = Self.spread(thing)
         return (at, pose, Screen(from: at, to: crown, thick: species.girth * 1.4 * spread, crown: crown, crownSize: tree.bulk * 0.85 * spread),
                 Vec4(thing.x, thing.z, tree.crown * 1.1 * spread, 0), species.girth * 2 * spread)
+    }
+
+    /// A thing that wears the turf (`SceneryCatalog.treads`) as it lies: turned and sized as the thing is.
+    private static func tread(_ thing: MeadowScenery.Thing) -> GroundMap.Tread {
+        let tread = SceneryCatalog.treads[thing.id] ?? (Vec2(0.64, 0.48), true)
+        return GroundMap.Tread(x: thing.x, z: thing.z, turn: thing.turn, half: tread.half * Vec2(thing.size.x, thing.size.z), walked: tread.walked)
     }
 
     /// A young tree's screen, drawn with `m`.
@@ -501,6 +541,27 @@ final class Meadow {
         }
         guard let crown = screen.crown else { return nil }
         return (crown.x, crown.z, screen.crownSize)
+    }
+
+    // MARK: walking
+
+    /// How gladly a cat walks at a ground point, 0…1: 1 on a painted path or a stepping stone, less on mown
+    /// lawn, least in the long wild grass and on tilled soil. Read from the painted cells and the stones
+    /// themselves, so it is exact where the map is soft.
+    func walkingEase(_ x: Float, _ z: Float) -> Float {
+        let p = Vec2(x, z)
+        // Only where the turf is trodden or cut can a stone be underfoot (`GroundMap.Tread.trodden`).
+        if groundMap.sample(p, channel: 1) > 0, treads.contains(where: { $0.walked && $0.holds(p) }) { return 1 }
+        guard let ground = scenery.ground, let cell = MeadowScenery.Ground.cell(at: x, z) else { return Self.walkingEase(.wild) }
+        return Self.walkingEase(ground[cell.column, cell.row])
+    }
+
+    static func walkingEase(_ paint: MeadowScenery.Ground.Paint) -> Float {
+        switch paint {
+        case .path: 1
+        case .lawn: 0.6
+        case .wild, .soil: 0.25
+        }
     }
 
     // MARK: a thing on its own

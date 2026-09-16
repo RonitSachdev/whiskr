@@ -351,6 +351,22 @@ can hold (its catalog):
   for scenery.
 - Everything above still holds: the same clay, plants modelled on real ones in clumps (no shrubs, no
   dandelion clocks), props that are real objects, nothing written in the scene, no streams.
+- **Every new thing is looked up first:** how the real one is shaped, joined, coloured and weathered, and how
+  it meets the grass, then simplified into the clay, rounded and a little chunky, with nothing thin enough to
+  shimmer, readable on a 64 pt tile and from the editor's height. Plants keep their blooms about twice life
+  size, as the meadow's always have (an apple too).
+- **What the meadow holds today:** oak, birch, cherry, young tree, apple tree (hung with apples, windfalls
+  beneath) and Scots pine (bare below, orange high on its trunk, a flat-topped crown of needle pads); daisy,
+  buttercup, lupin, poppy, cornflower, foxglove, fern, clover and fly agaric; stone, mossy stone, boulder
+  (a seat), stepping stone, fallen log, tree stump and log pile; a floor cushion (a zabuton); and Cat Things,
+  sized for the meadow's cats: a cardboard box a cat fits in, its flaps fallen open; a sisal scratching post
+  with a perch on top and a pompom; a ball of yarn; a round bed; a food bowl of kibble. Made things a cat uses
+  stand on turf trodden short round them, as the grass flattens round a bed left out; found things (a stump,
+  a boulder) stand in the long grass. Until the palettes come, each made thing wears its palette's first
+  swatch (oat for the cushion, the yarn and the bed; cream for the bowl).
+- **Cats will like them:** each thing that invites a cat says where (sit on a stump, a boulder, a log pile,
+  the log, in a box or by a bowl; nap in a bed or on a cushion; scratch at a post). The meadow's cats do not
+  go there yet.
 
 ### Editing the meadow
 
@@ -364,7 +380,8 @@ most of the time.
   framing the blankets and the picnic ground with the scenery round them. The top bar's middle cross-fades
   from Go to's field to the meadow's name, "Editing “My Meadow”", a menu (Use Another Meadow, Revert to
   Default); its end shows Undo and Redo, each naming its step in its tooltip, and Done. The meadow's button
-  rests while editing; Home leaves editing and goes Home. A compass floats at the meadow's top right. With
+  rests while editing; Home leaves editing and goes Home. Nothing floats at the meadow's top: turning and
+  framing the view live on the keys, in View › Editor View and in the grass's menu. With
   Reduce Motion everything cross-fades in place and the view cuts. The **tray** rises along the meadow's
   bottom edge and the view frames the blankets above it.
 - **Coming out.** Done (⌘↩), Esc once nothing is under way or chosen, or View › Edit Meadow again. Esc
@@ -394,25 +411,29 @@ most of the time.
   ring of the focus colour), `[` and `]` go from thing to thing nearest it, and Return chooses. Tab goes on
   to the selection's bar.
 - **Chosen trees** read at a glance from any height: besides the ring round the trunk, a lighter ring lies
-  round the ground the crown shades, and the tree is lit a little in the focus colour. Plants and stones keep
-  their ring on the ground.
+  round the ground the crown shades, and the tree's own colours are lit a little brighter (never tinted: an
+  oak stays an oak's green, a cherry pink). Plants and stones keep their ring on the ground.
 - **The selection's bar** hangs 12 pt under the rings round what is chosen (over it when there is no room
   below, never over the tray), so it stays beside the choice however tall a tree is, and follows it as the
   view moves: Turn Left, Turn Right; Smaller, Larger and Shuffle for living things (Shuffle draws a
   new size, lean and turn, and a tree a new seed); Duplicate, Delete; More (Select All Like This, Copy,
   Paste). A floating piece: the chrome's colour, a line, radius 10, the one soft shadow.
-- **The tools** are in the tray and in View › Editor Tools (Select, Brush, Erase), checked as chosen.
+- **The tools** are in the tray and in View › Editor Tools (Select, Brush, Erase, Ground), checked as chosen.
 - **The tray** floats along the meadow's bottom edge (the chrome's colour, a line, radius 10, the one soft
   shadow; as wide as the meadow allows, at most 1,040 pt). Its top row: the tools, **Select (V)**, **Brush
-  (B)** and **Erase (E)** (Ground comes with its tool; no button stands for what cannot be used yet); the
-  Brush's and the Eraser's size (`[` `]`, a unit at a time) and the Brush's density (Sparse, Natural, Dense);
+  (B)**, **Erase (E)** and **Ground (G)**; the Brush's, the Eraser's and the Ground tool's size (`[` `]`, a
+  unit at a time, or the slider) and the Brush's density (Sparse, Natural, Dense);
   "4,212 of 5,000 things" or "40 of 48 trees" only past 80 % of a cap; the filter field (⌘F, which the editor
-  takes from Find while editing: it finds across categories, Return arms what it found); and the fold (View ›
+  takes from Find while editing: it finds across categories by a thing's name, its shelf's and the other words
+  it goes by, "firewood" for the log pile, "zabuton" for the cushion, "cat" for every cat thing, and in
+  Japanese hiragana or katakana alike; Return arms what it found); and the fold (View ›
   Hide Editor Tray, ⌥⌘T, remembered) that leaves only that row. Below: the categories that hold something
-  (Trees, Flowers, Stones & Wood; keys 1–7), a line saying what to do now, and the shelf: each thing pictured
+  (Trees, Flowers, Stones & Wood, Ground, whose tab is the Ground tool's, Workplace and Cat Things; keys 1–7), a line saying what to do now, and the shelf: each thing pictured
   by the scene in its own clay on a round of grass, by day, on a tile of the content colour (64 pt, its name
-  under it). Under 760 pt the tools and categories show as symbols with their names in the tooltips. The shelf
-  offers exactly what the meadow can draw. Tab (⇧Tab) gives the shelf the keyboard (← → along it, Return
+  under it, a long name a little smaller rather than cut). Under 760 pt the tools and categories show as symbols with their names in the tooltips. The shelf
+  offers exactly what the meadow can draw. A shelf longer than the tray scrolls along with a trackpad's swipe
+  or a mouse's wheel (up and down both go along it); the wheel over the tray never zooms the meadow behind it.
+  Tab (⇧Tab) gives the shelf the keyboard (← → along it, each tile brought into view, Return
   chooses, Tab or Esc back to the meadow); with Full Keyboard Access every control is reachable as usual, and
   VoiceOver reads the tools, the tabs and each thing by name, the chosen one as selected.
 - **Placing.** A click on a tile arms the thing: its ghost (see-through, as it will stand, with its own size,
@@ -425,41 +446,64 @@ most of the time.
   middle of the view. From the keys: Tab to the shelf, ← →, Return; the ghost waits at the keyboard's cursor,
   the arrows move it, Return places it there or at the nearest spot round it where it may stand. A placed
   thing settles into the meadow (92 % to its own size in 160 ms; with Reduce Motion it is simply there).
+- **Stepping stones** (Stones & Wood) are placed with a click like any thing, or laid in a row: a drag lays
+  one where it was pressed and one each stride (1.1 units) along the drag, each set across the way as a
+  person lays them (its long side square to the path, give or take a little, a hair off the line, a little
+  wider than deep, its own size and turn), with a strip of grass between each two and the turf trodden short
+  round them; one that would stand too close to something is left out and the row goes on. The row is one
+  step ("Lay 9 Stepping Stones") and is chosen once laid (⇧ keeps stones armed for another). They are the
+  worktrees' own stepping stone, its top levelled as a laid stone's is.
 - **The Brush** paints the plants of the Flowers shelf, or the **Wildflowers** mix (the meadow's own:
   daisies, buttercups, lupins and poppies in the shares it grows them). Its circle lies on the ground under the
   pointer. A stroke drops a clump every half radius: a loose clump of one kind, thicker toward its middle,
   each plant turned, sized and leant its own way, none overlapping anything, so the meadow never gets an
   even sprinkle; the whole stroke is one step ("Brush Daisies"). ⌥-drag clears what the Brush paints. Return
   plants one clump at the keyboard's cursor. Stones, wood and trees are placed one by one, never brushed.
+- **The Ground tool** paints the ground under its circle (1–10 units, 2 to start): **Path** (dry, trodden
+  earth, a pale sandy tan worn smoothest along its middle, a few pebbles pressed in, short tufts holding on
+  along its sides and the grass closing in over its edges, so it looks walked, not drawn), **Lawn** (grass mown
+  short, with the mower's gentle stripes), **Soil** (dark, crumbly tilled earth in low ridges, drier crumbs on
+  their crests, darkest where the bed is cut from the turf), and **Wild Grass**,
+  which brings the meadow's own long grass back (⌥-drag does the same with any paint chosen; the circle is
+  then drawn dashed, as the Eraser's). Grass is hidden on path and soil and cut short on lawn; plants are
+  not touched (paint soil, then brush flowers into it). Path and soil are told apart at a glance from any
+  height, by day, at dusk and by night. Edges are soft and uneven, as grass grows back. Paint
+  may cross the picnic ground; a blanket always lies on its own ground, the paint fading out round it. Each
+  stroke is one step ("Paint Path"); Return paints at the keyboard's cursor. The shelf's tiles are pictures of
+  the meadow's own turf, painted. A meadow file can hold only so much detail: a stroke that would pass it
+  stops and says so ("The ground holds as much painting as a meadow can keep"), so a meadow is never painted
+  into one that cannot be saved.
 - **The Eraser** (a dashed circle in the ink): a click takes away the thing under it, a tree too; a drag
-  sweeps away the plants, mushrooms and stones it passes, never a tree, a young tree or the log (nothing big
-  is lost to a stroke passing it), and never a blanket or anything from a newer Whiskr. Choosing a kind on
+  sweeps away the plants, mushrooms and stones it passes, never a tree, a young tree, wood, a boulder or a made
+  thing (nothing big or placed with care is lost to a stroke passing it), and never a blanket or anything from
+  a newer Whiskr. Choosing a kind on
   its shelf sweeps only that kind ("The Eraser clears only daisies now" where a click falls on another).
   Each click or sweep is one step.
 - **Caps.** A meadow holds at most 5,000 things, 48 trees and 120 tall things (32 lamps when lamps come). The
   tray says how full the meadow is past 80 % of a cap; at one, the tiles of what cannot be added say why
   ("The meadow has as many trees as it can hold (48)"), the ghost and the Brush say it by the pointer, and
   nothing is ever cut short silently.
-- **Esc** steps back: the gesture under way (a stroke is not kept), the thing armed, the Brush or the Eraser
-  (back to Select), the choice, then editing itself.
+- **Esc** steps back: the gesture under way (a stroke is not kept), the thing armed, the Brush, the Eraser or
+  the Ground tool (back to Select), the choice, then editing itself.
 - **The view while editing:** a plain drag is the tool's; ⌘-drag, right-drag or Space-drag slides; two
   fingers turn; scrolling and pinching zoom toward the pointer, nearer than usual (5 units); the view roams
-  the whole meadow. The compass shows north; a click turns the view back to north, a drag round it turns it,
-  a double-click frames the picnic ground again.
+  the whole meadow. `,` and `.` turn it 45°, `0` frames the picnic ground again; with a pointer alone, View ›
+  Editor View and the grass's menu (right-click) hold Turn View Left, Turn View Right, Face North and Frame
+  the Picnic Ground.
 - **The picnic ground** is drawn while editing as a soft dashed outline (x within 20 of the column's lane,
   z from −3 to 120), with no words. The column's lane is always x = 0. Trees, young trees and the log cannot
-  stand there; flowers, stones and mushrooms may, and like trees and the log anywhere make way when a blanket
-  comes.
+  stand there; flowers, stones, stepping stones, mushrooms and paint may, and like trees and the log anywhere
+  make way when a blanket comes.
 - **Undo.** ⌘Z and ⇧⌘Z (Edit › Undo names the step, "Undo Move Oak") take back each gesture: a drag, a
-  nudge, a turn, a size step, a duplicate, a deletion, a paste, a shuffle, a placing, a Brush stroke, an
-  Eraser's click or sweep, choosing another meadow. Undoing
+  nudge, a turn, a size step, a duplicate, a deletion, a paste, a shuffle, a placing, a row of stepping
+  stones, a Brush stroke, an Eraser's click or sweep, a Ground stroke, choosing another meadow. Undoing
   chooses what the step changed. The history lasts for the app's session, across leaving and coming back to
   editing and across meadows; outside editing ⌘Z keeps bringing back what was closed.
 - **Saving.** Every change is saved a second after the last, and at once on leaving and at quit. The Default
   is built in and never changes: the first change makes "My Meadow", a copy, and shows it, in the same step
   (undone, the Default is shown again and the copy goes). Revert to Default shows the Default; your meadow
   stays. Settings › Meadow's Your Meadow chooses which is shown.
-- **VoiceOver** reads the edited meadow as its trees and log one by one and its plants and stones as clumps
+- **VoiceOver** reads the edited meadow as its trees, wood, boulders and made things one by one and its plants and stones as clumps
   ("Daisies, 9"); each element chooses what it stands for. Choosing, moving, the tool, what is armed, placing,
   strokes, refusals with their reason, undo and redo are announced. With Increase Contrast the rings, the
   circles, the picnic ground's outline and the tray's line are drawn stronger.

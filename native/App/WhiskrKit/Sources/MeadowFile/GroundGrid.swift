@@ -75,6 +75,33 @@ public struct GroundGrid: Equatable, Sendable {
         !unknownFields.isEmpty || paints.contains { catalog.asset($0) == nil }
     }
 
+    /// Whether nothing is painted: every cell the meadow's own long grass.
+    public var isWild: Bool { !cells.contains { $0 != 0 } }
+
+    /// Lists no more than the first `count` paints (a stroke undone takes back the paints it listed). Every
+    /// cell must already hold 0 or one of those.
+    public mutating func keepPaints(_ count: Int) {
+        guard count < paints.count else { return }
+        precondition(count >= 0 && !cells.contains { Int($0) > count }, "only paints no cell holds are let go")
+        paints.removeLast(paints.count - count)
+    }
+
+    /// How many runs `runs` holds (its length is twice this), counted without making them.
+    public var runCount: Int { 1 + changes(in: 0..<Self.cellCount) }
+
+    /// How many cells in `range` (of the cells, in order) differ from the cell before; the first cell of the
+    /// grid has none before it. A stroke counts its rows before and after to keep `runCount` without
+    /// counting the whole grid again.
+    public func changes(in range: Range<Int>) -> Int {
+        let range = max(range.lowerBound, 1)..<min(range.upperBound, Self.cellCount)
+        guard !range.isEmpty else { return 0 }
+        return cells.withUnsafeBufferPointer { cells in
+            var changes = 0
+            for i in range where cells[i] != cells[i - 1] { changes += 1 }
+            return changes
+        }
+    }
+
     /// The cells as runs: `[value, count, …]`, neighbouring runs of one value joined.
     public var runs: [Int] {
         var out: [Int] = []

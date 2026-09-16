@@ -158,4 +158,152 @@ enum Flora {
     static let lupins: [Plant] = [lupin(0), lupin(1)]
     static let mushrooms: [Plant] = [mushroom(0), mushroom(1)]
     static let stones: [Plant] = [stone(0), stone(1)]
+
+    // MARK: The meadow editor's plants (the Mac's own)
+
+    /// A small, smooth ball for parts there are many of (a fern's leaflets): a few dozen faces where a blob has
+    /// hundreds, which no one sees at their size.
+    private static let bead = Shapes.sphere(1, 8, 5)
+    /// `bead` stretched to `size` along `along` (its x), its flat side (y) facing as near `up` as it can.
+    private static func bead(at: Vec3, along: Vec3, up: Vec3, size: Vec3, color: UInt32, top: UInt32) -> Geometry {
+        let x = simd_normalize(along), z = simd_normalize(simd_cross(x, up)), y = simd_cross(z, x)
+        let m = Mat4(columns: (Vec4(x * size.x, 0), Vec4(y * size.y, 0), Vec4(z * size.z, 0), Vec4(at, 1)))
+        return bead.applied(m).painted(color, top)
+    }
+    /// A `Clay.blob` made of a `bead`: for a plant's many small parts (florets, leaflets), which a brushed meadow
+    /// may hold thousands of.
+    private static func bead(at: Vec3, size: Vec3, color: UInt32, top: UInt32? = nil, turn: Vec3 = .zero) -> Geometry {
+        bead.applied(.compose(at, euler: turn, scale: size)).painted(color, top)
+    }
+
+    /// Cornflower: on wiry grey-green stems, ragged rosettes of deep blue funnel florets round a tuft of violet
+    /// ones, each head held in a scaly green urn; a second head lower on a branch, and a bud.
+    static let cornflowers: [Plant] = [cornflower()]
+    private static func cornflower() -> Plant {
+        let way: Float = 0.8, stalkGreen: (UInt32, UInt32) = (0x6c8c62, 0x95ae86)
+        func head(_ at: Vec3, _ lean: Float, _ scale: Float) -> [Geometry] {
+            var parts = [Clay.thrown([Vec2(0, -0.1), Vec2(0.05, -0.09), Vec2(0.085, -0.03), Vec2(0.08, 0.02), Vec2(0, 0.03)], 0x7f9a66, 0xb2c08a, around: 12, steps: 8)]
+            parts += ring(10) { a, k in
+                let long: Float = k % 2 == 0 ? 0.15 : 0.125
+                return bead(at: v(cos(a) * 0.12, 0.04, sin(a) * 0.12), size: Vec3(long, 0.035, 0.055), color: 0x3459c9, top: 0x6f95f0, turn: v(0, -a, 0.42))
+            }
+            parts += ring(5) { a, _ in bead(at: v(cos(a) * 0.035, 0.075, sin(a) * 0.035), size: Vec3(0.04, 0.05, 0.04), color: 0x4a2f86, top: 0x7a55b8) }
+            return Clay.seat(parts.map { $0.applied(.scale(Vec3(repeating: scale))) }, at, facing(lean, 0.3))
+        }
+        let end = v(cos(way) * 0.2, 2.1, sin(way) * 0.2)
+        let main = Clay.limb(Clay.bow(end, v(-cos(way) * 0.12, 0, -sin(way) * 0.12)), 0.04, 0.026, stalkGreen.0, stalkGreen.1, sides: 6, rings: 9)
+        var parts = [main.shape] + head(end, way, 1.25)
+        let from = main.curve.pointAt(0.55), out = way + 2.4
+        let side = v(from.x + cos(out) * 0.42, from.y + 0.45, from.z + sin(out) * 0.42)
+        parts.append(Clay.limb(QuadraticBezier(from, v(from.x + cos(out) * 0.3, from.y + 0.15, from.z + sin(out) * 0.3), side), 0.026, 0.02, stalkGreen.0, stalkGreen.1, sides: 5, rings: 6).shape)
+        parts += head(side, out, 1.1)
+        // A bud still closed in its urn.
+        let budFrom = main.curve.pointAt(0.72), budOut = way - 2
+        let bud = v(budFrom.x + cos(budOut) * 0.25, budFrom.y + 0.3, budFrom.z + sin(budOut) * 0.25)
+        parts.append(Clay.limb(QuadraticBezier(budFrom, v(budFrom.x + cos(budOut) * 0.2, budFrom.y + 0.1, budFrom.z + sin(budOut) * 0.2), bud), 0.022, 0.018, stalkGreen.0, stalkGreen.1, sides: 5, rings: 5).shape)
+        parts.append(Clay.blob(at: bud + v(0, 0.05, 0), size: Vec3(0.06, 0.08, 0.06), color: 0x7f9a66, top: 0x5a76c8))
+        // Narrow, downy leaves up the stem.
+        parts += [leaf(main.curve.pointAt(0.18), 0.42, way + 1.3, 0.55, 0.16), leaf(main.curve.pointAt(0.3), 0.36, way - 1.7, 0.6, 0.16),
+                  leaf(main.curve.pointAt(0.45), 0.28, way + 3, 0.7, 0.15)]
+        return Plant(shape: Geometry.join(parts), top: Vec3(end.x, end.y + 0.12, end.z))
+    }
+
+    /// Foxglove: a tall spire hung on one side with rosy-purple bells, each a tube flaring to a pale, speckled
+    /// mouth, opening from the bottom up with green buds at the tip; at its foot a rosette of broad, soft
+    /// grey-green leaves.
+    static let foxgloves: [Plant] = [foxglove()]
+    private static func foxglove() -> Plant {
+        let way: Float = 2.2, height: Float = 3.3
+        let end = v(cos(way) * 0.12, height, sin(way) * 0.12)
+        let stalk = Clay.limb(Clay.bow(end, v(-cos(way) * 0.08, 0, -sin(way) * 0.08)), 0.055, 0.03, green.0, green.1, sides: 7, rings: 12)
+        var parts = [stalk.shape]
+        let bells = 15
+        for i in 0..<bells {
+            let t = Float(i) / Float(bells - 1)
+            let at = stalk.curve.pointAt(0.36 + t * 0.6)
+            // Mostly to one side (`way`), spreading a little round it.
+            let yaw = -way + Float(i % 3 - 1) * 0.55 + sin(Float(i) * 2.3) * 0.2
+            let out = Vec3(cos(yaw), 0, -sin(yaw))
+            if t > 0.8 {
+                // Buds: small, green, pointing up and out.
+                parts.append(Clay.blob(at: at + out * 0.06, size: Vec3(0.05, 0.08 - (t - 0.8) * 0.12, 0.05), color: 0x6f9a48, top: 0x9fbf6a, turn: v(0, yaw, -0.5)))
+                continue
+            }
+            let scale = 1.05 - t * 0.45
+            var bell = Clay.thrown([Vec2(0, 0), Vec2(0.045, 0.01), Vec2(0.075, 0.09), Vec2(0.095, 0.2), Vec2(0.125, 0.28), Vec2(0.14, 0.31), Vec2(0.1, 0.305), Vec2(0, 0.25)],
+                                   0x93367c, 0xd88cbf, around: 10, steps: 8)
+            // Dark spots ringed in white on the lower lip of the open bells.
+            if t < 0.5 {
+                bell = Geometry.join([bell, Clay.blob(at: v(0.08, 0.29, 0.02), size: 0.022, color: 0x5e2450), Clay.blob(at: v(0.07, 0.285, -0.04), size: 0.018, color: 0x5e2450)])
+            }
+            bell.apply(.compose(at + out * 0.1, euler: v(0, yaw, -(.pi / 2 + 0.9)), scale: Vec3(repeating: scale)))
+            parts.append(bell)
+        }
+        // The rosette at its foot, and smaller leaves up the stem.
+        parts += ring(6) { a, k in
+            bead(at: v(cos(a) * 0.5, 0.12, -sin(a) * 0.5), size: Vec3(0.62 - Float(k % 2) * 0.1, 0.04, 0.24), color: 0x56814a, top: 0x8eae74, turn: v(0, a + 0.3, 0.22))
+        }
+        parts += [leaf(stalk.curve.pointAt(0.18), 0.4, way + 1.1, 0.4, 0.3), leaf(stalk.curve.pointAt(0.28), 0.3, way - 2, 0.5, 0.3)]
+        return Plant(shape: Geometry.join(parts), top: Vec3(end.x, height * 0.75, end.z))
+    }
+
+    /// A fern (male fern, as in shady woods): a shuttlecock of fronds rising from one crown and arching out, each
+    /// a midrib lined with leaflets that shorten toward its tip, and one young frond still curled.
+    static let ferns: [Plant] = [fern()]
+    private static func fern() -> Plant {
+        var parts: [Geometry] = []
+        let fronds = 7, up = Vec3(0, 1, 0)
+        for f in 0..<fronds {
+            let yaw = Float(f) / Float(fronds) * 2 * .pi + sin(Float(f) * 1.7) * 0.25
+            let out = Vec3(cos(yaw), 0, sin(yaw)), long = 1 + 0.12 * sin(Float(f) * 2.9)
+            let rachis = CubicBezier(out * 0.06, out * 0.3 * long + up * 1.3, out * 1.45 * long + up * 2.15, out * 2.35 * long + up * 1.25)
+            parts.append(Clay.limb(rachis, 0.04, 0.018, 0x6f7f3a, 0x7fa848, sides: 5, rings: 12).shape)
+            let pinnae = 8
+            for k in 0..<pinnae {
+                let t = 0.14 + Float(k) / Float(pinnae - 1) * 0.82
+                let at = rachis.pointAt(t), along = rachis.tangentAt(t)
+                let side = simd_normalize(simd_cross(along, up))
+                let length = 0.4 * pow(sin(.pi * (t - 0.06) / 0.94), 0.7) * long + 0.06
+                for s: Float in [-1, 1] {
+                    let reach = simd_normalize(side * s + along * 0.45)
+                    parts.append(bead(at: at + reach * length * 0.8, along: reach, up: up, size: Vec3(length, 0.022, length * 0.34), color: 0x4c8536, top: 0x9acb62))
+                }
+            }
+        }
+        // A fiddlehead: a young frond still coiled, brown-furred, in the middle.
+        let coil = CatmullRom((0...8).map { k in
+            let a = Float(k) * 0.75, r = 0.16 * (1 - Float(k) / 10)
+            return k < 3 ? Vec3(0.02 * Float(k), 0.35 * Float(k), 0) : Vec3(0.1 + r * sin(a), 0.75 + r * cos(a) - 0.05, 0)
+        })
+        parts.append(Clay.limb(coil, 0.045, 0.035, 0x7a6a3a, 0x9fae5c, sides: 6, rings: 16).shape)
+        return Plant(shape: Geometry.join(parts), top: v(0, 2.1, 0))
+    }
+
+    /// White clover: a low patch of trefoil leaves, each of three rounded leaflets with a pale chevron, and round
+    /// white flower heads, a blush of pink at their base, held on stalks just above the leaves.
+    static let clovers: [Plant] = [clover()]
+    private static func clover() -> Plant {
+        var parts: [Geometry] = []
+        let leaves = 9
+        for k in 0..<leaves {
+            let a = Float(k) * 2.399963, out = 0.1 + 0.3 * sqrt(Float(k) / Float(leaves))
+            let at = v(cos(a) * out, 0.26 + 0.12 * sin(Float(k) * 1.3), sin(a) * out)
+            parts.append(Clay.limb(Clay.bow(at, v(-cos(a) * 0.05, 0, -sin(a) * 0.05)), 0.024, 0.018, green.0, green.1, sides: 5, rings: 5).shape)
+            parts += ring(3) { b, _ in
+                let around = b + a
+                return bead(at: at + v(cos(around) * 0.11, 0.01, sin(around) * 0.11), size: Vec3(0.13, 0.022, 0.11), color: 0x3f7a30, top: 0x6aa748, turn: v(0, -around, 0.08))
+            }
+            parts += ring(3) { b, _ in
+                let around = b + a
+                return bead(at: at + v(cos(around) * 0.085, 0.026, sin(around) * 0.085), size: Vec3(0.04, 0.012, 0.026), color: 0x9cc47c, turn: v(0, -around, 0))
+            }
+        }
+        for (a, out, high) in [(Float(0.6), Float(0.18), Float(0.66)), (2.9, 0.26, 0.56), (4.6, 0.12, 0.72)] {
+            let at = v(cos(a) * out, high, sin(a) * out)
+            parts.append(Clay.limb(Clay.bow(at, v(cos(a) * 0.05, 0, sin(a) * 0.05)), 0.024, 0.02, green.0, green.1, sides: 5, rings: 6).shape)
+            // The head's lowest florets fade first, pink-brown under the white.
+            parts.append(Clay.blob(at: at + v(0, 0.05, 0), size: Vec3(0.1, 0.09, 0.1), color: 0xc9a39a, top: 0xfbfaf2, lumpy: 0.25))
+        }
+        return Plant(shape: Geometry.join(parts), top: v(0.1, 0.82, 0.1))
+    }
 }

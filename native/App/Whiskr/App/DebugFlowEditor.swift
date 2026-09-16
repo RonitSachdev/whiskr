@@ -127,6 +127,9 @@ final class EditorFlow {
         await placing()
         await brushing()
         await erasing()
+        await painting()
+        await steppingStones()
+        await newThings()
         await limits()
         await carryingOn()
         await revert()
@@ -197,9 +200,8 @@ final class EditorFlow {
               "meadow \(Int(meadow.bounds.width))×\(Int(meadow.bounds.height)) of \(Int(frame.width))×\(Int(between)), terminals collapsed \(controller.debugCollapsed.terminals)")
         check("\(way): the view lifts to about 55° and the blankets keep their rows", abs(camera.pitch - 55 * .pi / 180) < 0.02 && meadow.blanketsPerRow == was.rows,
               String(format: "pitch %.1f°, rows %d (were %d)", camera.pitch * 180 / .pi, meadow.blanketsPerRow, was.rows))
-        check("\(way): the top bar shows the meadow's name, Undo, Redo and Done; the compass shows",
-              suite.barView("bar.meadow.name") != nil && suite.barView("bar.meadow.done") != nil && suite.barView("bar.arrow.uturn.backward") != nil
-                  && editor.compass.superview != nil && !editor.compass.isHidden)
+        check("\(way): the top bar shows the meadow's name, Undo, Redo and Done",
+              suite.barView("bar.meadow.name") != nil && suite.barView("bar.meadow.done") != nil && suite.barView("bar.arrow.uturn.backward") != nil)
     }
 
     private func checkLeft(_ way: String, _ was: Before, keyboard expected: NSResponder? = nil) async {
@@ -561,11 +563,17 @@ final class EditorFlow {
         suite.shortcut(".")
         await still()
         check(". turns the view 45°", abs(meadow.cameraView.bearing - (bearing - .pi / 4)) < 0.01)
-        if let compassCenter = Optional(NSPoint(x: editor.compass.frame.midX, y: editor.compass.frame.midY)) {
-            click(at: compassCenter)
-            await still()
-            check("a click on the compass turns the view back to north", abs(meadow.cameraView.bearing.truncatingRemainder(dividingBy: 2 * .pi)) < 0.01, "\(meadow.cameraView.bearing)")
-        }
+        // With a pointer alone: View › Editor View (the grass's menu holds the same).
+        menu(["View", "Editor View", "Face North"])
+        await still()
+        check("View › Editor View › Face North turns the view back to north", abs(meadow.cameraView.bearing.truncatingRemainder(dividingBy: 2 * .pi)) < 0.01, "\(meadow.cameraView.bearing)")
+        menu(["View", "Editor View", "Turn View Left"])
+        await still()
+        let left = meadow.cameraView.bearing
+        menu(["View", "Editor View", "Turn View Right"])
+        await still()
+        check("…Turn View Left and Turn View Right turn it 45° each way", abs(left - .pi / 4) < 0.01 && abs(meadow.cameraView.bearing) < 0.01,
+              "\(left), \(meadow.cameraView.bearing)")
         suite.shortcut(",")
         await still()
         suite.shortcut("0")
@@ -778,7 +786,7 @@ final class EditorFlow {
         suite.shortcut("cmd+return")
         _ = await PerfWait.until(2000) { !self.controller.meadowEditing }
         await still()
-        let overlays = [editor.selectionBar, editor.compass, editor.marquee].filter { $0.superview != nil }
+        let overlays = [editor.selectionBar, editor.marquee].filter { $0.superview != nil }
         check("nothing of the editor is left behind: no marks, no overlays, no gesture, the meadow's own handlers back",
               overlays.isEmpty && meadow.editMarks == MeadowEditMarks() && !meadow.isEditing && !editor.debugGestureUnderWay
                   && meadow.onEditPointer == nil && meadow.scenery == library.scenery && controller.navigator.kind == controller.layout.navigator,
@@ -794,7 +802,7 @@ final class EditorFlow {
         let started = perfNow()
         let rested = await PerfWait.until(20000) { self.meadow.isResting }
         check("the meadow rests again once editing has ended", rested != nil,
-              "\(rested.map { String(format: "after %.1f s", ($0 - started) / 1000) } ?? "not in 20 s"); camera moving \(meadow.cameraMoving), editing \(meadow.isEditing)")
+              "\(rested.map { String(format: "after %.1f s", ($0 - started) / 1000) } ?? "not in 20 s"); camera moving \(meadow.cameraMoving), editing \(meadow.isEditing); \(meadow.restBlockers)")
     }
 
     /// The young tree moved to `quitMarker` a moment before quitting: written at quit, not a second later.

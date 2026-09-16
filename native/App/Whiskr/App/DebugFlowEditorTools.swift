@@ -16,7 +16,8 @@ import WhiskrMeadow
 /// - the Brush: clumps along a stroke (one step, never overlapping, at the full frame rate), ⌥-drag clearing,
 ///   the size and density, the wildflower mix, Return at the cursor;
 /// - the Eraser: a click, a sweep (never a tree), one kind only;
-/// - the caps, said before they are reached and kindly when they are; Reduce Motion; pictures of every state.
+/// - the caps, said before they are reached and kindly when they are; Reduce Motion; pictures of every state
+///   (the Ground tool and stepping stones among them).
 extension EditorFlow {
     var tray: EditorTray { editor.tray }
     var count: Int { library.session.document.entries.count }
@@ -120,14 +121,16 @@ extension EditorFlow {
         let ids = EditorTray.things.map(\.id)
         let drawn = MeadowCatalog.current.assets.filter { $0.inTray && $0.shape == .single && MeadowScenery.draws($0.id) }.map(\.id)
         check("the shelf offers every thing the scene draws, in the catalog's order, and nothing it cannot (\(ids.count))",
-              ids == drawn && ids.count == 12 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
-        check("the categories are those that hold something: Trees, Flowers, Stones & Wood (no Ground button before its tool)",
-              EditorTray.categories == [.trees, .flowers, .stonesAndWood] && suite.barView("tray.category.ground") == nil && suite.barView("tray.tool.ground") == nil)
+              ids == drawn && ids.count == 28 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
+        check("the categories are those that hold something: Trees, Flowers, Stones & Wood, the Ground tool's paints, Workplace and Cat Things",
+              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .workplace, .catThings] && suite.barView("tray.category.ground") != nil
+                  && suite.barView("tray.tool.ground") != nil)
         let scale = window.backingScaleFactor
-        let pictures = (ids + [EditorTray.wildflowers]).compactMap { tray.pictures[$0] }
-        check("every tile has its picture, drawn by the scene in its own clay, crisp at the screen's scale",
-              pictures.count == ids.count + 1 && pictures.allSatisfy { $0.width == Int(EditorTray.tile * scale) && Self.hasSubject($0) },
-              "\(pictures.count) pictures of \(ids.count + 1), widths \(Set(pictures.map(\.width)))")
+        let pictured = ids + [EditorTray.wildflowers] + EditorTray.paints.map(\.id)
+        let pictures = pictured.compactMap { tray.pictures[$0] }
+        check("every tile has its picture, drawn by the scene in its own clay (the paints as real turf), crisp at the screen's scale",
+              pictures.count == pictured.count && pictures.allSatisfy { $0.width == Int(EditorTray.tile * scale) && Self.hasSubject($0) },
+              "\(pictures.count) pictures of \(pictured.count), widths \(Set(pictures.map(\.width)))")
         // The blankets framed above the tray.
         let blankets = suite.workbench.workspaces.compactMap { meadow.screenRect(of: .blanket($0.id.uuidString)) }
         check("the picnic ground's blankets are framed in the meadow above the tray", !blankets.isEmpty && blankets.allSatisfy { $0.minY > card.maxY && $0.maxY < meadow.bounds.maxY },
@@ -151,10 +154,13 @@ extension EditorFlow {
         suite.shortcut("2")
         let flowers = tray.category == .flowers && tray.shelf.allSatisfy { $0.category == .flowers }
         await pressTray("tray.category.stonesAndWood")
-        check("2 and the category's tab show that shelf", flowers && tray.category == .stonesAndWood && tray.shelf.map(\.id) == ["stone.stone", "stone.mossy", "wood.fallenLog"],
+        check("2 and the category's tab show that shelf", flowers && tray.category == .stonesAndWood
+                  && tray.shelf.map(\.id) == ["stone.stone", "stone.mossy", "stone.boulder", "stone.stepping", "wood.fallenLog", "wood.stump", "wood.logPile"],
               "\(tray.shelf.map(\.id))")
+        suite.shortcut("6")
+        let catThings = tray.category == .catThings
         suite.shortcut("1")
-        check("1: the trees again", tray.category == .trees && tray.shelf.count == 4)
+        check("6: Cat Things; 1: the trees again", catThings && tray.category == .trees && tray.shelf.count == 6)
 
         // ⌘F: the filter.
         suite.shortcut("cmd+f")
@@ -447,20 +453,32 @@ extension EditorFlow {
         await enter()
         editor.debugChoose([])
         let mine = library.active
-        // A meadow of 47 trees (round its edge, out of the way) and 4,999 things in all.
+        // A meadow of 47 trees (round its edge, out of the way: young trees, apple trees and pines) and 4,998 things in
+        // all: the plants of the Flowers shelf, and every twelfth a made thing or wood, as many made things as it may hold.
         var entries = library.session.document.entries
         var trees = library.session.document.counts(.current)[.trees, default: 0]
         var k = 0
         while trees < 47 {
             let a = Double(k) * 0.19
-            entries.append(.item(MeadowFile.MeadowItem(asset: "tree.young", placement: .at(MeadowPoint(MeadowJSON.quantized(cos(a) * 157), MeadowJSON.quantized(sin(a) * 157))), seed: UInt32(k + 1))))
+            entries.append(.item(MeadowFile.MeadowItem(asset: ["tree.young", "tree.apple", "tree.pine"][k % 3],
+                                                        placement: .at(MeadowPoint(MeadowJSON.quantized(cos(a) * 157), MeadowJSON.quantized(sin(a) * 157))), seed: UInt32(k + 1))))
             trees += 1
             k += 1
         }
-        var j = 0
+        var j = 0, made = library.session.document.counts(.current)[.madeThings, default: 0]
+        let plants = ["flower.daisy", "plant.clover", "flower.cornflower", "plant.fern", "flower.foxglove"]
+        let things = ["cat.box", "cat.bed", "wood.stump", "cat.bowl", "cat.yarn", "wood.logPile", "cat.scratchingPost", "work.cushion", "stone.boulder"]
         while entries.count < MeadowFormat.maxItems - 2 {
             let x = Double(j % 60) * 1.1 - 80, z = Double(j / 60) * 1.1 - 30
-            entries.append(.item(MeadowFile.MeadowItem(asset: "flower.daisy", placement: .at(MeadowPoint(MeadowJSON.quantized(x), MeadowJSON.quantized(z))))))
+            var asset = plants[j % plants.count]
+            if j % 12 == 0 {
+                let thing = things[(j / 12) % things.count]
+                if MeadowCatalog.current.asset(thing)?.caps.contains(.madeThings) != true || made < MeadowCatalog.Cap.madeThings.limit - 10 {
+                    asset = thing
+                    if MeadowCatalog.current.asset(thing)?.caps.contains(.madeThings) == true { made += 1 }
+                }
+            }
+            entries.append(.item(MeadowFile.MeadowItem(asset: asset, placement: .at(MeadowPoint(MeadowJSON.quantized(x), MeadowJSON.quantized(z))))))
             j += 1
         }
         let file = "Full Meadow.whiskrmeadow"
@@ -480,6 +498,16 @@ extension EditorFlow {
         check("past 80 % of a cap the tray says how full the meadow is, before it is reached",
               tray.fullness == MeadowWords.fullness(MeadowFormat.maxItems - 2, of: MeadowFormat.maxItems, nil) && tray.full.isEmpty, tray.fullness ?? "nothing said")
         await picture("full-meadow")
+        // At the caps (Stage 7's models among its things), the meadow rests as soon as any meadow must; its cost at
+        // rest is recorded (the terminal printing all along this flow, its chrome limits are the idle flow's to hold).
+        suite.shortcut("cmd+return")
+        _ = await PerfWait.until(2000) { !self.controller.meadowEditing }
+        let left = perfNow()
+        let rested = await PerfWait.until(12000) { self.meadow.isResting }
+        check("a full meadow rests within 12 s of leaving editing", rested != nil, rested.map { String(format: "%.1f s", ($0 - left) / 1000) } ?? "not in 12 s")
+        await suite.idleStretch("editor: idle, a full meadow", limits: false)
+        await enter()
+        editor.debugChoose([])
         // One more tree: the 48th; then the trees' tiles say the meadow holds as many as it can.
         suite.shortcut("1")
         guard let spot = freeSpotInView(big: true) else { return check("free ground for the 48th tree", false) }
@@ -569,6 +597,39 @@ extension EditorFlow {
                 await picture("\(name)-erase")
             }
         }
+        // The Ground tool: a stroke of path across the picnic ground and on, the circle on the ground.
+        suite.shortcut("g")
+        await pressTray("tray.item.ground.path")
+        if let from = meadow.viewPoint(ofGround: SIMD2(-26, 6)), let to = meadow.viewPoint(ofGround: SIMD2(18, 2)), meadow.bounds.contains(from), meadow.bounds.contains(to) {
+            await dragPointer(from: from, to: to, steps: 40) { await self.picture("\(name)-ground") }
+            // A lawn beside it, painted wide, and the two together.
+            await pressTray("tray.item.ground.lawn")
+            for _ in 0..<3 { suite.shortcut("]") }
+            var lawn = 0
+            for z in [Float(-14), -19] {
+                if let a = meadow.viewPoint(ofGround: SIMD2(24, z)), let b = meadow.viewPoint(ofGround: SIMD2(34, z)), meadow.bounds.contains(a), meadow.bounds.contains(b),
+                   !trayCard.contains(a), !trayCard.contains(b) {
+                    await dragPointer(from: a, to: b, steps: 20)
+                    lawn += 1
+                }
+            }
+            await hoverMeadow(to)
+            await picture("\(name)-ground-painted")
+            for _ in 0..<(lawn + 1) { suite.shortcut("cmd+z") }
+            for _ in 0..<3 { suite.shortcut("[") }
+            await pressTray("tray.item.ground.path")
+        }
+        // Stepping stones laid along a drag.
+        suite.shortcut("v")
+        suite.shortcut("3")
+        await pressTray("tray.item.stone.stepping")
+        if let from = meadow.viewPoint(ofGround: SIMD2(-30, -10)), let to = meadow.viewPoint(ofGround: SIMD2(-18, -16)), meadow.bounds.contains(from), meadow.bounds.contains(to),
+           !trayCard.contains(from), !trayCard.contains(to) {
+            await dragPointer(from: from, to: to, steps: 30)
+            await picture("\(name)-stones")
+            suite.shortcut("cmd+z")
+        }
+        suite.shortcut("esc")
         suite.shortcut("v")
     }
 }

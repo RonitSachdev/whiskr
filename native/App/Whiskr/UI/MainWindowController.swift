@@ -315,10 +315,17 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// View › Edit Meadow (⌃⌘E), checked while editing; also the grass's menu, Settings › Meadow and Go to.
     @objc func toggleMeadowEditing(_ sender: Any?) { meadowEditor.toggle() }
 
-    /// View › Editor Tools: Select, Brush or Erase (by the item's tag), while the meadow is edited.
+    /// View › Editor Tools: Select, Brush, Erase or Ground (by the item's tag), while the meadow is edited.
     @objc func chooseEditorTool(_ sender: Any?) {
         guard meadowEditing, let tag = (sender as? NSMenuItem)?.tag, EditorTray.Tool.allCases.indices.contains(tag) else { return }
         meadowEditor.use(EditorTray.Tool.allCases[tag])
+    }
+
+    /// View › Editor View: the view turned, facing north or framing the picnic ground again (by the item's tag),
+    /// while the meadow is edited.
+    @objc func performEditorView(_ sender: Any?) {
+        guard meadowEditing, let tag = (sender as? NSMenuItem)?.tag, let command = EditModeController.ViewCommand(rawValue: tag) else { return }
+        meadowEditor.perform(command)
     }
 
     /// View › Hide Editor Tray / Show Editor Tray (⌥⌘T): the tray folded to its top row, or all of it.
@@ -622,6 +629,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
             return navigator.meadow.window != nil
         case #selector(chooseEditorTool(_:)):
             item.state = meadowEditing && EditorTray.Tool.allCases.firstIndex(of: meadowEditor.tray.tool) == item.tag ? .on : .off
+            return meadowEditing
+        case #selector(performEditorView(_:)):
             return meadowEditing
         case #selector(toggleEditorTray(_:)):
             item.title = meadowEditing && meadowEditor.tray.collapsed ? String(localized: "Show Editor Tray", comment: "View menu: unfolds the meadow editor's tray")

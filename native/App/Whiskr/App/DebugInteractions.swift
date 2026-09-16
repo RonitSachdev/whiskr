@@ -97,7 +97,7 @@ extension PerfSuite {
         let target = hit(view, at: point)
         for count in 1...2 {
             guard let down = mouse(.leftMouseDown, at: location, count: count), let up = mouse(.leftMouseUp, at: location, count: count) else { continue }
-            NSApp.postEvent(up, atStart: false)
+            QueuedEvents.post(up)
             NSApp.sendEvent(down)
         }
         return target
@@ -336,7 +336,7 @@ extension PerfSuite {
             // Dragged off the middle first, as `sizesCheck` drags.
             let start = split.convert(NSPoint(x: split.subviews[0].frame.maxX + 0.5, y: split.bounds.midY), to: nil)
             for step in 1...8 {
-                if let drag = mouse(step == 8 ? .leftMouseUp : .leftMouseDragged, at: NSPoint(x: start.x - CGFloat(step * 15), y: start.y)) { NSApp.postEvent(drag, atStart: false) }
+                if let drag = mouse(step == 8 ? .leftMouseUp : .leftMouseDragged, at: NSPoint(x: start.x - CGFloat(step * 15), y: start.y)) { QueuedEvents.post(drag) }
             }
             if let down = mouse(.leftMouseDown, at: start) { NSApp.sendEvent(down) }
             await PerfWait.sleep(400)
@@ -398,7 +398,7 @@ extension PerfSuite {
         }
         if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .control, timestamp: ProcessInfo.processInfo.systemUptime,
                                         windowNumber: window.windowNumber, context: nil, characters: "\t", charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48) {
-            NSApp.postEvent(event, atStart: false)
+            QueuedEvents.post(event)
         }
         _ = await PerfWait.until(1000) { taken }
         if let menus { NSEvent.removeMonitor(menus) }
