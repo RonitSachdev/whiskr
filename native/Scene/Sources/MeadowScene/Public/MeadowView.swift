@@ -282,6 +282,54 @@ public final class MeadowView: MTKView {
     }
     private var offscreenTarget: MTLTexture?
 
+    /// Diagnostics: the sky and weather as the scene shows them now.
+    public struct SkyReading: Sendable {
+        /// 0 by day … 1 at night.
+        public var night: Float
+        /// The sun's height, degrees, while the light follows the real sun (else nil).
+        public var sunElevation: Double?
+        /// The share of the moon's disc that is lit, and whether it is waxing.
+        public var moonLit: Double
+        public var moonWaxing: Bool
+        /// The moon showing, 0…1: risen (where it is reckoned), after dark, not behind cloud.
+        public var moonShown: Float
+        /// Stars and moon showing, 0…1.
+        public var stars: Float
+        /// The wind's push at a gust's height (1 a breeze), which way it blows on the ground (x east, z
+        /// south), and the share of it kept between gusts.
+        public var wind: Float
+        public var windToward: (x: Float, z: Float)
+        public var windCalm: Float
+        /// Rain or snow, 0…1, and the drops drawn for it.
+        public var falling: Float
+        public var snowing: Bool
+        public var drops: Int
+        public var thunder: Bool
+        /// The lightning's flash this frame, 0…1.
+        public var flash: Float
+        public var mist: Float
+        /// The grass's deeper green, linear RGB.
+        public var turf: (red: Float, green: Float, blue: Float)
+    }
+    @_spi(Diagnostics) public var sky: SkyReading {
+        let l = stage.light
+        return SkyReading(night: l.night, sunElevation: l.sunElevation, moonLit: l.moon.lit, moonWaxing: l.moon.waxing, moonShown: l.moonShown, stars: l.stars,
+                          wind: l.wind, windToward: (stage.windToward.x, stage.windToward.y), windCalm: l.windCalm,
+                          falling: l.falling, snowing: l.snowing, drops: stage.meadow?.fallingCount ?? 0, thunder: l.thunder, flash: stage.flash,
+                          mist: l.mist, turf: (l.turfLow.x, l.turfLow.y, l.turfLow.z))
+    }
+
+    /// Diagnostics: where the moon's disc is in the view (points, origin bottom left), whether or not
+    /// anything stands in front of it.
+    @_spi(Diagnostics) public var moonRect: CGRect? {
+        let center = MeadowDrawer.moonCenter(stage.camera), c = stage.screen(center)
+        guard c.z <= 1 else { return nil }
+        let up = stage.camera.viewMatrix.inverse.direction(Vec3(0, 1, 0))
+        let edge = stage.screen(center + simd_normalize(up) * 16 * MeadowDrawer.moonScale)
+        let r = CGFloat(hypot(edge.x - c.x, edge.y - c.y))
+        return CGRect(x: CGFloat(c.x) - r, y: bounds.height - CGFloat(c.y) - r, width: 2 * r, height: 2 * r)
+    }
+
     @_spi(Diagnostics) public func simulateZoom(by factor: Float, at point: CGPoint) {
         handTookOver()
         stage.camera.zoom(by: factor, at: Vec2(Float(point.x), Float(point.y)))

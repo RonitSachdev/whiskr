@@ -48,7 +48,8 @@ final class Critters {
         }
     }
 
-    func update(_ dt: Float, sleepers: [Perch], random: inout Seeded) {
+    /// `wind`: which way it blows (unit length, x and z), for the seeds.
+    func update(_ dt: Float, wind: Vec2 = Light.breeze, sleepers: [Perch], random: inout Seeded) {
         time += dt
         let t = time
         for i in flyers.indices {
@@ -95,11 +96,12 @@ final class Critters {
         // Seeds ride the same wind the grass bends to, and come round again when they drift out of sight.
         for i in seeds.indices {
             let fi = Float(i)
-            seeds[i].x += (1.1 + sin(t * 0.7 + fi) * 0.4) * dt
-            seeds[i].z += 0.4 * dt
+            let along = 1.17 + sin(t * 0.7 + fi) * 0.4
+            seeds[i].x += wind.x * along * dt
+            seeds[i].z += wind.y * along * dt
             seeds[i].y += sin(t * 1.3 + fi * 1.7) * 0.25 * dt
-            if seeds[i].x > 45 { seeds[i].x -= 90 }
-            if seeds[i].z > 45 { seeds[i].z -= 90 }
+            if seeds[i].x > 45 { seeds[i].x -= 90 } else if seeds[i].x < -45 { seeds[i].x += 90 }
+            if seeds[i].z > 45 { seeds[i].z -= 90 } else if seeds[i].z < -45 { seeds[i].z += 90 }
         }
     }
 

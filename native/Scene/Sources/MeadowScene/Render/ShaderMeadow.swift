@@ -10,8 +10,17 @@ vertex SkyOut skyVertex(uint vid [[vertex_id]]) {
 fragment float4 skyFragment(SkyOut in [[stage_in]], constant Frame& F [[buffer(0)]]) {
     float4 far = F.invViewProj * float4(in.ndc, 1.0, 1.0);
     float3 dir = normalize(far.xyz / far.w - F.eye.xyz);
+    // Tests (`Renderer.marksVoid`): where the sky shows below the horizon with ground expected there, short
+    // of the fog's middle, the picture would show a hole in the world: drawn in pure magenta to be counted.
+    if (F.viewport.w > 0.5 && dir.y < 0.0) {
+        float along = -F.eye.y / dir.y;
+        float depth = -(F.view * float4(F.eye.xyz + dir * along, 1.0)).z;
+        if (depth < (F.fog.x + F.fog.y) * 0.5) return float4(1, 0, 1, 1);
+    }
     float h = max(dir.y, 0.0);
     float3 c = mix(mix(F.horizon.rgb, F.skyMid.rgb, smoothstep(0.0, 0.2, h)), F.skyTop.rgb, smoothstep(0.15, 0.85, h));
+    // Sheet lightning: the whole sky brightens softly toward a pale lilac, more overhead.
+    c = mix(c, float3(0.62, 0.64, 0.82), F.weather.y * (0.3 + 0.2 * h));
     // A whisper of noise, one step of the screen's colour either way, so a dark gradient never breaks
     // into bands. The drawable is sRGB, so the step is taken in sRGB and brought back to linear.
     float n = fract(sin(dot(in.position.xy, float2(12.9898, 78.233))) * 43758.5453) - 0.5;

@@ -14,9 +14,10 @@ extension PerfSuite {
         let settings = SettingsWindowController.shared
         settings.show()
         guard let window = settings.window, let tabs = window.contentViewController as? SettingsTabs else { return check("settings: the window opened", false) }
-        // Controls, by their place in a pane, that must not be worked here: Settings › Meadow's first switch
-        // (after Time of day) is Real weather.
-        let leaveAlone: [String: Set<Int>] = ["meadow": [1]]
+        // Controls, by their place in a pane, that must not be worked here: Settings › Meadow's fourth control
+        // (after Time of day, Real sunrise and sunset, and Moon phase) is Real weather. The switches under it
+        // are disabled while it is off, so not worked here either (`--perf-flows sky` checks them).
+        let leaveAlone: [String: Set<Int>] = ["meadow": [3]]
         for pane in ["general", "terminal", "editor", "alerts", "meadow"] {
             tabs.select(pane: pane)
             let found = await PerfWait.until(3000) { (window.contentView.map(Self.controls(in:)) ?? []).count > 1 }

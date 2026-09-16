@@ -23,6 +23,10 @@ struct FrameUniforms {
     var viewport = Vec4.zero
     var sky2 = Vec4.zero
     var camRight = Vec4.zero, camUp = Vec4.zero
+    /// The wind: which way it blows (x, z) and how far its gusts have travelled (`Stage.gustDrift`).
+    var wind = Vec4.zero
+    /// How much of a gust's push stays between gusts, the lightning's flash, unused, unused.
+    var weather = Vec4.zero
 }
 
 let MAX_CLEARINGS = 48
@@ -75,6 +79,8 @@ struct Lit: OptionSet {
     static let noFog = Lit(rawValue: 64)
     static let glow = Lit(rawValue: 128)
     static let gingham = Lit(rawValue: 256)
+    /// The moon: lit from the direction in `emissive` (its phase), the dark side see-through.
+    static let moon = Lit(rawValue: 512)
 }
 
 /// Must match `struct Sprite` in ShaderOverlay.

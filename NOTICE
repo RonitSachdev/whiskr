@@ -329,8 +329,9 @@ Services
 ========
 
 When "Real weather" is turned on in Settings › Meadow, the app asks Open-Meteo (open-meteo.com) for the
-weather at your location, rounded to about a kilometre. The app makes no other network requests of its
-own: Claude Code's hook events reach it on this Mac only (127.0.0.1).
+weather at your location, rounded to about a kilometre, in one request every 15 minutes. Sunrise, sunset
+and the moon's phase are worked out on this Mac and send nothing. The app makes no other network requests
+of its own: Claude Code's hook events reach it on this Mac only (127.0.0.1).
 
 
 Licence texts of the data and code above

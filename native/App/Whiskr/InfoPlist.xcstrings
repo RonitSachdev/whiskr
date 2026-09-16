@@ -137,13 +137,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are."
+            "value": "Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are. Sunrise and sunset are also worked out from it, on this Mac."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "草原の実際の天気は、約1 kmに丸めた現在地を使ってOpen-Meteoに天気を問い合わせます。"
+            "value": "草原の実際の天気は、約1 kmに丸めた現在地を使ってOpen-Meteoに天気を問い合わせます。日の出と日の入りも、このMacでこの現在地から計算します。"
           }
         }
       }
@@ -155,13 +155,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are."
+            "value": "Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are. Sunrise and sunset are also worked out from it, on this Mac."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "草原の実際の天気は、約1 kmに丸めた現在地を使ってOpen-Meteoに天気を問い合わせます。"
+            "value": "草原の実際の天気は、約1 kmに丸めた現在地を使ってOpen-Meteoに天気を問い合わせます。日の出と日の入りも、このMacでこの現在地から計算します。"
           }
         }
       }

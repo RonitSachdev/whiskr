@@ -27,7 +27,8 @@ final class Meadow {
     static let log = (x: Float(-27), z: Float(-9), turn: Float(0.5))
     static let fireflies = 14
     static let fall = (drops: 700, wide: Float(50), tall: Float(26))
-    static let wind = simd_normalize(Vec2(1, 0.35))
+    /// How far past a hill's foot the view's eye must be for the hill to stand at its whole height.
+    static let hillClearOfEye: Float = 40
 
     private(set) var random = Seeded(0)
     let grass: (tufts: [GrassField.Tuft], chunks: [GrassField.Chunk])
@@ -66,11 +67,17 @@ final class Meadow {
         scatterOddments(&random, roots)
         critters = Critters(&random, blooms: blooms)
 
-        // Night: a sky full of stars riding with the camera, and fireflies round the picnics.
-        for _ in 0..<600 {
-            let up = 0.08 + random.float() * 0.9, around = random.float() * .pi * 2, flat = sqrt(1 - up * up)
-            stars.append(Vec3(cos(around) * flat * 430, up * 430, sin(around) * flat * 430))
+        // Night: a sky full of stars riding with the camera, and fireflies round the picnics. The stars are
+        // thickest low down, where a view tilted low sees the sky over the far hills (the hills and trees
+        // hide those below them); they come from a sequence of their own, so everything grown after them
+        // stands where it always did.
+        var sky = Seeded(43)
+        for k in 0..<1300 {
+            // Most in the band from 6° below level to 8° above, the rest scattered up to 70°.
+            let up = (k < 1000 ? -6 + 14 * sky.float() : 8 + 62 * sky.float()) * Float.pi / 180, around = sky.float() * .pi * 2
+            stars.append(Vec3(cos(around) * cos(up) * 430, sin(up) * 430, sin(around) * cos(up) * 430))
         }
+        for _ in 0..<(600 * 2) { _ = random.float() }
         for _ in 0..<(24 * Self.fireflies) {
             let angle = random.float() * .pi * 2
             let spin = (random.float() < 0.5 ? -1 : 1) * (0.06 + random.float() * 0.16)
@@ -131,11 +138,13 @@ final class Meadow {
     func treeAt(_ i: Int, _ clearings: [Vec4], _ count: Int) -> Vec3 { Land.levelled(treeShapes[i].at, clearings, count) }
 
     /// A far hill, sunk into the ground as far as blankets laid near it need (a long column can reach
-    /// the hills): from its whole height down to none, as the land is levelled round it.
-    func hill(_ i: Int, _ clearings: [Vec4], _ count: Int) -> Mat4 {
+    /// the hills): from its whole height down to none, as the land is levelled round it. It sinks too when
+    /// the view backs off over it (a long column, or zoomed far out, tilted low), so it never fills the
+    /// foreground between you and the meadow.
+    func hill(_ i: Int, _ clearings: [Vec4], _ count: Int, eye: Vec3) -> Mat4 {
         let m = hills[i].0
         let middle = Vec3(m.columns.3.x, m.columns.3.y, m.columns.3.z), reach = m.columns.0.x, tall = m.columns.1.y
-        var k: Float = 0
+        var k = 1 - smoothstep(hypot(middle.x - eye.x, middle.z - eye.z) - reach, Self.hillClearOfEye, Self.hillClearOfEye + 60)
         for j in 0..<min(count, clearings.count) {
             let c = clearings[j]
             k = max(k, 1 - smoothstep(hypot(middle.x - c.x, middle.z - c.y) - max(c.z, 0) - reach, Land.flat, Land.flat + Land.blend))
@@ -303,20 +312,20 @@ final class Meadow {
 
     // MARK: each frame
 
-    /// How hard the wind is blowing at a spot right now, 0…1: the same gusts that bend the grass there.
-    func gust(_ x: Float, _ z: Float, time: Float) -> Float {
-        let drift = Double(time) * 0.22
-        return Float(smooth((shaderNoise(Double(x) * 0.045 - Double(Self.wind.x) * drift, Double(z) * 0.045 - Double(Self.wind.y) * drift) - 0.35) / 0.5))
+    /// How hard the wind is blowing at a spot right now, 0…1: the same gusts that bend the grass there
+    /// (`windAt` in the shaders), their waves moved on by `drift` (`Stage.gustDrift`).
+    static func gust(_ x: Float, _ z: Float, drift: Vec2) -> Float {
+        Float(smooth((shaderNoise(Double(x) * 0.045 - Double(drift.x), Double(z) * 0.045 - Double(drift.y)) - 0.35) / 0.5))
     }
 
     func update(_ dt: Float, fading: Float, time: Float, eye: Vec3, lookAt: Vec3, sleepers: [Perch], sights: [Ball], sightCount: Int,
-                clearOf: [Ball] = [], clearCount: Int = 0, clearings: [Vec4], clearingCount: Int, night: Float, weather: MeadowWeather?, wind: Float) {
+                clearOf: [Ball] = [], clearCount: Int = 0, clearings: [Vec4], clearingCount: Int, light: Light, windToward: Vec2) {
         cloudTurn += dt * 0.004
-        critters.update(dt, sleepers: sleepers, random: &random)
+        critters.update(dt, wind: windToward, sleepers: sleepers, random: &random)
         Occlusion.update(&screens, dt: fading, eye: eye, sights: sights, count: sightCount)
-        glow(time: time, eye: eye, clearings: clearings, count: clearingCount, night: night, falling: weather?.sky == .rain || weather?.sky == .snow)
+        glow(time: time, eye: eye, clearings: clearings, count: clearingCount, night: light.night, falling: light.falling > 0)
         keepFlyersOff(clearOf, count: clearCount, eye: eye)
-        fall(dt, time: time, around: lookAt, snowing: weather?.sky == .snow, raining: weather?.sky == .rain, wind: wind)
+        fall(dt, time: time, around: lookAt, light: light, windToward: windToward)
     }
 
     /// Fireflies come out as it gets dark, only round the picnics: each circles its blanket slowly at its
@@ -407,20 +416,28 @@ final class Meadow {
     }
 
     /// Rain comes down fast and slanted by the wind; snow drifts. A drop that reaches the ground, or
-    /// wanders out of the box around where you are looking, starts again.
+    /// wanders out of the box around where you are looking, starts again. Light rain or snow is fewer
+    /// drops: the first `fallingCount` of them.
     private(set) var falling = false
     private(set) var snowing = false
-    private func fall(_ dt: Float, time t: Float, around: Vec3, snowing: Bool, raining: Bool, wind: Float) {
-        falling = snowing || raining
-        self.snowing = snowing
-        guard falling else { return }
-        let speed: Float = snowing ? 1.7 : 24, push = wind * (snowing ? 1.1 : 3.2)
+    private(set) var fallingCount = 0
+    /// How a raindrop moves (before each one's own share of speed), for drawing it as a streak along it.
+    private(set) var dropVelocity = Vec3(0, -24, 0)
+    private func fall(_ dt: Float, time t: Float, around: Vec3, light: Light, windToward: Vec2) {
+        falling = light.falling > 0
+        snowing = light.snowing
+        guard falling else { fallingCount = 0; return }
+        fallingCount = Int((Float(drops.count) * (0.25 + 0.75 * light.falling)).rounded())
+        let speed: Float = snowing ? 1.7 : 24, push = light.wind * (snowing ? 1.1 : 3.2)
+        dropVelocity = Vec3(windToward.x * push, -speed, windToward.y * push)
         let w = Self.fall.wide
-        for i in drops.indices {
+        for i in 0..<fallingCount {
             var d = drops[i]
             d.y -= speed * (0.8 + Float(i % 5) * 0.1) * dt
-            d.x += (Self.wind.x * push + (snowing ? sin(t * 1.3 + Float(i)) * 0.7 : 0)) * dt
-            d.z += Self.wind.y * push * dt
+            // Snowflakes wander across the wind as they drift down.
+            let wander = snowing ? sin(t * 1.3 + Float(i)) * 0.7 : 0
+            d.x += (windToward.x * push - windToward.y * wander) * dt
+            d.z += (windToward.y * push + windToward.x * wander) * dt
             if d.y < 0 { d.y += Self.fall.tall }
             d.x = around.x + euclideanModulo(d.x - around.x + w / 2, w) - w / 2
             d.z = around.z + euclideanModulo(d.z - around.z + w / 2, w) - w / 2

@@ -17,6 +17,11 @@ final class NavigatorController: NSViewController {
     private let list: NSHostingView<WhileShown<NavigatorList>>
     private let note = HoverNote()
     private var observers: [Observing] = []
+    private var zoneObserver: NSObjectProtocol?
+
+    isolated deinit {
+        if let zoneObserver { NotificationCenter.default.removeObserver(zoneObserver) }
+    }
     private var scene: SceneSnapshot?
     private lazy var answerCard = AnswerCardController(workbench: workbench)
     /// The "↑ 1 needs you" capsules at the meadow's edges.
@@ -92,6 +97,10 @@ final class NavigatorController: NSViewController {
             self.sceneChanged(self.workbench.scene, choices: self.workbench.choices)
         })
         observers.append(Observing { [weak self] in self?.applySettings() })
+        // Moving to another time zone moves the sun, when where you are is guessed from it.
+        zoneObserver = NotificationCenter.default.addObserver(forName: .NSSystemTimeZoneDidChange, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applySettings() }
+        }
         // One terminal's program messaging another's (`paw`): their cats act it out.
         workbench.onPassed = { [weak self] message in self?.passed(message) }
     }
@@ -142,7 +151,12 @@ final class NavigatorController: NSViewController {
         let variant = ThemeStore.shared.palette.theme.variant(dark: Palette.isDark(view.effectiveAppearance))
         let accent = NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? .systemBlue
         let chrome = MeadowMapping.chrome(variant, focus: (Double(accent.redComponent), Double(accent.greenComponent), Double(accent.blueComponent)))
-        let settings = MeadowMapping.settings(store.settings, weather: store.weather, chrome: chrome)
+        #if DEBUG
+        let stoppedAt = store.clockStoppedAt
+        #else
+        let stoppedAt: Date? = nil
+        #endif
+        let settings = MeadowMapping.settings(store.settings, weather: store.weather, chrome: chrome, timeZone: .autoupdatingCurrent, stoppedAt: stoppedAt)
         if meadow.settings != settings { meadow.settings = settings }
         if meadow.animatesAmbient != store.animatesMeadow { meadow.animatesAmbient = store.animatesMeadow }
     }

@@ -12,6 +12,8 @@ let debugSkip = Set((ProcessInfo.processInfo.environment["MEADOW_SKIP"] ?? "").s
 
 final class Renderer {
     static let inFlight = 3
+    /// Tests: the sky marks in magenta wherever it shows through where the ground should be (`skyFragment`).
+    nonisolated(unsafe) static var marksVoid = false
     let gpu: GPU
     let cats: CatDrawer
     let meadow: MeadowDrawer
@@ -82,20 +84,24 @@ final class Renderer {
         F = FrameUniforms()
         F.viewProj = vp; F.view = view; F.proj = proj; F.invViewProj = vp.inverse
         F.eye = Vec4(camera.eye, stage.meadowTime)
-        let misty = stage.settings.weather?.sky == .fog
-        // Fog starts beyond whatever you are looking at, so zooming out never washes the cats out.
+        // Fog starts beyond whatever you are looking at, so zooming out never washes the cats out; mist and
+        // haze bring it in closer.
         let fogOn = stage.mode == .meadow
-        F.fog = Vec4(fogOn ? camera.view.distance + (misty ? 5 : 30) : 1e6, fogOn ? camera.view.distance + (misty ? 85 : 210) : 2e6, l.wind, l.night)
-        F.hemiSky = Vec4(l.hemiSky, 0); F.hemiGround = Vec4(l.hemiGround, 0)
+        F.fog = Vec4(fogOn ? camera.view.distance + lerp(30, 5, l.mist) : 1e6, fogOn ? camera.view.distance + lerp(210, 85, l.mist) : 2e6, l.wind, l.night)
+        // A flash of sheet lightning lifts the light from the sky a little, and from the ground less.
+        let flash = stage.flash
+        F.hemiSky = Vec4(l.hemiSky + linear(0xc8ccf0) * 0.45 * flash, 0); F.hemiGround = Vec4(l.hemiGround + linear(0xc8ccf0) * 0.15 * flash, 0)
         F.keyColor = Vec4(l.keyColor, 0); F.keyDir = Vec4(l.keyDir, 0)
         F.rimColor = Vec4(l.rimColor, 0); F.rimDir = Vec4(l.rimDir, 0)
         F.turfLow = Vec4(l.turfLow, 0); F.turfHigh = Vec4(l.turfHigh, 0)
         F.horizon = Vec4(l.horizon, 0); F.skyTop = Vec4(l.skyTop, 0); F.skyMid = Vec4(l.skyMid, 0)
-        F.viewport = Vec4(Float(width), Float(height), pointScale, 0)
+        F.viewport = Vec4(Float(width), Float(height), pointScale, Self.marksVoid ? 1 : 0)
         F.sky2 = Vec4(l.stars, 0, l.cloudGlow, l.night)
         let inv = view.inverse
         F.camRight = Vec4(simd_normalize(inv.direction(Vec3(1, 0, 0))), 0)
         F.camUp = Vec4(simd_normalize(inv.direction(Vec3(0, 1, 0))), 0)
+        F.wind = Vec4(stage.windToward.x, stage.windToward.y, stage.gustDrift.x, stage.gustDrift.y)
+        F.weather = Vec4(l.windCalm, flash, 0, 0)
         F.counts = Vec4(Float(stage.clearingCount), Float(stage.treeCount), Float(stage.streamCount), Float(stage.pathCount))
         frameBuffers[slot].contents().storeBytes(of: F, as: FrameUniforms.self)
         stage.world.write(to: worldBuffers[slot].contents())

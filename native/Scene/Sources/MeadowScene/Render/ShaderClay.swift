@@ -17,6 +17,7 @@ struct SkinVertex { packed_float3 p; packed_float3 n; };
 #define LIT_NOFOG    64u
 #define LIT_GLOW    128u   // lamplight on a surface standing in the meadow (`shaded` glow)
 #define LIT_GINGHAM 256u   // a blanket: gingham in the tint colour (sRGB); extra.z checks per unit, extra.w faded
+#define LIT_MOON    512u   // the moon: unlit colour, lit only on the side facing the sun (`emissive`), the rest see-through
 
 struct Instance {
     float4x4 model;
@@ -124,6 +125,13 @@ float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W) {
         float3 cream = float3(1.0, 247.0 / 255.0, 238.0 / 255.0);
         float3 tint = mix(in.color, cream, in.pattern.y);
         diffuse = srgbDecode(mix(cream, tint, k));
+    }
+    if ((flags & LIT_MOON) != 0u) {
+        // A soft terminator, as on clay, the lit side a little rounder toward the sun; the dark side keeps
+        // only a trace of earthshine.
+        float facing = dot(normalize(in.normal), in.emissive);
+        float lit = smoothstep(-0.1, 0.1, facing);
+        return float4(diffuse * mix(0.55, 0.84 + 0.16 * saturate(facing), lit), in.opacity * mix(0.008, 1.0, lit));
     }
     if ((flags & LIT_UNLIT) != 0u) return float4(mix(diffuse, F.horizon.rgb, in.fog), in.opacity);
     float3 N = normalize(in.normal);

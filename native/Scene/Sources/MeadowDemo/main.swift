@@ -1,5 +1,5 @@
 import AppKit
-import MeadowScene
+@_spi(Diagnostics) import MeadowScene
 
 // The meadow in a window, fed by a scripted demo, or the cat on its own (`--playground`), or one frame
 // drawn offscreen to a PNG (`--shot`). Write outputs outside ~/Desktop, ~/Documents and ~/Downloads.
@@ -10,6 +10,9 @@ import MeadowScene
 //   The sidebar (`--sidebar`, 300×820; any --size): [--rows n] [--more n] [--dark] [--branches] [--long] [--pin id]
 //              [--focus blanket[/agent]] [--select blanket[/agent]] [--reveal blanket] [--follow blanket[/agent]]
 //              [--seed text] [--report]
+//   The sky: [--moment 2024-06-20T21:00:00+01:00] (the clock stopped then) [--place lat,lon] [--weather clear|cloudy|fog|rain|snow]
+//              [--wind kmh,from°[,gust]] [--intensity 0…1] [--thunder] [--visibility metres] [--temperature °C] [--flash]
+//              (shot at the height of a flash of lightning) [--effects sun,moon,clouds,wind,rain,lightning,grass]
 
 struct Options {
     var playground = false
@@ -31,6 +34,8 @@ struct Options {
     var cat: String?
     var weather: MeadowWeather?
     var bearing: Float?
+    /// With --bearing: the view's pitch above the ground, radians (low, to see the sky).
+    var pitch: Float?
     var doneUnseen = false
     /// The app's sidebar: the column, with every state in five workspaces (`--sidebar`), in the app's
     /// dark colours with `--dark`.
@@ -57,6 +62,9 @@ struct Options {
     /// A moment of cats dealing with each other: handover, report, farewell or note, shot `at` seconds in.
     var event: String?
     var at = 0.6
+    var place: MeadowPlace?
+    var effects = MeadowSettings.Effects.all
+    var flash = false
 
     static func parse() -> Options {
         var o = Options()
@@ -69,9 +77,29 @@ struct Options {
             case "--select": o.select = args.next()
             case "--cat": o.cat = args.next()
             case "--bearing": o.bearing = Float(args.next() ?? "")
+            case "--pitch": o.pitch = Float(args.next() ?? "")
             case "--weather":
                 let sky = MeadowWeather.Sky(rawValue: args.next() ?? "") ?? .clear
                 o.weather = MeadowWeather(sky: sky, cover: sky == .clear ? 0.2 : 0.9, windKmh: 18, temperatureC: sky == .snow ? -2 : 14)
+            case "--wind":
+                let p = (args.next() ?? "").split(separator: ",").compactMap { Float($0) }
+                var w = o.weather ?? MeadowWeather(sky: .clear, cover: 0.2, windKmh: 18, temperatureC: 14)
+                if p.count > 0 { w.windKmh = p[0] }
+                if p.count > 1 { w.windFromDegrees = p[1] }
+                if p.count > 2 { w.gustKmh = p[2] }
+                o.weather = w
+            case "--intensity": o.weather?.intensity = Float(args.next() ?? "") ?? 0.5
+            case "--thunder": o.weather?.thunder = true
+            case "--visibility": o.weather?.visibilityMeters = Float(args.next() ?? "")
+            case "--temperature": o.weather?.temperatureC = Float(args.next() ?? "") ?? 14
+            case "--flash": o.flash = true
+            case "--place":
+                let p = (args.next() ?? "").split(separator: ",").compactMap { Double($0) }
+                if p.count == 2 { o.place = MeadowPlace(latitude: p[0], longitude: p[1]) }
+            case "--effects":
+                let names: [String: MeadowSettings.Effects] = ["sun": .sunTimes, "moon": .moonPhase, "clouds": .clouds, "wind": .wind,
+                                                               "rain": .rainAndSnow, "lightning": .lightning, "grass": .grassColor]
+                o.effects = MeadowSettings.Effects((args.next() ?? "").split(separator: ",").compactMap { names[String($0)] })
             case "--done": o.doneUnseen = true
             case "--sidebar": o.sidebar = true; o.size = CGSize(width: 300, height: 820)
             case "--dark": o.dark = true
@@ -88,6 +116,7 @@ struct Options {
             case "--worktrees": o.worktrees = true
             case "--event": o.event = args.next()
             case "--at": o.at = Double(args.next() ?? "") ?? o.at
+            case "--moment": o.time = ISO8601DateFormatter().date(from: args.next() ?? "").map { .instant($0) } ?? o.time
             case "--size":
                 let p = (args.next() ?? "").split(separator: "x").compactMap { Double($0) }
                 if p.count == 2 { o.size = CGSize(width: p[0], height: p[1]) }
@@ -124,8 +153,8 @@ final class DemoApp: NSObject, NSApplicationDelegate {
         view = MeadowView(frame: NSRect(origin: .zero, size: o.size), mode: o.playground ? .catPlayground : .meadow)
         let chrome = o.dark ? MeadowChrome(surface: MeadowColor(hex: 0x2a2a2e), ink: MeadowColor(hex: 0xececee), alert: MeadowColor(hex: 0xd55e00))
                             : MeadowChrome(surface: MeadowColor(hex: 0xfcfcfb), ink: MeadowColor(hex: 0x232327), alert: MeadowColor(hex: 0xd55e00))
-        view.settings = MeadowSettings(arrangement: o.sidebar ? .column : .picnic, timeOfDay: o.time, weather: o.weather, picnic: o.picnic,
-                                       chrome: o.sidebar ? chrome : .standard)
+        view.settings = MeadowSettings(arrangement: o.sidebar ? .column : .picnic, timeOfDay: o.time, weather: o.weather, place: o.place,
+                                       effects: o.effects, picnic: o.picnic, chrome: o.sidebar ? chrome : .standard)
         if o.sidebar {
             var world = o.event.map { DemoScript.team(helper: $0 != "handover") } ?? DemoScript.sidebarStates
             world.machines[0].spaces = Array(world.machines[0].spaces.prefix(o.rows))
@@ -187,12 +216,21 @@ final class DemoApp: NSObject, NSApplicationDelegate {
                 }
             } else if !o.playground {
                 view.advance(seconds: 0.5)
-                if let b = o.bearing { view.turn(toBearing: b) }
+                if let b = o.bearing { view.turn(toBearing: b, pitch: o.pitch) }
                 let item: MeadowItem? = o.select.map { b in o.cat.map { .cat(blanket: b, agent: $0) } ?? .blanket(b) }
                 view.selection = item
                 view.frame(item, besidePanelWidth: o.panel, animated: false)
             }
             view.advance(seconds: o.after)
+            if o.flash {
+                // On to the height of the next flash of lightning (a minute at most): the frame after it peaks.
+                var waited = 0.0, last: Float = 0
+                while waited < 60 && !(view.sky.flash < last && last > 0.3) {
+                    last = view.sky.flash
+                    view.advance(seconds: 1.0 / 60)
+                    waited += 1.0 / 60
+                }
+            }
             if let event = o.event {
                 // The moment itself, `--at` seconds after it began.
                 switch event {

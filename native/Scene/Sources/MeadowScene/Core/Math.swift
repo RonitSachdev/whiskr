@@ -55,6 +55,14 @@ extension Mat4 {
         let c = cos(a), s = sin(a)
         return Mat4(columns: (Vec4(c, 0, -s, 0), Vec4(0, 1, 0, 0), Vec4(s, 0, c, 0), Vec4(0, 0, 0, 1)))
     }
+    /// A rotation taking +y to `up`'s direction (for shapes round about their own y, which way they face
+    /// round it does not matter).
+    static func turning(up: Vec3) -> Mat4 {
+        let y = simd_normalize(up)
+        let x = simd_normalize(simd_cross(y, abs(y.z) < 0.9 ? Vec3(0, 0, 1) : Vec3(1, 0, 0)))
+        let z = simd_cross(x, y)
+        return Mat4(columns: (Vec4(x, 0), Vec4(y, 0), Vec4(z, 0), Vec4(0, 0, 0, 1)))
+    }
     static func rotationZ(_ a: Float) -> Mat4 {
         let c = cos(a), s = sin(a)
         return Mat4(columns: (Vec4(c, s, 0, 0), Vec4(-s, c, 0, 0), Vec4(0, 0, 1, 0), Vec4(0, 0, 0, 1)))

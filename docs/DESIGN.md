@@ -153,7 +153,7 @@ Each state differs by **silhouette**, **mark**, **colour** (on the mark only, ne
 - **Faces stay toward the camera.** Every waking cat's face stays within 40° of the camera, whatever it
   is doing, so a working cat never reads as a dark lump.
 - **Contrast.** Every bubble against the grass, and the black cat by day and by night, reaches 3:1 (WCAG
-  1.4.11). At night each picnic's fireflies give the cats a warm rim of light.
+  1.4.11), in every sky and weather. At night each picnic's fireflies give the cats a warm rim of light.
 
 ## Attention
 
@@ -290,6 +290,28 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
   never scattered.
 - **Night is properly dark**, with fireflies gathered at the picnics casting warm yellow light. Lanterns
   appear only at night.
+- **The real sky.** Following the clock, dawn, day, dusk and night come with the real sun where you are:
+  night once it is 12° below the horizon, twilight's blue at 5° below, dawn's pink or dusk's gold as it
+  crosses the horizon, full day from 12° up. A polar winter's noon stays in twilight; a midsummer
+  midnight sun stays gold. The moon is the real one: its phase, its lit edge toward the sun, up only
+  between moonrise and moonset; a moonlit night is a little lighter than a moonless one (never darker than
+  night always was). Worked out on the Mac; nothing asks where you are for it.
+- **The sky is seen only with the view tilted low.** At the usual tilts the view looks down on the meadow
+  and shows no sky. Tilted down as far as it goes (a drag), a band of sky shows over the far hills: the
+  stars, thickest there, and the moon in the top left of the picture, wholly inside it, behind hills and
+  trees when they stand in front of it. Both fade in through twilight and hide behind cloud.
+- **Real weather** (off until you turn it on) shows only what reads in clay: cloud greying the sky and
+  dimming the sun; fog, and haze when one cannot see far; the wind's strength, direction and gusts in
+  the grass, flowers, seeds and rain (north is away from you along the meadow at its first angle);
+  rain and snow from a light scatter to heavy; the grass pale in the cold and yellow in the heat; and in
+  a thunderstorm, a soft sheet-lightning glow in the sky now and then. Lightning never flashes more than
+  twice a second (two pulses at most, then ten seconds or more of none, WCAG 2.3.1), and never with
+  Reduce Motion or the animation off. No sound. Each has its own switch in Settings › Meadow.
+  Left out, having no picture: humidity, pressure, UV, apparent temperature; the service's day/night
+  (the sun is worked out here); snow lying on the ground (bubbles must keep their contrast on the grass).
+- **The land never ends in view.** At every tilt, zoom and size the ground and grass reach past the
+  picture's edges: a far hill the view backs off over sinks away rather than fill the foreground, and
+  the column's grass grows in front of a view looking along it from far down.
 - **No streams or rivers.** That picture is kept for a second machine, which this app does not have.
 
 ### Motion
@@ -301,7 +323,7 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
 - While you type, ambient reactions wait and only state changes animate. With Reduce Motion, hops, walks
   and camera moves become short cross-fades.
 - **Animate Meadow** (View, and Settings › Meadow › "Animate the meadow"; WCAG 2.2.2). Off, the grass,
-  butterflies, fireflies and the cats' fidgets hold still; state changes still show, as cross-fades, and
+  butterflies, fireflies and the cats' fidgets hold still, and there is no lightning; state changes still show, as cross-fades, and
   a still meadow draws nothing between changes. Until you choose, it follows Reduce Motion.
 - The camera moves only for you: a drag turns the view, ⌘-drag slides it, and scroll or pinch zooms
   toward the pointer (in a narrow sidebar, scrolling scrolls the column of blankets); and it follows your

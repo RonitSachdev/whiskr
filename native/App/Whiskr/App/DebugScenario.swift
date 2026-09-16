@@ -27,6 +27,11 @@ import WhiskrKit
 ///   --meadow-width <pt>     the meadow at that width, as if the divider were dragged there
 ///   --window <w>x<h>        the window's size
 ///   --time day|night        Settings › Meadow
+///   --sky-moment <ISO 8601> the meadow's clock stopped then (Follow the Clock), for its sun and moon
+///   --sky-place <lat>,<lon> the sun and moon reckoned there, as if real weather had last found you there
+///   --weather-place <lat>,<lon>  real weather from Open-Meteo for that place, never asking for your location
+///   --weather-fixture <file>  Open-Meteo's answer read from a file instead: no request, no location
+///   --meadow-pitch <rad>    the meadow's view tilted to that pitch (0: as low as it goes) a second in
 ///   --appearance light|dark the app's appearance for this run
 ///   --import-theme <path>   imports a theme file, VS Code theme, .vsix or extension folder (repeatable)
 ///                           into the run's own themes folder and selects it
@@ -153,6 +158,26 @@ enum DebugScenario {
             workbench.launchNotice = HostNotice(terminals: terminals, withheld: numbers.count > 1 ? numbers[1] : 0)
         }
         if let time = value("--time") { WorldStore.shared.settings.timeOfDay = time == "night" ? .night : time == "day" ? .day : .followClock }
+        if let moment = value("--sky-moment") { WorldStore.shared.clockStoppedAt = ISO8601DateFormatter().date(from: moment) }
+        if let place = value("--sky-place")?.split(separator: ",").compactMap({ Double($0) }), place.count == 2 {
+            WorldStore.shared.settings.place = WorldSettings.Place(latitude: place[0], longitude: place[1])
+        }
+        if let place = value("--weather-place")?.split(separator: ",").compactMap({ Double($0) }), place.count == 2 {
+            WorldStore.shared.useFixedPlace(WorldSettings.Place(latitude: place[0], longitude: place[1]))
+        }
+        // `--meadow-pitch <radians>`: the view tilted as a drag would leave it (0: as low as it goes, where
+        // the sky shows over the far hills).
+        if let pitch = value("--meadow-pitch").flatMap(Float.init) {
+            let meadow = window.navigator.meadow
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { meadow.turn(toBearing: meadow.cameraAngle.bearing, pitch: pitch) }
+        }
+        if let file = value("--weather-fixture") {
+            if let data = FileManager.default.contents(atPath: file), let weather = MeadowWeather(openMeteo: data) {
+                WorldStore.shared.useWeather(weather)
+            } else {
+                print("--weather-fixture \(file): not an Open-Meteo answer")
+            }
+        }
         if let size = value("--window")?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
             window.window?.setContentSize(NSSize(width: size[0], height: size[1]))
         }

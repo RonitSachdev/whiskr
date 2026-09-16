@@ -95,7 +95,9 @@ final class MapCamera {
         // In clip space: x += shift.x · w, y += shift.y · w.
         var shift = Mat4.identity
         shift.columns.3 = Vec4(-cover.x / max(viewport.x, 1), cover.y / max(viewport.y, 1), 0, 1)
-        return shift * Mat4.perspective(fovY: Self.fovY, aspect: aspect, near: 0.1, far: 500)
+        // Far enough to see the ground into the fog however far back the view is (the fog ends 210 past what
+        // it looks at), so the land never stops short of it.
+        return shift * Mat4.perspective(fovY: Self.fovY, aspect: aspect, near: 0.1, far: max(500, view.distance + 300))
     }
 
     // MARK: - what you do

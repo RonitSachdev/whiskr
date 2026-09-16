@@ -968,6 +968,17 @@
         }
       }
     },
+    "Always Day and Always Night keep to their hour.": {
+      "comment": "Settings › Meadow: why the real sun does not apply",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「常に昼」と「常に夜」は決まった時刻のままです。"
+          }
+        }
+      }
+    },
     "Always Night": {
       "comment": "Settings › Meadow › Time of day",
       "localizations": {
@@ -1249,6 +1260,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "タブを閉じる（%lldペイン）"
+          }
+        }
+      }
+    },
+    "Clouds and fog": {
+      "comment": "Settings › Meadow: real weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雲と霧"
           }
         }
       }
@@ -2710,6 +2732,17 @@
         }
       }
     },
+    "Grass color from the temperature": {
+      "comment": "Settings › Meadow: real weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "気温で草の色を変える"
+          }
+        }
+      }
+    },
     "Hamper and a few things": {
       "localizations": {
         "ja": {
@@ -3271,6 +3304,17 @@
         }
       }
     },
+    "Lightning": {
+      "comment": "Settings › Meadow: soft sheet lightning in a thunderstorm",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稲光"
+          }
+        }
+      }
+    },
     "Line %lld changed from %@ to %@": {
       "localizations": {
         "ja": {
@@ -3498,6 +3542,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "しまう"
+          }
+        }
+      }
+    },
+    "Moon phase": {
+      "comment": "Settings › Meadow",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月の満ち欠け"
           }
         }
       }
@@ -4042,6 +4097,16 @@
         }
       }
     },
+    "Off, the grass, butterflies and cats' little movements hold still, and there is no lightning. Cats still change as Claude does. Also in View › Animate Meadow.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オフにすると、草やチョウ、猫の小さな動きが止まり、稲光も光りません。Claudeの状態に合わせて猫は変わります。表示 › 草原を動かす からも切り替えられます。"
+          }
+        }
+      }
+    },
     "One of Claude’s helpers finished its task. From Claude Code’s SubagentStop hook.": {
       "comment": "Settings › Alerts: where an event comes from",
       "localizations": {
@@ -4531,6 +4596,17 @@
         }
       }
     },
+    "Rain and snow": {
+      "comment": "Settings › Meadow: real weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雨と雪"
+          }
+        }
+      }
+    },
     "Reading the meadow": {
       "comment": "Help page title",
       "localizations": {
@@ -4559,6 +4635,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "選んだときに一度だけ設定を読み込みます: フォントとサイズ、インデント、折り返し、不可視文字、保存、ターミナルのカーソル、カラーテーマ。元の設定は変更せず、どこにも送信しません。"
+          }
+        }
+      }
+    },
+    "Real sunrise and sunset": {
+      "comment": "Settings › Meadow: dawn, day, dusk and night follow the real sun",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実際の日の出と日の入り"
+          }
+        }
+      }
+    },
+    "Real weather asks for your location once. It is rounded to about a kilometer and sent to Open-Meteo, a free weather service, in one request every 15 minutes while real weather is on. Lightning is a soft, rare glow, never with Reduce Motion or the meadow's animation off.": {
+      "comment": "Settings › Meadow: what real weather sends where",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実際の天気は一度だけ現在地を尋ねます。現在地は約1 kmに丸められ、実際の天気がオンの間、15分ごとに1回のリクエストで無料の天気サービスOpen-Meteoに送られます。稲光はやわらかく、ときどき光るだけです。「視差効果を減らす」がオンのときや、草原を動かさないときは光りません。"
           }
         }
       }
@@ -6022,6 +6120,28 @@
         }
       }
     },
+    "The sun does not rise today.": {
+      "comment": "Settings › Meadow: the polar night",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日は太陽が昇りません。"
+          }
+        }
+      }
+    },
+    "The sun does not set today.": {
+      "comment": "Settings › Meadow: the midnight sun",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日は太陽が沈みません。"
+          }
+        }
+      }
+    },
     "The terminal could not be started: %@": {
       "comment": "Shown in a pane whose shell failed to launch",
       "localizations": {
@@ -6129,6 +6249,17 @@
         }
       }
     },
+    "These show real weather, which is off.": {
+      "comment": "Settings › Meadow: why the weather's switches are disabled",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これらは実際の天気を表示します。実際の天気はオフです。"
+          }
+        }
+      }
+    },
     "This Mac": {
       "localizations": {
         "ja": {
@@ -6222,6 +6353,17 @@
         }
       }
     },
+    "Thunderstorm": {
+      "comment": "Weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雷雨"
+          }
+        }
+      }
+    },
     "Tidy on Save": {
       "comment": "Undo menu: what saving trimmed or added",
       "localizations": {
@@ -6265,6 +6407,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "To-doリスト：%2$lld件中%1$lld件完了"
+          }
+        }
+      }
+    },
+    "Today: sunrise %@, sunset %@": {
+      "comment": "Settings › Meadow: today's sunrise and sunset times",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日の日の出 %1$@、日の入り %2$@"
           }
         }
       }
@@ -6527,17 +6680,6 @@
         }
       }
     },
-    "Weather asks for your location once. It is rounded to about a kilometer and sent to Open-Meteo, a free weather service, every 15 minutes while weather is on.": {
-      "comment": "Settings › Meadow: what real weather sends where",
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "天気は一度だけ現在地を尋ねます。現在地は約1 kmに丸められ、天気がオンの間、15分ごとに無料の天気サービスOpen-Meteoに送られます。"
-          }
-        }
-      }
-    },
     "Weather turned itself off: location access was refused. Allow Whiskr in System Settings › Privacy & Security › Location Services, then turn weather on again.": {
       "localizations": {
         "ja": {
@@ -6610,6 +6752,17 @@
         }
       }
     },
+    "Wind": {
+      "comment": "Settings › Meadow: the real wind in the grass",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "風"
+          }
+        }
+      }
+    },
     "Window": {
       "localizations": {
         "ja": {
@@ -6638,6 +6791,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Whiskr ヘルプ"
+          }
+        }
+      }
+    },
+    "Worked out on this Mac for where real weather last found you, or else for your time zone. Nothing is sent and nothing is asked.": {
+      "comment": "Settings › Meadow: where the sun and moon are worked out",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このMacで計算します。場所は、実際の天気が最後に見つけた現在地か、なければタイムゾーンから推定します。何も送信せず、何も尋ねません。"
           }
         }
       }
@@ -7600,16 +7764,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "一致なし"
-          }
-        }
-      }
-    },
-    "Off, the grass, butterflies and cats' little movements hold still. Cats still change as Claude does. Also in View › Animate Meadow.": {
-      "localizations": {
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "オフにすると、草やチョウ、猫の小さな動きが止まります。Claudeの状態に合わせて猫は変わります。表示 › 草原を動かす からも切り替えられます。"
           }
         }
       }

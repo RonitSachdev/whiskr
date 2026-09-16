@@ -33,6 +33,9 @@ final class MeadowDrawer {
 
     init(gpu: GPU) { self.gpu = gpu }
 
+    /// How far out the ground goes each way: past anything the farthest camera sees short of the fog.
+    static let groundReach = 1600.0
+
     private func build(_ m: Meadow) {
         built = true
         // Ground: Meadow.ts buildGround, 800 × 800 in 160 segments, with the level middle and rolling edge.
@@ -52,6 +55,27 @@ final class MeadowDrawer {
         for j in 0..<segs {
             for i in 0..<segs {
                 let a = UInt32(j * (segs + 1) + i), b = a + 1, c = a + UInt32(segs + 1), d = c + 1
+                gi += [a, c, b, b, c, d]
+            }
+        }
+        // Round it, out to where nothing can be seen past it (the camera backs off as far as a long column
+        // needs), the same land in coarse squares: under the fine ground's last 50 units, a little lower so
+        // that wins, and no gap shows where their edges meet.
+        let outer = Self.groundReach, wide = 50.0, n = Int(2 * outer / wide)
+        let base = UInt32(gv.count / 6)
+        func land(_ x: Double, _ z: Double) -> Double { Land.height(x, z) - 0.5 }
+        for j in 0...n {
+            for i in 0...n {
+                let x = -outer + wide * Double(i), z = -outer + wide * Double(j)
+                let normal = simd_normalize(SIMD3<Double>(land(x - wide, z) - land(x + wide, z), 2 * wide, land(x, z - wide) - land(x, z + wide)))
+                gv += [Float(x), Float(land(x, z)), Float(z), Float(normal.x), Float(normal.y), Float(normal.z)]
+            }
+        }
+        for j in 0..<n {
+            for i in 0..<n {
+                let x = -outer + wide * (Double(i) + 0.5), z = -outer + wide * (Double(j) + 0.5)
+                if abs(x) < size / 2 - wide && abs(z) < size / 2 - wide { continue }
+                let a = base + UInt32(j * (n + 1) + i), b = a + 1, c = a + UInt32(n + 1), d = c + 1
                 gi += [a, c, b, b, c, d]
             }
         }
@@ -116,6 +140,14 @@ final class MeadowDrawer {
         return false
     }
 
+    /// Whether a square of the column's strip lies in the foreground the view looks across to reach the
+    /// blankets (a view tilted low from far down the column): there it grows too, so the grass never stops
+    /// short of you.
+    private func betweenEyeAndBlankets(_ c: GrassField.Chunk, _ stage: Stage) -> Bool {
+        let eye = stage.camera.eye
+        return hypot(eye.x - c.center.x, eye.z - c.center.y) < stage.camera.view.distance + Float(GrassField.chunk)
+    }
+
     private func visible(_ lo: Vec3, _ hi: Vec3) -> Bool {
         for p in planes {
             let v = Vec3(p.x >= 0 ? hi.x : lo.x, p.y >= 0 ? hi.y : lo.y, p.z >= 0 ? hi.z : lo.z)
@@ -149,7 +181,7 @@ final class MeadowDrawer {
         // Hills, far off.
         let hills = arena.alloc(ClayInstance.self, m.hills.count)
         for (i, h) in m.hills.enumerated() {
-            hills.pointer[i] = ClayInstance(m.hill(i, stage.world.clearings, stage.clearingCount), tint: Vec4(h.1, 1), roughness: 1, lit: [])
+            hills.pointer[i] = ClayInstance(m.hill(i, stage.world.clearings, stage.clearingCount, eye: stage.camera.eye), tint: Vec4(h.1, 1), roughness: 1, lit: [])
         }
         enc.setVertexBuffer(hills.buffer, offset: hills.offset, index: 3)
         draw(sphere, m.hills.count, enc)
@@ -167,7 +199,7 @@ final class MeadowDrawer {
             enc.setRenderPipelineState(gpu.grass)
             enc.setVertexBuffer(tufts, offset: 0, index: 3)
             var bound = -1
-            for c in chunks where (!c.column || nearBlankets(c, stage)) && visible(c.bounds.min, c.bounds.max + Vec3(2, 0, 2)) {
+            for c in chunks where (!c.column || nearBlankets(c, stage) || betweenEyeAndBlankets(c, stage)) && visible(c.bounds.min, c.bounds.max + Vec3(2, 0, 2)) {
                 if bound != c.band { enc.setVertexBuffer(bladeVerts[c.band], offset: 0, index: 1); bound = c.band }
                 enc.drawIndexedPrimitives(type: .triangle, indexCount: bladeIndexCount[c.band], indexType: .uint16, indexBuffer: bladeIndex[c.band],
                                           indexBufferOffset: 0, instanceCount: c.kept(eye: eye), baseVertex: 0, baseInstance: c.first)
@@ -328,20 +360,59 @@ final class MeadowDrawer {
         enc.setCullMode(.back)
         let clouds = arena.alloc(ClayInstance.self, m.clouds.count)
         let turn = Mat4.rotationY(m.cloudTurn)
-        let glow = linear(0xfff4e6) * l.cloudGlow
+        let glow = linear(0xfff4e6) * l.cloudGlow + linear(0xd8dcff) * 0.55 * stage.flash
         for (i, c) in m.clouds.enumerated() { clouds.pointer[i] = ClayInstance(turn * c, emissive: glow, roughness: 1, lit: .noFog) }
         enc.setVertexBuffer(clouds.buffer, offset: clouds.offset, index: 3)
         draw(cloudBall, m.clouds.count, enc)
         // Stars and the moon fade in with the dark, unless cloud is hiding them.
+        // The moon first, marking its depth, so the stars behind its dark side stay hidden as they would.
+        if l.moonShown > 0.02 {
+            enc.setDepthStencilState(gpu.depthWrite)
+            enc.setRenderPipelineState(gpu.clayBlend)
+            let at = Self.moonCenter(stage.camera), model = Mat4.translation(at) * .scale(Self.moonScale)
+            let lit = Self.sunlight(on: l.moon, limb: l.moonLimb, toward: simd_normalize(at - stage.camera.eye))
+            one(arena, ClayInstance(model, tint: Vec4(1, 1, 1, l.moonShown), emissive: lit, lit: [.moon, .noFog]), enc)
+            draw(moon, 1, enc)
+        }
         if l.stars > 0.02 {
             enc.setDepthStencilState(gpu.depthRead)
             enc.setRenderPipelineState(gpu.stars)
             enc.setVertexBuffer(stars, offset: 0, index: 1)
             enc.drawPrimitives(type: .point, vertexStart: 0, vertexCount: m.stars.count)
-            enc.setRenderPipelineState(gpu.clayBlend)
-            one(arena, ClayInstance(.translation(stage.camera.eye + Vec3(-150, 190, -320)), tint: Vec4(1, 1, 1, l.stars), lit: [.unlit, .noFog]), enc)
-            draw(moon, 1, enc)
         }
+    }
+
+    // The moon hangs in the top left of the view, wholly inside it, far beyond everything: the patch of sky
+    // a view tilted low shows over the far hills (at the usual tilts the view looks down on the meadow and
+    // that spot is ground, which hides it, as do the hills and trees whenever they stand in front of it).
+    // Turning or tilting the view, it keeps its place in the picture, as a moon does on a walk.
+    static let moonDistance: Float = 380
+    static let moonScale: Float = 0.38
+    /// The moon's radius as an angle, radians (its mesh is 16 across the middle).
+    static var moonRadius: Float { 16 * moonScale / moonDistance }
+    /// Across the view from its middle, as a share of half its width (negative: left).
+    static let moonAcross: Float = -0.62
+
+    /// Where the moon's middle is.
+    static func moonCenter(_ camera: MapCamera) -> Vec3 {
+        let v = camera.viewport
+        let inverse = (camera.projection(aspect: v.x / max(v.y, 1)) * camera.viewMatrix).inverse
+        // A little more than its own radius below the top edge, in the projection's units: the sky shown
+        // over the hills is a narrow band.
+        let down = moonRadius * 1.3 / tan(MapCamera.fovY / 2)
+        let far = inverse * Vec4(moonAcross, 1 - down, 1, 1)
+        let toward = simd_normalize(Vec3(far.x, far.y, far.z) / far.w - camera.eye)
+        return camera.eye + toward * moonDistance
+    }
+
+    /// Which way the sun lights the moon seen along `toward`: from behind you at full, from behind it at
+    /// new, and between, from the side its lit edge faces in the real sky (`limb`: up, right); without one,
+    /// the meadow's own moon, from the right.
+    static func sunlight(on phase: Moon.Phase, limb: Vec2?, toward: Vec3) -> Vec3 {
+        let up = simd_normalize(Vec3(0, 1, 0) - simd_dot(Vec3(0, 1, 0), toward) * toward)
+        let right = simd_cross(toward, up)
+        let side = limb.map { simd_normalize(up * $0.x + right * $0.y) } ?? right * (phase.waxing ? 1 : -1)
+        return -toward * Float(cos(phase.angle)) + side * Float(sin(phase.angle))
     }
 
     // MARK: see-through
@@ -385,17 +456,21 @@ final class MeadowDrawer {
         enc.setRenderPipelineState(gpu.clayBlend)
         if n > 0 { enc.setVertexBuffer(wings.buffer, offset: wings.offset, index: 3); draw(beeWing, n, enc) }
 
-        if m.falling {
+        if m.falling, m.fallingCount > 0 {
             let l = stage.light
-            let drops = arena.alloc(ClayInstance.self, m.drops.count)
-            let tilt = Mat4.rotationZ(-0.13 * l.wind)
-            let alpha: Float = m.snowing ? 0.95 : 0.55
-            for (i, d) in m.drops.enumerated() {
-                let model: Mat4 = m.snowing ? .translation(d) * .scale(0.07) : .translation(d) * tilt * .scale(Vec3(0.018, 0.42, 0.018))
+            let count = m.fallingCount
+            let drops = arena.alloc(ClayInstance.self, count)
+            // Rain falls in streaks along the way it moves, longer and plainer the harder it falls.
+            let along = Mat4.turning(up: -m.dropVelocity)
+            let alpha: Float = m.snowing ? 0.95 : 0.42 + 0.18 * l.falling
+            let streak = Vec3(0.018, 0.3 + 0.16 * l.falling, 0.018)
+            for i in 0..<count {
+                let d = m.drops[i]
+                let model: Mat4 = m.snowing ? .translation(d) * .scale(0.07) : .translation(d) * along * .scale(streak)
                 drops.pointer[i] = ClayInstance(model, tint: Vec4(l.dropColor, alpha), lit: [.unlit, .noFog])
             }
             enc.setVertexBuffer(drops.buffer, offset: drops.offset, index: 3)
-            draw(drop, m.drops.count, enc)
+            draw(drop, count, enc)
         }
         enc.setCullMode(.back)
 

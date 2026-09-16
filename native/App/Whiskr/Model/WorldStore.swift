@@ -5,12 +5,13 @@ import MeadowScene
 import Observation
 import WhiskrKit
 
-/// Settings › World, kept in the user defaults, and the weather where you are when you want it.
+/// Settings › Meadow, kept in the user defaults, and the weather where you are when you want it.
 ///
-/// Your location is asked for once, when you turn real weather on (never at launch). It is rounded to
-/// about a kilometre, remembered, and sent to Open-Meteo (a free weather service that needs no account)
-/// every 15 minutes while weather is on, as the web version does (`src/meadow/weather.ts`). If you say
-/// no, weather turns itself off and Settings says why.
+/// Your location is asked for once, when you turn real weather on (never at launch, and never for the
+/// sun). It is rounded to about a kilometre, remembered, and sent to Open-Meteo (a free weather service that
+/// needs no account) in one request every 15 minutes while weather is on, as the web version does
+/// (`src/meadow/weather.ts`). If you say no, weather turns itself off and Settings says why. Sunrise,
+/// sunset and the moon are worked out on this Mac (`MeadowMapping.place`): they send nothing.
 @Observable
 final class WorldStore: NSObject {
     static let shared = WorldStore()
@@ -72,13 +73,47 @@ final class WorldStore: NSObject {
     }
 
     #if DEBUG
-    /// Debug builds: `--weather-place <lat>,<lon>` fetches real weather for a place without asking
-    /// for your location, so the path can be checked from the command line.
+    /// Debug builds: where you are is given rather than asked (`--weather-place`, `--weather-fixture`), so
+    /// nothing ever asks the system for your location.
+    @ObservationIgnored private var placeGiven = false
+    /// The weather is given too: nothing is fetched.
+    @ObservationIgnored private var weatherGiven = false
+    /// Debug builds: the meadow's clock stopped at this moment (`--sky-moment`), for the sun and moon.
+    var clockStoppedAt: Date?
+
+    /// `--weather-place <lat>,<lon>`: real weather for a place, fetched from Open-Meteo, without asking for
+    /// your location, so the path can be checked from the command line.
     func useFixedPlace(_ place: WorldSettings.Place) {
+        placeGiven = true
         settings.place = place
         if !settings.realWeather { settings.realWeather = true } else { fetch(at: place) }
     }
+
+    /// `--weather-fixture <file>` and the checks: these conditions, as if Open-Meteo had just answered with
+    /// them, with no request made and no location asked for. Weather is turned on for them.
+    func useWeather(_ weather: MeadowWeather) {
+        placeGiven = true
+        weatherGiven = true
+        if !settings.realWeather { settings.realWeather = true }
+        timer?.invalidate()
+        timer = nil
+        fetching?.cancel()
+        self.weather = weather
+        weatherUpdated = Date()
+        weatherProblem = nil
+    }
+    #else
+    private let placeGiven = false
     #endif
+
+    /// The time the meadow and Settings go by: now (a debug run's stopped clock, when it has one).
+    var now: Date {
+        #if DEBUG
+        clockStoppedAt ?? Date()
+        #else
+        Date()
+        #endif
+    }
 
     // MARK: Weather on and off
 
@@ -87,7 +122,7 @@ final class WorldStore: NSObject {
             weatherProblem = nil
             startTimer()
             if let place = settings.place { fetch(at: place) }
-            locateAsking()
+            if !placeGiven { locateAsking() }
         } else {
             timer?.invalidate()
             timer = nil
@@ -149,6 +184,9 @@ final class WorldStore: NSObject {
     // MARK: The weather service
 
     private func fetch(at place: WorldSettings.Place) {
+        #if DEBUG
+        if weatherGiven { return }
+        #endif
         fetching?.cancel()
         let url = MeadowWeather.openMeteoURL(latitude: place.latitude, longitude: place.longitude)
         fetching = Task { [weak self] in

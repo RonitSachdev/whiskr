@@ -116,9 +116,9 @@
 	<key>NSSupportsSuddenTermination</key>
 	<false/>
 	<key>NSLocationUsageDescription</key>
-	<string>Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are.</string>
+	<string>Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are. Sunrise and sunset are also worked out from it, on this Mac.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are.</string>
+	<string>Real weather in the meadow uses your location, rounded to about a kilometre, to ask Open-Meteo for the weather where you are. Sunrise and sunset are also worked out from it, on this Mac.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>A program running in one of your terminals wants to control another app.</string>
 	<key>NSDesktopFolderUsageDescription</key>

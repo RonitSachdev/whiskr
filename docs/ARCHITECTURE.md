@@ -335,6 +335,33 @@ stop drawing when nothing moves.
   after the last key (`yieldFrames`).
   With Animate Meadow off (`MeadowView.animatesAmbient`), the display link pauses 3 s after the scene
   stands still and wakes for the next change.
+- The ground is the fine 800-unit grid round the middle plus a coarse ring out to 1,600 units (laid a
+  little under it where they overlap), and the far plane moves back with the view, so the view never sees
+  past the land into the fog; far hills sink as the eye nears them (`Meadow.hill`), and the column's grass
+  strip is drawn in the foreground between a far-back eye and the blankets. `GroundTests` renders every
+  arrangement and size at the lowest, usual and highest tilt, zoomed in and all the way out, with the sky
+  painting any hole in magenta (`Renderer.marksVoid`), and checks no hill stands round the eye.
+- The sky is worked out on the Mac (`Meadow/Sky.swift`): the sun's height by NOAA's solar calculator, the
+  day's sunrise and sunset from it (tested against almanac times for several cities, the polar day and
+  night, and a clock change), the moon's phase, altitude and the direction of its lit edge by the
+  Astronomical Almanac's low-precision series. Without a place (the scene's default, and every test that
+  does not give one) the moon is a steady full one, so nothing drawn depends on today's date. The moon is
+  drawn where a low-tilted view shows sky (`MeadowDrawer.moonCenter`: the top left of the picture), before
+  the stars and marking depth, so its dark side hides them. With Follow the Clock, `Daylight` picks the mood (night, twilight, dawn or dusk, day) by the sun's height
+  rather than by the hour, easing from the morning's pink to the evening's gold across solar noon and
+  midnight. Where: the place real weather last found (`WorldSettings.place`), else a guess from the time
+  zone (`MeadowPlace.estimate`: the zone's city from a small table, else its standard offset's
+  longitude). Nothing asks for the location for this, and nothing is sent.
+- Real weather is one Open-Meteo request every 15 minutes (`MeadowWeather.openMeteoURL`): temperature, WMO
+  code, cloud cover, wind speed, direction and gusts, precipitation, rain, showers, snowfall and
+  visibility. The wind's direction is eased round over a couple of seconds and its gusts travel as an
+  offset moved on each frame (`Stage.gustDrift`), so a new direction never makes the grass jump. Each
+  effect is a `MeadowSettings.Effects` member, one per switch in Settings › Meadow. Lightning
+  (`Lightning`) is a pure function of the meadow's own time, so it costs no frames of its own, stops with
+  that time when the animation is off, and is gated off under Reduce Motion. None of this keeps the meadow
+  from resting. `--perf-flows sky` checks it in the app; `--sky-moment`, `--weather-fixture` and
+  `--weather-place` stop the clock, give the weather, or fetch it for a given place, without the
+  location question.
 - Terminals draw with SwiftTerm's Metal renderer (`TerminalSurface.drawsWithMetal`), each on a render
   thread of its own; the main thread only says a frame is due. SwiftTerm's default, Core Graphics, drew
   every frame on the main thread beside the meadow's frames and typing.
@@ -391,7 +418,8 @@ state, tabs, splits, workspaces; three runs on one folder, across ⌘Q and ⌥�
 and Changes (`files`); the window's regions, sizes, themes and Settings (`layout`); and abuse (`robust`:
 floods, binary and wide text, pastes, resize storms, the session host going away); every control of the
 bars clicked at its middle and edges, failing a press that lands on anything but the control or on a view
-that lets the window move (`chrome`); a Claude stand-in started through a shell function of the user's kind
+that lets the window move, and again straight after the bars change (`chrome`; the bars' hosting views,
+`BarHostingView`, send a press that lands on SwiftUI's own views to the bar control under it); a Claude stand-in started through a shell function of the user's kind
 with `--settings`, every event's real hook commands, and what would be heard and shown in each place a
 person can be (`alerts`); every way of choosing on the right, with the meadow moved away first, and agent
 events that must not move it (`meadow`); and every divider dragged, the window resized and each region

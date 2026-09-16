@@ -36,10 +36,12 @@ struct Frame {
     float4 horizon;      // fog colour, the sky at the horizon
     float4 skyTop;
     float4 skyMid;
-    float4 viewport;     // drawable width, height (px), pixels per point, unused
+    float4 viewport;     // drawable width, height (px), pixels per point, 1 to mark holes in the ground (tests)
     float4 sky2;         // stars and moon opacity, cloud glow, moonlit (0 day … 1 night), unused
     float4 camRight;     // camera right and up in the world, for sprites and particles
     float4 camUp;
+    float4 wind;         // which way the wind blows (x, z), how far its gusts have travelled (Stage.gustDrift)
+    float4 weather;      // a gust's share kept between gusts, lightning's flash 0…1, unused, unused
 };
 
 // Each blanket: x, z, radius (eased, as kit.ts uClearings) and the radius of the mown patch round it.
@@ -166,10 +168,10 @@ float mownAt(float2 g, constant Frame& F, constant World& W, thread float& strip
     return mown;
 }
 
-// Sunlight reaching the ground: dimmed under passing clouds and dappled beneath trees.
+// Sunlight reaching the ground: dimmed under clouds passing with the wind and dappled beneath trees.
 float3 shadeAt(float2 g, constant Frame& F, constant World& W) {
     float t = F.eye.w;
-    float2 p = g * 0.03 + t * float2(0.014, 0.006);
+    float2 p = g * 0.03 - F.wind.zw * 0.07;
     float cloud = 1.0 - smoothstep(0.52, 0.7, mNoise(p) * 0.65 + mNoise(p * 2.1 + 7.3) * 0.35);
     float tree = 1.0;
     // Dapple only matters within a crown's reach (it adds at most 0.385 to the distance there).
@@ -185,13 +187,14 @@ float3 shadeAt(float2 g, constant Frame& F, constant World& W) {
     return mix(float3(0.8, 0.87, 0.86), float3(1.0), cloud) * mix(float3(0.66, 0.76, 0.72), float3(1.0), tree) * moonlit;
 }
 
-// How far the breeze pushes a plant top, per unit of height squared.
+// How far the wind pushes a plant top, per unit of height squared: gusts passing over in waves along the
+// wind, and between them the wind's steady share.
 float2 windAt(float2 g, constant Frame& F) {
     float t = F.eye.w;
-    float2 dir = normalize(float2(1.0, 0.35));
-    float gust = mNoise(g * 0.045 - dir * t * 0.22);
+    float gust = mNoise(g * 0.045 - F.wind.zw);
     float flutter = sin(t * 2.6 + mHash(floor(g * 2.0)) * 6.283);
-    return (dir * (0.12 + 0.88 * smoothstep(0.35, 0.85, gust)) + float2(flutter, -flutter) * 0.06) * F.fog.z;
+    float calm = F.weather.x;
+    return (F.wind.xy * (calm + (1.0 - calm) * smoothstep(0.35, 0.85, gust)) + float2(flutter, -flutter) * 0.06) * F.fog.z;
 }
 
 // After dark every picnic sits in a pool of lamplight: full over the cloth, fading out over a few units

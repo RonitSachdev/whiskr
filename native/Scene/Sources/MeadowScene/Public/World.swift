@@ -156,25 +156,53 @@ public struct MeadowWeather: Hashable, Sendable {
     public var cover: Float
     public var windKmh: Float
     public var temperatureC: Float
-    public init(sky: Sky, cover: Float, windKmh: Float, temperatureC: Float) {
+    /// Where the wind blows from, degrees clockwise from north (as weather services give it); nil unknown.
+    public var windFromDegrees: Float?
+    /// The strongest gusts, km/h; nil unknown.
+    public var gustKmh: Float?
+    /// How hard rain or snow is falling, 0 (a trace) … 1 (heavy). Only read while the sky is rain or snow.
+    public var intensity: Float
+    /// A thunderstorm: sheet lightning now and then.
+    public var thunder: Bool
+    /// How far one can see, metres; nil unknown. Under 10 km the far meadow goes hazy.
+    public var visibilityMeters: Float?
+
+    public init(sky: Sky, cover: Float, windKmh: Float, temperatureC: Float, windFromDegrees: Float? = nil, gustKmh: Float? = nil,
+                intensity: Float = 0.5, thunder: Bool = false, visibilityMeters: Float? = nil) {
         self.sky = sky; self.cover = cover; self.windKmh = windKmh; self.temperatureC = temperatureC
+        self.windFromDegrees = windFromDegrees; self.gustKmh = gustKmh; self.intensity = min(1, max(0, intensity)); self.thunder = thunder
+        self.visibilityMeters = visibilityMeters
     }
+
+    /// What is asked for: one request with everything the meadow shows.
+    static let openMeteoFields = ["temperature_2m", "weather_code", "cloud_cover", "wind_speed_10m", "wind_direction_10m", "wind_gusts_10m",
+                                  "precipitation", "rain", "showers", "snowfall", "visibility"]
 
     /// The request for current conditions at a place (rounded by the caller as it sees fit).
     public static func openMeteoURL(latitude: Double, longitude: Double) -> URL {
-        URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m")!
+        URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=\(openMeteoFields.joined(separator: ","))")!
     }
 
-    /// Reads Open-Meteo's JSON answer (weather.ts `readWeather`); nil if it makes no sense.
+    /// Reads Open-Meteo's JSON answer (weather.ts `readWeather`); nil if it makes no sense. Anything but the
+    /// temperature may be missing: it is then left unknown.
     public init?(openMeteo data: Data) {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let current = root["current"] as? [String: Any],
               let temperature = (current["temperature_2m"] as? NSNumber)?.floatValue, temperature.isFinite else { return nil }
+        func number(_ key: String) -> Float? { (current[key] as? NSNumber)?.floatValue.nonNegativeFinite }
         let code = (current["weather_code"] as? NSNumber)?.intValue ?? 0
-        self.sky = Self.sky(wmo: code)
-        self.temperatureC = temperature
-        self.cover = min(1, max(0, ((current["cloud_cover"] as? NSNumber)?.floatValue ?? 0) / 100))
-        self.windKmh = (current["wind_speed_10m"] as? NSNumber)?.floatValue ?? 0
+        let sky = Self.sky(wmo: code)
+        // Rain by the millimetre an hour (showers are rain too) and snow by the centimetre, each against the
+        // service's own word for it in the code: whichever says it is falling harder.
+        let rain = (number("rain") ?? 0) + (number("showers") ?? 0)
+        let amount: Float = switch sky {
+        case .snow: Self.snowIntensity(cmPerHour: number("snowfall") ?? (number("precipitation") ?? 0) * 0.7)
+        case .rain: Self.rainIntensity(mmPerHour: rain > 0 ? rain : number("precipitation") ?? 0)
+        default: 0
+        }
+        self.init(sky: sky, cover: min(1, (number("cloud_cover") ?? 0) / 100), windKmh: number("wind_speed_10m") ?? 0, temperatureC: temperature,
+                  windFromDegrees: number("wind_direction_10m"), gustKmh: number("wind_gusts_10m"),
+                  intensity: max(amount, Self.intensity(wmo: code)), thunder: (95...99).contains(code), visibilityMeters: number("visibility"))
     }
 
     /// Open-Meteo reports conditions as WMO weather codes.
@@ -185,6 +213,28 @@ public struct MeadowWeather: Hashable, Sendable {
         if (71...77).contains(code) || code == 85 || code == 86 { return .snow }
         return .rain
     }
+
+    /// How hard the code says it is falling: drizzle and slight rain or snow light, then moderate, then heavy.
+    static func intensity(wmo code: Int) -> Float {
+        switch code {
+        case 51, 56, 77: 0.15
+        case 53, 61, 66, 71, 80, 85: 0.35
+        case 55, 57: 0.5
+        case 63, 73, 81, 95: 0.65
+        case 96: 0.8
+        case 65, 67, 75, 82, 86, 99: 1
+        default: 0
+        }
+    }
+
+    /// Rain: light under 2.5 mm an hour, heavy past 7.6 (the meteorologists' bands), 1 by 10.
+    static func rainIntensity(mmPerHour: Float) -> Float { min(1, log2(1 + max(0, mmPerHour)) / log2(11)) }
+    /// Snow: light under half a centimetre an hour, heavy past two and a half.
+    static func snowIntensity(cmPerHour: Float) -> Float { min(1, log2(1 + 4 * max(0, cmPerHour)) / log2(11)) }
+}
+
+private extension Float {
+    var nonNegativeFinite: Float? { isFinite && self >= 0 ? self : nil }
 }
 
 /// The host app's interface colours, for what the scene draws as interface rather than as world: the
@@ -211,6 +261,32 @@ public struct MeadowSettings: Hashable, Sendable {
         case night
         /// A fixed hour, 0…24, for previews and tests.
         case hour(Double)
+        /// The clock stopped at this moment: the light, sun and moon as they are then, for previews and tests.
+        case instant(Date)
+    }
+
+    /// What of the real world the meadow shows. Each can be left out on its own; the weather's only while
+    /// there is weather.
+    public struct Effects: OptionSet, Hashable, Sendable {
+        public let rawValue: Int
+        public init(rawValue: Int) { self.rawValue = rawValue }
+        /// Following the clock, dawn, day, dusk and night come with the real sun over `place` (else at
+        /// fixed hours).
+        public static let sunTimes = Effects(rawValue: 1 << 0)
+        /// The moon waxes and wanes, rises and sets as the real one does over `place`, its lit edge toward the
+        /// sun, and moonlit nights are lighter (else a steady full moon, every night).
+        public static let moonPhase = Effects(rawValue: 1 << 1)
+        /// Cloud greys the sky and dims the sun; fog and haze close in.
+        public static let clouds = Effects(rawValue: 1 << 2)
+        /// The wind's strength, direction and gusts in the grass, flowers, seeds and rain.
+        public static let wind = Effects(rawValue: 1 << 3)
+        /// Rain or snow falling, light to heavy.
+        public static let rainAndSnow = Effects(rawValue: 1 << 4)
+        /// Soft sheet lightning in a thunderstorm (never with Reduce Motion or the animation off).
+        public static let lightning = Effects(rawValue: 1 << 5)
+        /// The grass pales in the cold and yellows in the heat.
+        public static let grassColor = Effects(rawValue: 1 << 6)
+        public static let all: Effects = [.sunTimes, .moonPhase, .clouds, .wind, .rainAndSnow, .lightning, .grassColor]
     }
     public enum Picnic: String, Hashable, Sendable, CaseIterable {
         /// Nothing laid out.
@@ -233,6 +309,10 @@ public struct MeadowSettings: Hashable, Sendable {
     public var timeOfDay: TimeOfDay
     /// nil for a clear, mild day.
     public var weather: MeadowWeather?
+    /// Where the sun and moon are reckoned for (nil: dawn, day, dusk and night at fixed hours, and the
+    /// meadow's own steady full moon).
+    public var place: MeadowPlace?
+    public var effects: Effects
     public var picnic: Picnic
     /// How large name flags are drawn, as a multiple of the usual size.
     public var flagSize: Float
@@ -240,8 +320,8 @@ public struct MeadowSettings: Hashable, Sendable {
     public var chrome: MeadowChrome
 
     public init(map: Map = .meadow, arrangement: Arrangement = .picnic, timeOfDay: TimeOfDay = .followClock, weather: MeadowWeather? = nil,
-                picnic: Picnic = .hamper, flagSize: Float = 1, chrome: MeadowChrome = .standard) {
-        self.map = map; self.arrangement = arrangement; self.timeOfDay = timeOfDay; self.weather = weather; self.picnic = picnic
-        self.flagSize = flagSize; self.chrome = chrome
+                place: MeadowPlace? = nil, effects: Effects = .all, picnic: Picnic = .hamper, flagSize: Float = 1, chrome: MeadowChrome = .standard) {
+        self.map = map; self.arrangement = arrangement; self.timeOfDay = timeOfDay; self.weather = weather; self.place = place
+        self.effects = effects; self.picnic = picnic; self.flagSize = flagSize; self.chrome = chrome
     }
 }

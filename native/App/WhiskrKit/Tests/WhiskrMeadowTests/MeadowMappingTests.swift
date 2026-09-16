@@ -166,6 +166,33 @@ struct MeadowMappingTests {
         #expect(scene.weather == weather)
     }
 
+    @Test("each switch becomes the scene's effect; the sun is reckoned where weather found you, else from the time zone")
+    func skyEffects() throws {
+        var world = WorldSettings()
+        let tokyo = try #require(TimeZone(identifier: "Asia/Tokyo"))
+        var scene = MeadowMapping.settings(world, weather: nil, chrome: .standard, timeZone: tokyo)
+        #expect(scene.effects == .all)
+        #expect(scene.place == MeadowPlace.estimate(for: tokyo))
+        #expect(scene.timeOfDay == .followClock)
+        let switches: [(WritableKeyPath<WorldSettings, Bool>, MeadowSettings.Effects)] = [
+            (\.sunTimes, .sunTimes), (\.moonPhase, .moonPhase), (\.clouds, .clouds), (\.wind, .wind), (\.rainAndSnow, .rainAndSnow),
+            (\.lightning, .lightning), (\.grassColor, .grassColor),
+        ]
+        for (path, effect) in switches {
+            var off = world
+            off[keyPath: path] = false
+            #expect(MeadowMapping.settings(off, weather: nil, chrome: .standard).effects == MeadowSettings.Effects.all.subtracting(effect), "\(effect)")
+        }
+        world.place = WorldSettings.Place(latitude: 51.51, longitude: -0.13)
+        scene = MeadowMapping.settings(world, weather: nil, chrome: .standard, timeZone: tokyo)
+        #expect(scene.place == MeadowPlace(latitude: 51.51, longitude: -0.13))
+        // A stopped clock (the harness) applies only while following the clock.
+        let moment = Date(timeIntervalSince1970: 1_718_900_000)
+        #expect(MeadowMapping.settings(world, weather: nil, chrome: .standard, stoppedAt: moment).timeOfDay == .instant(moment))
+        world.timeOfDay = .day
+        #expect(MeadowMapping.settings(world, weather: nil, chrome: .standard, stoppedAt: moment).timeOfDay == .day)
+    }
+
     @Test("the theme's surface, text and red become the scene's chrome")
     func chrome() throws {
         let theme = try #require(BuiltInThemes.theme(id: BuiltInThemes.defaultID))

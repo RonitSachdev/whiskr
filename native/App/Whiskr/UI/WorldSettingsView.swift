@@ -1,9 +1,12 @@
+import AppKit
+import Combine
 import MeadowScene
 import SwiftUI
 import WhiskrKit
+import WhiskrMeadow
 
-/// Settings › Meadow: the meadow's time of day, real weather, picnic things, flag size and, once there is
-/// more than one, the map.
+/// Settings › Meadow: the meadow's time of day with the real sun and moon, real weather and a switch for each
+/// thing it shows, picnic things, flag size and, once there is more than one, the map.
 struct WorldSettingsView: View {
     @Bindable var store: WorldStore
 
@@ -29,17 +32,37 @@ struct WorldSettingsView: View {
                     Text("Always Night").tag(WorldSettings.TimeOfDay.night)
                 }
                 .pickerStyle(.segmented)
+                Toggle("Real sunrise and sunset", isOn: $store.settings.sunTimes)
+                sunStatus
+                Toggle("Moon phase", isOn: $store.settings.moonPhase)
+            } footer: {
+                Text("Worked out on this Mac for where real weather last found you, or else for your time zone. Nothing is sent and nothing is asked.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Real weather where you are", isOn: $store.settings.realWeather)
                 weatherStatus
+                Group {
+                    Toggle("Clouds and fog", isOn: $store.settings.clouds)
+                    Toggle(isOn: $store.settings.wind) { Text("Wind", comment: "Settings › Meadow: the real wind in the grass") }
+                    Toggle("Rain and snow", isOn: $store.settings.rainAndSnow)
+                    Toggle("Lightning", isOn: $store.settings.lightning)
+                    Toggle("Grass color from the temperature", isOn: $store.settings.grassColor)
+                }
+                .disabled(!store.settings.realWeather)
+                if !store.settings.realWeather {
+                    Text("These show real weather, which is off.").font(.callout).foregroundStyle(.secondary)
+                }
             } footer: {
-                Text("Weather asks for your location once. It is rounded to about a kilometer and sent to Open-Meteo, a free weather service, every 15 minutes while weather is on.")
+                Text("Real weather asks for your location once. It is rounded to about a kilometer and sent to Open-Meteo, a free weather service, in one request every 15 minutes while real weather is on. Lightning is a soft, rare glow, never with Reduce Motion or the meadow's animation off.")
                     .font(.callout).foregroundStyle(.secondary)
             }
 
             Section {
                 Toggle(String(localized: "Animate the meadow"), isOn: $store.animatesMeadow)
             } footer: {
-                Text(String(localized: "Off, the grass, butterflies and cats' little movements hold still. Cats still change as Claude does. Also in View › Animate Meadow."))
+                Text(String(localized: "Off, the grass, butterflies and cats' little movements hold still, and there is no lightning. Cats still change as Claude does. Also in View › Animate Meadow."))
                     .font(.callout).foregroundStyle(.secondary)
             }
 
@@ -67,6 +90,15 @@ struct WorldSettingsView: View {
         }
     }
 
+    /// Today's sunrise and sunset where the sun is reckoned, while the meadow follows it.
+    @ViewBuilder private var sunStatus: some View {
+        if store.settings.timeOfDay != .followClock {
+            Text("Always Day and Always Night keep to their hour.").font(.callout).foregroundStyle(.secondary)
+        } else if store.settings.sunTimes {
+            SunToday(place: MeadowMapping.place(store.settings, timeZone: .autoupdatingCurrent), clock: { [store] in store.now })
+        }
+    }
+
     @ViewBuilder private var weatherStatus: some View {
         if store.askingForLocation {
             Label("Waiting for you to allow location access…", systemImage: "location")
@@ -85,7 +117,7 @@ struct WorldSettingsView: View {
             } else if let weather = store.weather, let updated = store.weatherUpdated {
                 let temperature = Measurement(value: Double(weather.temperatureC), unit: UnitTemperature.celsius)
                     .formatted(.measurement(width: .narrow, numberFormatStyle: .number.precision(.fractionLength(0))))
-                Label("\(skyName(weather.sky)), \(temperature) · updated \(updated, format: .relative(presentation: .named))", systemImage: "cloud.sun")
+                Label("\(weather.thunder ? String(localized: "Thunderstorm", comment: "Weather") : skyName(weather.sky)), \(temperature) · updated \(updated, format: .relative(presentation: .named))", systemImage: "cloud.sun")
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -101,3 +133,40 @@ struct WorldSettingsView: View {
         }
     }
 }
+
+/// "Today: sunrise …, sunset …" for a place, worked out again when the day changes, the Mac's time zone
+/// changes or the Mac wakes, while it shows (a change of place comes with the settings).
+private struct SunToday: View {
+    let place: MeadowPlace
+    /// What day it is (the debug harness's stopped clock, else now), read only when it may have changed.
+    let clock: @MainActor () -> Date
+    @State private var today = Date()
+    var body: some View {
+        Group {
+            switch place.sunDay(containing: today, in: .autoupdatingCurrent) {
+            case .risesAndSets(let rise, let set):
+                Label("Today: sunrise \(rise.formatted(date: .omitted, time: .shortened)), sunset \(set.formatted(date: .omitted, time: .shortened))",
+                      systemImage: "sunrise")
+            case .alwaysUp:
+                Label("The sun does not set today.", systemImage: "sun.max")
+            case .alwaysDown:
+                Label("The sun does not rise today.", systemImage: "moon.stars")
+            }
+        }
+        .font(.callout).foregroundStyle(.secondary)
+        .onAppear { today = clock() }
+        #if DEBUG
+        .task(id: today) { SunTodayProbe.shownDay = today }
+        #endif
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged).receive(on: RunLoop.main)) { _ in today = clock() }
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange).receive(on: RunLoop.main)) { _ in today = clock() }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification).receive(on: RunLoop.main)) { _ in today = clock() }
+    }
+}
+
+#if DEBUG
+/// The day Settings' sunrise line was last worked out for (`--perf-flows sky` checks it follows the day).
+@MainActor enum SunTodayProbe {
+    static var shownDay: Date?
+}
+#endif

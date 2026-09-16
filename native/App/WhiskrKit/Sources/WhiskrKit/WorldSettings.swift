@@ -47,22 +47,50 @@ public struct WorldSettings: Equatable, Sendable, Codable {
     /// Where you were found the last time it was asked, kept so it is asked only once.
     public var place: Place?
 
+    // What of the real world the meadow shows, each on its own; all on until turned off. The weather's
+    // count only while real weather is on.
+    /// Following the clock, dawn, day, dusk and night come with the real sunrise and sunset (worked out on
+    /// this Mac for `place`, or a place guessed from the time zone), not at fixed hours.
+    public var sunTimes: Bool
+    /// The moon waxes and wanes as the real one does, and full-moon nights are lighter.
+    public var moonPhase: Bool
+    /// Cloud greys the sky and dims the sun; fog and haze close in.
+    public var clouds: Bool
+    /// The wind's strength, direction and gusts.
+    public var wind: Bool
+    /// Rain or snow, light to heavy.
+    public var rainAndSnow: Bool
+    /// Sheet lightning in a thunderstorm.
+    public var lightning: Bool
+    /// The grass pales in the cold and yellows in the heat.
+    public var grassColor: Bool
+
     /// How often the weather is looked up while it is on.
     public static let weatherInterval: TimeInterval = 15 * 60
 
     public init(map: Map = .meadow, timeOfDay: TimeOfDay = .followClock, picnic: Picnic = .hamper, flagSize: FlagSize = .medium,
-                realWeather: Bool = false, place: Place? = nil) {
+                realWeather: Bool = false, place: Place? = nil, sunTimes: Bool = true, moonPhase: Bool = true, clouds: Bool = true,
+                wind: Bool = true, rainAndSnow: Bool = true, lightning: Bool = true, grassColor: Bool = true) {
         self.map = map
         self.timeOfDay = timeOfDay
         self.picnic = picnic
         self.flagSize = flagSize
         self.realWeather = realWeather
         self.place = place
+        self.sunTimes = sunTimes
+        self.moonPhase = moonPhase
+        self.clouds = clouds
+        self.wind = wind
+        self.rainAndSnow = rainAndSnow
+        self.lightning = lightning
+        self.grassColor = grassColor
     }
 
     // MARK: Saving
 
-    private enum CodingKeys: String, CodingKey { case map, timeOfDay, picnic, flagSize, realWeather, place }
+    private enum CodingKeys: String, CodingKey {
+        case map, timeOfDay, picnic, flagSize, realWeather, place, sunTimes, moonPhase, clouds, wind, rainAndSnow, lightning, grassColor
+    }
 
     /// Reads what it can: anything missing or no longer known (a map since removed) keeps its default.
     public init(from decoder: Decoder) throws {
@@ -74,6 +102,10 @@ public struct WorldSettings: Equatable, Sendable, Codable {
         if let value = try? container.decodeIfPresent(FlagSize.self, forKey: .flagSize) { flagSize = value }
         if let value = try? container.decodeIfPresent(Bool.self, forKey: .realWeather) { realWeather = value }
         if let value = try? container.decodeIfPresent(Place.self, forKey: .place) { place = value }
+        for (key, path) in [(CodingKeys.sunTimes, \Self.sunTimes), (.moonPhase, \.moonPhase), (.clouds, \.clouds), (.wind, \.wind),
+                            (.rainAndSnow, \.rainAndSnow), (.lightning, \.lightning), (.grassColor, \.grassColor)] {
+            if let value = try? container.decodeIfPresent(Bool.self, forKey: key) { self[keyPath: path] = value }
+        }
     }
 
     public static let defaultsKey = "world"

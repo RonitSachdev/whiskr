@@ -58,7 +58,8 @@ final class Stage {
             for (i, s) in meadow.shade.enumerated() { world.trees[i] = s }
             treeCount = meadow.shade.count
             surroundings.critters = meadow.critters.spots
-            light = Daylight.light(hour: Daylight.hour(for: settings.timeOfDay), weather: settings.weather)
+            light = Daylight.light(settings)
+            windToward = light.windToward
             sinceLit = 0
         }
         if mode == .meadow {
@@ -66,11 +67,13 @@ final class Stage {
             camera.bounds = { [unowned self] in self.everything(0) }
             camera.adjust = { [unowned self] in self.keepingFollowed($0) }
         }
-        surroundings.gust = { [unowned self] x, z in self.meadow?.gust(x, z, time: self.time) ?? 0 }
+        surroundings.gust = { [unowned self] x, z in self.meadow == nil ? 0 : Meadow.gust(x, z, drift: self.gustDrift) }
     }
 
     private func settingsChanged(_ old: MeadowSettings) {
-        if old.timeOfDay != settings.timeOfDay || old.weather != settings.weather { sinceLit = .infinity }
+        if old.timeOfDay != settings.timeOfDay || old.weather != settings.weather || old.place != settings.place || old.effects != settings.effects {
+            sinceLit = .infinity
+        }
         village?.flagSize = settings.flagSize
         village?.setPicnic(settings.picnic)
         if let village, village.arrangement != settings.arrangement {
@@ -391,14 +394,40 @@ final class Stage {
 
     func hop(_ item: MeadowItem?) { cat(for: item)?.hop() }
 
-    /// Works the light out afresh for the time of day and the weather; whether it changed.
+    /// Works the light out afresh for the time of day, the sun, the moon and the weather; whether it changed.
     @discardableResult func relight() -> Bool {
         guard mode == .meadow else { return false }
         sinceLit = 0
-        let fresh = Daylight.light(hour: Daylight.hour(for: settings.timeOfDay), weather: settings.weather)
-        let changed = fresh.night != light.night || fresh.keyColor != light.keyColor || fresh.skyTop != light.skyTop
+        let fresh = Daylight.light(settings)
+        let changed = fresh != light
         light = fresh
         return changed
+    }
+
+    // MARK: wind and lightning
+
+    /// Which way the wind blows in the grass now: eased round to the weather's over a couple of seconds
+    /// when it turns (at once with ambient motion off), never snapping.
+    private(set) var windToward = Light.breeze
+    /// How far the gusts' waves have travelled across the meadow, in the noise's own units: moved on each
+    /// frame along the wind, faster the harder it blows, so a change of wind changes only where they go next.
+    private(set) var gustDrift = Vec2.zero
+    /// How bright a flash of sheet lightning is this frame, 0…1. Only in a thunderstorm, only while the
+    /// meadow's ambient motion plays and Reduce Motion is off.
+    private(set) var flash: Float = 0
+
+    private func blow(_ drift: Float, _ dt: Float) {
+        let goal = light.windToward
+        if !ambient || simd_distance(windToward, goal) < 1e-4 {
+            windToward = goal
+        } else {
+            let eased = windToward + (goal - windToward) * min(1, dt * 1.5)
+            // Exactly opposite, easing would pass through nothing: turn a quarter first.
+            windToward = simd_length(eased) > 0.05 ? simd_normalize(eased) : Vec2(-windToward.y, windToward.x)
+        }
+        gustDrift += windToward * (0.11 + 0.11 * light.wind) * drift
+        let calm = village?.reduceMotion ?? true
+        flash = light.thunder && ambient && !calm ? Lightning.flash(at: Double(time)) : 0
     }
 
     // MARK: each frame
@@ -425,6 +454,7 @@ final class Stage {
 
         sinceLit += dt
         if mode == .meadow, sinceLit > 30 { relight() }
+        blow(drift, dt)
 
         cats.removeAll(keepingCapacity: true)
         if let cat = playgroundCat {
@@ -441,7 +471,7 @@ final class Stage {
             streamCount = village.streams.count
             for i in 0..<MAX_STREAMS { world.streams[i] = i < streamCount ? village.streams[i] : .zero }
             meadow.update(drift, fading: dt, time: time, eye: camera.eye, lookAt: camera.target, sleepers: sleepers, sights: sights, sightCount: sightCount,
-                          clearOf: clearOf, clearCount: clearCount, clearings: world.clearings, clearingCount: clearingCount, night: light.night, weather: settings.weather, wind: light.wind)
+                          clearOf: clearOf, clearCount: clearCount, clearings: world.clearings, clearingCount: clearingCount, light: light, windToward: windToward)
             surroundings.critters = meadow.critters.spots
             village.update(dt, surroundings, stage: self)
             village.collectCats(into: &cats)

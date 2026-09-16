@@ -56,4 +56,5 @@ account, files and environment. It is **not a sandbox** and does not try to cont
   check a download's SHA-256 checksum against the one published with the release. See
   [docs/RELEASING.md](docs/RELEASING.md).
 - The only network request the app makes itself is to Open-Meteo, for "Real weather" (off by default),
-  with your location rounded to about a kilometre.
+  with your location rounded to about a kilometre, once every 15 minutes while it is on. Sunrise, sunset
+  and the moon are worked out on the Mac and send nothing.

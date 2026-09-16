@@ -193,11 +193,14 @@ public enum MeadowMapping {
 
     // MARK: Settings and theme
 
-    /// The app's meadow is its sidebar: one column of workspaces.
+    /// The app's meadow is its sidebar: one column of workspaces. The sun and moon are reckoned for where
+    /// real weather last found you, or else a place guessed from `timeZone`. `stoppedAt` stops the clock
+    /// there (the debug harness's fixed moments).
     public static func settings(_ world: WorldSettings, weather: MeadowWeather?, chrome: MeadowChrome,
-                                arrangement: MeadowSettings.Arrangement = .column) -> MeadowSettings {
+                                arrangement: MeadowSettings.Arrangement = .column, timeZone: TimeZone = .current,
+                                stoppedAt: Date? = nil) -> MeadowSettings {
         let time: MeadowSettings.TimeOfDay = switch world.timeOfDay {
-        case .followClock: .followClock
+        case .followClock: stoppedAt.map { .instant($0) } ?? .followClock
         case .day: .day
         case .night: .night
         }
@@ -206,8 +209,20 @@ public enum MeadowMapping {
         case .hamper: .hamper
         case .spread: .spread
         }
+        var effects = MeadowSettings.Effects()
+        for (on, effect) in [(world.sunTimes, MeadowSettings.Effects.sunTimes), (world.moonPhase, .moonPhase), (world.clouds, .clouds),
+                             (world.wind, .wind), (world.rainAndSnow, .rainAndSnow), (world.lightning, .lightning), (world.grassColor, .grassColor)] where on {
+            effects.insert(effect)
+        }
         return MeadowSettings(map: MeadowSettings.Map(rawValue: world.map.rawValue) ?? .meadow, arrangement: arrangement, timeOfDay: time,
-                              weather: world.realWeather ? weather : nil, picnic: picnic, flagSize: Float(world.flagSize.scale), chrome: chrome)
+                              weather: world.realWeather ? weather : nil, place: place(world, timeZone: timeZone), effects: effects, picnic: picnic,
+                              flagSize: Float(world.flagSize.scale), chrome: chrome)
+    }
+
+    /// Where the sun and moon are reckoned for: where real weather last found you (kept even while weather
+    /// is off; it never leaves the Mac for this), or else a guess from the time zone. Never asks.
+    public static func place(_ world: WorldSettings, timeZone: TimeZone = .current) -> MeadowPlace {
+        world.place.map { MeadowPlace(latitude: $0.latitude, longitude: $0.longitude) } ?? .estimate(for: timeZone)
     }
 
     /// The theme's surface, text and "needs you" red, for the scene's flags, rings and bubble, and the

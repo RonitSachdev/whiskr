@@ -1,10 +1,10 @@
 #!/bin/zsh
 # make perf: the profile build in isolated, invisible runs (`DebugPerf`), one after another so they never
 # compete: the checks (closing tabs, sizes, interactions; resizing; the bars' controls; alerts; the meadow
-# following what you choose; split tabs, tabs dragged, New Workspace from every place), then the
-# measurements with working cats in the meadow (the last of them the interface's transitions, frame by
-# frame: `DebugAnimations`), then the editor on big files. Prints each run's
-# table; fails when a check fails or a measurement passes its limit (`--perf-limits`, `--measure-limits`).
+# following what you choose; split tabs, tabs dragged, New Workspace from every place; the real sky and
+# weather and their switches), then the measurements with working cats in the meadow (the last of them the
+# interface's transitions, frame by frame: `DebugAnimations`), then the editor on big files. Prints each
+# run's table; fails when a check fails or a measurement passes its limit (`--perf-limits`, `--measure-limits`).
 # Timings are only comparable on a quiet Mac: each run
 # waits (up to ten minutes) until other programs keep at most one core busy, says how busy the Mac was, and
 # a limit passed while it was busy (`MachineLoad`, measured by the run itself) makes the run "not
@@ -201,6 +201,7 @@ run resize --window 1440x900 --perf-flows resize
 run split --window 1440x900 --perf-flows split
 run drag --window 1440x900 --perf-flows drag
 run home --window 1440x900 --perf-flows home
+run sky --window 1440x900 --perf-flows sky
 run measure --window 1440x900 --perf-cats
 make_editor_files "$runs/editor-files"
 editor editor-swift "$runs/editor-files/big50k.swift"

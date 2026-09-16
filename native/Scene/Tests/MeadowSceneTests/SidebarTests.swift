@@ -344,7 +344,7 @@ enum Sidebar {
         }
         // No far hill stands over a blanket: any hill reaching a blanket has sunk under the ground.
         for i in meadow.hills.indices {
-            let m = meadow.hill(i, c, n)
+            let m = meadow.hill(i, c, n, eye: view.stage.camera.eye)
             let middle = Vec3(m.columns.3.x, m.columns.3.y, m.columns.3.z)
             for plot in village.plots where hypot(middle.x - plot.middle.x, middle.z - plot.middle.z) < m.columns.0.x + plot.radius {
                 #expect(middle.y + m.columns.1.y <= 0, "hill \(i) over \(plot.view.id)")

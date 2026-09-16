@@ -17,6 +17,17 @@ Nothing has been released yet. This is what the first release will contain.
   their Claude. Requests ("!"), errors ("×") and finished turns ("✓") read by shape and mark as well as
   colour. Day, night with fireflies, and optional real weather. The meadow can also be shown as a plain
   list.
+- The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset
+  where you are (from where real weather found you, or from your time zone; worked out on your Mac and
+  never asking), through the polar day and night too. Settings › Meadow shows today's sunrise and
+  sunset, and refreshes when the day or the time zone changes. The moon is the real one (its phase, its
+  lit edge toward the sun, rising and setting), and full-moon nights are a little lighter. With the view
+  tilted down as far as it goes, the moon and a field of stars show in the sky over the far hills.
+- Real weather shows the wind's direction and gusts in the grass, flowers, seeds and rain, rain and snow
+  from light to heavy, haze when visibility is poor, and soft, rare sheet lightning in a thunderstorm
+  (never with Reduce Motion or the animation off). Each of these, the clouds, the grass's colour from the
+  temperature, the real sun and the moon's phase has its own switch in Settings › Meadow; the weather is
+  still one request to Open-Meteo every 15 minutes.
 - A cat appears as soon as `claude` runs in any pane, however it was started. A `claude` shim on each
   pane's PATH adds hooks through `--settings`, so the user's own Claude Code settings are never changed.
 - A session host inside the app owns every terminal, so quitting leaves everything running and the next
@@ -174,6 +185,8 @@ Nothing has been released yet. This is what the first release will contain.
 
 ### Fixed
 
+- A click on a button of the top bar, tab row or status bar right after the bars changed (a tab opened,
+  closed or dropped) could be taken by the view drawn over it and do nothing.
 - The close button on a split tab, which showed only the focused pane's name, closed every pane in the tab.
 - New Workspace (⌘N, the File menu, the "+" and workspace menus, the command palette) did nothing on Home:
   there it now starts a terminal in a new workspace, as Home's New Terminal does.

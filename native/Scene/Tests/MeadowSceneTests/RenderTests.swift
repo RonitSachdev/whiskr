@@ -29,7 +29,8 @@ enum Scenes {
     /// The demo's `--shot`: settle, advance, draw at 2×.
     static func shot(_ world: MeadowWorld, mode: MeadowView.Mode = .meadow, time: MeadowSettings.TimeOfDay = .day, after: Double) -> CGImage? {
         let view = MeadowView(frame: NSRect(x: 0, y: 0, width: 320, height: 200), mode: mode)
-        view.settings = MeadowSettings(timeOfDay: time)
+        // The moon's phase left out: it would make tonight's frame differ from tomorrow's.
+        view.settings = MeadowSettings(timeOfDay: time, effects: MeadowSettings.Effects.all.subtracting(.moonPhase))
         view.world = world
         if mode == .meadow {
             view.advance(seconds: 0.5)
