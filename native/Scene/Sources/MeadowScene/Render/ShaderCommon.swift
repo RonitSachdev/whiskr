@@ -210,16 +210,39 @@ Painted paintedAt(float2 g, float4 m, float blankets) {
 // A painted lawn's stripes, −1…1: the mower's passes run along the meadow (z), each about three units wide,
 // soft and a little wavering, as a real mower leaves them.
 float lawnStripe(float2 g) { return sin(g.x * 1.05 + (mNoise(g * 0.25) - 0.5) * 0.8); }
-// The worn earth of a path, warm and bare, a little patchy, with pale grit trodden into it.
-float3 pathEarth(float2 g) {
-    float grit = smoothstep(0.72, 0.92, mNoise(g * 6.5 + 1.7));
-    return float3(0.30, 0.205, 0.115) * (0.88 + 0.24 * mNoise(g * 0.9 + 3.0)) + float3(0.07, 0.06, 0.045) * grit;
+// Soft round specks scattered over the ground, 0…1: in each cell of a grid `scale` to the unit (turned off
+// the meadow's axes, so no row of them lines up), at most one speck, there with chance `density`, a round dot
+// of up to `size` of a cell across, its edge soft. Specks smaller than a pixel fade out rather than shimmer.
+// For the fragment shader only (it reads how fast the grid passes across the screen).
+float speckle(float2 g, float scale, float density, float size) {
+    float2 p = float2(g.x * 0.8 + g.y * 0.6, g.y * 0.8 - g.x * 0.6) * scale;
+    float2 cell = floor(p);
+    float2 centre = cell + 0.27 + 0.46 * float2(mHash(cell), mHash(cell + float2(13.0, 71.0)));
+    float pick = mHash(cell + float2(37.0, 11.0));
+    float r = size * 0.5 * (0.55 + 0.45 * mHash(cell + float2(5.0, 29.0)));
+    float blur = max(fwidth(p.x), fwidth(p.y));
+    float speck = 1.0 - smoothstep(r * 0.45, r + blur, distance(p, centre));
+    return pick < density ? speck * saturate(r * 2.0 / max(blur, 1e-4) - 0.5) : 0.0;
 }
-// Tilled soil: dark, turned in low ridges along x with crumbs of lighter clod.
-float3 soilEarth(float2 g) {
-    float ridge = sin(g.y * 3.4 + (mNoise(g * 0.6) - 0.5) * 2.2) * 0.5 + 0.5;
-    float clods = smoothstep(0.62, 0.9, mNoise(g * 5.3));
-    return float3(0.155, 0.105, 0.066) * (0.78 + 0.34 * ridge) * (1.0 + 0.35 * clods);
+// A path's earth: dry, compacted and pale sandy tan, worn smoothest and palest along its middle (`worn` 1) and a
+// little darker where the grass closes in at its edges; small pebbles and grit trodden into it.
+float3 pathEarth(float2 g, float worn) {
+    float3 earth = float3(0.44, 0.335, 0.195) * (0.92 + 0.12 * mNoise(g * 0.7 + 3.0) + 0.05 * mNoise(g * 2.3 - 7.0));
+    earth *= mix(0.84, 1.06, smoothstep(0.45, 0.95, worn));
+    // Pebbles a little greyer than the earth and few, each with a dark rim where it is pressed in; grit finer.
+    float pebbles = speckle(g, 2.6, 0.16, 0.5), rims = speckle(g, 2.6, 0.16, 0.62), grit = speckle(g + 9.0, 9.0, 0.5, 0.5);
+    earth *= 1.0 - 0.22 * saturate(rims - pebbles);
+    earth = mix(earth, float3(0.5, 0.46, 0.39), pebbles * 0.65);
+    return earth * (1.0 - 0.12 * grit);
+}
+// Tilled soil: dark, rich and crumbly, turned in low ridges along x, deep shade in the furrows and drier
+// crumbs on the crests, darkest at its edge where the bed is cut out of the turf (`soil` there under 1).
+float3 soilEarth(float2 g, float soil) {
+    float ridge = sin(g.y * 3.0 + (mNoise(g * 0.6) - 0.5) * 2.0) * 0.5 + 0.5;
+    float3 earth = mix(float3(0.05, 0.03, 0.019), float3(0.11, 0.068, 0.04), smoothstep(0.1, 0.9, ridge));
+    float crumbs = speckle(g, 5.5, 0.55, 0.6) * smoothstep(0.35, 0.8, ridge), pores = speckle(g - 4.0, 8.0, 0.45, 0.5);
+    earth = mix(earth, float3(0.16, 0.11, 0.07), crumbs * 0.75) * (1.0 - 0.3 * pores);
+    return earth * mix(0.7, 1.0, smoothstep(0.55, 0.95, soil));
 }
 
 // Sunlight reaching the ground: dimmed under clouds passing with the wind and dappled beneath trees

@@ -147,6 +147,50 @@ private func ground(_ paint: MeadowScenery.Ground.Paint, at x: Float, _ z: Float
         #expect(view.renderImage(width: 320, height: 200) != nil)
     }
 
+    @Test("a path and a bed of soil read apart at a glance: the path pale sandy earth, the soil dark, by day, at dusk and by night")
+    @MainActor func pathAndSoilApart() throws {
+        var g = ground(.path, at: -8, 0, radius: 5)
+        g = ground(.soil, at: 8, 0, radius: 5, onto: g)
+        let view = MeadowView(frame: NSRect(x: 0, y: 0, width: 320, height: 200), mode: .meadow)
+        view.scenery = MeadowScenery(things: [], ground: g)
+        /// The mean colour (sRGB, 0…255) of a square of the picture round a point of the ground.
+        func mean(_ image: CGImage, _ spot: SIMD2<Float>) throws -> SIMD3<Float> {
+            let at = try #require(view.viewPoint(ofGround: spot))
+            let bytes = try #require(image.dataProvider?.data as Data?), scale = CGFloat(image.width) / view.bounds.width
+            let cx = Int(at.x * scale), cy = image.height - Int(at.y * scale)
+            var sum = SIMD3<Float>(repeating: 0)
+            for y in (cy - 8)..<(cy + 8) {
+                for x in (cx - 8)..<(cx + 8) {
+                    let i = y * image.bytesPerRow + x * 4
+                    sum += SIMD3(Float(bytes[i + 2]), Float(bytes[i + 1]), Float(bytes[i]))
+                }
+            }
+            return sum / 256
+        }
+        for time in [MeadowSettings.TimeOfDay.day, .hour(19.6), .night] {
+            view.settings = MeadowSettings(arrangement: .column, timeOfDay: time)
+            view.advance(seconds: 0.5)
+            view.stage.camera.setView(CameraView(x: 0, z: 0, distance: 40, pitch: 1.2, bearing: 0))
+            let image = try #require(view.renderImage(width: 640, height: 400))
+            let path = try mean(image, SIMD2(-8, 0)), soil = try mean(image, SIMD2(8, 0)), grass = try mean(image, SIMD2(0, 9))
+            func light(_ c: SIMD3<Float>) -> Float { 0.2126 * c.x + 0.7152 * c.y + 0.0722 * c.z }
+            #expect(light(path) > light(soil) * 1.7, "\(time): path \(path), soil \(soil)")
+            if time == .day {
+                // Sandy: warm, red over blue, and no greener than it is red (not mud, not grass).
+                #expect(path.x > path.z * 1.15 && path.x >= path.y && light(path) > 110, "path \(path)")
+                #expect(light(soil) < 75 && light(soil) < light(grass) * 0.6, "soil \(soil), grass \(grass)")
+            }
+        }
+    }
+
+    @Test("the earth's flecks are round specks, not blocks off a grid; the lawn's stripes stay gentle")
+    func speckle() {
+        #expect(ShaderSource.common.contains("float speckle(float2 g, float scale, float density, float size)"))
+        #expect(ShaderSource.common.contains("pathEarth(float2 g, float worn)") && ShaderSource.common.contains("soilEarth(float2 g, float soil)"))
+        #expect(!ShaderSource.common.contains("smoothstep(0.72, 0.92, mNoise(g * 6.5"), "the old blocky grit is gone")
+        #expect(ShaderSource.meadow.contains("land * (0.94 + 0.04 * lawnStripe(g))"))
+    }
+
     @Test("every ground paint has a picture of its turf for the tray, distinct from the others")
     @MainActor func pictures() throws {
         let view = MeadowView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), mode: .meadow)
