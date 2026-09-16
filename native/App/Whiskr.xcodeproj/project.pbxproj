@@ -41,6 +41,7 @@
 		313FB2898BBA101524A95733 /* StatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA00E26AC67318163FD1C5A /* StatusBar.swift */; };
 		32B7AEC3194D3E721582621D /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 0F28739D3FD315CB2347963F /* LICENSE */; };
 		340BD724451DA26B2CA576C0 /* EditorDecorations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B4F1A4D31F87985488ADAEF /* EditorDecorations.swift */; };
+		3457F2088A634719EE1CB6BF /* EditModeController+Garden.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85963BBA30188845961A573D /* EditModeController+Garden.swift */; };
 		34EC31EFAD5CF5769E8507E3 /* WhiskrMeadow in Frameworks */ = {isa = PBXBuildFile; productRef = F73A4DC917D433A86587B350 /* WhiskrMeadow */; };
 		350569FC4C00D8EDF771A26E /* Notifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73FBE9C3A89495A3B30D2E5A /* Notifier.swift */; };
 		3870A6D9C0B89D4F801B5050 /* EditModeController+Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE29B7D1F6CA9653C924E82B /* EditModeController+Tools.swift */; };
@@ -138,6 +139,7 @@
 		CE5AE6F73A3B7979F093A5B6 /* Git.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C184AFC6BB7007CAB0AF03E /* Git.swift */; };
 		CF6E901FC882729EE5120764 /* TerminalRegionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4225CE163952F380224CB7D /* TerminalRegionController.swift */; };
 		D0FD837581E0F40CA422752C /* DebugFlowMeadowFollow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF605AF19F1AD5109092F3FA /* DebugFlowMeadowFollow.swift */; };
+		D1682893BCF7CDDF31B1F574 /* DebugFlowEditorGarden.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05F0CBF4ADCF22CEEF9C542A /* DebugFlowEditorGarden.swift */; };
 		D6A6F437A2E01F858A0FDE13 /* TerminalHost in Frameworks */ = {isa = PBXBuildFile; productRef = FB00C91C647A3E3930E62128 /* TerminalHost */; };
 		D7C06BDCA206E2655EA8CC35 /* DebugScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35271BB358B34CD944F6B04 /* DebugScenario.swift */; };
 		D93B035E8A59E1EE706EBFDC /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F30AAAE0628E07105A4B07 /* Workspace.swift */; };
@@ -192,6 +194,7 @@
 /* Begin PBXFileReference section */
 		00CF4CD5FF8B9733A1E4C375 /* Pane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pane.swift; sourceTree = "<group>"; };
 		05B86B5BD8333EA1F7437E84 /* DebugAnimations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugAnimations.swift; sourceTree = "<group>"; };
+		05F0CBF4ADCF22CEEF9C542A /* DebugFlowEditorGarden.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowEditorGarden.swift; sourceTree = "<group>"; };
 		0719C8514CF0FBD0BA52EE04 /* Workbench+Helpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workbench+Helpers.swift"; sourceTree = "<group>"; };
 		0EE09EA5125538632ECFF469 /* DebugFlowChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowChrome.swift; sourceTree = "<group>"; };
 		0F28739D3FD315CB2347963F /* LICENSE */ = {isa = PBXFileReference; name = LICENSE; path = ../../../LICENSE; sourceTree = "<group>"; };
@@ -265,6 +268,7 @@
 		8339DBAA88FAEA53E3BAC8FA /* MainWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowController.swift; sourceTree = "<group>"; };
 		8434513A30A4B5A04422EC25 /* Workbench+Scene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workbench+Scene.swift"; sourceTree = "<group>"; };
 		854885C4E97404B70BEF8ED5 /* WhiskrKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = WhiskrKit; path = WhiskrKit; sourceTree = SOURCE_ROOT; };
+		85963BBA30188845961A573D /* EditModeController+Garden.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EditModeController+Garden.swift"; sourceTree = "<group>"; };
 		8847013DFAF8974C7B2F52C8 /* Whiskr.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Whiskr.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8AA0E1768019362A18F366C9 /* NavigatorList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigatorList.swift; sourceTree = "<group>"; };
 		8BD8DF56C98BCB0870B195A6 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -399,6 +403,7 @@
 			isa = PBXGroup;
 			children = (
 				EE0E58AB3D4A309CE4469109 /* EditModeController.swift */,
+				85963BBA30188845961A573D /* EditModeController+Garden.swift */,
 				9BA96FC47F41C07E36FEA7C3 /* EditModeController+Library.swift */,
 				BE29B7D1F6CA9653C924E82B /* EditModeController+Tools.swift */,
 				D22BA2329FAB0E939005731D /* EditorNotice.swift */,
@@ -616,6 +621,7 @@
 				0EE09EA5125538632ECFF469 /* DebugFlowChrome.swift */,
 				A443D088B89E6974FF58302E /* DebugFlowDrag.swift */,
 				BAAE23595D36C059DD40DC17 /* DebugFlowEditor.swift */,
+				05F0CBF4ADCF22CEEF9C542A /* DebugFlowEditorGarden.swift */,
 				6F77B30DC7F5A1AFEA436012 /* DebugFlowEditorGround.swift */,
 				A9D59CCA40CA68437DDF7F40 /* DebugFlowEditorThings.swift */,
 				5197C4F0D6120D41EB214D2D /* DebugFlowEditorTools.swift */,
@@ -832,6 +838,7 @@
 				A042DC5B3C3360E1361014D6 /* DebugFlowChrome.swift in Sources */,
 				E6A4F042EF7F19124B8FA9AB /* DebugFlowDrag.swift in Sources */,
 				C6BA5CDE0C2B319E0DCA1DC2 /* DebugFlowEditor.swift in Sources */,
+				D1682893BCF7CDDF31B1F574 /* DebugFlowEditorGarden.swift in Sources */,
 				8EDAFFF87CA5A34166BC51BB /* DebugFlowEditorGround.swift in Sources */,
 				633CAB565CD83DDCA78C7A2D /* DebugFlowEditorThings.swift in Sources */,
 				779C16539C6487C281B02428 /* DebugFlowEditorTools.swift in Sources */,
@@ -863,6 +870,7 @@
 				F8D20947E58C78DDE8DCDE3D /* DiffPageView.swift in Sources */,
 				5A018DA0AAD819162FB07E3C /* DividerGlow.swift in Sources */,
 				8D32508C56EED9C415F1B04D /* DocumentSyntax.swift in Sources */,
+				3457F2088A634719EE1CB6BF /* EditModeController+Garden.swift in Sources */,
 				6639E943BC5AFF4B08121176 /* EditModeController+Library.swift in Sources */,
 				3870A6D9C0B89D4F801B5050 /* EditModeController+Tools.swift in Sources */,
 				81375CA18F2D5F3702AB8555 /* EditModeController.swift in Sources */,

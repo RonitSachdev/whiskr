@@ -85,10 +85,10 @@ final class EditorTray {
 
     // MARK: The catalog's things
 
-    /// Every thing the tray offers: the catalog's, in its order, that stand at one spot and that this
+    /// Every thing the tray offers: the catalog's, in its order (the fence among them, laid in runs), that this
     /// Whiskr draws (others join by themselves as the scene learns to draw them).
     static let things: [Item] = MeadowCatalog.current.assets.filter { asset in
-        asset.inTray && asset.shape == .single && MeadowScenery.draws(asset.id)
+        asset.inTray && MeadowScenery.draws(asset.id)
     }.map { Item(id: $0.id, name: MeadowWords.name($0.id), category: $0.category, pictured: [$0.id]) }
 
     /// The categories that hold something, in the catalog's order: those of things, and the ground's paints

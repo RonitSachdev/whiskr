@@ -250,6 +250,16 @@
         }
       }
     },
+    "%@, colour %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、色は%2$@"
+          }
+        }
+      }
+    },
     "%@, shown, %@": {
       "localizations": {
         "ja": {
@@ -1049,6 +1059,16 @@
         }
       }
     },
+    "Add Gate": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "門を付ける"
+          }
+        }
+      }
+    },
     "Add Theme…": {
       "comment": "Settings › Terminal: imports themes",
       "localizations": {
@@ -1383,6 +1403,16 @@
         }
       }
     },
+    "Bench": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベンチ"
+          }
+        }
+      }
+    },
     "Bigger Text": {
       "localizations": {
         "ja": {
@@ -1403,12 +1433,82 @@
         }
       }
     },
+    "Birdhouse": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "巣箱"
+          }
+        }
+      }
+    },
+    "bookcase, books, library": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本, ほん, ほんだな, 書棚, しょだな"
+          }
+        }
+      }
+    },
+    "Bookshelf": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本棚"
+          }
+        }
+      }
+    },
+    "Bottle Green Glaze": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深緑の釉"
+          }
+        }
+      }
+    },
     "Boulder": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "大岩"
+          }
+        }
+      }
+    },
+    "bulletin board, cork board, notes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "けいじばん, コルク, お知らせ, おしらせ"
+          }
+        }
+      }
+    },
+    "camping, camp": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キャンプ, てんと, 野営, やえい"
+          }
+        }
+      }
+    },
+    "Canvas tent": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "帆布のテント"
           }
         }
       }
@@ -1433,12 +1533,62 @@
         }
       }
     },
+    "Celadon Glaze": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "青磁"
+          }
+        }
+      }
+    },
+    "Charcoal": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "チャコール"
+          }
+        }
+      }
+    },
     "Clover": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "クローバー"
+          }
+        }
+      }
+    },
+    "Colour": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "色"
+          }
+        }
+      }
+    },
+    "Colour %@ %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を%2$@にする"
+          }
+        }
+      }
+    },
+    "Corner %lld set": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld番目の角を決めました"
           }
         }
       }
@@ -1503,12 +1653,52 @@
         }
       }
     },
+    "Cream": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリーム"
+          }
+        }
+      }
+    },
+    "Dove Grey": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鳩羽色"
+          }
+        }
+      }
+    },
+    "Drag to lay a fence · ⌥-drag lays it straight · its ends join a fence's near them · click lays a short one": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ドラッグで柵を立てる · ⌥ドラッグでまっすぐ · 端は近くの柵とつながる · クリックで短い柵"
+          }
+        }
+      }
+    },
     "Drag to paint the ground · ⌥-drag brings the wild grass back · [ and ] change the size": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "ドラッグで地面を塗る · ⌥-ドラッグで野の草に戻す · [ と ] で大きさを変える"
+          }
+        }
+      }
+    },
+    "Duck Egg": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダックエッグ"
           }
         }
       }
@@ -1593,6 +1783,16 @@
         }
       }
     },
+    "Fence begun. Move with the arrows and press Return for each corner; Return again where you are lays it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柵を始めました。矢印キーで動かし、角ごとにReturnを押します。その場でもう一度Returnを押すと立てます。"
+          }
+        }
+      }
+    },
     "Fern": {
       "localizations": {
         "ja": {
@@ -1613,6 +1813,16 @@
         }
       }
     },
+    "fingerpost, sign, way": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "標識, ひょうしき, みちしるべ, 案内, あんない"
+          }
+        }
+      }
+    },
     "Floor cushion": {
       "localizations": {
         "ja": {
@@ -1623,12 +1833,32 @@
         }
       }
     },
+    "Flower pot": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "植木鉢"
+          }
+        }
+      }
+    },
     "Food bowl": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "フードボウル"
+          }
+        }
+      }
+    },
+    "Forest Green": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォレストグリーン"
           }
         }
       }
@@ -1673,6 +1903,26 @@
         }
       }
     },
+    "Garden shed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "物置小屋"
+          }
+        }
+      }
+    },
+    "gate, rail, post, paling": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "門, もん, 木戸, きど, 柵, さく, フェンス, 杭, くい"
+          }
+        }
+      }
+    },
     "Ground brush size": {
       "localizations": {
         "ja": {
@@ -1689,6 +1939,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "このお知らせを隠す"
+          }
+        }
+      }
+    },
+    "hut, cabin, building": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小屋, こや, ものおきごや, 倉庫, そうこ"
           }
         }
       }
@@ -1883,6 +2143,16 @@
         }
       }
     },
+    "Lavender": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ラベンダー"
+          }
+        }
+      }
+    },
     "Lawn": {
       "localizations": {
         "ja": {
@@ -1899,6 +2169,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "飛び石を%lld個並べる"
+          }
+        }
+      }
+    },
+    "Lay and Join Fence": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柵を立ててつなぐ"
+          }
+        }
+      }
+    },
+    "Lay Fence": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柵を立てる"
+          }
+        }
+      }
+    },
+    "letterbox, post, mail": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポスト, ゆうびんうけ, 手紙, てがみ"
           }
         }
       }
@@ -1953,6 +2253,16 @@
         }
       }
     },
+    "Mailbox": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "郵便受け"
+          }
+        }
+      }
+    },
     "More for %@": {
       "localizations": {
         "ja": {
@@ -1973,12 +2283,32 @@
         }
       }
     },
+    "Moss Glaze": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "苔色の釉"
+          }
+        }
+      }
+    },
     "Move to Trash…": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "ゴミ箱に入れる…"
+          }
+        }
+      }
+    },
+    "Mustard": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マスタード"
           }
         }
       }
@@ -1999,6 +2329,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "マイ草原ライブラリ…"
+          }
+        }
+      }
+    },
+    "Natural Canvas": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "生成り"
+          }
+        }
+      }
+    },
+    "Natural Wood": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "木地"
+          }
+        }
+      }
+    },
+    "nest box, bird box": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鳥小屋, とりごや, すばこ, 鳥, とり"
           }
         }
       }
@@ -2033,12 +2393,52 @@
         }
       }
     },
+    "Noticeboard": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掲示板"
+          }
+        }
+      }
+    },
+    "Oat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オートミール"
+          }
+        }
+      }
+    },
+    "Ochre": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "黄土色"
+          }
+        }
+      }
+    },
     "OK": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "OK"
+          }
+        }
+      }
+    },
+    "Olive": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オリーブ"
           }
         }
       }
@@ -2069,6 +2469,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "松"
+          }
+        }
+      }
+    },
+    "plant pot, terracotta, geranium": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "鉢, はち, うえきばち, テラコッタ, ゼラニウム"
+          }
+        }
+      }
+    },
+    "Planter box": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プランター"
+          }
+        }
+      }
+    },
+    "raised bed, vegetables, lettuce": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "花壇, かだん, 野菜, やさい, レタス"
+          }
+        }
+      }
+    },
+    "Remove Gate": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "門を外す"
+          }
+        }
+      }
+    },
+    "Rose": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ローズ"
+          }
+        }
+      }
+    },
+    "Sage": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "セージ"
           }
         }
       }
@@ -2133,12 +2593,52 @@
         }
       }
     },
+    "seat, park bench": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "腰掛け, こしかけ, 椅子, いす"
+          }
+        }
+      }
+    },
     "Share…": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "共有…"
+          }
+        }
+      }
+    },
+    "Signpost": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "道しるべ"
+          }
+        }
+      }
+    },
+    "skep, bees, hive, honey": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スケップ, ミツバチ, 蜂, はち, すばこ, 蜂蜜, はちみつ, わら"
+          }
+        }
+      }
+    },
+    "Slate": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スレート"
           }
         }
       }
@@ -2169,6 +2669,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "飛び石"
+          }
+        }
+      }
+    },
+    "Straighten": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まっすぐにする"
+          }
+        }
+      }
+    },
+    "Straighten Fence": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柵をまっすぐにする"
+          }
+        }
+      }
+    },
+    "Straw beehive": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "わらの蜂の巣箱"
+          }
+        }
+      }
+    },
+    "table, study, work": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "机, つくえ, ふづくえ, 書き物, かきもの, 仕事, しごと"
+          }
+        }
+      }
+    },
+    "Terracotta": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "テラコッタ"
           }
         }
       }
@@ -2303,6 +2853,26 @@
         }
       }
     },
+    "water, watering": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "水やり, みずやり, ジョウロ"
+          }
+        }
+      }
+    },
+    "Watering can": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "じょうろ"
+          }
+        }
+      }
+    },
     "Wild Grass": {
       "localizations": {
         "ja": {
@@ -2319,6 +2889,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ねこべっど, ベッド, 寝床, 昼寝, 猫, ねこ"
+          }
+        }
+      }
+    },
+    "Wooden fence": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "木の柵"
+          }
+        }
+      }
+    },
+    "Writing desk": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文机"
           }
         }
       }
@@ -9775,6 +10365,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "追加したサウンド"
+          }
+        }
+      }
+    },
+    "Zinc": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トタン"
           }
         }
       }

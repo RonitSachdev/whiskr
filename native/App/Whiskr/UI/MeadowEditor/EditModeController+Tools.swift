@@ -125,6 +125,9 @@ extension EditModeController {
         guard tray.armed != nil || pending != nil else { return }
         tray.armed = nil
         pending = nil
+        fenceDraft = nil
+        fenceKeys = nil
+        fenceLaying = nil
         ghostRefusal = nil
         hideReason()
         updateTools()
@@ -132,7 +135,7 @@ extension EditModeController {
 
     /// The tray's hint, the tools' marks and the bar after a change of tool or of what is armed.
     func updateTools() {
-        tray.hint = MeadowWords.hint(tray.tool, armed: tray.armed != nil)
+        tray.hint = laysFences ? MeadowWords.fenceHint : MeadowWords.hint(tray.tool, armed: tray.armed != nil)
         if tray.tool == .select { brushSpot = nil }
         updateMarks()
     }
@@ -157,6 +160,7 @@ extension EditModeController {
     /// The armed thing as it will be placed, at `ghostSpot`: drawn once for each placing (a fresh size, lean,
     /// shape and seed), then only moved and turned.
     func drawPending() {
+        if laysFences { return drawFencePending() }
         guard let id = tray.armed, let spot = ghostSpot else {
             pending = nil
             return updateMarks()
@@ -168,6 +172,8 @@ extension EditModeController {
             pending = item
         } else {
             pending = library.session.fresh(id, at: at, turn: pendingTurn, using: &random)
+            // In the colour last chosen for its kind.
+            if let colour = colourToPlace(id) { pending?.params["colour"] = .string(colour) }
         }
         if placingField == nil { placingField = library.session.placingField }
         ghostRefusal = pending.flatMap { library.session.placingRefusal($0, field: placingField!) }
@@ -178,6 +184,7 @@ extension EditModeController {
     /// stand), as one step, and chooses it; `keepArmed` (⇧): a fresh one waits for the next place.
     @discardableResult
     func placePending(searching: Bool, keepArmed: Bool) -> Bool {
+        if laysFences { return layPendingFence(keepArmed: keepArmed) }
         guard let item = pending else { return false }
         let name = MeadowWords.place([item.asset])
         let result = library.edit(name) { session in
@@ -573,7 +580,9 @@ extension EditModeController {
         let trees = counts[.trees, default: 0], tall = counts[.tall, default: 0]
         var full: [String: String] = [:]
         for item in EditorTray.things {
-            guard let probe = session.fresh(item.id, at: .zero, turn: 0, using: &random), let refusal = session.capacity(for: [probe]) else { continue }
+            // A fence: a short run of it.
+            let fence = item.id == MeadowEditSession.fence ? MeadowFile.MeadowItem(asset: item.id, placement: .run(MeadowEditSession.shortFence(at: .zero, turn: 0).map { MeadowPoint($0.x, $0.y) })) : nil
+            guard let probe = fence ?? session.fresh(item.id, at: .zero, turn: 0, using: &random), let refusal = session.capacity(for: [probe]) else { continue }
             full[item.id] = MeadowWords.refusal(refusal)
         }
         if tray.full != full { tray.full = full }
@@ -606,11 +615,12 @@ extension EditModeController {
         let brushes = Set(EditorTray.brushes.map(\.id)), erasers = Set(EditorTray.erasers.map(\.id))
         if let kind = saved["brushKind"] as? String, brushes.contains(kind) { tray.brushKind = kind }
         if let kind = saved["eraseKind"] as? String, erasers.contains(kind) { tray.eraseKind = kind }
+        if let colours = saved["colours"] as? [String: String] { self.colours = colours }
     }
 
     func rememberTray() {
         AppPlaces.defaults.set(["collapsed": tray.collapsed, "brushRadius": tray.brushRadius, "eraseRadius": tray.eraseRadius, "groundRadius": tray.groundRadius,
-                                "density": tray.density.rawValue, "brushKind": tray.brushKind, "eraseKind": tray.eraseKind, "groundPaint": tray.groundPaint] as [String: Any],
+                                "density": tray.density.rawValue, "brushKind": tray.brushKind, "eraseKind": tray.eraseKind, "groundPaint": tray.groundPaint, "colours": colours] as [String: Any],
                                 forKey: Self.trayKey)
     }
 
