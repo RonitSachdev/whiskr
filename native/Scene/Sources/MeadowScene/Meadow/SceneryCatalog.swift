@@ -38,6 +38,8 @@ enum SceneryCatalog {
         // a path of them a stride apart (`MeadowEditSession.stepping`) keeps a strip of grass between each two.
         "stone.stepping": .plant({ [Plant(shape: steppingStone, top: Vec3(0, 0.05, 0))] }, sway: 0, blooms: false, base: 0.42),
         "wood.fallenLog": .log,
+        // Not a catalog thing: what a thing from a newer Whiskr shows as while the meadow is edited (Parcel.swift).
+        MeadowScenery.parcel: parcelKind,
     ]
 
     /// The worktrees' stepping stone (`Picnic.steppingStone`) as a meadow's are laid: its top levelled, a flat

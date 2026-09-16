@@ -125,8 +125,8 @@ public struct MeadowScenery: Equatable, Sendable {
     /// kept in its file and left out of the picture.
     public static func draws(_ id: String) -> Bool { SceneryCatalog.kinds[id] != nil }
 
-    /// Every id the scene can draw.
-    public static var drawnIds: Set<String> { Set(SceneryCatalog.kinds.keys) }
+    /// Every catalog id the scene can draw (the parcel a thing from a newer Whiskr shows as is not one).
+    public static var drawnIds: Set<String> { Set(SceneryCatalog.kinds.keys).subtracting([parcel]) }
 
     /// The most the meadow draws of each kind of thing: what a meadow file may hold (its catalog's caps).
     /// Past one, further things of that kind are left out, in order.

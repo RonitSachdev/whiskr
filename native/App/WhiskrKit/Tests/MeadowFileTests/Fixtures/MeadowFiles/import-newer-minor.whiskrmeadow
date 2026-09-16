@@ -1,0 +1,27 @@
+{
+  "author": "",
+  "base": "meadow",
+  "catalog": 1,
+  "description": "A quiet corner with stones.",
+  "formatMinor": 2,
+  "items": [
+    { "at": [-14, 18], "id": "tree.oak", "seed": 1234567, "turn": 0.5 },
+    { "at": [16, 24], "id": "tree.birch", "seed": 7654321, "turn": 2 },
+    { "at": [3, 30], "id": "stone.mossy", "moss": "thick", "turn": 1.25 },
+    { "at": [-3.27, 23.38], "id": "flower.daisy", "turn": 3.046 },
+    { "at": [-4, 26.06], "id": "flower.daisy", "turn": 4.163 },
+    { "at": [-6.57, 26.49], "id": "flower.daisy", "turn": 2.343 },
+    { "at": [-3.8, 24.45], "id": "flower.daisy", "turn": 5.036 },
+    { "at": [-4.24, 24.09], "id": "flower.daisy", "turn": 3.381 },
+    { "at": [-4.55, 24.8], "id": "flower.daisy", "turn": 3.477 },
+    { "at": [8.44, 30.79], "id": "flower.poppy", "turn": 5.045 },
+    { "at": [7.1, 29.89], "id": "flower.poppy", "turn": 2.107 },
+    { "at": [9.86, 33.24], "id": "flower.poppy", "turn": 5.054 },
+    { "at": [7.28, 32.26], "id": "flower.poppy", "turn": 1.238 }
+  ],
+  "name": "Morning Meadow",
+  "needsCatalog": 1,
+  "season": { "bloom": 0.8, "name": "spring" },
+  "whiskrMeadow": 1,
+  "writtenBy": "1.6.0"
+}
