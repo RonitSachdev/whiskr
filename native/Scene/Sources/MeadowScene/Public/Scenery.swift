@@ -1,8 +1,9 @@
 import Foundation
 import simd
 
-/// The scenery a meadow holds (trees, flowers, mushrooms, stones, the log, and later whatever a person
-/// places), as plain values: what a meadow file's `items` say, in the scene's own terms. Give it to
+/// The scenery a meadow holds (trees, flowers, mushrooms, stones, the log, stepping stones, the painted
+/// ground, and later whatever a person places), as plain values: what a meadow file's `items` and `ground`
+/// say, in the scene's own terms. Give it to
 /// `MeadowView.scenery`; the meadow draws exactly this. The sky, hills, clouds, grass, weather, blankets,
 /// cats and everything on and between the blankets are not scenery.
 ///
@@ -41,11 +42,77 @@ public struct MeadowScenery: Equatable, Sendable {
         }
     }
 
+    /// The painted ground: paths, lawn and soil over the meadow's own long grass, as a meadow file's
+    /// `ground` grid holds it. Nil for a meadow with nothing painted.
+    public struct Ground: Equatable, Sendable {
+        /// What a cell is painted with. A file's paints this Whiskr does not know are drawn as `wild`.
+        public enum Paint: UInt8, CaseIterable, Sendable {
+            /// The meadow's own long grass.
+            case wild = 0
+            /// Worn earth, the grass closing in over its edges.
+            case path
+            /// Grass mown short, with the mower's stripes.
+            case lawn
+            /// Bare, dark tilled earth for beds.
+            case soil
+
+            /// The catalog's id of the paint (`ground.path`); the wild grass's is the tray's eraser, never stored.
+            public var id: String {
+                switch self {
+                case .wild: "ground.wild"
+                case .path: "ground.path"
+                case .lawn: "ground.lawn"
+                case .soil: "ground.soil"
+                }
+            }
+
+            public init?(id: String) {
+                guard let paint = Self.allCases.first(where: { $0.id == id }) else { return nil }
+                self = paint
+            }
+        }
+
+        /// Cells along each side, over x, z ∈ [−`reach`, `reach`] (about 0.59 units a cell).
+        public static let side = 512
+        public static let reach: Float = 150
+        /// A cell's width, in units.
+        public static var cell: Float { 2 * reach / Float(side) }
+
+        /// `side` × `side` paints (`Paint.rawValue`), row by row from z = −`reach`, each row from x = −`reach`.
+        public private(set) var cells: [UInt8]
+
+        /// Nothing painted.
+        public init() {
+            cells = [UInt8](repeating: 0, count: Self.side * Self.side)
+        }
+
+        /// `cells` as given: `side` × `side` of them, each a `Paint`'s raw value (any other is drawn as wild).
+        public init(cells: [UInt8]) {
+            precondition(cells.count == Self.side * Self.side, "a ground holds side × side cells")
+            self.cells = cells.map { Paint(rawValue: $0) == nil ? 0 : $0 }
+        }
+
+        public subscript(column: Int, row: Int) -> Paint {
+            get { Paint(rawValue: cells[row * Self.side + column]) ?? .wild }
+            set { cells[row * Self.side + column] = newValue.rawValue }
+        }
+
+        /// The cell a ground point lies in, or nil off the grid.
+        public static func cell(at x: Float, _ z: Float) -> (column: Int, row: Int)? {
+            let column = Int(((x + reach) / cell).rounded(.down)), row = Int(((z + reach) / cell).rounded(.down))
+            guard (0..<side).contains(column), (0..<side).contains(row) else { return nil }
+            return (column, row)
+        }
+    }
+
     /// In the order they are drawn.
     public var things: [Thing]
+    /// The painted ground, nil when nothing is painted.
+    public var ground: Ground?
 
-    public init(things: [Thing] = []) {
+    public init(things: [Thing] = [], ground: Ground? = nil) {
         self.things = things
+        self.ground = ground
     }
 
     /// Grass, hills and sky, and nothing else.

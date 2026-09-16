@@ -3,7 +3,7 @@ import MeadowFile
 import MeadowScene
 
 // A meadow document (`MeadowFile`) as the scene's scenery, and back. The document keeps everything a
-// file held; the scenery is only what the scene draws. Things the scene cannot draw (from a newer Whiskr,
+// file held; the scenery is only what the scene draws (its things and its painted ground). Things the scene cannot draw (from a newer Whiskr,
 // or catalog ids whose builders come in a later stage) stay in the document and are left out of the
 // picture, as the scene leaves out any id it does not draw.
 
@@ -19,7 +19,24 @@ extension MeadowScenery {
             things.append(Thing(id: item.asset, x: Float(at.x), z: Float(at.z), turn: Float(item.turn), size: size, tilt: tilt,
                                 seed: item.seed ?? 0, variant: item.drawnVariant(catalog)))
         }
-        self.init(things: things)
+        self.init(things: things, ground: Ground(document.ground, catalog: catalog))
+    }
+}
+
+extension MeadowScenery.Ground {
+    /// A meadow file's painted ground as the scene draws it: each cell its paint, a paint this Whiskr does not
+    /// know drawn as the wild grass. Nil for no ground.
+    public init?(_ grid: GroundGrid?, catalog: MeadowCatalog = .current) {
+        guard let grid else { return nil }
+        let drawn = Self.drawn(grid, catalog)
+        self.init(cells: grid.cells.map { drawn[Int($0)] })
+    }
+
+    /// For each value a cell of `grid` may hold, the paint the scene draws it with (`Paint.rawValue`).
+    static func drawn(_ grid: GroundGrid, _ catalog: MeadowCatalog) -> [UInt8] {
+        (0...grid.paints.count).map { value in
+            grid.drawnPaint(UInt8(value), catalog).flatMap(Paint.init(id:))?.rawValue ?? 0
+        }
     }
 }
 

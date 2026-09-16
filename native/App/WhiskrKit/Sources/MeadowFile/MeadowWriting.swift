@@ -48,6 +48,32 @@ extension MeadowDocument {
     }
 }
 
+extension MeadowDocument {
+    /// The most runs its painted ground may hold (`GroundGrid.runCount`), everything else as it is and every
+    /// paint the catalog has listed, for its file to stay within what every Whiskr reads:
+    /// `MeadowFormat.limits` values and `MeadowFormat.maxBytes` bytes. A stroke of the Ground tool stops there,
+    /// so a meadow is never painted into one that cannot be saved. Nothing (0) when it cannot be written at all.
+    public func groundRoom(catalog: MeadowCatalog = .current) -> Int {
+        // The ground as one run of wild grass, listing what it lists and every paint a stroke may add.
+        var paints = ground?.paints ?? []
+        for asset in catalog.assets where asset.nature == .paint && !paints.contains(asset.id) && paints.count < GroundGrid.maxPaints {
+            paints.append(asset.id)
+        }
+        var measured = self
+        measured.ground = GroundGrid(paints: paints, cells: [UInt8](repeating: 0, count: GroundGrid.cellCount), unknownFields: ground?.unknownFields ?? [:])
+        // The longest version a Whiskr writes, so the file saved by any is no longer.
+        guard let json = try? measured.fileJSON(writtenBy: String(repeating: "9", count: 32), catalog: catalog) else { return 0 }
+        let values = MeadowFormat.limits.values - json.valueCount
+        let bytes = MeadowFormat.maxBytes - json.fileText.utf8.count
+        // Each further run: its two numbers, and at most ", 16, 262144" written.
+        return max(0, 1 + min(values / 2, bytes / Self.runBytes))
+    }
+
+    /// The most a run of the ground adds to a file, in bytes: ", " and a paint's index (at most 16), ", " and
+    /// a count (at most 262,144).
+    static let runBytes = 12
+}
+
 extension MeadowItem {
     /// Its fields as a file writes them, in the form reading gives (`MeadowNormal`); defaults left out.
     /// A spot outside the meadow, a number that is not finite or a shape out of range is refused, saying

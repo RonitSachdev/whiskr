@@ -28,18 +28,21 @@ public struct MeadowChange: Equatable, Sendable {
     /// In ascending order of where each stands after.
     public var added: [Placed]
     public var edited: [Edited]
+    /// The painted ground's cells it changed (a stroke of the Ground tool).
+    public var ground: MeadowGroundPatch?
 
-    public init(removed: [Placed] = [], added: [Placed] = [], edited: [Edited] = []) {
+    public init(removed: [Placed] = [], added: [Placed] = [], edited: [Edited] = [], ground: MeadowGroundPatch? = nil) {
         self.removed = removed
         self.added = added
         self.edited = edited
+        self.ground = ground
     }
 
-    public var isEmpty: Bool { removed.isEmpty && added.isEmpty && edited.isEmpty }
+    public var isEmpty: Bool { removed.isEmpty && added.isEmpty && edited.isEmpty && ground == nil }
 
     /// What undoes it.
     public var inverse: MeadowChange {
-        MeadowChange(removed: added, added: removed, edited: edited.map { Edited(id: $0.id, before: $0.after, after: $0.before) })
+        MeadowChange(removed: added, added: removed, edited: edited.map { Edited(id: $0.id, before: $0.after, after: $0.before) }, ground: ground?.inverse)
     }
 
     /// The things there after it that it added or changed: what to choose once it is done.
@@ -63,6 +66,8 @@ public enum MeadowEditRefusal: Equatable, Sendable {
     case smallest(String)
     /// Made and found things keep their size; only living things grow.
     case keepsItsSize(String)
+    /// The painted ground holds as much detail as a meadow file can (`MeadowDocument.groundRoom`).
+    case groundFull
 }
 
 /// An edit refused, and which thing (by id) it was refused for, when it was one thing.
@@ -78,13 +83,13 @@ public struct MeadowEditRefused: Error, Equatable, Sendable {
 
 public struct MeadowEditSession: Sendable {
     public let catalog: MeadowCatalog
-    public private(set) var document: MeadowDocument
+    public internal(set) var document: MeadowDocument
     /// Each entry's id, in the document's order.
     public private(set) var ids: [Int]
     /// The id the next thing added takes.
     private(set) var nextID: Int
     /// What the scene draws: the things this Whiskr can draw, in the document's order.
-    public private(set) var scenery = MeadowScenery()
+    public internal(set) var scenery = MeadowScenery()
     /// For each of the scenery's things, the id of the entry it draws.
     public private(set) var shown: [Int] = []
     private var drawnIndex: [Int: Int] = [:]
@@ -96,9 +101,11 @@ public struct MeadowEditSession: Sendable {
         ids = document.entries.indices.map { $0 + 1 }
         nextID = document.entries.count + 1
         rebuild()
+        scenery.ground = MeadowScenery.Ground(document.ground, catalog: catalog)
     }
 
-    /// The scenery, and the ids and positions behind it, from the document as it is now.
+    /// The scenery's things, and the ids and positions behind them, from the document as it is now (the
+    /// painted ground is kept as it is drawn: only a change of the ground changes it).
     private mutating func rebuild() {
         var things: [MeadowScenery.Thing] = []
         things.reserveCapacity(document.entries.count)
@@ -113,7 +120,7 @@ public struct MeadowEditSession: Sendable {
             shown.append(id)
             things.append(thing)
         }
-        scenery = MeadowScenery(things: things)
+        scenery.things = things
     }
 
     /// The scene's form of an item, when it is one the scene draws (at a spot, of an id it has a builder for).
@@ -167,8 +174,11 @@ public struct MeadowEditSession: Sendable {
 
     // MARK: Changing
 
-    /// Makes `change` (one made here, or the inverse of one): things away, things in, things changed.
+    /// Makes `change` (one made here, or the inverse of one): things away, things in, things changed, the
+    /// ground painted.
     public mutating func apply(_ change: MeadowChange) {
+        if let patch = change.ground { apply(patch) }
+        guard !change.removed.isEmpty || !change.added.isEmpty || !change.edited.isEmpty else { return }
         // Only things after the rest (a placing, a Brush's dab): those alone are added to what is drawn.
         if change.removed.isEmpty, change.edited.isEmpty, !change.added.isEmpty,
            change.added.enumerated().allSatisfy({ $0.element.position == document.entries.count + $0.offset }) {
@@ -256,7 +266,7 @@ public struct MeadowEditSession: Sendable {
     }
 
     /// A refusal in the session's terms (the thing in the way named by its kind).
-    func said(_ refusal: SceneryRules.Refusal) -> MeadowEditRefusal {
+    public func said(_ refusal: SceneryRules.Refusal) -> MeadowEditRefusal {
         switch refusal {
         case .outsideMeadow: .outsideMeadow
         case .keptForWorkspaces: .keptForWorkspaces

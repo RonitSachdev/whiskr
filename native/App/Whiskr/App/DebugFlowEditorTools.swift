@@ -16,7 +16,8 @@ import WhiskrMeadow
 /// - the Brush: clumps along a stroke (one step, never overlapping, at the full frame rate), ⌥-drag clearing,
 ///   the size and density, the wildflower mix, Return at the cursor;
 /// - the Eraser: a click, a sweep (never a tree), one kind only;
-/// - the caps, said before they are reached and kindly when they are; Reduce Motion; pictures of every state.
+/// - the caps, said before they are reached and kindly when they are; Reduce Motion; pictures of every state
+///   (the Ground tool and stepping stones among them).
 extension EditorFlow {
     var tray: EditorTray { editor.tray }
     var count: Int { library.session.document.entries.count }
@@ -120,14 +121,15 @@ extension EditorFlow {
         let ids = EditorTray.things.map(\.id)
         let drawn = MeadowCatalog.current.assets.filter { $0.inTray && $0.shape == .single && MeadowScenery.draws($0.id) }.map(\.id)
         check("the shelf offers every thing the scene draws, in the catalog's order, and nothing it cannot (\(ids.count))",
-              ids == drawn && ids.count == 12 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
-        check("the categories are those that hold something: Trees, Flowers, Stones & Wood (no Ground button before its tool)",
-              EditorTray.categories == [.trees, .flowers, .stonesAndWood] && suite.barView("tray.category.ground") == nil && suite.barView("tray.tool.ground") == nil)
+              ids == drawn && ids.count == 13 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
+        check("the categories are those that hold something: Trees, Flowers, Stones & Wood, and the Ground tool's paints",
+              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground] && suite.barView("tray.category.ground") != nil && suite.barView("tray.tool.ground") != nil)
         let scale = window.backingScaleFactor
-        let pictures = (ids + [EditorTray.wildflowers]).compactMap { tray.pictures[$0] }
-        check("every tile has its picture, drawn by the scene in its own clay, crisp at the screen's scale",
-              pictures.count == ids.count + 1 && pictures.allSatisfy { $0.width == Int(EditorTray.tile * scale) && Self.hasSubject($0) },
-              "\(pictures.count) pictures of \(ids.count + 1), widths \(Set(pictures.map(\.width)))")
+        let pictured = ids + [EditorTray.wildflowers] + EditorTray.paints.map(\.id)
+        let pictures = pictured.compactMap { tray.pictures[$0] }
+        check("every tile has its picture, drawn by the scene in its own clay (the paints as real turf), crisp at the screen's scale",
+              pictures.count == pictured.count && pictures.allSatisfy { $0.width == Int(EditorTray.tile * scale) && Self.hasSubject($0) },
+              "\(pictures.count) pictures of \(pictured.count), widths \(Set(pictures.map(\.width)))")
         // The blankets framed above the tray.
         let blankets = suite.workbench.workspaces.compactMap { meadow.screenRect(of: .blanket($0.id.uuidString)) }
         check("the picnic ground's blankets are framed in the meadow above the tray", !blankets.isEmpty && blankets.allSatisfy { $0.minY > card.maxY && $0.maxY < meadow.bounds.maxY },
@@ -151,7 +153,7 @@ extension EditorFlow {
         suite.shortcut("2")
         let flowers = tray.category == .flowers && tray.shelf.allSatisfy { $0.category == .flowers }
         await pressTray("tray.category.stonesAndWood")
-        check("2 and the category's tab show that shelf", flowers && tray.category == .stonesAndWood && tray.shelf.map(\.id) == ["stone.stone", "stone.mossy", "wood.fallenLog"],
+        check("2 and the category's tab show that shelf", flowers && tray.category == .stonesAndWood && tray.shelf.map(\.id) == ["stone.stone", "stone.mossy", "stone.stepping", "wood.fallenLog"],
               "\(tray.shelf.map(\.id))")
         suite.shortcut("1")
         check("1: the trees again", tray.category == .trees && tray.shelf.count == 4)
@@ -569,6 +571,39 @@ extension EditorFlow {
                 await picture("\(name)-erase")
             }
         }
+        // The Ground tool: a stroke of path across the picnic ground and on, the circle on the ground.
+        suite.shortcut("g")
+        await pressTray("tray.item.ground.path")
+        if let from = meadow.viewPoint(ofGround: SIMD2(-26, 6)), let to = meadow.viewPoint(ofGround: SIMD2(18, 2)), meadow.bounds.contains(from), meadow.bounds.contains(to) {
+            await dragPointer(from: from, to: to, steps: 40) { await self.picture("\(name)-ground") }
+            // A lawn beside it, painted wide, and the two together.
+            await pressTray("tray.item.ground.lawn")
+            for _ in 0..<3 { suite.shortcut("]") }
+            var lawn = 0
+            for z in [Float(-14), -19] {
+                if let a = meadow.viewPoint(ofGround: SIMD2(24, z)), let b = meadow.viewPoint(ofGround: SIMD2(34, z)), meadow.bounds.contains(a), meadow.bounds.contains(b),
+                   !trayCard.contains(a), !trayCard.contains(b) {
+                    await dragPointer(from: a, to: b, steps: 20)
+                    lawn += 1
+                }
+            }
+            await hoverMeadow(to)
+            await picture("\(name)-ground-painted")
+            for _ in 0..<(lawn + 1) { suite.shortcut("cmd+z") }
+            for _ in 0..<3 { suite.shortcut("[") }
+            await pressTray("tray.item.ground.path")
+        }
+        // Stepping stones laid along a drag.
+        suite.shortcut("v")
+        suite.shortcut("3")
+        await pressTray("tray.item.stone.stepping")
+        if let from = meadow.viewPoint(ofGround: SIMD2(-30, -10)), let to = meadow.viewPoint(ofGround: SIMD2(-18, -16)), meadow.bounds.contains(from), meadow.bounds.contains(to),
+           !trayCard.contains(from), !trayCard.contains(to) {
+            await dragPointer(from: from, to: to, steps: 30)
+            await picture("\(name)-stones")
+            suite.shortcut("cmd+z")
+        }
+        suite.shortcut("esc")
         suite.shortcut("v")
     }
 }

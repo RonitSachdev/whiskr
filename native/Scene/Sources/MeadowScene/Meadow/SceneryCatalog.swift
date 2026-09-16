@@ -34,8 +34,31 @@ enum SceneryCatalog {
         "fungus.flyAgaric": .plant({ Flora.mushrooms }, sway: 0, blooms: false, base: 0.42),
         "stone.stone": .plant({ [Flora.stones[0]] }, sway: 0, blooms: false, base: 1.25),
         "stone.mossy": .plant({ [Flora.stones[1]] }, sway: 0, blooms: false, base: 1.25),
+        // The worktrees' own stepping stone, set flat in the turf; its ground is round its narrower middle, so
+        // a path of them a stride apart (`MeadowEditSession.stepping`) keeps a strip of grass between each two.
+        "stone.stepping": .plant({ [Plant(shape: steppingStone, top: Vec3(0, 0.05, 0))] }, sway: 0, blooms: false, base: 0.42),
         "wood.fallenLog": .log,
     ]
+
+    /// The worktrees' stepping stone (`Picnic.steppingStone`) as a meadow's are laid: its top levelled, a flat
+    /// slab sitting a finger's width proud of the turf, its worn face a little less pale so a row of them reads
+    /// as stone in the grass rather than as pebbles.
+    static let steppingStone: Geometry = {
+        var stone = Picnic.steppingStone
+        let level: Float = 0.036
+        for i in stone.positions.indices where stone.positions[i].y > level {
+            stone.positions[i].y = level + (stone.positions[i].y - level) * 0.25
+        }
+        stone.computeNormals()
+        stone.colors = stone.colors.map { $0 * 0.86 }
+        return stone
+    }()
+
+    /// Things walked on, which wear the turf round them (`GroundMap.treads`): the grass short and parted at
+    /// their edges, as round real stepping stones in a lawn or a meadow.
+    static func isTread(_ id: String) -> Bool { id == "stone.stepping" }
+    /// How far a tread reaches each way along its own x and z at its own size (the stone's own half sizes).
+    static let treadHalf = Vec2(0.64, 0.48)
 
     /// A fallen trunk lying in the long grass along its own x axis, its cut ends pale and moss settling
     /// along the top; shaped lying on y = 0.

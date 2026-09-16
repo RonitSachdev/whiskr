@@ -155,13 +155,6 @@ extension MeadowView {
         wake(.input)
     }
 
-    /// Turns the view at once by `radians` (a drag on the compass).
-    public func twistView(by radians: Float) {
-        handTookOver()
-        stage.camera.twist(radians)
-        wake(.input)
-    }
-
     /// Frames the picnic ground and its surroundings again, as on entering edit mode.
     public func frameEditView() {
         stage.camera.fly()

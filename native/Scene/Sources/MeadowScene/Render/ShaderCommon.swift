@@ -110,7 +110,8 @@ float pathDistance(float2 g, constant Frame& F, constant World& W) {
 
 // 0 on a blanket, low on the trodden ring just around it, 1 in open meadow. Streams clear their own bed.
 // A sidebar's flags stand low, and the grass is trodden down along each one so no blade crosses its name.
-float openGround(float2 g, constant Frame& F, constant World& W) {
+// `blankets`: the same, for the blankets alone (the painted ground gives way to them, `paintedAt`).
+float openGround(float2 g, constant Frame& F, constant World& W, thread float& blankets) {
     float open = 1.0;
     int n = int(F.counts.x);
     for (int i = 0; i < n; i++) {
@@ -123,6 +124,7 @@ float openGround(float2 g, constant Frame& F, constant World& W) {
             open = min(open, mix(0.14, 1.0, smoothstep(0.5, 2.0, f)));
         }
     }
+    blankets = open;
     if (F.counts.z > 0.0) {
         float s = streamDistance(g, F, W);
         open = min(open, s < 0.3 ? 0.0 : mix(0.35, 1.0, smoothstep(0.3, 2.2, s)));
@@ -130,6 +132,10 @@ float openGround(float2 g, constant Frame& F, constant World& W) {
     // A path's stepping stones lie in bare trodden earth, the grass short along its edges.
     if (F.counts.w > 0.0) open = min(open, smoothstep(0.5, 1.6, pathDistance(g, F, W)));
     return open;
+}
+float openGround(float2 g, constant Frame& F, constant World& W) {
+    float blankets;
+    return openGround(g, F, W, blankets);
 }
 
 // Blankets always lie on level ground (`Land.level`): within LEVEL_FLAT of a blanket's edge the land is
@@ -173,16 +179,59 @@ constexpr sampler groundMapSampler(coord::normalized, address::clamp_to_zero, fi
 float4 groundMapAt(float2 g, texture2d<float> map) {
     return map.sample(groundMapSampler, g / (2.0 * GROUND_MAP_REACH) + 0.5, level(0));
 }
+// Where the ground and the grass read the map: a little off the point, by noise up to about two-thirds of a
+// unit each way, so a painted edge wanders as grass grows back instead of following the grid of cells; a
+// single dab reads round, a straight stroke's sides uneven. The trees' shade, smooth over many units, is
+// read there too and does not mind.
+float2 paintWarp(float2 g) {
+    float2 broad = float2(mNoise(g * 0.42 + 17.0), mNoise(g * 0.42 - 9.0)) - 0.5;
+    float2 fine = float2(mNoise(g * 1.6 + 3.0), mNoise(g * 1.6 - 21.0)) - 0.5;
+    return broad * 1.1 + fine * 0.35;
+}
 
-// Sunlight reaching the ground: dimmed under clouds passing with the wind and dappled beneath trees.
-float3 shadeAt(float2 g, constant Frame& F, texture2d<float> map) {
+// The painted ground (`GroundMap`) at a point, from the map's sample `m`, as the land and the grass take it:
+// how worn it is (1 bare earth, about ½ the grass trodden short), how much is mown lawn and how much tilled
+// soil. Each edge is pushed either way by noise, as grass grows back unevenly, so nothing reads as drawn; and
+// each fades out within a blanket's clearing and the trodden ring round it (`blankets`, from `openGround`),
+// so a cat and its blanket always lie on the blanket's own ground.
+struct Painted { float worn; float lawn; float soil; };
+Painted paintedAt(float2 g, float4 m, float blankets) {
+    float keep = smoothstep(0.14, 0.9, blankets);
+    float n = (mNoise(g * 1.1) - 0.5) * 0.7 + (mNoise(g * 3.7 + 5.0) - 0.5) * 0.35;
+    float3 w = m.rgb;
+    // Only at an edge (a weight between 0 and 1), never inside or out.
+    w = saturate(w + n * 4.0 * w * (1.0 - w));
+    Painted p;
+    p.worn = w.r * keep;
+    p.lawn = smoothstep(0.25, 0.75, w.g) * keep;
+    p.soil = smoothstep(0.3, 0.7, w.b) * keep;
+    return p;
+}
+// A painted lawn's stripes, −1…1: the mower's passes run along the meadow (z), each about three units wide,
+// soft and a little wavering, as a real mower leaves them.
+float lawnStripe(float2 g) { return sin(g.x * 1.05 + (mNoise(g * 0.25) - 0.5) * 0.8); }
+// The worn earth of a path, warm and bare, a little patchy, with pale grit trodden into it.
+float3 pathEarth(float2 g) {
+    float grit = smoothstep(0.72, 0.92, mNoise(g * 6.5 + 1.7));
+    return float3(0.30, 0.205, 0.115) * (0.88 + 0.24 * mNoise(g * 0.9 + 3.0)) + float3(0.07, 0.06, 0.045) * grit;
+}
+// Tilled soil: dark, turned in low ridges along x with crumbs of lighter clod.
+float3 soilEarth(float2 g) {
+    float ridge = sin(g.y * 3.4 + (mNoise(g * 0.6) - 0.5) * 2.2) * 0.5 + 0.5;
+    float clods = smoothstep(0.62, 0.9, mNoise(g * 5.3));
+    return float3(0.155, 0.105, 0.066) * (0.78 + 0.34 * ridge) * (1.0 + 0.35 * clods);
+}
+
+// Sunlight reaching the ground: dimmed under clouds passing with the wind and dappled beneath trees
+// (`treeShade`: the trees' shade the ground's map holds there, its alpha).
+float3 shadeFrom(float2 g, constant Frame& F, float treeShade) {
     float t = F.eye.w;
     float2 p = g * 0.03 - F.wind.zw * 0.07;
     float cloud = 1.0 - smoothstep(0.52, 0.7, mNoise(p) * 0.65 + mNoise(p * 2.1 + 7.3) * 0.35);
     float tree = 1.0;
     // How near the nearest crown's middle, as a share of its reach (1 at the reach and beyond). Dapple only
     // matters within a crown's reach (it adds at most 0.385 to the distance there).
-    float nearest = 1.0 - groundMapAt(g, map).a;
+    float nearest = 1.0 - treeShade;
     if (nearest < 1.0) {
         float dapple = (mNoise(g * 0.5 + t * 0.07) * 0.5 + mNoise(g * 1.7 - t * 0.05) * 0.2) * 0.55;
         tree = smoothstep(0.35, 1.0, nearest + dapple);
@@ -190,6 +239,9 @@ float3 shadeAt(float2 g, constant Frame& F, texture2d<float> map) {
     // By moonlight colours drain toward blue, so the green field reads as night rather than a dim day.
     float3 moonlit = mix(float3(1.0), float3(0.52, 0.68, 1.15), F.fog.w);
     return mix(float3(0.8, 0.87, 0.86), float3(1.0), cloud) * mix(float3(0.66, 0.76, 0.72), float3(1.0), tree) * moonlit;
+}
+float3 shadeAt(float2 g, constant Frame& F, texture2d<float> map) {
+    return shadeFrom(g, F, groundMapAt(g, map).a);
 }
 
 // How far the wind pushes a plant top, per unit of height squared: gusts passing over in waves along the

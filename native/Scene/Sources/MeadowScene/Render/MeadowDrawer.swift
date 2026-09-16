@@ -239,13 +239,13 @@ final class MeadowDrawer {
         for (i, tree) in m.treeShapes.enumerated() where m.screens[tree.screen].fade >= 0.999 {
             let standing = m.treeStanding(i, stage.world.clearings, stage.clearingCount)
             guard standing > 0.005 else { continue }
-            one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing), emissive: lift(tree: i), lit: []), enc)
+            one(arena, chosen(ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing), lit: []), lifted.trees.contains(i)), enc)
             draw(trees[i], 1, enc)
         }
         for (i, lying) in m.logs.enumerated() where m.screens[lying.screen].fade >= 0.999 {
             let standing = m.logStanding(i, stage.world.clearings, stage.clearingCount)
             guard standing > 0.005 else { continue }
-            one(arena, ClayInstance(lying.matrix * .scale(standing), emissive: lift(log: i), lit: .shaded), enc)
+            one(arena, chosen(ClayInstance(lying.matrix * .scale(standing), lit: .shaded), lifted.logs.contains(i)), enc)
             draw(log, 1, enc)
         }
         // Hills, far off.
@@ -285,22 +285,21 @@ final class MeadowDrawer {
 
     // MARK: chosen while editing
 
-    /// The big things chosen in the editor, each lit a little so it reads as chosen at a glance (the rings
-    /// round its ground and its crown are `EditDrawer`'s): trees and logs by index, young trees by bed and
+    /// The big things chosen in the editor, each lit a little brighter so it reads as chosen at a glance while
+    /// keeping its own colours (the rings round its ground and its crown are `EditDrawer`'s, and carry the focus
+    /// colour; a tint of it over a crown read as a blue tree): trees and logs by index, young trees by bed and
     /// slot. Worked out when the choice or the scenery changes, never per frame.
     private var lifted = (trees: Set<Int>(), logs: Set<Int>(), young: Set<SIMD2<Int32>>())
     private var liftedFor: (selected: [Int], version: Int, editing: Bool) = ([], -1, false)
-    private var liftColor = Vec3.zero
 
-    /// How much a chosen big thing is lit: a touch of the focus colour over its own.
-    static let liftStrength: Float = 0.22
+    /// How much brighter a chosen big thing's own colours are drawn.
+    static let chosenLift: Float = 1.14
 
     private func updateLifted(_ stage: Stage, _ m: Meadow) {
         let selected = stage.editing ? stage.editMarks.selected : []
         guard selected != liftedFor.selected || m.sceneryVersion != liftedFor.version || stage.editing != liftedFor.editing else { return }
         liftedFor = (selected, m.sceneryVersion, stage.editing)
         lifted = ([], [], [])
-        liftColor = stage.settings.chrome.focus.linearRGB * Self.liftStrength
         for i in selected where m.laid.indices.contains(i) {
             switch m.laid[i] {
             case .tree(let t): lifted.trees.insert(t)
@@ -311,8 +310,13 @@ final class MeadowDrawer {
         }
     }
 
-    private func lift(tree i: Int) -> Vec3 { lifted.trees.contains(i) ? liftColor : .zero }
-    private func lift(log i: Int) -> Vec3 { lifted.logs.contains(i) ? liftColor : .zero }
+    /// `instance` as a chosen thing is drawn (when `chosen`): its own colours a touch brighter.
+    private func chosen(_ instance: ClayInstance, _ chosen: Bool) -> ClayInstance {
+        guard chosen else { return instance }
+        var lit = instance
+        lit.tint = Vec4(instance.tint.x * Self.chosenLift, instance.tint.y * Self.chosenLift, instance.tint.z * Self.chosenLift, instance.tint.w)
+        return lit
+    }
 
     /// Gathers this frame's rooted plants and works out, once per plant, what its vertices share.
     /// Encoded before the render pass.
@@ -334,8 +338,7 @@ final class MeadowDrawer {
                     let first = n
                     for (i, matrix) in bed.matrices.enumerated() where (m.screens[screens[i]].fade < 0.999) == faded {
                         let chosen = !lifted.young.isEmpty && lifted.young.contains(SIMD2(Int32(b), Int32(i)))
-                        inst.pointer[n] = ClayInstance(matrix, tint: Vec4(1, 1, 1, m.screens[screens[i]].fade), emissive: chosen ? liftColor : .zero,
-                                                       sway: bed.sway, lit: .rooted)
+                        inst.pointer[n] = self.chosen(ClayInstance(matrix, tint: Vec4(1, 1, 1, m.screens[screens[i]].fade), sway: bed.sway, lit: .rooted), chosen)
                         n += 1
                     }
                     if n > first { rootedDraws.append(RootedDraw(mesh: bed.plant, first: first, count: n - first, faded: faded)) }
@@ -534,14 +537,14 @@ final class MeadowDrawer {
             for (i, tree) in m.treeShapes.enumerated() where m.screens[tree.screen].fade < 0.999 {
                 let standing = m.treeStanding(i, stage.world.clearings, stage.clearingCount)
                 guard standing > 0.005 else { continue }
-                one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing),
-                                        tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), emissive: lift(tree: i), lit: []), enc)
+                one(arena, chosen(ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing),
+                                               tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), lit: []), lifted.trees.contains(i)), enc)
                 draw(trees[i], 1, enc)
             }
             for (i, lying) in m.logs.enumerated() where m.screens[lying.screen].fade < 0.999 {
                 let standing = m.logStanding(i, stage.world.clearings, stage.clearingCount)
                 guard standing > 0.005 else { continue }
-                one(arena, ClayInstance(lying.matrix * .scale(standing), tint: Vec4(1, 1, 1, m.screens[lying.screen].fade), emissive: lift(log: i), lit: .shaded), enc)
+                one(arena, chosen(ClayInstance(lying.matrix * .scale(standing), tint: Vec4(1, 1, 1, m.screens[lying.screen].fade), lit: .shaded), lifted.logs.contains(i)), enc)
                 draw(log, 1, enc)
             }
             drawRooted(faded: true, enc)
@@ -620,3 +623,4 @@ final class MeadowDrawer {
         }
     }
 }
+

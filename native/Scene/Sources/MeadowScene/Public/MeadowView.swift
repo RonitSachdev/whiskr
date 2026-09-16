@@ -101,8 +101,8 @@ public final class MeadowView: MTKView {
     /// While editing: a right-click's menu for the scenery's thing under it (nil: the grass), at that point of
     /// the view. When it returns a menu, the menu shows and the right button does not slide the view.
     public var onEditMenu: ((Int?, NSPoint) -> NSMenu?)?
-    /// While editing: called after each frame drawn, so what floats over the meadow (the selection's bar, the
-    /// compass) can follow the view.
+    /// While editing: called after each frame drawn, so what floats over the meadow (the selection's bar) can
+    /// follow the view.
     public var onEditViewChanged: (() -> Void)?
     /// While editing: a scroll or a swipe over the meadow, offered to the editor first (⌥-scroll turns what
     /// is about to be placed); return true when taken, else it zooms as always.
@@ -166,6 +166,13 @@ public final class MeadowView: MTKView {
     public func screenRect(of item: MeadowItem) -> CGRect? {
         guard let box = stage.screenBox(of: item), !box.isEmpty else { return nil }
         return CGRect(x: CGFloat(box.left), y: bounds.height - CGFloat(box.bottom), width: CGFloat(box.right - box.left), height: CGFloat(box.bottom - box.top))
+    }
+
+    /// How gladly a cat walks at a spot on the ground (x, z), 0…1: 1 on a painted path or a stepping stone,
+    /// less on mown lawn, least in the long wild grass and on tilled soil (the meadow's own grass where no
+    /// meadow is shown). For whatever leads a cat about the meadow.
+    public func walkingEase(at spot: SIMD2<Float>) -> Float {
+        stage.meadow?.walkingEase(spot.x, spot.y) ?? Meadow.walkingEase(.wild)
     }
 
     /// The blankets whose blanket and flag are not wholly in view, as of the last frame: past the top edge
@@ -611,6 +618,14 @@ public final class MeadowView: MTKView {
     }
     /// Diagnostics: resting at the slow tick now (`restRate`, the scene's time at `restPace`).
     @_spi(Diagnostics) public var isResting: Bool { resting && pace < Self.restPace + 0.05 }
+    /// Diagnostics: what keeps the meadow from resting now, in words.
+    @_spi(Diagnostics) public var restBlockers: String {
+        let actors = stage.village?.plots.flatMap { Array($0.actors.values) } ?? []
+        return String(format: "%.1f s since a change", clock() - lastChange) + " (woken at \(lastWake.file):\(lastWake.line))"
+            + ", reveal \(pendingReveal != nil), follow \(pendingFollow != nil), camera moving \(stage.camera.moving)"
+            + ", notes \(stage.village.map { $0.notes.count + $0.waitingNotes.count } ?? 0), errands \(actors.filter { $0.errand != nil }.count)"
+            + ", leaving \(actors.filter(\.leaving).count), cats not still \(actors.filter { !$0.cat.still }.count)"
+    }
 
     /// Diagnostics: draws as if the view were on screen even while its window is covered, for measuring
     /// what the meadow costs in a run that must stay out of sight. Such a window gets no frames from the
@@ -636,7 +651,10 @@ public final class MeadowView: MTKView {
     enum Wake { case input, change }
     /// When you last did something to the view, and when anything at all last changed.
     private var lastInput = CACurrentMediaTime(), lastChange = CACurrentMediaTime()
-    func wake(_ cause: Wake = .change) {
+    /// Where the view was last woken from (diagnostics, `restBlockers`), kept without allocating.
+    private var lastWake: (file: StaticString, line: UInt) = ("", 0)
+    func wake(_ cause: Wake = .change, _ file: StaticString = #fileID, _ line: UInt = #line) {
+        lastWake = (file, line)
         let now = clock()
         if cause == .input { lastInput = now }
         lastChange = now

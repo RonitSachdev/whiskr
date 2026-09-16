@@ -20,7 +20,12 @@ enum MeadowWords {
         case "fungus.flyAgaric": String(localized: "Fly agaric", comment: "Meadow editor: a thing's name")
         case "stone.stone": String(localized: "Stone", comment: "Meadow editor: a thing's name")
         case "stone.mossy": String(localized: "Mossy stone", comment: "Meadow editor: a thing's name")
+        case "stone.stepping": String(localized: "Stepping stone", comment: "Meadow editor: a thing's name")
         case "wood.fallenLog": String(localized: "Fallen log", comment: "Meadow editor: a thing's name")
+        case "ground.path": String(localized: "Path", comment: "Meadow editor: a ground paint's name (worn earth)")
+        case "ground.lawn": String(localized: "Lawn", comment: "Meadow editor: a ground paint's name (grass mown short)")
+        case "ground.soil": String(localized: "Soil", comment: "Meadow editor: a ground paint's name (bare earth for flower beds)")
+        case wildGround: String(localized: "Wild Grass", comment: "Meadow editor: the Ground tool's paint that brings back the meadow's own long grass")
         default: String(localized: "Thing", comment: "Meadow editor: a thing with no name of its own")
         }
     }
@@ -65,6 +70,8 @@ enum MeadowWords {
             String(localized: "As small as it grows", comment: "Meadow editor: a living thing cannot shrink more")
         case .keepsItsSize:
             String(localized: "Only living things change size", comment: "Meadow editor: stones and made things keep their size")
+        case .groundFull:
+            String(localized: "The ground holds as much painting as a meadow can keep", comment: "Meadow editor: the painted ground's detail reached what a meadow file holds")
         }
     }
 
@@ -100,6 +107,8 @@ enum MeadowWords {
     /// The Brush's mix of the meadow's own wildflowers, and the Eraser's choice of any small thing.
     static var wildflowers: String { String(localized: "Wildflowers", comment: "Meadow editor's tray: the Brush's mix of daisies, buttercups, lupins and poppies") }
     static var anyKind: String { String(localized: "Any Kind", comment: "Meadow editor's tray: the Eraser clears whatever small thing it passes") }
+    /// The Ground tool's paint that brings the meadow's own long grass back (the catalog's eraser of paints).
+    static let wildGround = "ground.wild"
 
     static func density(_ density: MeadowBrush.Density) -> String {
         switch density {
@@ -121,6 +130,9 @@ enum MeadowWords {
         case .erase:
             String(localized: "Click a thing to take it away · drag to sweep plants and stones · [ and ] change the size",
                    comment: "Meadow editor's tray: what to do with the Eraser")
+        case .ground:
+            String(localized: "Drag to paint the ground · ⌥-drag brings the wild grass back · [ and ] change the size",
+                   comment: "Meadow editor's tray: what to do with the Ground tool")
         }
     }
 
@@ -148,6 +160,7 @@ enum MeadowWords {
         case "fungus.flyAgaric": String(localized: "Fly agarics", comment: "Meadow editor: a clump of them, for VoiceOver")
         case "stone.stone": String(localized: "Stones", comment: "Meadow editor: a clump of them, for VoiceOver")
         case "stone.mossy": String(localized: "Mossy stones", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "stone.stepping": String(localized: "Stepping stones", comment: "Meadow editor: a clump of them, for VoiceOver")
         case EditorTray.wildflowers: wildflowers
         default: name(id)
         }
@@ -164,6 +177,15 @@ enum MeadowWords {
     static func shuffle(_ ids: [String]) -> String { String(localized: "Shuffle \(things(ids))", comment: "Meadow editor: a step's name") }
     static func place(_ ids: [String]) -> String { String(localized: "Place \(things(ids))", comment: "Meadow editor: a step's name") }
     static func erase(_ ids: [String]) -> String { String(localized: "Erase \(things(ids))", comment: "Meadow editor: a step's name") }
+    /// A Ground stroke: "Paint Path", "Paint Wild Grass".
+    static func paint(_ id: String) -> String {
+        String(localized: "Paint \(name(id))", comment: "Meadow editor: a step's name (a Ground stroke and what it painted)")
+    }
+    /// A row of stepping stones laid along a drag: "Lay 9 Stepping Stones" (one alone is placed).
+    static func lay(_ count: Int) -> String {
+        guard count != 1 else { return place(["stone.stepping"]) }
+        return String(localized: "Lay \(count) Stepping Stones", comment: "Meadow editor: a step's name (stepping stones laid along a drag)")
+    }
     /// A Brush stroke: "Brush Daisies", "Brush Wildflowers".
     static func brush(_ kind: String) -> String {
         String(localized: "Brush \(clumpName(kind))", comment: "Meadow editor: a step's name (a Brush stroke and what it planted)")

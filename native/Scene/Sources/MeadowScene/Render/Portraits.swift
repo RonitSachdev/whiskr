@@ -6,7 +6,9 @@ import simd
 // a little clump of several kinds, as the Brush's wildflowers) standing on a small round of grass, lit as on a
 // clear day, seen from a little above and to one side, on a background the caller gives (the tile's colour in
 // the theme), so the edges are smooth on it. Trees are the Default's own (the first of each kind), so the tray
-// shows the meadow people know.
+// shows the meadow people know. A ground paint is pictured as a round of the meadow's own turf, its ground and
+// grass drawn by the meadow's shaders from a little ground map of its own: a path worn across it, a lawn mown
+// within a rim of long grass, a bed of soil in it, or the long grass alone.
 
 final class Portraits {
     private let gpu: GPU
@@ -16,6 +18,10 @@ final class Portraits {
     /// Shapes made for pictures, kept: drawing one again makes nothing.
     private var meshes: [ShapeKey: Mesh] = [:]
     private var sods: [Int: Mesh] = [:]
+    /// A painted turf's pieces, made when first pictured: its ground map (one texture, painted again for each
+    /// paint: pictures are drawn one at a time), its ground's disc, and its grass.
+    private var turf: (map: MTLTexture, ground: MTLBuffer, groundIndex: MTLBuffer, groundCount: Int, blades: MTLBuffer, bladeIndex: MTLBuffer,
+                       bladeCount: Int, tufts: MTLBuffer, tuftCount: Int)?
 
     init(gpu: GPU) {
         self.gpu = gpu
@@ -35,7 +41,9 @@ final class Portraits {
     }
 
     /// The picture of `ids`, `pixels` square, over `background` (sRGB); nil when the scene draws none of them.
+    /// One ground paint's id pictures that paint on a round of turf.
     func image(of ids: [String], pixels: Int, background: MeadowColor) -> CGImage? {
+        if ids.count == 1, let paint = MeadowScenery.Ground.Paint(id: ids[0]) { return image(of: paint, pixels: pixels, background: background) }
         let things = Self.sitters(ids)
         let shapes = things.compactMap { thing -> (thing: MeadowScenery.Thing, mesh: Mesh, matrix: Mat4)? in
             guard let alone = Meadow.alone(thing) else { return nil }
@@ -57,13 +65,29 @@ final class Portraits {
         let ground = Float(Land.ground)
         let sodMatrix = Mat4.translation(Vec3(0, ground, 0))
 
-        // Seen from 34° to the side and 22° above, square on to the picture (no perspective at this size), and
-        // framed to fill it with a little room round.
-        let bearing: Float = 34 * .pi / 180, pitch: Float = 22 * .pi / 180
+        return draw(pixels: pixels, background: background, pitch: 22, boxes: shapes.map { ($0.mesh.bounds, $0.matrix) } + [(sod.bounds, sodMatrix)]) { enc in
+            enc.setRenderPipelineState(self.gpu.clay)
+            enc.setCullMode(.back)
+            for (shape, matrix) in [(sod, sodMatrix)] + shapes.map({ ($0.mesh, $0.matrix) }) {
+                var instance = ClayInstance(matrix, lit: [])
+                enc.setVertexBytes(&instance, length: MemoryLayout<ClayInstance>.stride, index: 3)
+                enc.setVertexBuffer(shape.vertices, offset: 0, index: 1)
+                enc.drawIndexedPrimitives(type: .triangle, indexCount: shape.indexCount, indexType: .uint32, indexBuffer: shape.indices, indexBufferOffset: 0)
+            }
+        }
+    }
+
+    /// A picture `pixels` square over `background`, seen from 34° to the side and `pitch` degrees above, square
+    /// on to the picture (no perspective at this size), framed to fill it with a little room round what `boxes`
+    /// hold (bounds, as placed); `encode` draws into it, the frame and an empty world bound, and `map` as the
+    /// ground's map.
+    private func draw(pixels: Int, background: MeadowColor, pitch degrees: Float, boxes: [((min: Vec3, max: Vec3), Mat4)], map: MTLTexture? = nil,
+                      _ encode: (MTLRenderCommandEncoder) -> Void) -> CGImage? {
+        let bearing: Float = 34 * .pi / 180, pitch: Float = degrees * .pi / 180
         let toward = Vec3(sin(bearing) * cos(pitch), sin(pitch), cos(bearing) * cos(pitch))
         let look = Mat4.lookAt(eye: toward * 100, target: .zero)
         var low = Vec3(repeating: .infinity), high = Vec3(repeating: -.infinity)
-        for (bounds, m) in shapes.map({ ($0.mesh.bounds, $0.matrix) }) + [(sod.bounds, sodMatrix)] {
+        for (bounds, m) in boxes {
             for corner in 0..<8 {
                 let c = Vec3(corner & 1 == 0 ? bounds.min.x : bounds.max.x, corner & 2 == 0 ? bounds.min.y : bounds.max.y,
                              corner & 4 == 0 ? bounds.min.z : bounds.max.z)
@@ -107,23 +131,16 @@ final class Portraits {
         pass.depthAttachment.clearDepth = 1
         pass.depthAttachment.storeAction = .dontCare
         guard let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return nil }
-        enc.setRenderPipelineState(gpu.clay)
         enc.setDepthStencilState(gpu.depthWrite)
         enc.setFrontFacing(.counterClockwise)
-        enc.setCullMode(.back)
         enc.setVertexBuffer(frame, offset: 0, index: 0)
         enc.setFragmentBuffer(frame, offset: 0, index: 0)
         enc.setVertexBuffer(world, offset: 0, index: 2)
         enc.setFragmentBuffer(world, offset: 0, index: 2)
         enc.setVertexBuffer(gpu.placeholder, offset: 0, index: 4)
-        enc.setVertexTexture(gpu.blankGroundMap, index: 0)
-        enc.setFragmentTexture(gpu.blankGroundMap, index: 0)
-        for (shape, matrix) in [(sod, sodMatrix)] + shapes.map({ ($0.mesh, $0.matrix) }) {
-            var instance = ClayInstance(matrix, lit: [])
-            enc.setVertexBytes(&instance, length: MemoryLayout<ClayInstance>.stride, index: 3)
-            enc.setVertexBuffer(shape.vertices, offset: 0, index: 1)
-            enc.drawIndexedPrimitives(type: .triangle, indexCount: shape.indexCount, indexType: .uint32, indexBuffer: shape.indices, indexBufferOffset: 0)
-        }
+        enc.setVertexTexture(map ?? gpu.blankGroundMap, index: 0)
+        enc.setFragmentTexture(map ?? gpu.blankGroundMap, index: 0)
+        encode(enc)
         enc.endEncoding()
         if let blit = cb.makeBlitCommandEncoder() { blit.synchronize(resource: targets.resolve); blit.endEncoding() }
         cb.commit()
@@ -135,6 +152,104 @@ final class Portraits {
         let info = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
         return CGImage(width: pixels, height: pixels, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: pixels * 4, space: space, bitmapInfo: info,
                        provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent)
+    }
+
+    // MARK: painted turf
+
+    /// How wide a painted turf's round is, in units: a path across it two strides wide, a lawn's stripe, a bed.
+    static let turfRadius: Float = 3.2
+
+    /// A paint (or the wild grass) on a round of the meadow's turf, seen from a little higher than a thing so
+    /// the ground shows between the blades.
+    private func image(of paint: MeadowScenery.Ground.Paint, pixels: Int, background: MeadowColor) -> CGImage? {
+        guard pixels > 0, let turf = turf ?? makeTurf() else { return nil }
+        self.turf = turf
+        // The paint, in the map's cells round the middle (the map's own texels: the paint grid's cells and its margin).
+        let r = Self.turfRadius
+        let cells = Int((r / GroundMap.cell).rounded(.up)) + 2
+        let middle = GroundMap.side / 2, width = 2 * cells
+        var bytes = [UInt8](repeating: 0, count: width * width * 4)
+        for row in 0..<width {
+            for column in 0..<width {
+                let p = GroundMap.middle(middle - cells + column, middle - cells + row)
+                let channel: Int?
+                switch paint {
+                case .path: channel = abs(p.y - 0.35 * sin(p.x * 0.8)) < 0.95 ? 0 : nil
+                case .lawn: channel = simd_length(p) < r * 0.92 ? 1 : nil
+                case .soil: channel = simd_length(p * Vec2(0.8, 1.1)) < r * 0.64 ? 2 : nil
+                case .wild: channel = nil
+                }
+                if let channel { bytes[(row * width + column) * 4 + channel] = 255 }
+            }
+        }
+        turf.map.replace(region: MTLRegionMake2D(middle - cells, middle - cells, width, width), mipmapLevel: 0, withBytes: bytes, bytesPerRow: width * 4)
+
+        let sodKey = Int((r * 20).rounded())
+        let sod = sods[sodKey] ?? gpu.mesh(Self.sod(r), label: "portrait grass")
+        sods[sodKey] = sod
+        let ground = Float(Land.ground)
+        let sodMatrix = Mat4.translation(Vec3(0, ground, 0))
+        let blades = (min: Vec3(-r, ground, -r), max: Vec3(r, ground + 1.6, r))
+        return draw(pixels: pixels, background: background, pitch: 38, boxes: [(sod.bounds, sodMatrix), (blades, .identity)], map: turf.map) { enc in
+            enc.setRenderPipelineState(self.gpu.clay)
+            enc.setCullMode(.back)
+            var instance = ClayInstance(sodMatrix, lit: [])
+            enc.setVertexBytes(&instance, length: MemoryLayout<ClayInstance>.stride, index: 3)
+            enc.setVertexBuffer(sod.vertices, offset: 0, index: 1)
+            enc.drawIndexedPrimitives(type: .triangle, indexCount: sod.indexCount, indexType: .uint32, indexBuffer: sod.indices, indexBufferOffset: 0)
+            enc.setCullMode(.none)
+            enc.setRenderPipelineState(self.gpu.grass)
+            enc.setVertexBuffer(turf.blades, offset: 0, index: 1)
+            enc.setVertexBuffer(turf.tufts, offset: 0, index: 3)
+            enc.drawIndexedPrimitives(type: .triangle, indexCount: turf.bladeCount, indexType: .uint16, indexBuffer: turf.bladeIndex, indexBufferOffset: 0,
+                                      instanceCount: turf.tuftCount)
+            enc.setRenderPipelineState(self.gpu.ground)
+            enc.setVertexBuffer(turf.ground, offset: 0, index: 1)
+            enc.drawIndexedPrimitives(type: .triangle, indexCount: turf.groundCount, indexType: .uint32, indexBuffer: turf.groundIndex, indexBufferOffset: 0)
+            enc.setCullMode(.back)
+        }
+    }
+
+    /// A turf's pieces: a ground map with nothing on it, a disc of ground just over the sod's top, and tufts of
+    /// the meadow's grass over it as thick as round the picnic ground, from a stream of their own.
+    private func makeTurf() -> (map: MTLTexture, ground: MTLBuffer, groundIndex: MTLBuffer, groundCount: Int, blades: MTLBuffer, bladeIndex: MTLBuffer,
+                                bladeCount: Int, tufts: MTLBuffer, tuftCount: Int)? {
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: GroundMap.side, height: GroundMap.side, mipmapped: false)
+        d.usage = .shaderRead
+        d.storageMode = .shared
+        guard let map = gpu.device.makeTexture(descriptor: d) else { return nil }
+        map.replace(region: MTLRegionMake2D(0, 0, GroundMap.side, GroundMap.side), mipmapLevel: 0, withBytes: GroundMap().surface, bytesPerRow: GroundMap.side * 4)
+        map.label = "portrait ground map"
+        let r = Self.turfRadius * 0.97, y = Float(Land.ground) + 0.01, rings = 12, around = 48
+        var vertices: [Float] = [0, y, 0, 0, 1, 0], indices: [UInt32] = []
+        for ring in 1...rings {
+            for k in 0..<around {
+                let a = Float(k) / Float(around) * 2 * .pi, out = r * Float(ring) / Float(rings)
+                vertices += [cos(a) * out, y, sin(a) * out, 0, 1, 0]
+            }
+        }
+        for k in 0..<around {
+            let next = (k + 1) % around
+            indices += [0, UInt32(1 + next), UInt32(1 + k)]
+            for ring in 1..<rings {
+                let a = UInt32(1 + (ring - 1) * around + k), b = UInt32(1 + (ring - 1) * around + next)
+                let c = a + UInt32(around), e = b + UInt32(around)
+                indices += [a, b, c, b, e, c]
+            }
+        }
+        var random = Seeded(0x7af)
+        var tufts: [GrassField.Tuft] = []
+        let count = Int((Float.pi * r * r * 5).rounded())
+        while tufts.count < count {
+            let x = (random.float() * 2 - 1) * r, z = (random.float() * 2 - 1) * r
+            guard x * x + z * z < r * r * 0.96 else { continue }
+            let tall = 0.95 + random.float() * 0.45, wide = 0.95 + random.float() * 0.5
+            tufts.append(GrassField.Tuft(rootYaw: Vec4(x, y, z, random.float() * 2 * .pi), scale: Vec4(wide, tall, 0, 0)))
+        }
+        let blade = GrassField.tuft(GrassField.bands[0].levels)
+        return (map, gpu.buffer(vertices, label: "portrait ground"), gpu.buffer(indices, label: "portrait ground index"), indices.count,
+                gpu.buffer(blade.vertices, label: "portrait blades"), gpu.buffer(blade.indices, label: "portrait blade index"), blade.indices.count,
+                gpu.buffer(tufts, label: "portrait tufts"), tufts.count)
     }
 
     /// The textures a picture `pixels` square is drawn into, made once for each size.

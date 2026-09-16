@@ -1253,6 +1253,166 @@
         }
       }
     },
+    "Drag to paint the ground · ⌥-drag brings the wild grass back · [ and ] change the size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ドラッグで地面を塗る · ⌥-ドラッグで野の草に戻す · [ と ] で大きさを変える"
+          }
+        }
+      }
+    },
+    "Editor View": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集中の視点"
+          }
+        }
+      }
+    },
+    "Face North": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北を向く"
+          }
+        }
+      }
+    },
+    "Frame the Picnic Ground": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ピクニック場を画面に収める"
+          }
+        }
+      }
+    },
+    "Ground brush size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地面ブラシの大きさ"
+          }
+        }
+      }
+    },
+    "Lawn": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "芝生"
+          }
+        }
+      }
+    },
+    "Lay %lld Stepping Stones": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "飛び石を%lld個並べる"
+          }
+        }
+      }
+    },
+    "Paint %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を塗る"
+          }
+        }
+      }
+    },
+    "Path": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小道"
+          }
+        }
+      }
+    },
+    "Soil": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土"
+          }
+        }
+      }
+    },
+    "Stepping stone": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "飛び石"
+          }
+        }
+      }
+    },
+    "Stepping stones": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "飛び石"
+          }
+        }
+      }
+    },
+    "The ground holds as much painting as a meadow can keep": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地面にはこれ以上塗れません（草原ファイルに収まる限度です）"
+          }
+        }
+      }
+    },
+    "Turn View Left": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "視点を左に回す"
+          }
+        }
+      }
+    },
+    "Turn View Right": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "視点を右に回す"
+          }
+        }
+      }
+    },
+    "Wild Grass": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "野の草"
+          }
+        }
+      }
+    },
     "blinking": {
       "comment": "Import Settings summary",
       "localizations": {
@@ -1568,6 +1728,7 @@
       }
     },
     "Compass": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -1578,6 +1739,7 @@
       }
     },
     "Compass: click to face north, double-click to frame your workspaces again": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2827,6 +2989,7 @@
       }
     },
     "Facing east": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2837,6 +3000,7 @@
       }
     },
     "Facing north": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2847,6 +3011,7 @@
       }
     },
     "Facing north-east": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2857,6 +3022,7 @@
       }
     },
     "Facing north-west": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2867,6 +3033,7 @@
       }
     },
     "Facing south": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2877,6 +3044,7 @@
       }
     },
     "Facing south-east": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2887,6 +3055,7 @@
       }
     },
     "Facing south-west": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -2897,6 +3066,7 @@
       }
     },
     "Facing west": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -4472,6 +4642,7 @@
       }
     },
     "N": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -7785,6 +7956,7 @@
       }
     },
     "Turns the view back to north": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {

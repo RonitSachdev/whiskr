@@ -13,6 +13,7 @@ struct MeadowFixtureTests {
     static let released: [String: String] = [
         "v1-catalog1-default.whiskrmeadow": "ddbc4e022283614bc5927324d68b865382980a714fad6757c6c52256ff4ba193",
         "v1-catalog1-everything.whiskrmeadow": "c2ffc31aae89aefbc0ba491fee1649dd63332537348cc01853bc6f0fd6ecd58b",
+        "v1-catalog1-ground.whiskrmeadow": "986cb3512fa29fb125f55687ea215f2673f82fad1049080d6d64022548917bca",
         "v1-future-minor.whiskrmeadow": "6f36745e3ea8a55fbeff9b26a4a897cd8a82527b5b63c5aeb5582d5a92c38f1c",
         "v2-major.whiskrmeadow": "16d72a2f9d072d309420650a144a9db6a9cbd9ee4628a011bd59487feaf78afb",
     ]
