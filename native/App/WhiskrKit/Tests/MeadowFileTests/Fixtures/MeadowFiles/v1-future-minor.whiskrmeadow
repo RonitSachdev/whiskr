@@ -1,0 +1,30 @@
+{
+  "author": "Hana",
+  "base": "meadow",
+  "catalog": 4,
+  "description": "From a newer Whiskr.",
+  "formatMinor": 3,
+  "ground": {
+    "cells": 512,
+    "heights": { "scale": 0.25, "values": [0, 1, 2] },
+    "paints": ["ground.path", "ground.moss"],
+    "reach": 150,
+    "runs": [0, 1000, 1, 24, 2, 40, 0, 261080]
+  },
+  "items": [
+    { "at": [10, 10], "glow": { "hue": 0.25 }, "id": "tree.oak", "seed": 42, "turn": 1.5 },
+    { "at": [24, 10], "id": "work.bench", "params": { "colour": "lavender", "length": "long" } },
+    { "at": [-12.5, 33.125], "id": "water.pond", "lilies": [1, 2, 3], "params": { "radius": 6.50 } },
+    { "at": [5, 5], "id": "flower.daisy", "size": [1.1, 1, 0.9], "variant": 2 },
+    { "id": "garden.hedgeRun", "note": "Ünïcödé ✿  ", "points": [[0, 60], [10, 60]] },
+    { "at": [7, 7], "id": "cat.box", "size": [1.2, 1.2, 1.2] }
+  ],
+  "lights": [
+    { "at": [1, 2], "colour": "warm" }
+  ],
+  "name": "Newer Meadow",
+  "needsCatalog": 3,
+  "weather": { "pinned": "snow", "strength": 1e2 },
+  "whiskrMeadow": 1,
+  "writtenBy": "2.1.0"
+}

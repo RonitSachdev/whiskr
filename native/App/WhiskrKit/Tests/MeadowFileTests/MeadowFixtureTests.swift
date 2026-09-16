@@ -1,0 +1,108 @@
+import CryptoKit
+import Foundation
+import Testing
+@testable import MeadowFile
+
+// The files that lock the format: one per format version and catalog. A released fixture is never
+// edited; a new format or catalog adds its own files (and a migration test from each older one).
+
+@Suite("Meadow files: fixtures")
+struct MeadowFixtureTests {
+    /// Every released fixture and its SHA-256. A change here means a released file was edited: add a
+    /// new fixture instead.
+    static let released: [String: String] = [
+        "v1-catalog1-everything.whiskrmeadow": "c2ffc31aae89aefbc0ba491fee1649dd63332537348cc01853bc6f0fd6ecd58b",
+        "v1-future-minor.whiskrmeadow": "6f36745e3ea8a55fbeff9b26a4a897cd8a82527b5b63c5aeb5582d5a92c38f1c",
+        "v2-major.whiskrmeadow": "16d72a2f9d072d309420650a144a9db6a9cbd9ee4628a011bd59487feaf78afb",
+    ]
+
+    @Test("released fixtures are never edited")
+    func locked() throws {
+        let present = try FileManager.default.contentsOfDirectory(atPath: Fixtures.folder.path).filter { $0.hasSuffix(".whiskrmeadow") }
+        #expect(Set(present) == Set(Self.released.keys), "every fixture is listed with its digest")
+        for (name, digest) in Self.released {
+            let hash = SHA256.hash(data: try Fixtures.data(name)).map { String(format: "%02x", $0) }.joined()
+            #expect(hash == digest, "\(name)")
+        }
+    }
+
+    @Test("the catalog-1 meadow with everything in it reads as the golden model and writes back byte for byte")
+    func everything() throws {
+        let data = try Fixtures.data("v1-catalog1-everything.whiskrmeadow")
+        let reading = try MeadowDocument.read(data)
+        var document = reading.document
+        #expect(document.readFrom == .init(formatMajor: 1, formatMinor: 0, writtenBy: "0.1.0", catalog: 1, needsCatalog: 1))
+        #expect(reading.leftOutside == 0 && reading.newerThings == 0 && !reading.keepsNewerContent)
+        document.readFrom = nil
+        #expect(document == Everything.document)
+        #expect(try Everything.document.fileData(writtenBy: "0.1.0") == data)
+    }
+
+    @Test("the everything fixture uses every catalog-1 thing, paint, parameter, choice and shape")
+    func everythingCoversTheCatalog() throws {
+        let document = try MeadowDocument.read(try Fixtures.data("v1-catalog1-everything.whiskrmeadow")).document
+        let used = Set(document.items.map(\.asset)).union(document.ground?.paints ?? [])
+        for asset in MeadowCatalog.one.assets where asset.nature != .eraser {
+            #expect(used.contains(asset.id), "\(asset.id)")
+            let items = document.items.filter { $0.asset == asset.id }
+            #expect(Set(asset.variants.indices).isSubset(of: Set(items.map(\.variant)).union([0])), "\(asset.id) shapes")
+            for parameter in asset.parameters {
+                #expect(items.contains { $0.params[parameter.name] != nil }, "\(asset.id).\(parameter.name)")
+            }
+        }
+    }
+
+    @Test("a newer format major is refused, naming the Whiskr that wrote it")
+    func newerMajor() throws {
+        #expect(readError(try Fixtures.data("v2-major.whiskrmeadow")) == .needsNewerWhiskr(writtenBy: "3.2.0"))
+    }
+
+    @Test("a meadow from a newer minor and catalog opens; moving a thing and saving keeps everything newer exactly")
+    func futureMinorRoundTrip() throws {
+        let data = try Fixtures.data("v1-future-minor.whiskrmeadow")
+        let reading = try MeadowDocument.read(data)
+        #expect(reading.newerThings == 2)
+        #expect(reading.keepsNewerContent)
+        #expect(reading.document.readFrom?.formatMinor == 3 && reading.document.readFrom?.needsCatalog == 3)
+        let original = try MeadowJSON.parse(data, limits: MeadowFormat.limits).object!
+
+        // Move the bench (a known thing), save, read again.
+        var document = reading.document
+        let bench = try #require(document.entries.firstIndex { if case .item(let item) = $0 { item.asset == "work.bench" } else { false } })
+        guard case .item(var item) = document.entries[bench] else { Issue.record("not an item"); return }
+        item.move(by: 2, -1)
+        document.entries[bench] = .item(item)
+        let saved = try document.fileData(writtenBy: "0.1.0")
+        let again = try MeadowJSON.parse(saved, limits: MeadowFormat.limits).object!
+
+        // Every newer section, thing, field, parameter, choice, shape and paint is as it was, in order.
+        for key in ["weather", "lights"] { #expect(again[key] == original[key], "\(key)") }
+        let before = original["items"]!.array!, after = again["items"]!.array!
+        #expect(before.count == after.count)
+        for (i, (old, new)) in zip(before, after).enumerated() {
+            var old = old.object!, new = new.object!
+            if old["id"]?.string == "work.bench" {
+                #expect(new["at"] == .array([.number("26"), .number("9")]))
+                old["at"] = nil
+                new["at"] = nil
+            }
+            #expect(MeadowJSON.object(old) == MeadowJSON.object(new), "items[\(i)]")
+        }
+        #expect(again["ground"] == original["ground"])
+        #expect(again["formatMinor"] == .number("3") && again["needsCatalog"] == .number("3") && again["catalog"] == .number("1"))
+        #expect(again["whiskrMeadow"] == .number("1") && again["writtenBy"] == .string("0.1.0"))
+        // And read again, it is the same meadow.
+        var back = try MeadowDocument.read(saved).document
+        back.readFrom = nil
+        document.readFrom = nil
+        #expect(back == document)
+    }
+
+    @Test("every older fixture migrates to the newest model and equals its golden model")
+    func migrations() throws {
+        // Format 1 is the newest: its fixture is read through the (empty) chain to the golden model.
+        var document = try MeadowDocument.read(try Fixtures.data("v1-catalog1-everything.whiskrmeadow")).document
+        document.readFrom = nil
+        #expect(document == Everything.document)
+    }
+}

@@ -13,6 +13,10 @@ import PackageDescription
 //
 // `WhiskrMeadow` is the one piece that knows the meadow scene (`native/Scene`): it turns the
 // app's model into the scene's world, so `WhiskrKit` itself stays free of Metal and AppKit.
+//
+// `MeadowFile` is the `.whiskrmeadow` format: the meadow document, the asset catalog, reading (with the
+// checks a file from anyone needs), migrations and writing. Foundation only and depending on nothing
+// else, so the same checks can run anywhere a meadow file is looked at.
 let package = Package(
     name: "WhiskrKit",
     // What the Kit writes for people to read (a Claude's activity line, the steps of its story) is in
@@ -24,6 +28,7 @@ let package = Package(
         .library(name: "WhiskrMeadow", targets: ["WhiskrMeadow"]),
         .library(name: "TerminalHost", targets: ["TerminalHost"]),
         .library(name: "Paw", targets: ["Paw"]),
+        .library(name: "MeadowFile", targets: ["MeadowFile"]),
         .executable(name: "paw", targets: ["PawTool"]),
     ],
     dependencies: [
@@ -47,9 +52,11 @@ let package = Package(
         .target(name: "TerminalHost", dependencies: ["WhiskrKit"]),
         .target(name: "Paw", dependencies: ["TerminalHost", "WhiskrKit"]),
         .executableTarget(name: "PawTool", dependencies: ["Paw"]),
+        .target(name: "MeadowFile"),
         .testTarget(name: "WhiskrKitTests", dependencies: ["WhiskrKit"], resources: [.copy("Fixtures")]),
         .testTarget(name: "TerminalHostTests", dependencies: ["TerminalHost", "WhiskrKit"]),
         .testTarget(name: "PawTests", dependencies: ["Paw", "TerminalHost", "WhiskrKit"]),
+        .testTarget(name: "MeadowFileTests", dependencies: ["MeadowFile"], resources: [.copy("Fixtures")]),
         .testTarget(name: "WhiskrMeadowTests", dependencies: ["WhiskrMeadow", "WhiskrKit", .product(name: "MeadowScene", package: "Scene")]),
     ]
 )
