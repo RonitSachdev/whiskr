@@ -119,11 +119,11 @@ extension EditorFlow {
         check("the tray floats along the meadow's bottom edge, inside it", editor.trayHost.superview != nil && meadow.bounds.contains(card)
               && card.minY >= Look.Space.xl - 1 && card.minY <= Look.Space.xl + 1, "card \(card) in \(meadow.bounds)")
         let ids = EditorTray.things.map(\.id)
-        let drawn = MeadowCatalog.current.assets.filter { $0.inTray && $0.shape == .single && MeadowScenery.draws($0.id) }.map(\.id)
+        let drawn = MeadowCatalog.current.assets.filter { $0.inTray && MeadowScenery.draws($0.id) }.map(\.id)
         check("the shelf offers every thing the scene draws, in the catalog's order, and nothing it cannot (\(ids.count))",
-              ids == drawn && ids.count == 28 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
-        check("the categories are those that hold something: Trees, Flowers, Stones & Wood, the Ground tool's paints, Workplace and Cat Things",
-              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .workplace, .catThings] && suite.barView("tray.category.ground") != nil
+              ids == drawn && ids.count == 42 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
+        check("the categories are those that hold something: Trees, Flowers, Stones & Wood, the Ground tool's paints, Garden, Workplace and Cat Things",
+              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .garden, .workplace, .catThings] && suite.barView("tray.category.ground") != nil
                   && suite.barView("tray.tool.ground") != nil)
         let scale = window.backingScaleFactor
         let pictured = ids + [EditorTray.wildflowers] + EditorTray.paints.map(\.id)
@@ -157,10 +157,10 @@ extension EditorFlow {
         check("2 and the category's tab show that shelf", flowers && tray.category == .stonesAndWood
                   && tray.shelf.map(\.id) == ["stone.stone", "stone.mossy", "stone.boulder", "stone.stepping", "wood.fallenLog", "wood.stump", "wood.logPile"],
               "\(tray.shelf.map(\.id))")
-        suite.shortcut("6")
+        suite.shortcut("7")
         let catThings = tray.category == .catThings
         suite.shortcut("1")
-        check("6: Cat Things; 1: the trees again", catThings && tray.category == .trees && tray.shelf.count == 6)
+        check("7: Cat Things; 1: the trees again", catThings && tray.category == .trees && tray.shelf.count == 6)
 
         // ⌘F: the filter.
         suite.shortcut("cmd+f")
@@ -320,7 +320,7 @@ extension EditorFlow {
         await pressTray("tray.item.stone.mossy", count: 2)
         check("with Reduce Motion a placed thing does not settle: it is there", !editor.debugSettling && meadow.scenery == library.scenery && count == dragged + 3)
         Look.Motion.debugReducesMotion = false
-        for _ in 0..<3 { suite.shortcut("cmd+z") }
+        for _ in 0..<3 { suite.shortcut("cmd+z"); await PerfWait.sleep(60) }
         check("⌘Z three times takes the three away", count == dragged)
         suite.shortcut("esc")
     }
