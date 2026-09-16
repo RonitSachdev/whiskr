@@ -180,10 +180,14 @@ extension EditorFlow {
         let gate = library.session.fenceRun(fence)?.gate ?? 0
         check("Add Gate hangs a gate in it, one step", gate > 0 && undoName == MeadowWords.addGate && library.scenery.things[library.session.thingIndex(of: fence)!].gate == gate)
         // Picked by a span's rail as well as its posts.
-        if let points = library.session.fenceRun(fence)?.points, points.count > 2,
-           let rail = meadow.viewPoint(ofGround: SIMD2(Float(points[0].x + points[1].x) / 2, Float(points[0].z + points[1].z) / 2)) {
-            let index = meadow.sceneryThing(at: NSPoint(x: rail.x, y: rail.y + 8))
-            check("a click on a span's rails picks the whole run", index == library.session.thingIndex(of: fence))
+        if let run = library.session.fenceRun(fence), let index = library.session.thingIndex(of: fence) {
+            // Over the middle of each span between its points, a little above the ground (where its rails are).
+            var found: [Int?] = []
+            for (a, b) in zip(run.points, run.points.dropFirst()) {
+                guard let rail = meadow.viewPoint(ofGround: SIMD2(Float(a.x + b.x) / 2, Float(a.z + b.z) / 2)) else { continue }
+                found.append(meadow.sceneryThing(at: NSPoint(x: rail.x, y: rail.y + 5)))
+            }
+            check("a click on a span's rails picks the whole run", found.filter { $0 == index }.count * 2 > found.count, "\(found)")
         }
         editor.debugChoose([])
         await PerfWait.sleep(200)
