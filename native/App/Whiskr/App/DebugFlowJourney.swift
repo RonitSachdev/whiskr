@@ -301,7 +301,7 @@ final class Journey {
         let target = suite.hit(view, at: point)
         for count in 1...2 {
             guard let down = mouse(.leftMouseDown, at: location, count: count), let up = mouse(.leftMouseUp, at: location, count: count) else { continue }
-            NSApp.postEvent(up, atStart: false)
+            QueuedEvents.post(up)
             NSApp.sendEvent(down)
         }
         return target

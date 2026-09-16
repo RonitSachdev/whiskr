@@ -570,7 +570,11 @@ undo, saving, Revert to Default, terminals and requests carrying on meanwhile, f
 tray (tools, categories, filter, the shelf by keys, folding), placing (ghost, refusals, a click, ⇧-click, a
 tile dragged out, a double-click, the keys alone), the Brush and the Eraser by real strokes with their frame
 rates, the caps on a meadow of 5,000 things, and pictures of each state in each built-in theme and with
-Increase Contrast, then a relaunch finding the meadow as it was saved at quit (`editor`).
+Increase Contrast, then a relaunch finding the meadow as it was saved at quit (`editor`). Events a flow
+queues for the app behind the one it sends (a click's release behind its press, a drag's moves) go through
+`QueuedEvents`, so the event taken off the queue (by the run loop or a tracking loop) is the one made:
+AppKit hands out a copy, and on a busy Mac a copy came off now and then with its x moved, a release then
+lying outside the control it pressed.
 
 **Dragging a tab** is the app's own, not an AppKit drag session (whose picture the system moves, with no
 springs and no say in what it shows). `TabMouseView` starts it past 4 pt of movement; `TabDragging` then

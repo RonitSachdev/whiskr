@@ -313,7 +313,7 @@ extension Journey {
             let before = split.subviews.map(\.frame.width)
             let start = split.convert(NSPoint(x: split.subviews[0].frame.maxX + 0.5, y: split.bounds.midY), to: nil)
             for step in 1...8 {
-                if let drag = mouse(step == 8 ? .leftMouseUp : .leftMouseDragged, at: NSPoint(x: start.x - CGFloat(step * 15), y: start.y)) { NSApp.postEvent(drag, atStart: false) }
+                if let drag = mouse(step == 8 ? .leftMouseUp : .leftMouseDragged, at: NSPoint(x: start.x - CGFloat(step * 15), y: start.y)) { QueuedEvents.post(drag) }
             }
             if let down = mouse(.leftMouseDown, at: start) { NSApp.sendEvent(down) }
             await PerfWait.sleep(400)

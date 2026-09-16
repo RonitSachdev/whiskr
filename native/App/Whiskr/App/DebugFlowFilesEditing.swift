@@ -55,7 +55,7 @@ extension FilesFlow {
                                                 windowNumber: window.windowNumber, context: nil, eventNumber: suite.nextEventNumber(), clickCount: number, pressure: 1),
                   let up = NSEvent.mouseEvent(with: .leftMouseUp, location: location, modifierFlags: modifiers, timestamp: ProcessInfo.processInfo.systemUptime,
                                               windowNumber: window.windowNumber, context: nil, eventNumber: suite.nextEventNumber(), clickCount: number, pressure: 0) else { continue }
-            NSApp.postEvent(up, atStart: false)
+            QueuedEvents.post(up)
             NSApp.sendEvent(down)
         }
     }

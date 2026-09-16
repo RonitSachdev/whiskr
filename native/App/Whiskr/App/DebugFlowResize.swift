@@ -185,7 +185,7 @@ extension PerfSuite {
                     if state.index == 24 { self.saveLayers("mid-drag \(divider.name) \(Int(hertz)) Hz") }
                 }
                 guard state.index < points.count else {
-                    if let up = self.mouse(.leftMouseUp, at: points.last!) { NSApp.postEvent(up, atStart: false) }
+                    if let up = self.mouse(.leftMouseUp, at: points.last!) { QueuedEvents.post(up) }
                     CFRunLoopTimerInvalidate(timer)
                     state.done = true
                     return
@@ -195,7 +195,7 @@ extension PerfSuite {
                 PointerStandIn.location = point
                 if let drag = NSEvent.mouseEvent(with: .leftMouseDragged, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                                                  windowNumber: self.window.windowNumber, context: nil, eventNumber: self.nextEventNumber(), clickCount: 1, pressure: 1) {
-                    NSApp.postEvent(drag, atStart: false)
+                    QueuedEvents.post(drag)
                     state.posted = perfNow()
                 }
             }
