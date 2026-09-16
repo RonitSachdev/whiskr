@@ -28,6 +28,11 @@ final class Pane: Identifiable {
     /// The last command typed at the shell failed (OSC 133 says so) and you have not looked since: its
     /// exit status. The lantern of a plain terminal is red meanwhile.
     private(set) var failedCommand: Int32?
+    /// What the shell's command marks say now: a command typed at the prompt is running, or the last one
+    /// ended well (exit 0). Both false at the prompt, before any mark, and for a shell that writes none:
+    /// a plain terminal's kettle then stands cold rather than guessing.
+    private(set) var commandRunning = false
+    private(set) var commandSucceeded = false
     /// The program rang the bell while the pane was out of sight: its tab shows a bell until you look.
     private(set) var rang = false
     /// The shell ended (you typed `exit`, or it failed to start): the code it ended with.
@@ -273,6 +278,7 @@ final class Pane: Identifiable {
         guard !exited else { return }
         exited = true
         exitCode = code
+        commandRunning = false
         foreground = nil
         hostStatus.foreground = nil
         _ = observePresence { $0.observe(foreground: nil, liveSession: false) }
@@ -499,15 +505,21 @@ extension Pane: TerminalSurfaceDelegate {
         onBell?(self)
     }
 
-    /// The shell's command marks: a failed command (exit status other than 0) lights a plain terminal's
-    /// lantern red until you look; the next command, or one that succeeds, puts it out.
-    func surface(_ surface: TerminalSurface, command: TerminalCommandMark) {
+    /// The shell's command marks: a command running lights the kettle; a failed command (exit status other
+    /// than 0) lights a plain terminal's lantern red and flags its kettle until you look; the next command,
+    /// or one that succeeds, puts it out. Marks read again from kept output after a relaunch say whether a
+    /// command is running now, but an old failure is not news again.
+    func surface(_ surface: TerminalSurface, command: TerminalCommandMark, replayed: Bool) {
         switch command {
         case .started:
-            if failedCommand != nil { failedCommand = nil }
+            if !commandRunning { commandRunning = true }
+            if commandSucceeded { commandSucceeded = false }
+            if !replayed, failedCommand != nil { failedCommand = nil }
         case .finished(let status):
             let failed = status.flatMap { $0 == 0 ? nil : $0 }
-            if failedCommand != failed { failedCommand = failed }
+            if commandRunning { commandRunning = false }
+            if commandSucceeded != (failed == nil) { commandSucceeded = failed == nil }
+            if !replayed, failedCommand != failed { failedCommand = failed }
         }
     }
 

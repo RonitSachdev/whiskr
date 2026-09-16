@@ -46,6 +46,8 @@ private struct HelpPage: View {
                 HelpSection(title: String(localized: "Where cats come from")) {
                     Text(AttributedString(localized: "Open a terminal (⌘T) and type `claude`. A cat walks onto that workspace's blanket and acts out what Claude is doing: reading, editing, running a command, thinking.", comment: "Help page (Markdown: `claude` is the command)"))
                     Text(String(localized: "Plain terminals are lanterns, lit after dark: warm while a command runs, red when one failed."))
+                    Text(String(localized: "A workspace of plain terminals has a camp kettle on its blanket: lit and steaming while a command runs, one whistle of steam when it finishes, and a little red flag when one failed, until you look at that terminal.",
+                                comment: "Help page: the kettle on a plain terminal's blanket"))
                 }
                 HelpSection(title: String(localized: "What the marks mean")) {
                     HelpMark(mark: AnyView(StateMark(status: .blocked)), title: String(localized: "Request"),

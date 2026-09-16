@@ -121,6 +121,8 @@ final class Plot {
     /// Lanterns with no room on the hem, and whether one of them failed: "+N" on the flag after dark.
     var lanternsHidden = 0
     var hiddenFailed = false
+    /// The camp kettle its plain terminals share while no cat is on it (`Kettle.swift`).
+    var kettle: KettlePlace
     var at: Vec2? = nil               // where in the meadow the middle of the blanket lies, once placed
     var home = Vec3.zero               // where the group sits so that its middle lands there
     var group = Vec3.zero              // eased toward home
@@ -151,6 +153,7 @@ final class Plot {
         self.view = view
         self.space = space
         pebbles = Pebbles(view.id)
+        kettle = KettlePlace(id: view.id)
         var r = chance(view.id)
         let pick = r.float()
         cloth = Int(pick * Float(Picnic.clothSeeds.count)) % Picnic.clothSeeds.count
@@ -377,6 +380,7 @@ final class Village {
                 plot.lanterns.append(LanternPlace(view: lantern, phase: r.float() * 10))
             }
         }
+        tellKettle(plot, view)
         layout(plot)
         for actor in arrivals {
             // A new helper appears beside whoever launched it and arrives with a hop. On a blanket that was
@@ -497,6 +501,13 @@ final class Village {
                     seated.append(Spot(x: spot.x, z: spot.z, reach: size))
                 }
             }
+        } else if plot.kettle.wanted {
+            // No cat: the kettle stands where one would sit, near the middle, and the picnic is set out round it.
+            var random = chance("\(id)/kettle/seat")
+            let spot = Vec3((random.float() - 0.5) * 1.2, 0, (random.float() - 0.5) * 1.2)
+            if !plot.kettle.placed || plot.kettle.shown.x < 0.01 { plot.kettle.at = spot; plot.kettle.placed = true }
+            plot.kettle.spot = spot
+            seated.append(Spot(x: spot.x, z: spot.z, reach: KETTLE_REACH))
         }
 
         // The blanket is laid around the middle of the family, with a hem of cloth beyond the outermost one.
@@ -972,6 +983,7 @@ final class Village {
                 plot.lanterns[i].red += ((state == .failed ? 1 : 0) - plot.lanterns[i].red) * min(1, dt * 4)
             }
             plot.lanterns.removeAll { $0.leaving && $0.shown.x < 0.02 }
+            runKettle(plot, dt)
 
             var gone: [String] = []
             for id in plot.order {
@@ -1025,7 +1037,7 @@ final class Village {
     var still: Bool {
         if !notes.isEmpty || !waitingNotes.isEmpty { return false }
         for plot in plots {
-            if abs(plot.blanketSize - plot.size) > 0.01 || simd_distance(plot.group, plot.home) > 0.01 { return false }
+            if abs(plot.blanketSize - plot.size) > 0.01 || simd_distance(plot.group, plot.home) > 0.01 || !kettleStill(plot) { return false }
             for actor in plot.actors.values where actor.leaving || actor.errand != nil || actor.pop.x < 0.98 || !actor.cat.still { return false }
         }
         return true

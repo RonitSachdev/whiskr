@@ -29,7 +29,7 @@ struct MeadowMappingTests {
 
     func snapshot(agent: SceneSnapshot.Kind, lanterns: [(UUID, SceneSnapshot.Lantern)] = [], focused: UUID? = nil, helper: String? = nil, title: String = "Fix rounding") -> SceneSnapshot {
         var panes = [SceneSnapshot.Pane(id: claude, name: "Fix rounding", kind: agent)]
-        panes += lanterns.map { SceneSnapshot.Pane(id: $0.0, name: "npm run dev", kind: .terminal(lantern: $0.1)) }
+        panes += lanterns.map { SceneSnapshot.Pane(id: $0.0, name: "npm run dev", kind: .terminal(lantern: $0.1, command: .idle)) }
         let blanket = SceneSnapshot.Blanket(id: tab, title: title, status: .working, panes: panes)
         return SceneSnapshot(spaces: [SceneSnapshot.Space(id: space, name: "shop", folder: "/code/shop", status: .working, blankets: [blanket])],
                              selectedSpace: space, selectedBlanket: tab, focusedPane: focused ?? claude, focusedAgent: helper)
@@ -52,7 +52,7 @@ struct MeadowMappingTests {
     @Test("a tab with no agent lies on plain grey; account indexes wrap round the colours")
     func colours() {
         let lanternOnly = SceneSnapshot(spaces: [SceneSnapshot.Space(id: space, name: "shop", folder: "/", status: nil, blankets: [
-            SceneSnapshot.Blanket(id: tab, title: "zsh", status: nil, panes: [SceneSnapshot.Pane(id: shell, name: "zsh", kind: .terminal(lantern: .dark))]),
+            SceneSnapshot.Blanket(id: tab, title: "zsh", status: nil, panes: [SceneSnapshot.Pane(id: shell, name: "zsh", kind: .terminal(lantern: .dark, command: .idle))]),
         ])])
         #expect(MeadowMapping.world(lanternOnly, accountColors: colors, machineName: "").blankets[0].color == MeadowColor(hex: MeadowMapping.neutralBlanket))
         let wrapped = MeadowMapping.world(snapshot(agent: .agent(status: .idle, accountIndex: 3, failed: false, agents: [])), accountColors: colors, machineName: "")
@@ -227,7 +227,7 @@ struct MeadowHelperTerminalTests {
             SceneSnapshot.Pane(id: grandchild, name: "Tests", kind: .agent(status: .blocked, accountIndex: 0, failed: false, agents: []), parent: child),
             SceneSnapshot.Pane(id: child, name: "Review", kind: working, parent: boss),
             SceneSnapshot.Pane(id: boss, name: "Fix", kind: working),
-            SceneSnapshot.Pane(id: shell, name: "npm test", kind: .terminal(lantern: .lit), parent: boss),
+            SceneSnapshot.Pane(id: shell, name: "npm test", kind: .terminal(lantern: .lit, command: .running), parent: boss),
         ])
         let meadow = MeadowMapping.blanket(blanket, accountColors: [0x2fb39a])
         #expect(meadow.agents.map(\.id) == [boss.uuidString, child.uuidString, grandchild.uuidString])

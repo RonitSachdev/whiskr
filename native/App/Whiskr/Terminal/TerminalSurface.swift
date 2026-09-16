@@ -18,8 +18,9 @@ protocol TerminalSurfaceDelegate: AnyObject {
     func surface(_ surface: TerminalSurface, programStatus records: [TerminalProgramStatus])
     /// The program rang the terminal's bell (BEL).
     func surfaceRang(_ surface: TerminalSurface)
-    /// The shell marked a command (OSC 133): one started, or one ended with its exit status.
-    func surface(_ surface: TerminalSurface, command: TerminalCommandMark)
+    /// The shell marked a command (OSC 133): one started, or one ended with its exit status. `replayed`: read
+    /// again from kept output after a relaunch (what it says of now holds; its failure was news then).
+    func surface(_ surface: TerminalSurface, command: TerminalCommandMark, replayed: Bool)
 }
 
 /// What a shell's command marks (OSC 133) say happened, as the app needs it.
@@ -139,8 +140,7 @@ final class TerminalSurface: TerminalView, TerminalViewDelegate {
     }
 
     private func heard(_ mark: TerminalCommandMark) {
-        guard !replaying else { return }
-        surfaceDelegate?.surface(self, command: mark)
+        surfaceDelegate?.surface(self, command: mark, replayed: replaying)
     }
 
     required init?(coder: NSCoder) {

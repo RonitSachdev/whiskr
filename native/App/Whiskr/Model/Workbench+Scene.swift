@@ -7,8 +7,8 @@ import WhiskrKit
 /// Mapping (docs/DESIGN.md): one blanket per workspace, in the workspaces' order, under a flag
 /// with its name, branch and how the branch stands, in its own colour; a cat for every pane of any of its
 /// tabs with Claude in it (its helpers beside it, and the terminals it started with `paw` as helpers
-/// too, tab or no tab); a lantern after dark for every other pane. A worktree's blanket lies beside its
-/// repository's, joined by a path.
+/// too, tab or no tab); a lantern after dark for every other pane, and its shell's command marks for the
+/// blanket's camp kettle. A worktree's blanket lies beside its repository's, joined by a path.
 extension Workbench {
     var scene: SceneSnapshot {
         SceneSnapshot(
@@ -32,11 +32,13 @@ extension Workbench {
             kind = .agent(status: status, accountIndex: accountIndex(configDir: pane.sessionConfigDir), failed: session?.failed ?? false,
                           agents: session?.agents.familyOrder ?? [])
         } else if pane.exited {
-            kind = .terminal(lantern: (pane.exitCode ?? 0) == 0 ? .dark : .failed(code: pane.exitCode ?? 0))
+            kind = .terminal(lantern: (pane.exitCode ?? 0) == 0 ? .dark : .failed(code: pane.exitCode ?? 0), command: .idle)
         } else {
             // Lit while a command runs in front of the shell; dark while the shell waits for you, or
-            // red while its last command's failure is unseen (the shell's marks, OSC 133).
-            kind = .terminal(lantern: pane.foreground != nil ? .lit : pane.failedCommand.map { .failed(code: $0) } ?? .dark)
+            // red while its last command's failure is unseen (the shell's marks, OSC 133). The kettle goes by
+            // the marks alone.
+            let command: SceneSnapshot.Command = pane.failedCommand != nil ? .failed : pane.commandRunning ? .running : pane.commandSucceeded ? .finished : .idle
+            kind = .terminal(lantern: pane.foreground != nil ? .lit : pane.failedCommand.map { .failed(code: $0) } ?? .dark, command: command)
         }
         return SceneSnapshot.Pane(id: pane.id, name: name(of: pane), kind: kind, parent: pane.origin?.parent)
     }

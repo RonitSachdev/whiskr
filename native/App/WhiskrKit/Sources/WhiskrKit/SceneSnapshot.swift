@@ -4,7 +4,7 @@ import Foundation
 /// (`Workbench.scene`) and `WhiskrMeadow` turns it into the scene's own world.
 ///
 /// Mapping (docs/DESIGN.md): a space is a mown patch, a tab a blanket, an agent pane a cat (with
-/// its helpers huddled by it), a plain terminal pane a lantern.
+/// its helpers huddled by it), a plain terminal pane a lantern (and the blanket's kettle while no cat is on it).
 public struct SceneSnapshot: Equatable, Sendable {
     public var spaces: [Space]
     public var selectedSpace: UUID?
@@ -92,8 +92,22 @@ public struct SceneSnapshot: Equatable, Sendable {
         /// launched it), empty until the session first reports.
         case agent(status: AgentStatus, accountIndex: Int, failed: Bool, agents: [AgentSnapshot])
         /// A lantern: lit while a command runs in it, dark while its shell waits or once it has ended
-        /// well, red if it ended badly.
-        case terminal(lantern: Lantern)
+        /// well, red if it ended badly. `command`: what its shell's marks say, which the blanket's camp
+        /// kettle shows while no Claude is on it.
+        case terminal(lantern: Lantern, command: Command)
+    }
+
+    /// What a plain terminal's shell says of its commands by its marks (OSC 133). A shell that writes no
+    /// marks stays `idle`: nothing is guessed.
+    public enum Command: Equatable, Sendable {
+        /// At its prompt: nothing marked yet, or the last failure already seen.
+        case idle
+        /// A command typed at the prompt is running.
+        case running
+        /// The last command ended well.
+        case finished
+        /// The last command failed and its terminal has not been looked at since.
+        case failed
     }
 
     public enum Lantern: Equatable, Sendable {

@@ -350,6 +350,13 @@ final class NavigatorController: NSViewController {
             let helpers = max(0, family.count - 1)
             if helpers > 0 { parts.append(String(localized: "\(helpers) helpers working", comment: "Accessibility: helpers in a workspace")) }
         }
+        // A workspace of plain terminals: what its kettle shows.
+        for blanket in space.blankets {
+            guard let kettle = MeadowMapping.kettle(of: blanket) else { continue }
+            if kettle.running { parts.append(String(localized: "Command running", comment: "VoiceOver: a command runs in one of a workspace's plain terminals (the meadow's kettle is lit)")) }
+            if kettle.failed { parts.append(String(localized: "Command failed", comment: "VoiceOver: a command failed in one of a workspace's plain terminals, not yet looked at (the meadow's kettle has its red flag)")) }
+            if kettle.finished { parts.append(String(localized: "Command finished", comment: "VoiceOver: the last command in a workspace's plain terminals ended well")) }
+        }
         return parts.joined(separator: ". ")
     }
 

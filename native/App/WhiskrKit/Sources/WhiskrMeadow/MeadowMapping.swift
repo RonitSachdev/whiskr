@@ -33,8 +33,8 @@ public enum MeadowMapping {
                 // A terminal an agent started is that agent's helper: its cat sits by its boss's.
                 let boss = pane.parent.flatMap { agentPanes.contains($0) ? catID(pane: $0, agent: nil) : nil }
                 agents += cats(pane: pane, status: status, failed: failed, family: family, boss: boss)
-            case .terminal(let lantern):
-                lanterns.append(MeadowLantern(id: pane.id.uuidString, title: pane.name, state: state(of: lantern)))
+            case .terminal(let lantern, let shell):
+                lanterns.append(MeadowLantern(id: pane.id.uuidString, title: pane.name, state: state(of: lantern), command: command(shell)))
             }
         }
         let pick = blanket.colorIndex ?? account
@@ -107,6 +107,31 @@ public enum MeadowMapping {
         case .dark: .finished
         case .failed: .failed
         }
+    }
+
+    static func command(_ command: SceneSnapshot.Command) -> MeadowCommand {
+        switch command {
+        case .idle: .idle
+        case .running: .running
+        case .finished: .finished
+        case .failed: .failed
+        }
+    }
+
+    /// What a blanket's kettle says, over all its plain terminals, while no Claude is on it (nil when there
+    /// is a Claude, or no plain terminal): a command running in one, a failure not yet seen in one, the last
+    /// ending well. For VoiceOver, which reads the blanket as the kettle shows it.
+    public static func kettle(of blanket: SceneSnapshot.Blanket) -> (running: Bool, failed: Bool, finished: Bool)? {
+        var commands: [SceneSnapshot.Command] = []
+        for pane in blanket.panes {
+            switch pane.kind {
+            case .agent: return nil
+            case .terminal(_, let command): commands.append(command)
+            }
+        }
+        guard !commands.isEmpty else { return nil }
+        let running = commands.contains(.running), failed = commands.contains(.failed)
+        return (running, failed, !running && !failed && commands.contains(.finished))
     }
 
     /// A cat's id: the pane's for its session's own agent, `<pane>/<agent>` for a helper.
@@ -183,7 +208,7 @@ public enum MeadowMapping {
                     return Hover(name: agent.kind, kind: .helper(line: agent.line))
                 }
                 return Hover(name: pane.name, kind: .agent(status: status, line: family.first?.line))
-            case .terminal(let lantern):
+            case .terminal(let lantern, _):
                 return Hover(name: pane.name, kind: .lantern(lantern))
             }
         case nil:

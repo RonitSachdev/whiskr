@@ -108,7 +108,7 @@ enum DebugThemeSheet {
         func surface(_ surface: TerminalSurface, movedTo directory: String?) {}
         func surface(_ surface: TerminalSurface, programStatus records: [TerminalProgramStatus]) {}
         func surfaceRang(_ surface: TerminalSurface) {}
-        func surface(_ surface: TerminalSurface, command: TerminalCommandMark) {}
+        func surface(_ surface: TerminalSurface, command: TerminalCommandMark, replayed: Bool) {}
 
         /// The colour answered for an OSC code ("4;7", "10", "11"), from its "rgb:rrrr/gggg/bbbb".
         func color(_ code: String) -> Sample? {

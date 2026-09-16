@@ -907,6 +907,17 @@
         }
       }
     },
+    "A workspace of plain terminals has a camp kettle on its blanket: lit and steaming while a command runs, one whistle of steam when it finishes, and a little red flag when one failed, until you look at that terminal.": {
+      "comment": "Help page: the kettle on a plain terminal's blanket",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通常のターミナルだけのワークスペースでは、ブランケットにキャンプ用のケトルが置かれます。コマンドの実行中は火がついて湯気を立て、終わると一度だけ湯気を吹き、失敗するとそのターミナルを見るまで小さな赤い旗が立ちます。"
+          }
+        }
+      }
+    },
     "About %@": {
       "localizations": {
         "ja": {
@@ -1552,6 +1563,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "コードは VS Code と同じ文法で色分けされ、VS Code のカラーテーマもそのまま使えます。設定 › ターミナル › テーマを追加…、またはファイル › テーマと言語を読み込む… で、テーマファイル、拡張機能のフォルダ、.vsix を読み込めます。設定 › 一般 › 設定を読み込む は、VS Code や Cursor の設定を一度だけ読み込みます。拡張機能のコードが実行されることはありません。"
+          }
+        }
+      }
+    },
+    "Command failed": {
+      "comment": "VoiceOver: a command failed in one of a workspace's plain terminals, not yet looked at (the meadow's kettle has its red flag)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンドが失敗"
+          }
+        }
+      }
+    },
+    "Command finished": {
+      "comment": "VoiceOver: the last command in a workspace's plain terminals ended well",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンド完了"
+          }
+        }
+      }
+    },
+    "Command running": {
+      "comment": "VoiceOver: a command runs in one of a workspace's plain terminals (the meadow's kettle is lit)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コマンド実行中"
           }
         }
       }

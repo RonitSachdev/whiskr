@@ -63,7 +63,12 @@ keeps on disk. For what the app should look and feel like, see [DESIGN.md](DESIG
    Kit).
 4. **Before any hook**, the host watches each terminal's foreground process group ten times a second while
    a window is connected. A cat appears as soon as `claude` is the foreground program.
-5. The `Workbench` builds a `SceneSnapshot`, `WhiskrMeadow` maps it to the scene's `World`, and
+5. A plain terminal's command marks (OSC 133, below) reach its `Pane` (`commandRunning`, `commandSucceeded`,
+   `failedCommand`), the snapshot carries them as `SceneSnapshot.Command`, and the scene's `MeadowLantern`
+   as `MeadowCommand`: the blanket's camp kettle (`Kettle.swift`) folds them over its terminals while no cat
+   is on it. Marks read again from kept output after a relaunch say whether a command runs; an old failure is
+   not news again.
+6. The `Workbench` builds a `SceneSnapshot`, `WhiskrMeadow` maps it to the scene's `World`, and
    `MeadowView` animates the difference. A selection reaches the scene with its origin
    (`MeadowView.select(_:origin:)`): `.user` when `Workbench.choices`, counted only for the user's own
    choosing, has moved, which makes the camera follow (`Stage.follow` on `MapCamera.chase`); `.event`
@@ -78,7 +83,8 @@ Before each prompt the shell integration also writes, for every shell:
 - **Where it is** (OSC 7), which names the workspace and the tab and tells the app the prompt is up.
 - **Command marks** (OSC 133, as Terminal, iTerm2, VS Code and Ghostty read them): `A` as a prompt is
   drawn, `C` as a command starts, `D;<status>` when it has ended. The app uses them to go between
-  commands, to select a command's output (`CommandMarks`, in the Kit) and to light a lantern red. zsh
+  commands, to select a command's output (`CommandMarks`, in the Kit), to light a lantern red and to light,
+  whistle out or flag a plain blanket's kettle. zsh
   and fish before 4 write all three; fish 4 writes them itself. bash adds a zero-width `B` at the end of
   `PS1`, where the typed command begins; bash 4.4 and later also writes `C` (from `PS0`) and `D`, but
   the bash macOS ships (3.2) has no `PS0`, so it marks prompts only. The marks are printed before the

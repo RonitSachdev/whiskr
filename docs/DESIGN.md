@@ -147,6 +147,18 @@ Each state differs by **silhouette**, **mark**, **colour** (on the mark only, ne
 - **The same marks everywhere.** Tabs, the workspace button, Go to and the Dock use the same marks.
   Request and error: a vermillion circle with a white glyph. Finished: a blue dot. A tab shows the most
   urgent mark of its panes, and helpers' requests roll up to their boss's tab.
+- **A blanket of plain terminals has a camp kettle** where a cat would sit, beside the hamper: a small
+  enamel kettle on a little brass stove, showing what the shells' command marks (OSC 133) say. Cold while
+  the shell waits at its prompt. Lit, the lid rattling and steam rising, while a command runs; after half a
+  minute it calms to a steady simmer (a dev server), lower flame, a slow wisp, and the meadow rests. A
+  command that ends well: one whistle of steam, then the flame goes out (no sound; a command over in a
+  moment, an `ls`, just goes out). One that fails: the flame is snuffed with a small dark puff and a little
+  red flag stands by the kettle until its terminal has been seen. Running in one terminal and failed in
+  another, both show. A shell that writes no marks keeps it cold rather than guessing. When a Claude starts
+  there the kettle shrinks away as the cat arrives, and comes back, cold, once the cat has gone. With
+  Reduce Motion or the animation off nothing drifts or rattles, but lit or out and the flag still read (a
+  still wisp of steam over a lit kettle). VoiceOver reads the workspace with "Command running", "Command
+  finished" or "Command failed".
 - **Plain terminals** are lanterns, drawn only after dark: lit while a command runs, dark when idle, red
   when the last command failed and you have not seen it (seen: its pane on screen for a second in the
   window in use). The lanterns stand in one tidy row along the blanket's front edge, at

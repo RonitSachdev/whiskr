@@ -9,6 +9,7 @@ import simd
 //   blanket  ──  one tab: a gingham blanket with a name flag
 //   agent    ──  a cat on the blanket; helpers are smaller cats huddled by whoever launched them
 //   lantern  ──  a plain terminal pane: lit while running, dark when finished, red if it failed
+//   kettle   ──  a blanket's plain terminals with no cat: lit while a command runs, a flag if one failed
 
 /// What an agent is doing right now. The same words as `shared/protocol.ts` and the app's `Activity`.
 public enum AgentActivity: String, CaseIterable, Sendable, Hashable {
@@ -58,6 +59,20 @@ public struct MeadowAgent: Identifiable, Hashable, Sendable {
     }
 }
 
+/// What a plain terminal's shell says of its commands, by the marks it writes (OSC 133). A blanket whose
+/// terminals have no Claude shows it with its camp kettle; a terminal that writes no marks stays `idle`.
+public enum MeadowCommand: String, CaseIterable, Hashable, Sendable {
+    /// Waiting at its prompt, nothing marked yet, or a failure already seen: the kettle stands cold.
+    case idle
+    /// A command typed at the prompt is running: the flame is lit and the kettle steams.
+    case running
+    /// The last command ended well: the kettle whistled once and the flame went out.
+    case finished
+    /// The last command failed and nobody has looked at its terminal since: a little red flag stands by
+    /// the kettle.
+    case failed
+}
+
 public struct MeadowLantern: Identifiable, Hashable, Sendable {
     public enum State: String, Hashable, Sendable {
         /// Lit: the command in the pane is still running.
@@ -70,7 +85,11 @@ public struct MeadowLantern: Identifiable, Hashable, Sendable {
     public var id: String
     public var title: String
     public var state: State
-    public init(id: String, title: String = "", state: State = .running) { self.id = id; self.title = title; self.state = state }
+    /// What its shell's marks say: what the blanket's kettle shows while no cat is on it.
+    public var command: MeadowCommand
+    public init(id: String, title: String = "", state: State = .running, command: MeadowCommand = .idle) {
+        self.id = id; self.title = title; self.state = state; self.command = command
+    }
 }
 
 public struct MeadowBlanket: Identifiable, Hashable, Sendable {

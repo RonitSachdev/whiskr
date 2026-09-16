@@ -18,6 +18,7 @@ final class Renderer {
     let cats: CatDrawer
     let meadow: MeadowDrawer
     let village: VillageDrawer
+    let kettles: KettleDrawer
     let editing: EditDrawer
     private let arenas: [Arena]
     private let frameBuffers: [MTLBuffer]
@@ -33,6 +34,7 @@ final class Renderer {
         cats = CatDrawer(gpu: gpu)
         meadow = MeadowDrawer(gpu: gpu)
         village = VillageDrawer(gpu: gpu)
+        kettles = KettleDrawer(gpu: gpu)
         editing = EditDrawer(gpu: gpu)
         arenas = (0..<Self.inFlight).map { _ in Arena(device: device, size: 4 << 20) }
         frameBuffers = (0..<Self.inFlight).map { _ in device.makeBuffer(length: MemoryLayout<FrameUniforms>.stride, options: .storageModeShared)! }
@@ -143,6 +145,7 @@ final class Renderer {
         cats.encodeOpaque(stage.cats, slot: slot, arena: arena, enc: enc)
         if stage.mode == .meadow {
             village.encodeOpaque(stage, arena: arena, enc: enc)
+            kettles.encodeOpaque(stage, arena: arena, enc: enc)
             meadow.encodeOpaque(stage, frame: F, arena: arena, enc: enc)
         }
         // The sky, only where nothing was drawn.
@@ -163,6 +166,7 @@ final class Renderer {
         cats.encodeShadows(stage.cats, arena: arena, enc: enc)
         enc.setDepthStencilState(gpu.depthRead)
         cats.encodeSteam(stage.cats, arena: arena, enc: enc)
+        if stage.mode == .meadow { kettles.encodeTransparent(stage, arena: arena, enc: enc) }
         if stage.mode == .meadow {
             meadow.encodeSeeds(stage, arena: arena, enc: enc)
             village.encodeTransparent(stage, arena: arena, enc: enc)
