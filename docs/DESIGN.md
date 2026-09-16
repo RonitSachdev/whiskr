@@ -291,7 +291,8 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
   setting (nothing, just the hamper, or the hamper and a few things), laid out tidily beside the hamper,
   never scattered.
 - **Night is properly dark**, with fireflies gathered at the picnics casting warm yellow light. Lanterns
-  appear only at night.
+  appear only at night. Garden lamps someone has placed light their own pools of warm white, and nothing more:
+  away from them the night is as dark as ever.
 - **The real sky.** Following the clock, dawn, day, dusk and night come with the real sun where you are:
   night once it is 12° below the horizon, twilight's blue at 5° below, dawn's pink or dusk's gold as it
   crosses the horizon, full day from 12° up. A polar winter's noon stays in twilight; a midsummer
@@ -349,6 +350,20 @@ can hold (its catalog):
   stand on turf trodden short round them, as the grass flattens round a bed left out; found things (a stump,
   a boulder) stand in the long grass. Until the palettes come, each made thing wears its palette's first
   swatch (oat for the cushion, the yarn and the bed; cream for the bowl).
+- **Garden lamps** (Workplace shelf): a lamp post as gardens and parks have them, cat-sized (a little over twice
+  a cat's height): a flared cast base, a fluted post with a ladder bar, a four-paned lantern widening upward
+  under an overhanging roof and a ball finial, in heritage green (never black: the cats are black). Like real
+  ones on a light sensor they light by themselves once dusk has dimmed past sunset (the sun 2° down) and go out
+  just after sunrise (1° up); at fixed hours, from a little after dusk's gold to a little before dawn's pink.
+  They come on one by one over about half a minute, each catching with a stutter or two before burning
+  steadily; with Reduce Motion or the animation off they are simply lit or out. Lit, the frosted glass glows
+  with a soft halo (wider in mist, fog and rain), and a warm white pool (about 3,000 K, whiter than the
+  picnics' candle amber) falls on the ground and grass round the post, brightest at its foot and fading over a
+  few strides with no edge; it lights the near side of what stands in it, a tree's lower crown from below,
+  and rain or snow falling through it. A lamp is kept off the picnic ground, so its light never competes
+  with a blanket's lanterns and never reads as one; at most 32. Placing or moving one at night, its ghost
+  already casts its pool, so a garden can be lit as it is laid out. By day it is an unlit lamp and changes
+  nothing else in the picture. Settings › Meadow › Lamps light at night (on) leaves them unlit.
 - **Cats will like them:** each thing that invites a cat says where (sit on a stump, a boulder, a log pile,
   the log, in a box or by a bowl; nap in a bed or on a cushion; scratch at a post). The meadow's cats do not
   go there yet.
@@ -467,7 +482,7 @@ most of the time.
   is lost to a stroke passing it), and never a blanket or anything from a newer Whiskr. Choosing a kind on
   its shelf sweeps only that kind ("The Eraser clears only daisies now" where a click falls on another).
   Each click or sweep is one step.
-- **Caps.** A meadow holds at most 5,000 things, 48 trees and 120 tall things (32 lamps when lamps come). The
+- **Caps.** A meadow holds at most 5,000 things, 48 trees, 120 tall things and 32 garden lamps. The
   tray says how full the meadow is past 80 % of a cap; at one, the tiles of what cannot be added say why
   ("The meadow has as many trees as it can hold (48)"), the ghost and the Brush say it by the pointer, and
   nothing is ever cut short silently.

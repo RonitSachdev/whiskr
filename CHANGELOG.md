@@ -10,6 +10,12 @@ Nothing has been released yet. This is what the first release will contain.
 
 ### Added
 
+- Garden lamps for the meadow (Edit Meadow › Workplace): a lamp post that lights by itself after sunset and
+  goes out after sunrise, the lamps coming on one by one with a little stutter as each catches. Lit, each
+  pools warm light on the grass round it, lights what stands near it and the rain or snow falling past it, and
+  glows softly, more so in fog. Placing one at night shows its light before it is put down. At most 32; never
+  on the picnic ground. Settings › Meadow › Lamps light at night turns them off.
+
 - A native macOS terminal for Claude Code: workspaces (one per folder), tabs and split panes of real
   terminals, drawn by SwiftTerm. The window follows herdr's arrangement, with the terminals on the right.
 - The meadow, where the sidebar would be: a 3D clay scene with one picnic blanket per workspace and a
