@@ -18,7 +18,7 @@ private func item(_ id: String, _ x: Double, _ z: Double, seed: UInt32? = nil, s
             item("tree.oak", 50, 10, seed: 7),
             item("flower.daisy", 30, 0, size: [1.1, 1.1, 1.1]),
             item("stone.mossy", 34, 5),
-            item("work.desk", 36, -4),
+            .parcel(MeadowParcel(fields: ["id": .string("garden.trellis"), "at": .array([.number(36), .number(-4)])])),
             .parcel(MeadowParcel(fields: ["id": .string("garden.pond"), "at": .array([.number(40), .number(40)])])),
             item("flower.poppy", 31, 1),
         ])
@@ -28,7 +28,7 @@ private func item(_ id: String, _ x: Double, _ z: Double, seed: UInt32? = nil, s
     func lookup() {
         let session = MeadowEditSession(garden)
         #expect(session.ids == [1, 2, 3, 4, 5, 6])
-        // The desk has no builder yet and the parcel is from a newer Whiskr: kept, not drawn.
+        // The parcels are from a newer Whiskr: kept, not drawn.
         #expect(session.shown == [1, 2, 3, 6] && session.scenery.things.map(\.id) == ["tree.oak", "flower.daisy", "stone.mossy", "flower.poppy"])
         #expect(session.id(ofThing: 3) == 6 && session.thingIndex(of: 6) == 3 && session.thingIndex(of: 4) == nil)
         // Of its kind only: the poppy beside the daisy is not like it.

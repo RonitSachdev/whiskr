@@ -104,8 +104,11 @@ extension Stage {
         return meadow.scenery.things.indices.filter { i in
             guard meadow.laid[i] != .none else { return false }
             let thing = meadow.scenery.things[i]
-            let p = screen(Vec3(thing.x, Land.height(thing.x, thing.z), thing.z))
-            return p.z <= 1 && box.contains(Vec2(p.x, p.y))
+            // A fence: any of its points inside.
+            return (thing.isRun ? thing.points : [Vec2(thing.x, thing.z)]).contains { spot in
+                let p = screen(Vec3(spot.x, Land.height(spot.x, spot.y), spot.y))
+                return p.z <= 1 && box.contains(Vec2(p.x, p.y))
+            }
         }
     }
 

@@ -21,6 +21,9 @@ enum SceneryCatalog {
         case plant(@Sendable () -> [Plant], sway: Float, blooms: Bool, base: Float)
         /// A fallen log: ground blankets keep off along it, and it fades when in the way.
         case log
+        /// A fence: a run of posts along the thing's points, two rails a span and perhaps a gate (`Fences`), each
+        /// part instanced, drawn rooted.
+        case fence
     }
 
     static let kinds: [String: Kind] = [
@@ -49,23 +52,83 @@ enum SceneryCatalog {
         "wood.fallenLog": .log,
         "wood.stump": .plant({ [StonesAndWood.stump] }, sway: 0, blooms: false, base: 1.35),
         "wood.logPile": .plant({ [StonesAndWood.logPile] }, sway: 0, blooms: false, base: 1.45),
-        "work.cushion": .plant({ [Workplace.cushion] }, sway: 0, blooms: false, base: 1.2),
+        // Made things: one shape each, in the swatch of its palette it wears (`painted`), the first here.
+        "garden.fence": .fence,
+        "garden.flowerPot": .plant({ [Garden.flowerPot(0)] }, sway: 0, blooms: false, base: 0.62),
+        "garden.planter": .plant({ [Garden.planter] }, sway: 0, blooms: false, base: 1.78),
+        "garden.wateringCan": .plant({ [Garden.wateringCan(0)] }, sway: 0, blooms: false, base: 0.6),
+        "garden.birdhouse": .plant({ [Garden.birdhouse] }, sway: 0, blooms: false, base: 0.5),
+        "garden.skep": .plant({ [Garden.skep] }, sway: 0, blooms: false, base: 0.82),
+        "work.desk": .plant({ [Workplace.desk] }, sway: 0, blooms: false, base: 1.7),
+        "work.cushion": .plant({ [Workplace.cushion(0)] }, sway: 0, blooms: false, base: 1.2),
+        "work.bookshelf": .plant({ [Workplace.bookshelf] }, sway: 0, blooms: false, base: 1.4),
+        "work.bench": .plant({ [Workplace.bench(0)] }, sway: 0, blooms: false, base: 2.2),
+        "work.signpost": .plant({ [Workplace.signpost] }, sway: 0, blooms: false, base: 0.5),
+        "work.mailbox": .plant({ [Workplace.mailbox(0)] }, sway: 0, blooms: false, base: 0.5),
+        "work.noticeboard": .plant({ [Workplace.noticeboard] }, sway: 0, blooms: false, base: 1.35),
+        "place.shed": .plant({ [Places.shed(0)] }, sway: 0, blooms: false, base: 2.9),
+        "place.tent": .plant({ [Places.tent(0)] }, sway: 0, blooms: false, base: 2.75),
         "cat.box": .plant({ [CatThings.box] }, sway: 0, blooms: false, base: 1.5),
         "cat.scratchingPost": .plant({ [CatThings.scratchingPost] }, sway: 0, blooms: false, base: 0.95),
-        "cat.yarn": .plant({ [CatThings.yarn] }, sway: 0, blooms: false, base: 0.5),
-        "cat.bed": .plant({ [CatThings.bed] }, sway: 0, blooms: false, base: 1.6),
-        "cat.bowl": .plant({ [CatThings.bowl] }, sway: 0, blooms: false, base: 0.6),
+        "cat.yarn": .plant({ [CatThings.yarn(0)] }, sway: 0, blooms: false, base: 0.5),
+        "cat.bed": .plant({ [CatThings.bed(0)] }, sway: 0, blooms: false, base: 1.6),
+        "cat.bowl": .plant({ [CatThings.bowl(0)] }, sway: 0, blooms: false, base: 0.6),
         // Lit after dark (`MeadowLamps`), kept off the picnic ground and fading when in front of a cat.
         "work.lampPost": .plant({ [Lamps.post] }, sway: 0, blooms: false, base: 0.8),
         // Not a catalog thing: what a thing from a newer Whiskr shows as while the meadow is edited (Parcel.swift).
         MeadowScenery.parcel: parcelKind,
     ]
 
+    /// The swatches each made thing with a palette may wear, by name, its own first: the same names, in the same
+    /// order, as the catalog's `colour` choices (a test holds them together). Their colours are `Palette`'s.
+    static let palettes: [String: [String]] = [
+        "garden.flowerPot": ["terracotta", "glazeMoss", "glazeCeladon", "glazeBottle"],
+        "garden.wateringCan": ["zinc", "sage", "cream", "duckEgg"],
+        "work.cushion": ["oat", "sage", "mustard", "rose", "lavender"],
+        "work.bench": ["wood", "sage", "cream", "slate"],
+        "work.mailbox": ["forest", "cream", "charcoal", "mustard"],
+        "place.shed": ["sage", "cream", "forest", "mustard", "lavender"],
+        "place.tent": ["canvas", "olive", "ochre", "dove"],
+        "cat.yarn": ["oat", "sage", "mustard", "lavender", "rose"],
+        "cat.bed": ["oat", "sage", "charcoal", "lavender"],
+        "cat.bowl": ["cream", "sage", "terracotta", "charcoal"],
+    ]
+
+    /// How each thing with a palette is built in one of its swatches (by index).
+    static let painted: [String: @Sendable (Int) -> Plant] = [
+        "garden.flowerPot": Garden.flowerPot, "garden.wateringCan": Garden.wateringCan, "work.cushion": Workplace.cushion, "work.bench": Workplace.bench,
+        "work.mailbox": Workplace.mailbox, "place.shed": Places.shed, "place.tent": Places.tent, "cat.yarn": CatThings.yarn, "cat.bed": CatThings.bed,
+        "cat.bowl": CatThings.bowl,
+    ]
+
+    /// The shape a thing standing at a spot is drawn with: its kind's shape for its variant, in the swatch it
+    /// wears; the same key, the same shape, so each is made once. Nil for a thing that is not a plant's kind.
+    static func shape(of thing: MeadowScenery.Thing) -> (key: ShapeKey, make: () -> Plant)? {
+        guard case .plant(let shapes, _, _, _) = kinds[thing.id] else { return nil }
+        if let paint = painted[thing.id] {
+            let swatch = (palettes[thing.id] ?? []).indices.contains(thing.swatch) ? thing.swatch : 0
+            return (ShapeKey(id: thing.id, swatch: swatch), { paint(swatch) })
+        }
+        let all = shapes()
+        let variant = all.indices.contains(thing.variant) ? thing.variant : 0
+        return (ShapeKey(id: thing.id, variant: variant), { all[variant] })
+    }
+
+    /// Big things beside trees and the log: kept off the picnic ground (a shed, a tent, a fence across it would be
+    /// cut through by every blanket laid there; a lamp's light would fall on the blankets and their lanterns, and a
+    /// lit lamp among them could be taken for one).
+    static let big: Set<String> = ["place.shed", "place.tent", "garden.fence", "work.lampPost"]
+
+    /// Tall made things: each fades on its own when it stands in front of a cat, as a young tree does (a lamp with
+    /// a screen of its own, `Meadow.lampScreen`: it has no body to hide a cat behind, only its post).
+    static let tall: Set<String> = ["garden.birdhouse", "work.bookshelf", "place.shed", "place.tent", "work.lampPost"]
+
     /// Things that stand alone (a boulder, wood, made things): placed and taken away one at a time (a click of
     /// the Eraser, never its sweep) and each read out by VoiceOver on its own, never as one of a clump. The other
     /// rooted things (plants, mushrooms, stones) are brushed and swept in numbers.
     static let alone: Set<String> = ["stone.boulder", "wood.stump", "wood.logPile", "work.cushion", "cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl",
-                                      "work.lampPost"]
+                                     "garden.flowerPot", "garden.planter", "garden.wateringCan", "garden.birdhouse", "garden.skep", "work.desk", "work.bookshelf",
+                                     "work.bench", "work.signpost", "work.mailbox", "work.noticeboard", "place.shed", "place.tent", "work.lampPost"]
 
     /// Where a cat likes to be at each thing that invites one, on the thing as it is made (its own size and turn,
     /// y up from the ground): sitting on a stump's or a boulder's top, in a box or by a bowl, napping in a bed or
@@ -80,6 +143,14 @@ enum SceneryCatalog {
         "stone.boulder": .init(.sit, at: Vec3(-0.2, 1.62, 0), toward: Vec2(0, 1)),
         "wood.logPile": .init(.sit, at: Vec3(0, 1.73, 0.5), toward: Vec2(0, 1)),
         "wood.fallenLog": .init(.sit, at: Vec3(0, 2.02, 0.5), toward: Vec2(0, 1)),
+        // On the bench's seat, on the desk among its things (cats will), napping on the bookcase's top, on the
+        // shed's doorstep, curled in the tent's doorway, and sitting under the nest box looking up at it.
+        "work.bench": .init(.sit, at: Vec3(-0.9, 1.1, 0.05), toward: Vec2(0, 1)),
+        "work.desk": .init(.sit, at: Vec3(-0.15, 1.36, 0.2), toward: Vec2(0, 1)),
+        "work.bookshelf": .init(.nap, at: Vec3(-0.45, 3.3, 0), toward: Vec2(0, 1)),
+        "place.shed": .init(.sit, at: Vec3(0, 0, 2.55), toward: Vec2(0, 1)),
+        "place.tent": .init(.nap, at: Vec3(0, 0.02, 1.5), toward: Vec2(0, 1)),
+        "garden.birdhouse": .init(.sit, at: Vec3(0, 0, 1.3), toward: Vec2(0, -1)),
     ]
 
     /// The worktrees' stepping stone (`Picnic.steppingStone`) as a meadow's are laid: its top levelled, a flat
@@ -109,6 +180,18 @@ enum SceneryCatalog {
         "cat.scratchingPost": (Vec2(0.85, 0.85), false),
         "cat.yarn": (Vec2(0.38, 0.38), false),
         "work.cushion": (Vec2(0.85, 0.85), false),
+        // Made things people come and go to: the grass flattened round a bench's and a desk's feet, gone from under
+        // a shed's and a tent's floor, a pot's or a planter's.
+        "garden.flowerPot": (Vec2(0.55, 0.55), false),
+        "garden.planter": (Vec2(1.65, 0.8), false),
+        "garden.wateringCan": (Vec2(0.5, 0.4), false),
+        "garden.skep": (Vec2(0.75, 0.75), false),
+        "work.desk": (Vec2(1.55, 0.85), false),
+        "work.bookshelf": (Vec2(1.3, 0.5), false),
+        "work.bench": (Vec2(2.1, 0.7), false),
+        "work.noticeboard": (Vec2(1.25, 0.4), false),
+        "place.shed": (Vec2(2.35, 1.85), false),
+        "place.tent": (Vec2(2.0, 2.45), false),
         // Mown and trodden round a lamp post's base, as round any post in a lawn.
         "work.lampPost": (Vec2(0.7, 0.7), false),
     ]

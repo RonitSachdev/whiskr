@@ -45,9 +45,10 @@ extension EditorFlow {
 
         // The shelves as the catalog orders them, with the categories that now hold something.
         check("the tray offers Stage 7's things on their shelves: Stones & Wood, Workplace and Cat Things",
-              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .workplace, .catThings]
+              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .garden, .workplace, .catThings]
                   && EditorTray.things.filter { $0.category == .catThings }.map(\.id) == ["cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"]
-                  && EditorTray.things.filter { $0.category == .workplace }.map(\.id) == ["work.cushion", "work.lampPost"]
+                  && EditorTray.things.filter { $0.category == .workplace }.map(\.id).first == "work.desk"
+                  && EditorTray.things.filter { $0.category == .workplace }.map(\.id).last == "work.lampPost"
                   && Self.newThings.allSatisfy { id in EditorTray.things.contains { $0.id == id } },
               "\(EditorTray.categories)")
         check("the Brush paints the new plants; the Eraser's kinds are the small things only (no made thing, no wood, no boulder)",
@@ -141,7 +142,7 @@ extension EditorFlow {
         suite.shortcut("v")
         suite.shortcut("cmd+f")
         await PerfWait.sleep(300)
-        for (query, wanted) in [("cat", ["cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"]), ("post", ["cat.scratchingPost", "work.lampPost"]),
+        for (query, wanted) in [("cat", ["cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"]), ("post", ["garden.fence", "work.signpost", "work.mailbox", "cat.scratchingPost", "work.lampPost"]),
                                 ("firewood", ["wood.logPile"]), ("zabuton", ["work.cushion"]), ("conifer", ["tree.pine"]), ("TOADSTOOL", ["fungus.flyAgaric"])] {
             suite.typeKeys(query)
             await PerfWait.sleep(200)
@@ -234,7 +235,7 @@ extension EditorFlow {
             store.themeID = id
             store.appearance = appearance
             await PerfWait.sleep(500)
-            for category in [MeadowAsset.Category.trees, .flowers, .stonesAndWood, .workplace, .catThings] {
+            for category in [MeadowAsset.Category.trees, .flowers, .stonesAndWood, .garden, .workplace, .catThings] {
                 await pressTray("tray.category.\(category.rawValue)")
                 await PerfWait.sleep(300)
                 let pictured = tray.shelf.allSatisfy { tray.pictures[$0.id].map(Self.hasSubject) == true }

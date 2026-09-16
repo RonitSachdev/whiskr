@@ -112,9 +112,35 @@ final class EditDrawer {
             make()
             if indexCount > first { strips.append(Strip(first: first, count: indexCount - first, alpha: alpha)) }
         }
-        func outline(of i: Int) -> Outline? {
-            guard things.indices.contains(i), meadow.laid[i] != .none else { return nil }
-            return outline(of: things[i])
+        func outlines(of i: Int) -> [Outline] {
+            guard things.indices.contains(i), meadow.laid[i] != .none else { return [] }
+            return outlines(of: things[i])
+        }
+        /// A thing's ground: one outline round it, or along a run (a fence) one round each of its straight lengths,
+        /// so the rings follow its corners.
+        func outlines(of thing: MeadowScenery.Thing) -> [Outline] {
+            guard thing.points.count < 2 else {
+                // Points in line (a drag lays one each 2.5 units) are one straight length, ringed once.
+                var corners: [Vec2] = [thing.points[0]]
+                for k in 1..<thing.points.count {
+                    let p: Vec2 = thing.points[k]
+                    guard let last = corners.last, simd_distance(last, p) > 1e-4 else { continue }
+                    if corners.count >= 2 {
+                        let before: Vec2 = corners[corners.count - 2]
+                        let d1: Vec2 = simd_normalize(last - before), d2: Vec2 = simd_normalize(p - last)
+                        if simd_dot(d1, d2) > 0.999 { corners[corners.count - 1] = p; continue }
+                    }
+                    corners.append(p)
+                }
+                var lengths: [Outline] = []
+                for k in 1..<corners.count {
+                    let a: Vec2 = corners[k - 1], b: Vec2 = corners[k]
+                    let half: Float = simd_distance(a, b) / 2
+                    lengths.append(Outline(center: (a + b) * 0.5, along: simd_normalize(b - a), half: half, r: 0.55))
+                }
+                return lengths
+            }
+            return outline(of: thing).map { [$0] } ?? []
         }
         func outline(of thing: MeadowScenery.Thing) -> Outline? {
             let circles = SceneryRules.footprint(of: thing)
@@ -176,10 +202,12 @@ final class EditDrawer {
         }
 
         // Under the pointer: a faint ring.
-        if let hovered = marks.hovered, !marks.selected.contains(hovered), let o = outline(of: hovered) {
+        if let hovered = marks.hovered, !marks.selected.contains(hovered) {
             batch(alpha: strong ? 0.9 : 0.55) {
-                let p = perPoint(o.center.x, o.center.y)
-                band(o, from: 1.5 * p, to: 3.5 * p, color: white, dashed: false, lift: 0.3)
+                for o in outlines(of: hovered) {
+                    let p = perPoint(o.center.x, o.center.y)
+                    band(o, from: 1.5 * p, to: 3.5 * p, color: white, dashed: false, lift: 0.3)
+                }
             }
         }
         // Chosen: the focus colour, with a thin white edge inside so it reads on any green; a tree also
@@ -187,10 +215,11 @@ final class EditDrawer {
         let refused = Set(marks.refused)
         batch(alpha: 0.95) {
             for i in marks.selected where !refused.contains(i) {
-                guard let o = outline(of: i) else { continue }
-                let p = perPoint(o.center.x, o.center.y)
-                band(o, from: 0.5 * p, to: 1.7 * p, color: white, dashed: false, lift: 0.32)
-                band(o, from: 1.7 * p, to: (strong ? 5 : 4) * p, color: focus, dashed: false, lift: 0.32)
+                for o in outlines(of: i) {
+                    let p = perPoint(o.center.x, o.center.y)
+                    band(o, from: 0.5 * p, to: 1.7 * p, color: white, dashed: false, lift: 0.32)
+                    band(o, from: 1.7 * p, to: (strong ? 5 : 4) * p, color: focus, dashed: false, lift: 0.32)
+                }
             }
         }
         batch(alpha: strong ? 0.95 : 0.8) {
@@ -205,20 +234,26 @@ final class EditDrawer {
         // May not stand there: dashed, white within and the ink without, never by colour alone.
         batch(alpha: 0.95) {
             for i in marks.refused {
-                guard let o = outline(of: i) else { continue }
-                let p = perPoint(o.center.x, o.center.y)
-                band(o, from: 0.5 * p, to: 2.3 * p, color: white, dashed: true, lift: 0.32)
-                band(o, from: 2.3 * p, to: 4.3 * p, color: ink, dashed: true, lift: 0.32)
+                for o in outlines(of: i) {
+                    let p = perPoint(o.center.x, o.center.y)
+                    band(o, from: 0.5 * p, to: 2.3 * p, color: white, dashed: true, lift: 0.32)
+                    band(o, from: 2.3 * p, to: 4.3 * p, color: ink, dashed: true, lift: 0.32)
+                }
             }
         }
         // The thing about to be placed: its ground ringed as a chosen thing's (dashed, in the ink, where it
-        // may not stand), with a tick on the ring for which way it faces.
-        if let ghost = marks.ghost, let o = outline(of: ghost) {
+        // may not stand), with a tick on the ring for which way it faces (a run being laid: each of its lengths
+        // ringed, no tick).
+        if let ghost = marks.ghost, let o = outlines(of: ghost).first {
             batch(alpha: 0.95) {
-                let p = perPoint(o.center.x, o.center.y)
                 let refused = marks.ghostRefused
-                band(o, from: 0.5 * p, to: (refused ? 2.3 : 1.7) * p, color: white, dashed: refused, lift: 0.32)
-                band(o, from: (refused ? 2.3 : 1.7) * p, to: (refused ? 4.3 : strong ? 5 : 4) * p, color: refused ? ink : focus, dashed: refused, lift: 0.32)
+                for o in outlines(of: ghost) {
+                    let p = perPoint(o.center.x, o.center.y)
+                    band(o, from: 0.5 * p, to: (refused ? 2.3 : 1.7) * p, color: white, dashed: refused, lift: 0.32)
+                    band(o, from: (refused ? 2.3 : 1.7) * p, to: (refused ? 4.3 : strong ? 5 : 4) * p, color: refused ? ink : focus, dashed: refused, lift: 0.32)
+                }
+                guard !ghost.isRun else { return }
+                let p = perPoint(o.center.x, o.center.y)
                 // The tick: outward from the ring along the thing's own x axis, as it is turned.
                 let facing = Vec2(cos(ghost.turn), -sin(ghost.turn))
                 let r = o.r + o.half

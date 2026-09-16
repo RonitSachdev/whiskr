@@ -38,6 +38,20 @@ enum MeadowWords {
         case "cat.bed": String(localized: "Cat bed", comment: "Meadow editor: a thing's name")
         case "cat.bowl": String(localized: "Food bowl", comment: "Meadow editor: a thing's name (a cat's)")
         case "work.lampPost": String(localized: "Garden lamp", comment: "Meadow editor: a thing's name (a lamp post that lights at night)")
+        case "garden.fence": String(localized: "Wooden fence", comment: "Meadow editor: a thing's name (a post-and-rail fence, laid in runs)")
+        case "garden.flowerPot": String(localized: "Flower pot", comment: "Meadow editor: a thing's name (a pot with a geranium in it)")
+        case "garden.planter": String(localized: "Planter box", comment: "Meadow editor: a thing's name (a raised wooden bed)")
+        case "garden.wateringCan": String(localized: "Watering can", comment: "Meadow editor: a thing's name")
+        case "garden.birdhouse": String(localized: "Birdhouse", comment: "Meadow editor: a thing's name (a nest box on a post)")
+        case "garden.skep": String(localized: "Straw beehive", comment: "Meadow editor: a thing's name (a skep)")
+        case "work.desk": String(localized: "Writing desk", comment: "Meadow editor: a thing's name (a low desk to sit at on a cushion)")
+        case "work.bookshelf": String(localized: "Bookshelf", comment: "Meadow editor: a thing's name")
+        case "work.bench": String(localized: "Bench", comment: "Meadow editor: a thing's name (a garden bench)")
+        case "work.signpost": String(localized: "Signpost", comment: "Meadow editor: a thing's name (a fingerpost with no words on it)")
+        case "work.mailbox": String(localized: "Mailbox", comment: "Meadow editor: a thing's name (on a post)")
+        case "work.noticeboard": String(localized: "Noticeboard", comment: "Meadow editor: a thing's name (a cork board on posts)")
+        case "place.shed": String(localized: "Garden shed", comment: "Meadow editor: a thing's name")
+        case "place.tent": String(localized: "Canvas tent", comment: "Meadow editor: a thing's name")
         case "ground.path": String(localized: "Path", comment: "Meadow editor: a ground paint's name (worn earth)")
         case "ground.lawn": String(localized: "Lawn", comment: "Meadow editor: a ground paint's name (grass mown short)")
         case "ground.soil": String(localized: "Soil", comment: "Meadow editor: a ground paint's name (bare earth for flower beds)")
@@ -221,6 +235,20 @@ enum MeadowWords {
         case "cat.bed": String(localized: "basket, nap, sleep, cat", comment: "Meadow editor's filter: other words for the cat bed, comma-separated")
         case "cat.bowl": String(localized: "dish, food, kibble, cat", comment: "Meadow editor's filter: other words for the food bowl, comma-separated")
         case "work.lampPost": String(localized: "lamp post, lantern, light, night, street lamp", comment: "Meadow editor's filter: other words for the garden lamp, comma-separated")
+        case "garden.fence": String(localized: "gate, rail, post, paling", comment: "Meadow editor's filter: other words for the wooden fence, comma-separated")
+        case "garden.flowerPot": String(localized: "plant pot, terracotta, geranium", comment: "Meadow editor's filter: other words for the flower pot, comma-separated")
+        case "garden.planter": String(localized: "raised bed, vegetables, lettuce", comment: "Meadow editor's filter: other words for the planter box, comma-separated")
+        case "garden.wateringCan": String(localized: "water, watering", comment: "Meadow editor's filter: other words for the watering can, comma-separated")
+        case "garden.birdhouse": String(localized: "nest box, bird box", comment: "Meadow editor's filter: other words for the birdhouse, comma-separated")
+        case "garden.skep": String(localized: "skep, bees, hive, honey", comment: "Meadow editor's filter: other words for the straw beehive, comma-separated")
+        case "work.desk": String(localized: "table, study, work", comment: "Meadow editor's filter: other words for the writing desk, comma-separated")
+        case "work.bookshelf": String(localized: "bookcase, books, library", comment: "Meadow editor's filter: other words for the bookshelf, comma-separated")
+        case "work.bench": String(localized: "seat, park bench", comment: "Meadow editor's filter: other words for the bench, comma-separated")
+        case "work.signpost": String(localized: "fingerpost, sign, way", comment: "Meadow editor's filter: other words for the signpost, comma-separated")
+        case "work.mailbox": String(localized: "letterbox, post, mail", comment: "Meadow editor's filter: other words for the mailbox, comma-separated")
+        case "work.noticeboard": String(localized: "bulletin board, cork board, notes", comment: "Meadow editor's filter: other words for the noticeboard, comma-separated")
+        case "place.shed": String(localized: "hut, cabin, building", comment: "Meadow editor's filter: other words for the garden shed, comma-separated")
+        case "place.tent": String(localized: "camping, camp", comment: "Meadow editor's filter: other words for the canvas tent, comma-separated")
         default: ""
         }
     }
@@ -248,6 +276,66 @@ enum MeadowWords {
     /// A Brush stroke: "Brush Daisies", "Brush Wildflowers".
     static func brush(_ kind: String) -> String {
         String(localized: "Brush \(clumpName(kind))", comment: "Meadow editor: a step's name (a Brush stroke and what it planted)")
+    }
+
+    // Fences and colours.
+
+    static var layFence: String { String(localized: "Lay Fence", comment: "Meadow editor: a step's name (a fence run laid along a drag)") }
+    static var joinFence: String { String(localized: "Lay and Join Fence", comment: "Meadow editor: a step's name (a fence run laid, its end joining another fence's)") }
+    static var straighten: String { String(localized: "Straighten Fence", comment: "Meadow editor: a step's name") }
+    static var addGate: String { String(localized: "Add Gate", comment: "Meadow editor: a step's name (a gate hung in a fence)") }
+    static var removeGate: String { String(localized: "Remove Gate", comment: "Meadow editor: a step's name (a fence's gate taken away)") }
+    /// "Colour Bench Sage", "Colour 3 Things Sage".
+    static func colour(_ ids: [String], _ name: String) -> String {
+        String(localized: "Colour \(things(ids)) \(colourName(name))", comment: "Meadow editor: a step's name (things given a colour from their palette)")
+    }
+
+    /// What to do with the fence armed, in the tray's line.
+    static var fenceHint: String {
+        String(localized: "Drag to lay a fence · ⌥-drag lays it straight · its ends join a fence's near them · click lays a short one",
+               comment: "Meadow editor's tray: what to do with the fence armed")
+    }
+
+    /// The keys' fence: begun, and each corner set.
+    static var fenceStarted: String {
+        String(localized: "Fence begun. Move with the arrows and press Return for each corner; Return again where you are lays it.",
+               comment: "VoiceOver: a fence begun at the keyboard's cursor")
+    }
+    static func fenceCorner(_ count: Int) -> String {
+        String(localized: "Corner \(count - 1) set", comment: "VoiceOver: a corner of a fence set with Return (its number)")
+    }
+
+    /// A thing as VoiceOver names it: its name, and its colour when it has a palette ("Bench, colour sage").
+    static func described(_ item: MeadowFile.MeadowItem) -> String {
+        guard case .choice(let colour) = item.value(of: "colour", MeadowCatalog.current) else { return name(item.asset) }
+        return String(localized: "\(name(item.asset)), colour \(colourName(colour).lowercased())", comment: "VoiceOver: a thing and the colour it wears")
+    }
+
+    /// A palette's colour, as its swatch's tooltip and VoiceOver say it.
+    static func colourName(_ name: String) -> String {
+        switch name {
+        case "oat": String(localized: "Oat", comment: "Meadow editor: a colour of a made thing's palette (a pale oatmeal)")
+        case "sage": String(localized: "Sage", comment: "Meadow editor: a colour of a made thing's palette (a soft grey-green)")
+        case "mustard": String(localized: "Mustard", comment: "Meadow editor: a colour of a made thing's palette")
+        case "rose": String(localized: "Rose", comment: "Meadow editor: a colour of a made thing's palette (a soft pink)")
+        case "lavender": String(localized: "Lavender", comment: "Meadow editor: a colour of a made thing's palette")
+        case "cream": String(localized: "Cream", comment: "Meadow editor: a colour of a made thing's palette")
+        case "charcoal": String(localized: "Charcoal", comment: "Meadow editor: a colour of a made thing's palette")
+        case "slate": String(localized: "Slate", comment: "Meadow editor: a colour of a made thing's palette (a blue-grey)")
+        case "wood": String(localized: "Natural Wood", comment: "Meadow editor: a colour of a made thing's palette (oiled wood, unpainted)")
+        case "forest": String(localized: "Forest Green", comment: "Meadow editor: a colour of a made thing's palette")
+        case "zinc": String(localized: "Zinc", comment: "Meadow editor: a colour of a made thing's palette (galvanised metal)")
+        case "duckEgg": String(localized: "Duck Egg", comment: "Meadow editor: a colour of a made thing's palette (a pale blue-green)")
+        case "terracotta": String(localized: "Terracotta", comment: "Meadow editor: a colour of a made thing's palette (fired clay)")
+        case "glazeMoss": String(localized: "Moss Glaze", comment: "Meadow editor: a colour of a made thing's palette (a green glaze on a pot)")
+        case "glazeCeladon": String(localized: "Celadon Glaze", comment: "Meadow editor: a colour of a made thing's palette (a pale grey-green glaze on a pot)")
+        case "glazeBottle": String(localized: "Bottle Green Glaze", comment: "Meadow editor: a colour of a made thing's palette (a deep green glaze on a pot)")
+        case "canvas": String(localized: "Natural Canvas", comment: "Meadow editor: a colour of a made thing's palette (undyed cotton canvas)")
+        case "olive": String(localized: "Olive", comment: "Meadow editor: a colour of a made thing's palette")
+        case "ochre": String(localized: "Ochre", comment: "Meadow editor: a colour of a made thing's palette")
+        case "dove": String(localized: "Dove Grey", comment: "Meadow editor: a colour of a made thing's palette")
+        default: name
+        }
     }
 
     /// Where a thing is, for VoiceOver: "12 units north-west of the picnic ground", or on it.

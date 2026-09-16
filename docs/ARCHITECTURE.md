@@ -406,6 +406,19 @@ cut short round them) but are not walked on. Where a cat likes to be at a thing 
 scratch at a post) is catalog data, `MeadowScenery.catSpot(of:)`, and `MeadowScenery.Thing.catSpot` gives it
 in the meadow, turned and standing as the thing is; nothing uses it yet.
 
+Made things with a palette (`SceneryCatalog.palettes`, name for name the catalog's `colour` choices, colours in
+`Palette`) are built per swatch (`SceneryCatalog.painted`; `Thing.swatch`, `ShapeKey.swatch`), each swatch a
+bed of its own. The shed, tent, bookcase and nest box fade in the way as young trees do (`SceneryCatalog.tall`,
+`Meadow.madeScreen`); the shed, tent and fence are big (`SceneryCatalog.big`). A fence is a run
+(`Thing.points`, `Thing.gate`; `MeadowItem.Placement.run` and `params.gate` in the file): `Fences.layout` stands
+its posts at each point and evenly between (as `MeadowCatalog.posts` counts them) and `Fences.parts` gives each
+post, span of rails, gate and gate cap a matrix on the land, drawn instanced in four beds (`Meadow.Laid.run`,
+`Meadow.Run`); moved or turned whole it is placed again in place. Its rules' ground is round its posts and under
+its rails, none across its gate; `MeadowView.crossesFence(from:to:)` tells whatever leads the cats whether a
+straight way passes through it. Laying, joining, straightening, gating and colouring are `MeadowFencing.swift`
+(WhiskrMeadow): `MeadowFenceDraft` (a drag's points a post apart), `fenceLaying` (ends joined within 0.8 units,
+at most 64 points), `layFence`, `straighten`, `toggleGate`, `recolour`, each one `MeadowChange`.
+
 **Editing** (`EditModeController`, docs/DESIGN.md "Editing the meadow"). The document is edited as a
 `MeadowEditSession` (WhiskrMeadow): every entry has an id that lasts while it is edited, and every edit is a
 `MeadowChange` (things removed and added with their places, things changed before and after) that undoes and

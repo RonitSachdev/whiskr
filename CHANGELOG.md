@@ -74,6 +74,13 @@ Nothing has been released yet. This is what the first release will contain.
   wheel as well as a trackpad, the filter finds things by other names too ("firewood", "zabuton"; in
   Japanese, hiragana or katakana), and the Eraser's sweep leaves made things, wood and boulders alone (a
   click takes one).
+- A garden and a workplace to fill it: a wooden fence laid by dragging (a post every 2.5 units, rails
+  following the land, its end joining a fence's near it into one run; ⌥ lays it straight, a click a short one,
+  and Return at each corner lays one with the keys), with Straighten and Add Gate on its bar; a flower pot, a
+  planter box, a watering can, a birdhouse and a straw beehive; a low writing desk, a bookshelf, a bench, a
+  signpost, a mailbox, a noticeboard, a garden shed and a canvas tent. Made things with colours to choose (the
+  bench, the shed's door, the tent, the pot, the cushion, the cat's bed and more) show them on the selection
+  bar's Colour button, in the blankets' own gingham shades; the next one placed wears the colour you chose last.
 - Garden lamps for the meadow (Edit Meadow › Workplace): a lamp post that lights by itself after sunset and
   goes out after sunrise, the lamps coming on one by one with a little stutter as each catches. Lit, each
   pools warm light on the grass round it, lights what stands near it and the rain or snow falling past it, and

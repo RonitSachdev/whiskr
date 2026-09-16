@@ -175,6 +175,12 @@ public final class MeadowView: MTKView {
         stage.meadow?.walkingEase(spot.x, spot.y) ?? Meadow.walkingEase(.wild)
     }
 
+    /// Whether a cat going straight from `from` to `to` on the ground (x, z) would have to pass through a fence: any
+    /// of its spans but a gate's. For whatever leads a cat about the meadow, which goes round, or through the gate.
+    public func crossesFence(from: SIMD2<Float>, to: SIMD2<Float>) -> Bool {
+        stage.meadow?.crossesFence(from, to) ?? false
+    }
+
     /// The blankets whose blanket and flag are not wholly in view, as of the last frame: past the top edge
     /// and past the bottom edge, by id, in the world's order.
     public private(set) var blanketsOutOfView: (above: [String], below: [String]) = ([], [])

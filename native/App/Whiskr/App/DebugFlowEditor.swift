@@ -130,6 +130,7 @@ final class EditorFlow {
         await painting()
         await steppingStones()
         await newThings()
+        await garden()
         await lamps()
         await limits()
         await carryingOn()
@@ -958,12 +959,15 @@ final class EditorFlow {
     }
 
     /// Clicks the selection's bar's `index`th button (0: Turn Left …).
+    /// (8: Straighten, 9: Add or Remove Gate, for a fence; 10: Colour.)
     func clickBarButton(index: Int) async {
         let host = editor.selectionBar
-        let grows = editor.barModel.grows
-        // Buttons are 28 wide with 2 between, and a separator (1 + 4) after Turn Right, after Shuffle, after Delete.
+        let model = editor.barModel
+        // Buttons are 28 wide with 2 between, and a separator (1 + 4) after Turn Right, after Shuffle, before Colour,
+        // after Delete; a fence's bar: Straighten, Add Gate, a separator, Delete, a separator, More.
         var x = SelectionBar.margin + Look.Space.xs
-        let order: [Int] = grows ? [0, 1, -1, 2, 3, 4, -1, 5, 6, -1, 7] : [0, 1, -1, 5, 6, -1, 7]
+        let order: [Int] = model.fence ? [8, 9, -1, 6, -1, 7]
+            : [0, 1] + (model.grows ? [-1, 2, 3, 4] : []) + (model.swatches.isEmpty ? [] : [-1, 10]) + [-1, 5, 6, -1, 7]
         for slot in order {
             if slot == index { break }
             x += slot == -1 ? 1 + 2 * Look.Space.xxs + Look.Space.xxs : Look.Height.iconButton + Look.Space.xxs

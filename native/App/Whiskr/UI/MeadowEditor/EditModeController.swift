@@ -78,6 +78,13 @@ final class EditModeController: NSObject {
     /// Things just placed, settling into the meadow.
     var settling: Settling?
     var random = SystemRandomNumberGenerator()
+    /// A fence run being drawn by a drag, or by the keys (its corners so far); and the colour each kind with a
+    /// palette was last given, which the next one armed wears (`EditModeController+Garden.swift`).
+    var fenceDraft: MeadowFenceDraft?
+    var fenceKeys: [SIMD2<Double>]?
+    /// The run the fence's ghost shows, joined as it will be laid.
+    var fenceLaying: MeadowFenceLaying?
+    var colours: [String: String] = [:]
     private var watching: [Observing] = []
 
     struct Settling {
@@ -411,6 +418,13 @@ final class EditModeController: NSObject {
     private func dragged(_ p: MeadowEditPointer) {
         switch gesture {
         case .placing(let at):
+            // The fence dragged: a run along the drag, from where it was pressed.
+            if laysFences, hypot(p.location.x - at.x, p.location.y - at.y) >= 4, let start = meadow.groundPoint(at: at) {
+                gesture = .stroking
+                hideReason()
+                beginFence(at: start, straight: p.modifiers.contains(.option))
+                return dragged(p)
+            }
             // Stepping stones dragged: a row of them along the drag, from where it was pressed.
             if laysInRows, hypot(p.location.x - at.x, p.location.y - at.y) >= 4, let start = meadow.groundPoint(at: at), let ground = meadow.groundPoint(at: p.location) {
                 gesture = .stroking
@@ -423,6 +437,7 @@ final class EditModeController: NSObject {
             sayGhost(at: p.location, lasting: nil)
         case .stroking:
             guard let ground = meadow.groundPoint(at: p.location) else { return }
+            if fenceDraft != nil { return continueFence(to: ground, straight: p.modifiers.contains(.option)) }
             if stroke?.laying == true {
                 ghostSpot = ground
                 drawPending()
@@ -509,6 +524,9 @@ final class EditModeController: NSObject {
                 showReason(text, at: p.location, lasting: 2.5)
                 announce(text)
             }
+        case .stroking where fenceDraft != nil:
+            gesture = nil
+            finishFence(keepArmed: p.modifiers.contains(.shift))
         case .stroking:
             gesture = nil
             let laid = stroke?.laying == true ? stroke?.added.map(\.id) ?? [] : nil
@@ -573,7 +591,7 @@ final class EditModeController: NSObject {
     /// A drag, or things springing back, draw the meadow as they are now rather than as it is saved.
     var showsPreview: Bool {
         if case .moving = gesture { return true }
-        return spring != nil || stroke != nil
+        return spring != nil || stroke != nil || fenceDraft != nil
     }
 
     /// Let go where they cannot stand (or Esc mid-drag): the things spring back to where they came from,
@@ -718,7 +736,9 @@ final class EditModeController: NSObject {
     /// Return: the armed thing placed at the keyboard's cursor (or nearest it), one dab of the Brush or sweep of
     /// the Eraser there, else the thing gone to (or nearest the cursor) chosen.
     private func returnKey() {
-        if tray.armed != nil {
+        if laysFences {
+            fenceReturn()
+        } else if tray.armed != nil {
             ghostSpot = cursor ?? ghostSpot ?? viewMiddle()
             drawPending()
             placePending(searching: true, keepArmed: false)
@@ -744,6 +764,7 @@ final class EditModeController: NSObject {
         case .stroking:
             gesture = nil
             cancelStroke()
+            cancelFence()
         case .marquee(_, let base):
             gesture = nil
             marquee.rect = nil
@@ -831,7 +852,7 @@ final class EditModeController: NSObject {
 
     /// Makes an edit as one step; refused, the reason is shown by the selection and said.
     @discardableResult
-    private func perform(_ name: String, _ make: (inout MeadowEditSession) -> Result<MeadowChange, MeadowEditRefused>) -> Bool {
+    func perform(_ name: String, _ make: (inout MeadowEditSession) -> Result<MeadowChange, MeadowEditRefused>) -> Bool {
         finishSpring()
         switch library.edit(name, make) {
         case .success(let change):
@@ -1139,6 +1160,9 @@ final class EditModeController: NSObject {
         case .shuffle: shuffleSelection()
         case .duplicate: duplicateSelection()
         case .delete: deleteSelection()
+        case .colour(let name): recolourSelection(name)
+        case .straighten: straightenFence()
+        case .gate: toggleFenceGate()
         case .more:
             let menu = NSMenu()
             if !barModel.onlyMoves {
@@ -1203,6 +1227,7 @@ final class EditModeController: NSObject {
         barModel.count = selection.count
         barModel.grows = !selection.isEmpty && selection.allSatisfy(library.session.grows)
         barModel.onlyMoves = selection.contains(where: library.session.isParcel)
+        updateGardenBar()
     }
 
     /// Each frame while editing: the tray laid out for the meadow's size, the selection's bar over what is chosen.
@@ -1346,7 +1371,7 @@ final class EditModeController: NSObject {
                 }
             }
             let clump = members
-            let label = clump.count == 1 ? "\(MeadowWords.name(item.asset)), \(MeadowWords.whereIs(item.at))" : MeadowWords.clump(item.asset, count: clump.count)
+            let label = clump.count == 1 ? "\(MeadowWords.described(item)), \(MeadowWords.whereIs(item.at))" : MeadowWords.clump(item.asset, count: clump.count)
             let element = SceneryAccessibilityElement(meadow: meadow, frame: { [weak self] in
                 guard let self, let window = self.meadow.window,
                       let rect = self.meadow.screenRect(ofScenery: clump.compactMap(self.library.session.thingIndex(of:))) else { return nil }

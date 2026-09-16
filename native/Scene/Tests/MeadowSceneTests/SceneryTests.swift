@@ -125,7 +125,7 @@ import simd
         #expect(m.treeShapes[0].shape.positions == Trees.grow(.oak, &random).shape.roughened(0.85).positions)
         #expect(m.beds[0].matrices == [Meadow.matrix(of: daisy)] && m.plantKeys[0] == ShapeKey(id: "flower.daisy", variant: 1))
         // A shape it does not have draws as the first; an id the scene does not know is left out.
-        let other = Meadow(scenery: MeadowScenery(things: [thing("flower.daisy", 0, 0, variant: 9), thing("work.desk", 1, 1), thing("garden.pond", 2, 2)]))
+        let other = Meadow(scenery: MeadowScenery(things: [thing("flower.daisy", 0, 0, variant: 9), thing("water.pond", 1, 1), thing("garden.pond", 2, 2)]))
         #expect(other.beds.count == 1 && other.plantKeys == [ShapeKey(id: "flower.daisy", variant: 0)])
     }
 
