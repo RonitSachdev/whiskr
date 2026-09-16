@@ -30,6 +30,8 @@ fragment float4 skyFragment(SkyOut in [[stage_in]], constant Frame& F [[buffer(0
 }
 
 // ---------- ground (kit.ts turf) ----------
+// How strongly a garden lamp's pool lights the ground and the grass in it.
+#define GROUND_LAMP 1.25
 struct GroundIn { packed_float3 p; packed_float3 n; };
 struct GroundOut { float4 position [[position]]; float3 world; float3 irr; float fog; };
 vertex GroundOut groundVertex(uint vid [[vertex_id]], device const GroundIn* v [[buffer(1)]], constant Frame& F [[buffer(0)]],
@@ -46,7 +48,7 @@ vertex GroundOut groundVertex(uint vid [[vertex_id]], device const GroundIn* v [
     return o;
 }
 fragment float4 groundFragment(GroundOut in [[stage_in]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]],
-                               texture2d<float> groundMap [[texture(0)]]) {
+                               texture2d<float> groundMap [[texture(0)]], texture2d<float> lamps [[texture(1)]]) {
     float2 g = in.world.xz;
     float3 land = meadowColor(g, F);
     float blankets;
@@ -76,6 +78,8 @@ fragment float4 groundFragment(GroundOut in [[stage_in]], constant Frame& F [[bu
     }
     c *= shadeFrom(g, F, map.a);
     float3 lit = c * in.irr + c * WARM * picnicLight2(g, F, W) * 0.8;
+    // A garden lamp's pool.
+    if (F.weather.z > 0.0) lit += c * LAMP * lampAt(g, lamps) * GROUND_LAMP;
     return float4(mix(lit, F.horizon.rgb, in.fog), 1);
 }
 
@@ -85,7 +89,8 @@ struct Tuft { float4 rootYaw; float4 scale; };
 struct GrassOut { float4 position [[position]]; float3 land; float3 lit; float3 glow; float blade; float fog; };
 vertex GrassOut grassVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                             device const Blade* shape [[buffer(1)]], device const Tuft* tufts [[buffer(3)]],
-                            constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]], texture2d<float> groundMap [[texture(0)]]) {
+                            constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]], texture2d<float> groundMap [[texture(0)]],
+                            texture2d<float> lamps [[texture(1)]]) {
     Tuft t = tufts[iid];
     float3 root = t.rootYaw.xyz;
     root.y = mix(root.y, LAND_GROUND, levelAt(root.xz, F, W));
@@ -121,6 +126,7 @@ vertex GrassOut grassVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     o.land = mix(o.land, land * (1.07 + 0.05 * lawnStripe(root.xz)), painted.lawn * 0.85);
     o.lit = shadeFrom(root.xz, F, map.a) * (0.93 + 0.14 * mHash(floor(root.xz * 2.0))) * lambertIrradiance(n, F);
     o.glow = WARM * picnicLight2(root.xz, F, W);
+    if (F.weather.z > 0.0) o.glow += LAMP * lampAt(root.xz, lamps) * GROUND_LAMP;
     o.blade = position.y;
     o.fog = fogFactor(w, F);
     return o;

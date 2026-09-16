@@ -59,11 +59,12 @@ public enum SceneryRules {
         }
     }
 
-    /// Trees, young trees and logs: kept off the picnic ground.
+    /// Trees, young trees, logs and lamps: kept off the picnic ground (a lamp's light would fall on the blankets
+    /// and their lanterns, and a lit lamp among them could be taken for one).
     public static func isBig(_ id: String) -> Bool {
         switch SceneryCatalog.kinds[id] {
         case .tree, .youngTree, .log: true
-        default: false
+        default: Lamps.isLamp(id)
         }
     }
 

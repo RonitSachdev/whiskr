@@ -494,6 +494,9 @@ final class Stage {
             meadow.update(drift, fading: dt, time: time, eye: camera.eye, lookAt: camera.target, sleepers: sleepers, sights: sights, sightCount: sightCount,
                           clearOf: clearOf, clearCount: clearCount, clearings: world.clearings, clearingCount: clearingCount, light: light, windToward: windToward)
             surroundings.critters = meadow.critters.spots
+            // Garden lamps come on at dusk one by one, warming up; at once with Reduce Motion or the animation off.
+            meadow.light(dt, lit: light.lampsLit, steady: !ambient || village.reduceMotion, ghost: editing ? editMarks.ghost : nil,
+                         clearings: world.clearings, clearingCount: clearingCount)
             village.update(dt, surroundings, stage: self)
             village.collectCats(into: &cats)
             pathCount = village.troddenCount

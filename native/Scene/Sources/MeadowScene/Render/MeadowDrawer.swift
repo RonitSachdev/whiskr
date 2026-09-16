@@ -148,18 +148,19 @@ final class MeadowDrawer {
         groundLight = texture(.r8Unorm, m.groundMap.light, 1, "ground light")
     }
 
-    /// Copies the part of the ground's map that changed (trees moved) into its texture, in this frame's
-    /// command buffer, so it lands in order after the frames still drawing from the texture.
-    private func upload(_ region: GroundMap.Region, of map: GroundMap, to texture: MTLTexture, arena: Arena, _ commandBuffer: MTLCommandBuffer) {
-        let side = GroundMap.side, width = region.columns.count, height = region.rows.count
-        let bytes = arena.alloc(UInt8.self, width * height * 4)
-        map.surface.withUnsafeBufferPointer { source in
+    /// Copies the part of the ground's map that changed (trees moved, lamps lit) into its texture, in this frame's
+    /// command buffer, so it lands in order after the frames still drawing from the texture: `bytes` holds `perTexel`
+    /// bytes a texel (the surface, or the lamplight).
+    private func upload(_ region: GroundMap.Region, of map: [UInt8], perTexel: Int, to texture: MTLTexture, arena: Arena, _ commandBuffer: MTLCommandBuffer) {
+        let side = GroundMap.side, width = region.columns.count, height = region.rows.count, n = perTexel
+        let bytes = arena.alloc(UInt8.self, width * height * n)
+        map.withUnsafeBufferPointer { source in
             for (r, row) in region.rows.enumerated() {
-                (bytes.pointer + r * width * 4).update(from: source.baseAddress! + (row * side + region.columns.lowerBound) * 4, count: width * 4)
+                (bytes.pointer + r * width * n).update(from: source.baseAddress! + (row * side + region.columns.lowerBound) * n, count: width * n)
             }
         }
         guard let blit = commandBuffer.makeBlitCommandEncoder() else { return }
-        blit.copy(from: bytes.buffer, sourceOffset: bytes.offset, sourceBytesPerRow: width * 4, sourceBytesPerImage: width * height * 4,
+        blit.copy(from: bytes.buffer, sourceOffset: bytes.offset, sourceBytesPerRow: width * n, sourceBytesPerImage: width * height * n,
                   sourceSize: MTLSize(width: width, height: height, depth: 1), to: texture, destinationSlice: 0, destinationLevel: 0,
                   destinationOrigin: MTLOrigin(x: region.columns.lowerBound, y: region.rows.lowerBound, z: 0))
         blit.endEncoding()
@@ -324,7 +325,8 @@ final class MeadowDrawer {
         guard let m = stage.meadow else { return }
         ready(m)
         updateLifted(stage, m)
-        if let changed = m.takeGroundChanges(), let map = groundMap { upload(changed, of: m.groundMap, to: map, arena: arena, commandBuffer) }
+        if let changed = m.takeGroundChanges(), let map = groundMap { upload(changed, of: m.groundMap.surface, perTexel: 4, to: map, arena: arena, commandBuffer) }
+        if let changed = m.takeLightChanges(), let light = groundLight { upload(changed, of: m.groundMap.light, perTexel: 1, to: light, arena: arena, commandBuffer) }
         rootedDraws.removeAll(keepingCapacity: true)
         var total = 0
         for bed in m.beds { total += bed.matrices.count }
@@ -333,12 +335,19 @@ final class MeadowDrawer {
         var n = 0
         for (b, bed) in m.beds.enumerated() {
             if let screens = bed.screens {
-                // Saplings: the solid ones, then those faded because they stand in the way.
+                // Saplings and lamps: the solid ones, then those faded because they stand in the way. A lamp's glass
+                // glows as brightly as it is lit.
                 for faded in [false, true] {
                     let first = n
                     for (i, matrix) in bed.matrices.enumerated() where (m.screens[screens[i]].fade < 0.999) == faded {
                         let chosen = !lifted.young.isEmpty && lifted.young.contains(SIMD2(Int32(b), Int32(i)))
-                        inst.pointer[n] = self.chosen(ClayInstance(matrix, tint: Vec4(1, 1, 1, m.screens[screens[i]].fade), sway: bed.sway, lit: .rooted), chosen)
+                        let fade = m.screens[screens[i]].fade
+                        if let lamp = bed.lamps?[i] {
+                            inst.pointer[n] = self.chosen(ClayInstance(matrix, tint: Vec4(1, 1, 1, fade), emissive: Self.glassGlow * m.lamps.lamps[lamp].shine,
+                                                                       sway: bed.sway, lit: [.rooted, .lamp]), chosen)
+                        } else {
+                            inst.pointer[n] = self.chosen(ClayInstance(matrix, tint: Vec4(1, 1, 1, fade), sway: bed.sway, lit: .rooted), chosen)
+                        }
                         n += 1
                     }
                     if n > first { rootedDraws.append(RootedDraw(mesh: bed.plant, first: first, count: n - first, faded: faded)) }
@@ -560,7 +569,10 @@ final class MeadowDrawer {
         guard stage.editing, let thing = stage.editMarks.ghost, let alone = Meadow.alone(thing) else { return }
         if ghost?.key != alone.key { ghost = (alone.key, meshes[alone.key] ?? gpu.mesh(alone.make(), label: "ghost")) }
         guard let mesh = ghost?.mesh else { return }
-        var inst = ClayInstance(alone.matrix, tint: Vec4(1, 1, 1, Self.ghostOpacity), lit: stage.editMarks.ghostRefused ? .greyed : [])
+        // A lamp's ghost is lit as the lamps are, its light already on the ground round it (`MeadowLamps.carry`).
+        let glow = Lamps.isLamp(thing.id) ? Self.glassGlow * (stage.meadow?.lamps.ghost?.level ?? 0) : .zero
+        var inst = ClayInstance(alone.matrix, tint: Vec4(1, 1, 1, Self.ghostOpacity), emissive: glow,
+                                lit: Lit(stage.editMarks.ghostRefused ? [.greyed] : []).union(Lamps.isLamp(thing.id) ? .lamp : []))
         inst.extra.z = stage.editMarks.ghostRefused ? 0.85 : 0
         enc.setCullMode(.back)
         for pass in 0..<2 {
@@ -574,6 +586,44 @@ final class MeadowDrawer {
 
     /// How solid the ghost is drawn.
     static let ghostOpacity: Float = 0.6
+
+    // MARK: garden lamps
+
+    /// How brightly a lit lamp's glass glows (times its own colours), linear: well past the brightest lit clay, so
+    /// it reads as a light rather than as pale glass.
+    static let glassGlow = Vec3(2.4, 1.75, 1.0)
+    /// The soft halo round a lit lamp's glass, as the night air (and more, mist and rain) scatters it: its colour,
+    /// how wide across in units, and how strong, clear and in fog.
+    static let halo = (color: Vec3(1.0, 0.62, 0.3), across: Float(3.4), clear: Float(0.42), misty: Float(0.75))
+
+    /// A halo round each lit lamp's glass, faded as the lamp is, drawn a little toward you so its lantern sits in
+    /// its middle; wider and stronger in mist, fog and rain.
+    private func encodeHalos(_ stage: Stage, arena: Arena, enc: MTLRenderCommandEncoder) {
+        guard let m = stage.meadow, m.lamps.shining else { return }
+        let l = stage.light, eye = stage.camera.eye
+        let thick = max(l.mist, 0.6 * l.falling)
+        let size = Self.halo.across * (1 + 0.6 * thick), strength = lerp(Self.halo.clear, Self.halo.misty, thick)
+        let glows = arena.alloc(SpriteInstance.self, m.lamps.lamps.count + 1)
+        var n = 0
+        func add(_ head: Vec3, _ level: Float) {
+            guard level > 0.01 else { return }
+            let toEye = simd_normalize(eye - head)
+            glows.pointer[n] = SpriteInstance(at: Vec4(head + toEye * 0.6, level * strength), size: Vec4(size, size, 0.5, 0.5),
+                                              tint: Vec4(Self.halo.color, 0), uv: Vec4(1, 0, 0, 0))
+            n += 1
+        }
+        for bed in m.beds {
+            guard let lamps = bed.lamps, let screens = bed.screens else { continue }
+            for (i, lamp) in lamps.enumerated() { add(m.lamps.lamps[lamp].head, m.lamps.lamps[lamp].shine * m.screens[screens[i]].fade) }
+        }
+        if let ghost = m.lamps.ghost, stage.editing { add(ghost.head, ghost.level * Self.ghostOpacity) }
+        guard n > 0 else { return }
+        enc.setCullMode(.none)
+        enc.setRenderPipelineState(gpu.glow)
+        enc.setVertexBuffer(glows.buffer, offset: glows.offset, index: 1)
+        enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: n)
+        enc.setCullMode(.back)
+    }
 
     /// Bee wings, rain or snow, and the fireflies round the picnics.
     func encodeParticles(_ stage: Stage, frame F: FrameUniforms, arena: Arena, enc: MTLRenderCommandEncoder) {
@@ -601,15 +651,24 @@ final class MeadowDrawer {
             let along = Mat4.turning(up: -m.dropVelocity)
             let alpha: Float = m.snowing ? 0.95 : 0.42 + 0.18 * l.falling
             let streak = Vec3(0.018, 0.3 + 0.16 * l.falling, 0.018)
+            // Drops falling through a lamp's light catch it, as rain and snow glint round a lamp at night.
+            let lamplit = m.lamps.shining
             for i in 0..<count {
                 let d = m.drops[i]
                 let model: Mat4 = m.snowing ? .translation(d) * .scale(0.07) : .translation(d) * along * .scale(streak)
-                drops.pointer[i] = ClayInstance(model, tint: Vec4(l.dropColor, alpha), lit: [.unlit, .noFog])
+                var color = l.dropColor
+                if lamplit {
+                    let near = m.groundMap.lamplight(at: Vec2(d.x, d.z)) * (1 - smoothstep(d.y, Lamps.head.y + 1.5, Lamps.head.y + 11))
+                    color += Self.halo.color * near * (m.snowing ? 0.9 : 1.6)
+                }
+                drops.pointer[i] = ClayInstance(model, tint: Vec4(color, alpha), lit: [.unlit, .noFog])
             }
             enc.setVertexBuffer(drops.buffer, offset: drops.offset, index: 3)
             draw(drop, count, enc)
         }
         enc.setCullMode(.back)
+
+        encodeHalos(stage, arena: arena, enc: enc)
 
         if stage.light.night > 0.01 {
             let flies = arena.alloc(Vec4.self, m.fireflies.count)

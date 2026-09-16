@@ -42,6 +42,8 @@ struct Light: Equatable {
     var moonLimb: Vec2?
     /// The sun's height above the horizon, degrees, when the light follows the real sun.
     var sunElevation: Double?
+    /// Garden lamps are lit (`MeadowLamps`): it is dark enough for their light sensors, and lamps light at night.
+    var lampsLit = false
 
     /// The meadow's own breeze, when no real wind is shown.
     static let breeze = simd_normalize(Vec2(1, 0.35))
@@ -112,6 +114,15 @@ enum Daylight {
         return along(RISING, sun.elevation).toward(along(SETTING, sun.elevation), evening)
     }
 
+    /// Garden lamps on a light sensor come on once dusk has dimmed well past sunset and go out only once the
+    /// morning is brighter than that (a sensor's "off" level is several times its "on" level, so it does not
+    /// flicker at the edge): lit while the sun is 2° down in the evening, out once it is 1° up in the morning.
+    static func lampsLit(_ sun: Sun.Position) -> Bool {
+        sin(sun.hourAngle * .pi / 180) > 0 ? sun.elevation < -2 : sun.elevation < 1
+    }
+    /// At fixed hours: lit from a little after dusk's gold until a little before dawn's pink.
+    static let lampsDark: Float = 0.4
+
     /// The light for these settings at `now` (a stopped clock, `.instant`, overrides it).
     static func light(_ settings: MeadowSettings, now: Date = Date()) -> Light {
         let effects = settings.effects
@@ -126,6 +137,7 @@ enum Daylight {
             let sun = Sun.position(at: moment, latitude: place.latitude, longitude: place.longitude)
             m = mood(sun)
             l.sunElevation = sun.elevation
+            l.lampsLit = lampsLit(sun)
         } else {
             m = along(HOURS, min(max(hour(settings.timeOfDay, now: moment ?? now), 0), 23.999))
         }
@@ -133,6 +145,8 @@ enum Daylight {
         l.skyMid = m.mid
         l.horizon = m.horizon
         l.night = m.night
+        if l.sunElevation == nil { l.lampsLit = m.night > Self.lampsDark }
+        l.lampsLit = l.lampsLit && effects.contains(.lamps)
         // The real moon needs somewhere to be seen from: its phase, where its lit edge faces, and whether it
         // has risen. Without a place, or switched off, it is the meadow's own steady full moon.
         if effects.contains(.moonPhase), let place = settings.place {
