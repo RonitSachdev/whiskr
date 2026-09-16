@@ -55,7 +55,8 @@ struct VSIXUnpackTests {
     let scratch: URL
 
     init() throws {
-        let made = FileManager.default.temporaryDirectory.appendingPathComponent("whiskr-vsix-tests-\(UUID().uuidString)", isDirectory: true)
+        // Not "whiskr-vsix-…": that is the importer's own unpacking folder, which another suite counts.
+        let made = FileManager.default.temporaryDirectory.appendingPathComponent("whiskr-unpack-tests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: made, withIntermediateDirectories: true)
         scratch = made.resolvingSymlinksInPath()
     }
