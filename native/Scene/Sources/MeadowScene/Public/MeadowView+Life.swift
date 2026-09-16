@@ -31,6 +31,13 @@ extension MeadowView {
                 actor.cat.gait == .bound && actor.cat.height > 0)
     }
 
+    /// What a cat has done out in the grass so far: stops reached off its blanket's cloth, hops made. Counts
+    /// that only grow, so a check waits on them changing.
+    @_spi(Diagnostics) public func outings(_ item: MeadowItem) -> (grassStops: Int, hops: Int)? {
+        guard case .cat(let b, let a) = item, let actor = stage.village?.actor(b, a) else { return nil }
+        return (actor.roam.grassStops, actor.roam.hops)
+    }
+
     /// A blanket's kettle as drawn: how much of it shows, its flame, its flag and whether steam is rising.
     @_spi(Diagnostics) public func kettle(_ blanket: String) -> (shown: Float, flame: Float, flag: Float, steaming: Bool)? {
         guard let k = stage.village?.plot(blanket)?.kettle else { return nil }

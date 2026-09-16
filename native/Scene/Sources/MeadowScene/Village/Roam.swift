@@ -134,6 +134,10 @@ struct Roam {
     var awakeUntil: Float = 0
     /// Out for one short outing only (woken from a nap).
     var brief = false
+    /// How many stops it has reached off its blanket's cloth, and how many hops it has made: counts that only
+    /// grow, for the app's checks to wait on what happened rather than catch a moment of it.
+    var grassStops = 0
+    var hops = 0
     var random: Seeded
 
     init(seed: String) {
@@ -454,6 +458,8 @@ extension Village {
         cat.gait = .none
         cat.going = nil
         actor.roam.phase = .stopped
+        let away = Vec2(cat.position.x - plot.middle.x, cat.position.z - plot.middle.z), far = simd_length(away)
+        if far > 1e-3 && far > clothReach(plot, toward: away / far) + 0.3 { actor.roam.grassStops += 1 }
         if let i = actor.roam.spot {
             cat.facingSpot = places[i].at + Vec3(places[i].toward.x, 0, places[i].toward.y) * 3
         }
@@ -646,6 +652,7 @@ extension Village {
     }
 
     private func launch(_ actor: Actor, to landing: Vec3, speed: Float) {
+        actor.roam.hops += 1
         actor.roam.hopRise = speed
         actor.roam.hopFrom = actor.rootLocal
         actor.roam.hopTo = landing
