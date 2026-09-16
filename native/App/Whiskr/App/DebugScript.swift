@@ -47,6 +47,7 @@ enum DebugScript {
             (NSApplication.self, #selector(NSApplication.activate as (NSApplication) -> () -> Void), #selector(NSApplication.debugRefusedActivate as (NSApplication) -> () -> Void)),
             (NSApplication.self, #selector(NSApplication.activate(ignoringOtherApps:)), #selector(NSApplication.debugRefusedActivate(ignoringOtherApps:))),
             (NSApplication.self, #selector(NSApplication.requestUserAttention(_:)), #selector(NSApplication.debugRefusedAttention(_:))),
+            (NSApplication.self, #selector(NSApplication.sendEvent(_:)), #selector(NSApplication.debugBackgroundSendEvent(_:))),
         ]
         let pasteboards: [(Selector, Selector)] = [
             (NSSelectorFromString("pasteboardWithName:"), #selector(NSPasteboard.debugPrivatePasteboard(withName:))),
@@ -495,5 +496,28 @@ extension NSApplication {
     @objc func debugRefusedActivate() { noteRefusedActivation() }
     @objc func debugRefusedActivate(ignoringOtherApps flag: Bool) { noteRefusedActivation() }
     @objc func debugRefusedAttention(_ type: NSApplication.RequestUserAttentionType) -> Int { 0 }
+
+    /// The real pointer of whoever is at this Mac, moving over where the run's unseen window lies, is not the
+    /// run's: its moves and its entering and leaving tracking areas reach the window all the same (an area
+    /// that follows the pointer `.activeAlways` hears them), and took a control's hover away in the middle of
+    /// a check. A run's own pointer (`PointerStandIn`, `TrackingStandIn`) never comes this way: it goes to the
+    /// window or the areas' owners directly. So these, from the window server, go no further.
+    @objc func debugBackgroundSendEvent(_ event: NSEvent) {
+        switch event.type {
+        case .mouseMoved, .mouseEntered, .mouseExited, .cursorUpdate:
+            BackgroundPointer.dropped += 1
+            if BackgroundPointer.dropped == 1 || BackgroundPointer.dropped % 200 == 0 {
+                print("background run: the Mac's own pointer, \(BackgroundPointer.dropped) events so far, kept from the window")
+            }
+        default:
+            debugBackgroundSendEvent(event)     // the original, exchanged
+        }
+    }
+}
+
+/// How many of the Mac's own pointer events a background run has kept from its window.
+@MainActor
+enum BackgroundPointer {
+    static var dropped = 0
 }
 #endif

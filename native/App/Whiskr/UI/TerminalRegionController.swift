@@ -46,7 +46,7 @@ final class TerminalRegionController: NSViewController {
         sidePanel = panel
         let undo = NSHostingView(rootView: UndoNote(workbench: workbench))
         undo.sizingOptions = [.intrinsicContentSize]
-        let tabs = NSHostingView(rootView: TabStrip(workbench: workbench))
+        let tabs = BarHostingView(rootView: TabStrip(workbench: workbench))
         tabs.sizingOptions = []
         tabs.safeAreaRegions = []
         tabRow = tabs

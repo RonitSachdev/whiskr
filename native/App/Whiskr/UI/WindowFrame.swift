@@ -40,7 +40,7 @@ final class FrameController: NSViewController {
         let view = NSView()
         let top = TitleBarHostingView(rootView: TopBar(workbench: workbench, chrome: chrome))
         let workbench = workbench
-        let status = NSHostingView(rootView: WhileShown(shown: chrome.showsStatusBar) { StatusBar(workbench: workbench) })
+        let status = BarHostingView(rootView: WhileShown(shown: chrome.showsStatusBar) { StatusBar(workbench: workbench) })
         addChild(content)
         for part in [content.view, top, status] {
             part.translatesAutoresizingMaskIntoConstraints = false
@@ -372,6 +372,6 @@ struct WindowDragArea: NSViewRepresentable {
 /// wherever it is pressed (as any view that is not opaque does), and in that band the window server acts on
 /// it before the app hears of the press: a control SwiftUI draws there (Go to's field) would move the window
 /// instead. Here only the bar's empty stretches say so (`WindowDragArea`), as a title bar's do.
-final class TitleBarHostingView<Content: View>: NSHostingView<Content> {
+final class TitleBarHostingView<Content: View>: BarHostingView<Content> {
     override var mouseDownCanMoveWindow: Bool { false }
 }

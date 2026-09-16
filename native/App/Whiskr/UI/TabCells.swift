@@ -356,7 +356,6 @@ private struct TabSegment<Field: View>: View {
     /// A short line before it: it follows another segment, or the tab's name.
     let separated: Bool
     @ViewBuilder let renameField: () -> Field
-    @State private var showingTasks = false
     @Environment(\.controlActiveState) private var activeState
 
     var body: some View {
@@ -393,12 +392,11 @@ private struct TabSegment<Field: View>: View {
                 }
                 if !tasks.isEmpty {
                     let done = tasks.filter { $0.state == .completed }.count
-                    Button { showingTasks.toggle() } label: {
-                        ProgressMark(done: done, total: tasks.count)
-                    }
-                    .buttonStyle(.plain)
-                    .help(String(localized: "To-do list: \(done) of \(tasks.count) done"))
-                    .popover(isPresented: $showingTasks, arrowEdge: .bottom) { TaskList(tasks: tasks) }
+                    // Drawn here; its button is in the row's click layer (`TabHit`), where the tab is now.
+                    ProgressMark(done: done, total: tasks.count)
+                        .frame(width: TabHit.ringSize, height: TabHit.ringSize)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
                 // Drawn here, clicked through `TabMouse`, which closes the moment the button goes down. A file
                 // with unsaved changes shows a dot in its place until the pointer comes, as Xcode and VS Code do.
@@ -451,11 +449,7 @@ private struct TabSegment<Field: View>: View {
         .accessibilityAction(named: String(localized: "Rename Tab…")) { workbench.renamingTabID = tab.id }
     }
 
-    /// The to-do list of this pane's Claude, when it keeps one.
-    private var tasks: [TaskItem] {
-        guard let pane = workbench.panes[pane], let session = workbench.session(of: pane) else { return [] }
-        return workbench.monitor.details[session.id]?.tasks ?? []
-    }
+    private var tasks: [TaskItem] { TabHit.tasks(of: pane, in: workbench) }
 
     /// This segment's file has unsaved changes.
     private var editedFile: Bool {
@@ -489,8 +483,41 @@ private struct TabHit: View {
     let last: Bool
     let slots: [TabMouseView.Slot]
     let hover: (UUID?) -> Void
+    @State private var showingTasks: UUID?
+
+    /// The to-do ring's size, drawn by the segment, clicked here.
+    static let ringSize: CGFloat = 18
+
+    /// The to-do list of a pane's Claude, when it keeps one.
+    static func tasks(of pane: UUID, in workbench: Workbench) -> [TaskItem] {
+        guard let pane = workbench.panes[pane], let session = workbench.session(of: pane) else { return [] }
+        return workbench.monitor.details[session.id]?.tasks ?? []
+    }
 
     var body: some View {
+        mouse
+            // The to-do rings' buttons, where the segments draw the rings: before each one's close button.
+            .overlay(alignment: .leading) {
+                ForEach(slots.filter(\.titled), id: \.pane) { slot in
+                    let tasks = Self.tasks(of: slot.pane, in: workbench)
+                    if !tasks.isEmpty {
+                        let done = tasks.filter { $0.state == .completed }.count
+                        Color.clear
+                            .frame(width: Self.ringSize, height: Self.ringSize)
+                            .barButton("tab.todo", label: String(localized: "\(done) of \(tasks.count) to-dos done"),
+                                       help: String(localized: "To-do list: \(done) of \(tasks.count) done"), radius: Look.Radius.small) {
+                                showingTasks = showingTasks == slot.pane ? nil : slot.pane
+                            }
+                            .popover(isPresented: Binding(get: { showingTasks == slot.pane }, set: { if !$0 { showingTasks = nil } }), arrowEdge: .bottom) {
+                                TaskList(tasks: tasks)
+                            }
+                            .offset(x: slot.minX + slot.width - Look.Space.xs - TabMouseView.closeSize - Look.Space.s - Self.ringSize)
+                    }
+                }
+            }
+    }
+
+    private var mouse: some View {
         TabMouse(tab: tab.id, last: last, slots: slots, focused: tab.focusedPane, selected: selected, index: index,
                  select: { pane in workbench.select(tab: tab, pane: pane) },
                  close: { pane in

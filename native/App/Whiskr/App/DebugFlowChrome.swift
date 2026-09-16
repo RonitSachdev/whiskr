@@ -36,6 +36,7 @@ extension PerfSuite {
         if only == nil || only == "overflow" { await overflowSweep(setup) }
         if only == nil || only == "home" { await homeSweep(setup) }
         if only == nil || only == "status" { await statusBarSweep(setup) }
+        if only == nil || only == "changes" { await hitsAfterChanges(setup) }
         check("chrome: no menu was shown for real (every one went to the stand-in)", MenuStandIn.tracked.isEmpty,
               MenuStandIn.tracked.joined(separator: "; "))
         await chromeRestore(setup)
@@ -609,6 +610,64 @@ extension PerfSuite {
         } else {
             check("chrome: the tab row's Home button is a control of its own", false, "no view under it: the hosting view takes the click")
         }
+        await chromeRestore(setup)
+    }
+
+    // MARK: Right after the bars change
+
+    /// Every control of the bars takes a click at its middle at once after the bars change under it (a tab
+    /// opened, closed, split, dropped beside a pane; Home and back), in the same turn and a frame later:
+    /// what a press lands on, as the window delivers it, is the control, never SwiftUI's drawing over it.
+    private func hitsAfterChanges(_ setup: ChromeSetup) async {
+        await chromeRestore(setup)
+        var failures: [String] = []
+        var looked = 0
+        func controls() -> [NSView] {
+            var found: [NSView] = []
+            func walk(_ view: NSView) {
+                if (view is BarControlView || view is TabMouseView) && !view.isHiddenOrHasHiddenAncestor { found.append(view) }
+                view.subviews.forEach(walk)
+            }
+            // The bars' own (a pane's header lies under Home while Home is shown, rightly out of reach).
+            for root in [topBar, controller.terminals.tabRow, frameController?.statusBar].compactMap({ $0 }) { walk(root) }
+            return found
+        }
+        func look(_ moment: String) {
+            for control in controls() {
+                let rect = windowRect(control)
+                guard rect.width > 4, rect.height > 4, window.contentView?.bounds.contains(NSPoint(x: rect.midX, y: rect.midY)) == true else { continue }
+                looked += 1
+                let hit = landing(at: NSPoint(x: rect.midX, y: rect.midY)).hit
+                if hit !== control && hit?.isDescendant(of: control) != true {
+                    failures.append("\(moment): \(control.identifier?.rawValue ?? Self.typeName(control)) → \(hit.map(Self.typeName) ?? "nothing")")
+                }
+            }
+        }
+        let changes: [(String, () -> Void)] = [
+            ("a tab opened", { _ = self.workbench.newTab() }),
+            ("a split", { self.workbench.split(.horizontal) }),
+            ("a pane closed", { if let pane = self.workbench.focusedPane, (self.workbench.selectedTab?.tree.panes.count ?? 0) > 1 { self.workbench.close(pane: pane.id) } }),
+            ("a tab dropped beside a pane", {
+                if let tab = self.workbench.selectedTab, let other = setup.repo.tabs.first(where: { $0 !== tab && self.workbench.panes[$0.focusedPane] != nil }) {
+                    self.workbench.dropTab(tab, onto: other.focusedPane, side: .right)
+                }
+            }),
+            ("a tab closed", { if let tab = self.workbench.selectedTab, setup.repo.tabs.count > 2 { self.workbench.close(tab: tab) } }),
+            ("Home", { self.workbench.goHome() }),
+            ("back from Home", { self.workbench.select(workspace: setup.repo) }),
+        ]
+        for round in 0..<6 {
+            for (name, change) in changes {
+                change()
+                window.contentView?.superview?.layoutSubtreeIfNeeded()
+                look("round \(round + 1), \(name), at once")
+                await PerfWait.sleep(17)
+                look("round \(round + 1), \(name), a frame later")
+            }
+        }
+        print("chrome: right after the bars changed, \(looked) presses looked at, \(failures.count) not on their control\(failures.isEmpty ? "" : ": " + failures.prefix(8).joined(separator: "; "))")
+        check("chrome: right after the bars change (tabs opened, split, closed, dropped; Home and back), every control takes a press at its middle",
+              failures.isEmpty, "\(failures.count) of \(looked): " + failures.prefix(6).joined(separator: "; "))
         await chromeRestore(setup)
     }
 

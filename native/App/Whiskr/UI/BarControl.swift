@@ -220,3 +220,62 @@ final class BarControlView: NSView {
         bounds.contains(convert(event.locationInWindow, from: nil))
     }
 }
+
+/// The bars' hosting views (the top bar, the tab row, the status bar). A click goes to the AppKit control
+/// under it (`BarControlView`, `TabMouseView`, the window's drag area), whatever SwiftUI has put over that
+/// control: SwiftUI hosts some of its drawing in views of its own, laid over the AppKit view a drawing sits
+/// on (a button's keyboard focus ring, a picture drawn above a platform view), and those views took the click
+/// now and then, depending on what SwiftUI had built at that moment: a press on the Home button, or on a tab
+/// right after a drop, went to `_NSGraphicsView` and did nothing (or moved the window); and a press on the
+/// status bar's "need you" a frame after a tab opened went to the hosting view itself, which did nothing with
+/// it. Where no control of the bars lies under the pointer, the press goes where SwiftUI says (Go to's field
+/// is SwiftUI's own button), and a field's text view or a control SwiftUI wraps keeps its clicks.
+class BarHostingView<Content: View>: NSHostingView<Content> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        BarHitTesting.resolve(super.hitTest(point), in: self, at: point)
+    }
+}
+
+@MainActor
+enum BarHitTesting {
+    /// `hit`, unless it is SwiftUI's (the hosting view or a view of its own) with a control of the bars under
+    /// the point: then that control (the topmost). `point` is in the host's superview's coordinates, as
+    /// `hitTest` has it.
+    static func resolve(_ hit: NSView?, in host: NSView, at point: NSPoint) -> NSView? {
+        if let hit, hit !== host, takesClicks(hit, below: host) { return hit }
+        return control(in: host, at: point) ?? hit
+    }
+
+    private static func isBarControl(_ view: NSView) -> Bool {
+        view is BarControlView || view is TabMouseView || view is WindowDragArea.DragView
+    }
+
+    /// A view that does something with a click: a control of the bars, or an AppKit control or text view
+    /// SwiftUI wraps (a rename field), or one inside them.
+    private static func takesClicks(_ view: NSView, below host: NSView) -> Bool {
+        var each: NSView? = view
+        while let current = each, current !== host {
+            if isBarControl(current) || current is NSControl || current is NSText { return true }
+            each = current.superview
+        }
+        return false
+    }
+
+    /// The topmost control of the bars under `point`: the last found, as views later among their siblings
+    /// are drawn (and hit) above earlier ones. Not the window's drag area: SwiftUI's own button over an
+    /// empty stretch (Go to's field) is SwiftUI's to take.
+    private static func control(in host: NSView, at point: NSPoint) -> NSView? {
+        var found: NSView?
+        func walk(_ view: NSView) {
+            for sub in view.subviews where !sub.isHidden {
+                if isBarControl(sub) {
+                    if !(sub is WindowDragArea.DragView), sub.convert(sub.bounds, to: host.superview).contains(point) { found = sub }
+                } else {
+                    walk(sub)
+                }
+            }
+        }
+        walk(host)
+        return found
+    }
+}
