@@ -192,6 +192,10 @@ final class Village {
     var footing: [SceneryRules.Circle] = []
     var blooms: [Vec3] = []
     var treeShade: [Vec3] = []
+    /// The spots the scenery's things offer cats (a stump, a box, a bed, a post, a bowl).
+    var places: [CatPlace] = []
+    /// Seconds by the wall clock (the meadow's own time slows while it rests): what a cat's day goes by.
+    var clock: Float = 0
     /// The grid a route is found on, kept from route to route; and the camera's projection as it was when
     /// last laid (`Roam.swift`).
     var roamField = RoamField()
@@ -374,14 +378,14 @@ final class Village {
         for agent in shown {
             let effective: AgentActivity = agent.failed ? .error : agent.activity
             if let actor = plot.actors[agent.id] {
-                enqueue(actor, effective)
                 actor.view = agent
+                enqueue(actor, display(effective, for: actor))
             } else {
                 let cat = Cat(seed: "\(view.id)/\(agent.id)")
                 cat.frozen = !ambient
                 cat.setActivity(effective)
                 let actor = Actor(cat: cat, view: agent, shownAt: time, shownSize: sizeAt(depthOf[agent.id] ?? 0), seed: "\(view.id)/\(agent.id)")
-                actor.roam.until = time + actor.roam.pick(ROAM_FIRST_REST.least, ROAM_FIRST_REST.more)
+                meet(actor)
                 plot.actors[agent.id] = actor
                 plot.order.append(agent.id)
                 arrivals.append(actor)
@@ -422,7 +426,7 @@ final class Village {
         return plot
     }
 
-    private func enqueue(_ actor: Actor, _ activity: AgentActivity) {
+    func enqueue(_ actor: Actor, _ activity: AgentActivity) {
         if activity == (actor.queue.last ?? actor.cat.activity) { return }
         if activity == .asking {
             // Needing you jumps the queue: it must never be hidden behind a backlog.

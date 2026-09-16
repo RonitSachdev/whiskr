@@ -200,7 +200,7 @@ private func countingAllocations(_ body: () -> Void) -> Int {
         view.world = world(.running, .idle)
         view.frame(nil, besidePanelWidth: 0, animated: false)
         view.advance(seconds: 3)
-        for plot in view.stage.village!.plots { for actor in plot.actors.values { actor.roam.until = 0 } }
+        for plot in view.stage.village!.plots { for actor in plot.actors.values { actor.roam.rested = 0 } }
         view.advance(seconds: 2)
         let roaming = countingAllocations { for _ in 0..<2400 { view.stage.update(1.0 / 120) } }
         view.world = world(.finished, .reading)

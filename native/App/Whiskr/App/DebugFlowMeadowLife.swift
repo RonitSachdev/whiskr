@@ -29,6 +29,9 @@ extension PerfSuite {
         guard await shellReady(shell), let kettleSpace = workbench.workspace(of: shell.id)?.0 else { return check("meadow life: a plain terminal's workspace", false) }
         let claude = workbench.newWorkspace(folder: folder("life-cat"))
         guard await shellReady(claude), let catSpace = workbench.workspace(of: claude.id)?.0 else { return check("meadow life: a Claude's workspace", false) }
+        // A plain prompt, so the pictures show no name of the Mac or its user.
+        for pane in [shell, claude] { pane.type("PROMPT='$ '; PS1='$ '; clear\r") }
+        await PerfWait.sleep(400)
         let kettleID = kettleSpace.id.uuidString
         let cat = MeadowItem.cat(blanket: catSpace.id.uuidString, agent: MeadowMapping.catID(pane: claude.id, agent: nil))
         func kettle() -> (shown: Float, flame: Float, flag: Float, steaming: Bool) { meadow.kettle(kettleID) ?? (0, 0, 0, false) }
@@ -134,7 +137,10 @@ extension PerfSuite {
 
         // Long idle: it naps out there, and wakes for work the same way.
         _ = await outing(claude, cat) { self.outInTheGrass(cat, catSpace) }
-        let asleep = await PerfWait.until((AgentWorld.napAfter + 30) * 1000) { self.workbench.session(of: claude)?.main.activity == .napping && meadow.roaming(cat)?.running == false }
+        // Its Claude lets it nap after a while; it would stay up and about some minutes more: it dozes off now.
+        _ = await PerfWait.until((AgentWorld.napAfter + 30) * 1000) { self.workbench.session(of: claude)?.main.activity == .napping }
+        meadow.letCatsDozeOff()
+        let asleep = await PerfWait.until(15000) { meadow.roaming(cat)?.running == false && meadow.roaming(cat)?.asleep == true || meadow.roaming(cat)?.out == false }
         _ = await PerfWait.until(15000) { meadow.roaming(cat).map { $0.asleep || !$0.out } ?? false }
         let where_ = meadow.roaming(cat).map { $0.asleep ? "in the grass" : $0.out ? "out, on its way" : "on its blanket" } ?? "nowhere"
         check("roaming: left long idle it naps where it is, in shade or on its blanket", asleep != nil && where_ != "out, on its way", where_)
@@ -146,6 +152,7 @@ extension PerfSuite {
         // Round eyes through a stand-in Claude's fidgets (awake at its prompt).
         let eyes = workbench.newWorkspace(folder: folder("life-eyes"))
         guard await shellReady(eyes), let eyesSpace = workbench.workspace(of: eyes.id)?.0 else { return check("meadow life: a third workspace", false) }
+        eyes.type("PROMPT='$ '; PS1='$ '; clear\r")
         eyes.debugPretendsClaude = true
         workbench.select(workspace: eyesSpace)
         await PerfWait.sleep(1500)

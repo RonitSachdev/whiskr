@@ -42,7 +42,7 @@ import simd
 
     /// Lets the first outing come now rather than after its rest.
     static func setOutNow(_ view: MeadowView) {
-        for plot in view.stage.village!.plots { for actor in plot.actors.values { actor.roam.until = view.stage.village!.time } }
+        for plot in view.stage.village!.plots { for actor in plot.actors.values { actor.roam.rested = view.stage.village!.clock } }
     }
 
     // MARK: Where a cat goes
@@ -210,6 +210,9 @@ import simd
         Self.setOutNow(view)
         for _ in 0..<600 where !(actor.roam.phase == .stopped && simd_distance(actor.rootLocal, actor.spot) > 2) { view.advance(seconds: 0.1) }
         view.world = Self.world(.napping)
+        view.advance(seconds: 2)
+        #expect(!actor.cat.isNapping, "up and about for some minutes after its Claude may nap")
+        view.stage.village!.letCatsDozeOff()
         view.advance(seconds: 12)
         #expect(actor.cat.isNapping)
         #expect(actor.roam.phase == .asleep || actor.roam.phase == .home, "asleep somewhere: \(actor.roam.phase)")
@@ -257,7 +260,7 @@ import simd
         view.keepsFullRateWhenInactive = true
         view.settings = MeadowSettings(timeOfDay: .day, picnic: .hamper)
         view.world = Self.world()
-        var resting = 0, frames = 0, bursts = 0, wasStill = true
+        var resting = 0.0, all = 0.0, bursts = 0, wasStill = true
         var elapsed = 0.0
         while elapsed < 240 {
             let dt = 1 / Double(view.targetRate)
@@ -266,15 +269,15 @@ import simd
             view.step(Float(dt))
             view.updateRate()
             guard elapsed > 10 else { continue }
-            frames += 1
-            if view.isResting { resting += 1 }
+            all += dt
+            if view.isResting { resting += dt }
             let still = view.stage.still
             if wasStill && !still { bursts += 1 }
             wasStill = still
         }
         #expect(bursts >= 2, "cats went out: \(bursts) bursts")
-        // Frames are fewer while resting; in time, most of the four minutes are rest.
-        #expect(Double(resting) / Double(frames) > 0.3, "rested \(resting) of \(frames) frames")
+        // Most of the four minutes are rest.
+        #expect(resting / all > 0.5, "rested \(resting) s of \(all)")
     }
 
     // MARK: Picking
@@ -352,6 +355,8 @@ import simd
     func villageRoutesUseLiking() {
         func share(_ liking: ((Vec2) -> Float)?) -> Float {
             let view = Self.view()
+            // Bare grass, so no stump or log draws the cat away from the path.
+            view.scenery = MeadowScenery()
             let village = view.stage.village!
             let plot = village.plot("home")!
             // A path running across the grass in front of the blanket.
@@ -446,6 +451,7 @@ import simd
         let cat = Self.actor(sleeper)
         for _ in 0..<600 where !(cat.roam.phase == .stopped && simd_distance(cat.rootLocal, cat.spot) > 2) { sleeper.advance(seconds: 0.1) }
         sleeper.world = Self.world(.napping)
+        sleeper.stage.village!.letCatsDozeOff()
         sleeper.advance(seconds: 10)
         Self.save(sleeper, "roam-napping")
     }

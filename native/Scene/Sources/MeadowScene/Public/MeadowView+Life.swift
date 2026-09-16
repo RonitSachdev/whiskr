@@ -7,8 +7,20 @@ extension MeadowView {
     /// Every cat with nothing to do sets off now, rather than after its rest.
     @_spi(Diagnostics) public func sendCatsOut() {
         guard let village = stage.village else { return }
-        for plot in village.plots { for actor in plot.actors.values where actor.roam.phase == .home { actor.roam.until = village.time } }
+        for plot in village.plots { for actor in plot.actors.values where actor.roam.phase == .home { actor.roam.rested = village.clock } }
         wake()
+    }
+
+    /// Every cat at leisure dozes off now rather than after its minutes up and about.
+    @_spi(Diagnostics) public func letCatsDozeOff() {
+        stage.village?.letCatsDozeOff()
+        wake()
+    }
+
+    /// The kind of thing a cat is at or going to (`cat.bed`, `wood.stump`), nil for none.
+    @_spi(Diagnostics) public func catSpot(_ item: MeadowItem) -> String? {
+        guard case .cat(let b, let a) = item, let village = stage.village, let i = village.actor(b, a)?.roam.spot, i < village.places.count else { return nil }
+        return village.places[i].id
     }
 
     /// A cat's life off its blanket: out in the grass, running home for work, asleep out there; nil for no

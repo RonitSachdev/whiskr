@@ -54,6 +54,8 @@ final class Stage {
             let village = Village()
             village.obstacles = meadow.obstacles
             village.lay(meadow.scenery, shade: meadow.shade)
+            // Cats prefer the ground they like walking on: a painted path, stepping stones.
+            village.liking = { [unowned meadow] p in meadow.walkingEase(p.x, p.y) }
             self.meadow = meadow
             self.village = village
             surroundings.critters = meadow.critters.spots
@@ -497,6 +499,7 @@ final class Stage {
             meadow.update(drift, fading: dt, time: time, eye: camera.eye, lookAt: camera.target, sleepers: sleepers, sights: sights, sightCount: sightCount,
                           clearOf: clearOf, clearCount: clearCount, clearings: world.clearings, clearingCount: clearingCount, light: light, windToward: windToward)
             surroundings.critters = meadow.critters.spots
+            village.clock += seconds
             village.update(dt, surroundings, stage: self)
             village.collectCats(into: &cats)
             pathCount = village.troddenCount

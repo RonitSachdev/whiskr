@@ -98,7 +98,13 @@ final class Cat: Performer {
         case sniff(Vec3)
         /// Down as a loaf in the grass.
         case loaf
+        /// Up on its hind legs at a scratching post (this point on it), stroking down it with one paw, then
+        /// the other.
+        case scratch(Vec3)
     }
+    /// Which way to face where it stops out in the grass (a stump's front, a bowl, a post), rather than toward
+    /// you; nil to face you as always. Its head still keeps its face to you.
+    var facingSpot: Vec3? = nil
     /// How each gait moves the body: its bounce with every step, its squash on landing, its rock from side
     /// to side, its lean into the way it goes, and how flat its ears lie.
     private struct Carriage {
@@ -360,8 +366,9 @@ final class Cat: Performer {
         // On an errand the whole body turns the way it goes; back in its seat it turns to you again.
         let errand = going.flatMap { g in hypot(g.x - position.x, g.z - position.z) > 0.05 ? atan2(g.x - position.x, g.z - position.z) : nil }
         if let errand { facing = errand }
+        else if let spot = facingSpot, hypot(spot.x - position.x, spot.z - position.z) > 0.05 { facing = atan2(spot.x - position.x, spot.z - position.z) }
         else if wasGoing { facing = toYou }
-        else if !isNapping, abs(turnFrom(facing!, toYou)) > 0.95 {
+        else if !isNapping, facingSpot == nil, abs(turnFrom(facing!, toYou)) > 0.95 {
             facing = toYou
             if activity == .awake { jump(2.4, 1) }
         }
@@ -708,6 +715,18 @@ final class Cat: Performer {
             want.aim = .at(flower)
             want.look = Vec2(0, -0.03)
             want.tailSpeed = 2.2
+        case .scratch(let post):
+            // Up tall against the post, both paws on it, one stroking down while the other reaches up, in turn;
+            // the paws only turn toward the post, as they always do, never lengthen.
+            let stroke = sin(t * 7.5)
+            want.prone = 0
+            want.tall = 0.14
+            want.earPerk = 1
+            want.tail = .up
+            want.tailSpeed = 3
+            want.aim = .at(post)
+            want.look = Vec2(0, 0)
+            want.hands = Paws(Vec3(SIDES[0] * 0.28, 1.42 + stroke * 0.13, 1.02), Vec3(SIDES[1] * 0.28, 1.42 - stroke * 0.13, 1.02))
         case .loaf:
             // Down as a loaf in the grass, as on its blanket.
             want.prone = 0.45

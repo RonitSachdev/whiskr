@@ -1143,11 +1143,16 @@ final class PerfSuite {
         pinger.stop()
         defer { pinger.start() }
         main.type("clear\r")
+        let meadow = controller.navigator.meadow
         if let catsMadeAt {
             let due = catsMadeAt + (AgentWorld.napAfter + 2) * 1000
             if perfNow() < due { await PerfWait.sleep(due - perfNow()) }
+            // Cats free to wander stay up and about some minutes after their Claude lets them nap: here they
+            // doze off at once, wherever they are, and the meadow is measured once all is still.
+            meadow.letCatsDozeOff()
+            _ = await PerfWait.until(20000) { meadow.isResting }
         }
-        let store = WorldStore.shared, meadow = controller.navigator.meadow
+        let store = WorldStore.shared
         let time = store.settings.timeOfDay
         defer { store.settings.timeOfDay = time }
         for (setting, shown, name) in [(WorldSettings.TimeOfDay.day, MeadowSettings.TimeOfDay.day, "day"), (.night, .night, "night")] {
