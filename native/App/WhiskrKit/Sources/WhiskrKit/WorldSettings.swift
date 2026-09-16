@@ -64,6 +64,8 @@ public struct WorldSettings: Equatable, Sendable, Codable {
     public var lightning: Bool
     /// The grass pales in the cold and yellows in the heat.
     public var grassColor: Bool
+    /// Garden lamps placed in the meadow light by themselves after dark (else they stand unlit).
+    public var lamps: Bool
     /// The meadow shown: a file in the meadows folder, by its name (`Name.whiskrmeadow`); nil for the
     /// Default, which is built in and never changed.
     public var meadow: String?
@@ -73,7 +75,8 @@ public struct WorldSettings: Equatable, Sendable, Codable {
 
     public init(map: Map = .meadow, timeOfDay: TimeOfDay = .followClock, picnic: Picnic = .hamper, flagSize: FlagSize = .medium,
                 realWeather: Bool = false, place: Place? = nil, sunTimes: Bool = true, moonPhase: Bool = true, clouds: Bool = true,
-                wind: Bool = true, rainAndSnow: Bool = true, lightning: Bool = true, grassColor: Bool = true, meadow: String? = nil) {
+                wind: Bool = true, rainAndSnow: Bool = true, lightning: Bool = true, grassColor: Bool = true, lamps: Bool = true,
+                meadow: String? = nil) {
         self.map = map
         self.timeOfDay = timeOfDay
         self.picnic = picnic
@@ -87,13 +90,14 @@ public struct WorldSettings: Equatable, Sendable, Codable {
         self.rainAndSnow = rainAndSnow
         self.lightning = lightning
         self.grassColor = grassColor
+        self.lamps = lamps
         self.meadow = meadow
     }
 
     // MARK: Saving
 
     private enum CodingKeys: String, CodingKey {
-        case map, timeOfDay, picnic, flagSize, realWeather, place, sunTimes, moonPhase, clouds, wind, rainAndSnow, lightning, grassColor, meadow
+        case map, timeOfDay, picnic, flagSize, realWeather, place, sunTimes, moonPhase, clouds, wind, rainAndSnow, lightning, grassColor, lamps, meadow
     }
 
     /// Reads what it can: anything missing or no longer known (a map since removed) keeps its default.
@@ -107,7 +111,7 @@ public struct WorldSettings: Equatable, Sendable, Codable {
         if let value = try? container.decodeIfPresent(Bool.self, forKey: .realWeather) { realWeather = value }
         if let value = try? container.decodeIfPresent(Place.self, forKey: .place) { place = value }
         for (key, path) in [(CodingKeys.sunTimes, \Self.sunTimes), (.moonPhase, \.moonPhase), (.clouds, \.clouds), (.wind, \.wind),
-                            (.rainAndSnow, \.rainAndSnow), (.lightning, \.lightning), (.grassColor, \.grassColor)] {
+                            (.rainAndSnow, \.rainAndSnow), (.lightning, \.lightning), (.grassColor, \.grassColor), (.lamps, \.lamps)] {
             if let value = try? container.decodeIfPresent(Bool.self, forKey: key) { self[keyPath: path] = value }
         }
         if let value = try? container.decodeIfPresent(String.self, forKey: .meadow), !value.isEmpty { meadow = value }

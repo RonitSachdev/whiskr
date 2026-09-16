@@ -13,12 +13,13 @@ struct WorldSettingsSaving {
         #expect(world.timeOfDay == .night && world.picnic == .spread && world.flagSize == .large && world.realWeather)
         #expect(world.place == WorldSettings.Place(latitude: 35.68, longitude: 139.69))
         #expect(world.sunTimes && world.moonPhase && world.clouds && world.wind && world.rainAndSnow && world.lightning && world.grassColor)
+        #expect(world.lamps, "lamps light at night unless turned off")
     }
 
     @Test("every switch is kept, and the same settings are always the same bytes")
     func roundTrip() throws {
         let world = WorldSettings(timeOfDay: .day, realWeather: true, sunTimes: false, moonPhase: false, clouds: true, wind: false,
-                                  rainAndSnow: false, lightning: false, grassColor: false)
+                                  rainAndSnow: false, lightning: false, grassColor: false, lamps: false)
         let suite = "WorldSettingsTests-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -34,7 +35,7 @@ struct WorldSettingsSaving {
         let saved = #"{"timeOfDay":"dusk","wind":"yes","lightning":false,"picnic":"hamper"}"#
         let world = try JSONDecoder().decode(WorldSettings.self, from: Data(saved.utf8))
         #expect(world.timeOfDay == .followClock && world.wind && !world.lightning && world.picnic == .hamper)
-        #expect(WorldSettings() == WorldSettings(sunTimes: true, moonPhase: true, clouds: true, wind: true, rainAndSnow: true, lightning: true, grassColor: true))
+        #expect(WorldSettings() == WorldSettings(sunTimes: true, moonPhase: true, clouds: true, wind: true, rainAndSnow: true, lightning: true, grassColor: true, lamps: true))
         #expect(!WorldSettings().realWeather)
     }
 

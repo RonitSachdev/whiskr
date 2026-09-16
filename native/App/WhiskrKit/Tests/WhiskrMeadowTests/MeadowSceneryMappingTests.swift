@@ -70,7 +70,6 @@ struct MeadowSceneryMappingTests {
         "garden.fence": "8", "garden.flowerPot": "8", "garden.planter": "8", "garden.wateringCan": "8", "garden.birdhouse": "8",
         "garden.skep": "8", "work.desk": "8", "work.bookshelf": "8", "work.bench": "8", "work.signpost": "8", "work.mailbox": "8",
         "work.noticeboard": "8", "place.shed": "8", "place.tent": "8",
-        "work.lampPost": "9",
     ]
 
     @Test("every catalog id has a scene builder, or is one whose builder is still to come; the scene draws nothing the catalog lacks")
@@ -92,6 +91,7 @@ struct MeadowSceneryMappingTests {
         #expect(MeadowScenery.Limits.things == MeadowFormat.maxItems)
         #expect(MeadowScenery.Limits.trees == MeadowCatalog.Cap.trees.limit)
         #expect(MeadowScenery.Limits.tall == MeadowCatalog.Cap.tall.limit)
+        #expect(MeadowScenery.Limits.lamps == MeadowCatalog.Cap.lamps.limit)
         #expect(Double(MeadowScenery.Limits.reach) == MeadowFormat.reach)
     }
 }

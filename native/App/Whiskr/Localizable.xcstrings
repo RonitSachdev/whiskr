@@ -602,6 +602,17 @@
         }
       }
     },
+    "%lld of %lld lamps": {
+      "comment": "Meadow editor's tray: how full the meadow is (garden lamps)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ランプ %1$lld / %2$lld"
+          }
+        }
+      }
+    },
     "%lld of %lld tall things": {
       "localizations": {
         "ja": {
@@ -1673,6 +1684,17 @@
         }
       }
     },
+    "Garden lamp": {
+      "comment": "Meadow editor: a thing's name (a lamp post that lights at night)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ガーデンランプ"
+          }
+        }
+      }
+    },
     "Ground brush size": {
       "localizations": {
         "ja": {
@@ -1879,6 +1901,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "そのまま残ります。動かすか、取り除けます。"
+          }
+        }
+      }
+    },
+    "lamp post, lantern, light, night, street lamp": {
+      "comment": "Meadow editor's filter: other words for the garden lamp, comma-separated",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "街灯, がいとう, 外灯, ランプ, ランタン, 明かり, あかり, 灯り, 夜, よる"
+          }
+        }
+      }
+    },
+    "Lamps light at night": {
+      "comment": "Settings › Meadow",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "夜はランプを灯す"
           }
         }
       }

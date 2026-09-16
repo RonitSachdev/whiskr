@@ -40,6 +40,7 @@ struct WorldSettingsView: View {
                 Toggle("Real sunrise and sunset", isOn: $store.settings.sunTimes)
                 sunStatus
                 Toggle("Moon phase", isOn: $store.settings.moonPhase)
+                Toggle("Lamps light at night", isOn: $store.settings.lamps)
             } footer: {
                 Text("Worked out on this Mac for where real weather last found you, or else for your time zone. Nothing is sent and nothing is asked.")
                     .font(.callout).foregroundStyle(.secondary)

@@ -570,7 +570,7 @@ extension EditModeController {
         let session = library.session
         let counts = session.document.counts(session.catalog)
         let things = session.document.entries.count
-        let trees = counts[.trees, default: 0], tall = counts[.tall, default: 0]
+        let trees = counts[.trees, default: 0], tall = counts[.tall, default: 0], lamps = counts[.lamps, default: 0]
         var full: [String: String] = [:]
         for item in EditorTray.things {
             guard let probe = session.fresh(item.id, at: .zero, turn: 0, using: &random), let refusal = session.capacity(for: [probe]) else { continue }
@@ -582,6 +582,7 @@ extension EditModeController {
             (Double(things) / Double(MeadowFormat.maxItems), MeadowWords.fullness(things, of: MeadowFormat.maxItems, nil)),
             (Double(trees) / Double(MeadowCatalog.Cap.trees.limit), MeadowWords.fullness(trees, of: MeadowCatalog.Cap.trees.limit, .trees)),
             (Double(tall) / Double(MeadowCatalog.Cap.tall.limit), MeadowWords.fullness(tall, of: MeadowCatalog.Cap.tall.limit, .tall)),
+            (Double(lamps) / Double(MeadowCatalog.Cap.lamps.limit), MeadowWords.fullness(lamps, of: MeadowCatalog.Cap.lamps.limit, .lamps)),
         ]
         let fullest = shares.filter { $0.0 >= 0.8 }.max { $0.0 < $1.0 }?.1
         if tray.fullness != fullest { tray.fullness = fullest }
