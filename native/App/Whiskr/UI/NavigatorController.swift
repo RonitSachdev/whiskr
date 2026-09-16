@@ -748,6 +748,9 @@ struct EdgeCapsule: View {
 /// A workspace in the meadow as VoiceOver sees it: its sentence, where its blanket is, and Press.
 /// AppKit asks for these on the main thread.
 nonisolated final class MeadowAccessibilityElement: NSAccessibilityElement {
+    /// The meadow, carried into the main thread's work (it is only ever touched there).
+    private struct Held: @unchecked Sendable { weak var view: MeadowView? }
+
     private nonisolated(unsafe) weak var meadow: MeadowView?
     private let item: MeadowItem
     private let press: @MainActor @Sendable () -> Void
@@ -763,10 +766,9 @@ nonisolated final class MeadowAccessibilityElement: NSAccessibilityElement {
 
     override func accessibilityFrame() -> NSRect {
         // Read on the main thread, as AppKit asks; the view is only touched there.
-        nonisolated(unsafe) let meadow = meadow
-        let item = item
+        let held = Held(view: meadow), item = item
         return MainActor.assumeIsolated {
-            guard let meadow, let rect = meadow.screenRect(of: item), let window = meadow.window else { return .zero }
+            guard let meadow = held.view, let rect = meadow.screenRect(of: item), let window = meadow.window else { return .zero }
             return window.convertToScreen(meadow.convert(rect, to: nil))
         }
     }

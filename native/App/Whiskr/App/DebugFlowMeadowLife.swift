@@ -41,7 +41,8 @@ extension PerfSuite {
 
         // The kettle, by the shell's own marks.
         workbench.select(workspace: kettleSpace)
-        let cold = await PerfWait.until(4000) { kettle().shown > 0.95 }
+        // (The plain prompt was a command of its own: its steam clears first.)
+        let cold = await PerfWait.until(8000) { kettle().shown > 0.95 && kettle().flame == 0 && !kettle().steaming }
         check("kettle: a plain terminal's blanket has its kettle, cold at the prompt", cold != nil && kettle().flame == 0 && !kettle().steaming && kettle().flag < 0.01,
               "\(kettle())")
         await lifePictures("kettle-cold")
