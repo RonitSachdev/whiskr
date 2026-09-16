@@ -23,7 +23,6 @@ private let GAP: Float = 5.5                   // standing grass between blanket
 private let SPACE_GAP: Float = 4               // more between spaces, so each mown patch reads as its own
 private let OBSTACLE_GAP: Float = 1.5
 private let REPORT_SECONDS: Float = 1.3           // a finished helper faces its boss this long before leaving
-private let COLUMN_LANE_LENGTH: Float = 120       // the lane is kept clear this far, so a new row never moves it
 private let ROW_GAP: Float = 1.6                // grass between blankets side by side in a row
 private let COLUMN_GLANCE = 5                   // rows framed at once in a sidebar: what one glance holds
 private let COLUMN_FEWEST = 3                   // and the fewest it is framed for, however few there are
@@ -777,7 +776,9 @@ final class Village {
 
     /// One blanket per row, in the order given, top to bottom, swaying a little left and right of the
     /// lane so the column reads as a loose picnic rather than a list. The order never changes by itself.
-    /// The lane is the nearest one to the middle of the meadow that no tree or log stands in.
+    /// The lane runs down the middle of the picnic ground (x = 0), which the meadow's editor keeps big things
+    /// off (`SceneryRules.picnicGround`); it never looks at the scenery, which can be moved: whatever stands
+    /// where a blanket comes makes way for it.
     private func arrangeColumn() {
         guard !plots.isEmpty else { column = nil; return }
         // Framed for a typical blanket (the median), so one big crowd does not shrink every cat; a bigger
@@ -807,12 +808,7 @@ final class Village {
         var reach = perRow == 1 ? (rows.map(rowWidth).max() ?? typical * 2) / 2 + sway : nominalRow / 2 + sway
         for plot in plots where homes[ObjectIdentifier(plot)] != nil { reach = max(reach, indent - sway + plot.radius) }
         let length = rows.reduce(Float(0)) { $0 + ($1.map(\.radius).max() ?? typical) * 2 + COLUMN_FLAG_BAND } + Float(rows.count - 1) * COLUMN_GAP
-        func clear(_ lane: Float) -> Bool {
-            obstacles.allSatisfy { o in
-                abs(o.x - lane) > reach + o.r + OBSTACLE_GAP || o.z < -o.r - OBSTACLE_GAP || o.z > max(length, COLUMN_LANE_LENGTH) + o.r + OBSTACLE_GAP
-            }
-        }
-        let lane = stride(from: Float(0), through: 60, by: 1).lazy.flatMap { [$0, -$0] }.first(where: clear) ?? 0
+        let lane = Self.columnLane
         var z: Float = 0
         var previousDepth: Float?
         var index = 0
@@ -874,6 +870,9 @@ final class Village {
         streams = []
         layoutVersion += 1
     }
+
+    /// Where the column's lane runs: down the middle of the picnic ground.
+    static let columnLane: Float = 0
 
     /// What a sidebar's camera frames in the column, as the blankets lie now: the middle of the lane or of
     /// the rows (x), how far either way the ground to fit reaches (`across`, `deep`), and the content's

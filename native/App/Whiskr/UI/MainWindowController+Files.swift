@@ -31,8 +31,8 @@ extension MainWindowController {
     // MARK: File
 
     /// File › New File… (⌥⌘N): in the Files panel, made in the selected folder and named in place.
-    @objc func newFile(_ sender: Any?) { makeNew(folder: false) }
-    @objc func newFolder(_ sender: Any?) { makeNew(folder: true) }
+    @objc func newFile(_ sender: Any?) { leaveMeadowEditing(); makeNew(folder: false) }
+    @objc func newFolder(_ sender: Any?) { leaveMeadowEditing(); makeNew(folder: true) }
 
     private func makeNew(folder: Bool) {
         guard let workspace = workbench.selectedWorkspace else { return }
@@ -102,17 +102,19 @@ extension MainWindowController {
     // MARK: View
 
     /// View › Files (⇧⌘E) and Changes (⇧⌘C).
-    @objc func showFilesPanel(_ sender: Any?) { workbench.togglePanel(.files) }
-    @objc func showChangesPanel(_ sender: Any?) { workbench.togglePanel(.changes) }
+    @objc func showFilesPanel(_ sender: Any?) { leaveMeadowEditing(); workbench.togglePanel(.files) }
+    @objc func showChangesPanel(_ sender: Any?) { leaveMeadowEditing(); workbench.togglePanel(.changes) }
 
     /// View › Show Preview (⌥⌘P): Markdown or SVG between its source and its preview.
     @objc func togglePreview(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let page = focusedFilePage else { return }
         // As the item says: Show Source from the preview, Show Preview from the source or side by side.
         page.setMode(page.mode == .preview ? .source : .preview)
     }
 
     @objc func togglePreviewSideBySide(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let page = focusedFilePage else { return }
         page.setMode(page.mode == .sideBySide ? .source : .sideBySide)
     }
@@ -134,6 +136,7 @@ extension MainWindowController {
 
     /// Editor › Compare with HEAD: the file's changes in a tab beside it.
     @objc func compareWithHEAD(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let document = workbench.focusedDocument else { return }
         workbench.openChanges(path: document.url.path, staged: false, mode: .keep)
     }
@@ -143,6 +146,7 @@ extension MainWindowController {
 
     /// Editor › Reveal in Files (⇧⌘J).
     @objc func revealInFiles(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let path = workbench.focusedPage?.path else { return }
         workbench.revealInFiles(path: path)
     }

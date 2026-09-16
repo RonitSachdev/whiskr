@@ -54,11 +54,14 @@ public struct WindowLayout: Equatable, Sendable, Codable {
         /// The meadow's width: 0 while it is hidden, the window's width when it is alone.
         public var navigator: Double
         public var showsTerminals: Bool
+
+        /// The meadow alone, the window's whole width: Meadow Only, and the meadow while it is edited.
+        public static func meadowAlone(window width: Double) -> Frame { Frame(navigator: width, showsTerminals: false) }
     }
 
     public func frame(window width: Double) -> Frame {
         switch mode {
-        case .meadowOnly: return Frame(navigator: width, showsTerminals: false)
+        case .meadowOnly: return .meadowAlone(window: width)
         case .terminalsOnly: return Frame(navigator: 0, showsTerminals: true)
         case .split: break
         }

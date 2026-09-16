@@ -26,6 +26,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     private(set) var palette: PaletteController?
     /// ⌃Tab's most-recent switching.
     private(set) var tabSwitcher: TabSwitcher?
+    /// Editing the meadow (View › Edit Meadow): the meadow fills the window between the bars.
+    private(set) lazy var meadowEditor = EditModeController(window: self, navigator: navigator)
+    /// The meadow is being edited: it fills the window, whatever the layout says (which stays as it was).
+    private(set) var meadowEditing = false
 
     private(set) var layout: WindowLayout {
         didSet {
@@ -100,6 +104,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         TabDragging.shared.controller = self
         palette = PaletteController(workbench: workbench, window: window)
         tabSwitcher = TabSwitcher(workbench: workbench, window: window)
+        navigator.editor = meadowEditor
         applyLayout(animated: false)
 
         workbench.onFocusPane = { [weak self] pane in
@@ -202,8 +207,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     private func applyLayout(animated: Bool) {
         guard let window else { return }
         let animate = animated && Look.Motion.moves && window.isVisible && !sliding
-        navigator.kind = layout.navigator
-        let frame = layout.frame(window: Double(window.frame.width))
+        navigator.kind = meadowEditing ? .meadow : layout.navigator
+        // Editing, the meadow fills the window between the bars, as Meadow Only shows it.
+        let frame = meadowEditing ? .meadowAlone(window: Double(window.frame.width)) : layout.frame(window: Double(window.frame.width))
         let showNavigator = frame.navigator > 0
         if chrome.showsStatusBar != layout.showsStatusBar { chrome.showsStatusBar = layout.showsStatusBar }
         if chrome.meadowShown != showNavigator { chrome.meadowShown = showNavigator }
@@ -253,7 +259,10 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// and it is handed over once the regions have been told what to show: a region that is closed at once
     /// takes the keyboard out of the window, and one still closed cannot take it.
     private func keyboardHandover(meadowShown: Bool, terminalsShown: Bool) -> (() -> Void)? {
-        guard let window, let responder = window.firstResponder as? NSView else { return nil }
+        guard let window else { return nil }
+        // Editing, the keyboard is the meadow's (its editor's keys), wherever it was.
+        if meadowEditing { return { [weak self] in self.map { _ = window.makeFirstResponder($0.navigator.meadow) } } }
+        guard let responder = window.firstResponder as? NSView else { return nil }
         if !meadowShown, responder.isDescendant(of: navigator.view) {
             return { [weak self] in
                 guard let self else { return }
@@ -266,6 +275,62 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         return nil
     }
 
+    /// The meadow's editor begins or ends (`EditModeController`): the terminals slide away and the meadow
+    /// fills the window (or they come back), the top bar shows the editor's part, the keyboard goes to the
+    /// meadow and, at the end, back where it was (`keyboard`). With Reduce Motion the change cross-fades in
+    /// place.
+    func setMeadowEditing(_ on: Bool, keyboard: NSResponder? = nil) {
+        guard let window, meadowEditing != on else { return }
+        meadowEditing = on
+        chrome.editBar = on ? meadowEditor.bar : nil
+        if !Look.Motion.moves, let layer = split.view.layer {
+            let fade = CATransition()
+            fade.type = .fade
+            fade.duration = Look.Motion.standard
+            fade.timingFunction = Look.Motion.curve
+            layer.add(fade, forKey: "editing")
+        }
+        applyLayout(animated: true)
+        guard !on else { return }
+        // The keyboard back where it was: a pane's terminal, a file, Home, or the meadow (⌥⌘0). One in a
+        // region still opening takes it as soon as it can.
+        let giveBack: @MainActor () -> Bool = { [weak self] in
+            guard let self else { return true }
+            if let view = keyboard as? NSView, view.window === window, !view.isHiddenOrHasHiddenAncestor {
+                return window.makeFirstResponder(view)
+            }
+            if keyboard == nil || keyboard === window || (keyboard as? NSView)?.window !== window {
+                if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else if workbench.isHome { terminals.focusHome() }
+                return true
+            }
+            return false
+        }
+        // Tried again each 50 ms while the terminals' region opens (at most a second).
+        func retry(_ left: Int) {
+            guard left > 0 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                guard let self, !self.meadowEditing else { return }
+                if !giveBack() { retry(left - 1) }
+            }
+        }
+        if !giveBack() { retry(20) }
+        // A region shown on the way back (the workspaces' list) can leave the keyboard with nobody once it has
+        // appeared: then it goes back where it was again.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Look.Motion.region + 0.2) { [weak self] in
+            guard let self, !self.meadowEditing, window.firstResponder === window else { return }
+            _ = giveBack()
+        }
+    }
+
+    /// View › Edit Meadow (⌃⌘E), checked while editing; also the grass's menu, Settings › Meadow and Go to.
+    @objc func toggleMeadowEditing(_ sender: Any?) { meadowEditor.toggle() }
+
+    /// A command that needs the terminals leaves the meadow's editor first; nothing is lost (every change is
+    /// saved already).
+    func leaveMeadowEditing() {
+        if meadowEditing { meadowEditor.leave() }
+    }
+
     /// View › Hide Status Bar / Show Status Bar (⌥⌘/).
     @objc func toggleStatusBar(_ sender: Any?) { layout.showsStatusBar.toggle() }
 
@@ -273,6 +338,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// selected workspace's side panel at its usual width (shown only if it was). Other workspaces' panels,
     /// the panes' shares and how the workspaces are drawn are yours, and stay.
     @objc func resetLayout(_ sender: Any?) {
+        leaveMeadowEditing()
         layout.reset()
         if let workspace = workbench.selectedWorkspace {
             workbench.files.setPanel(workspace.id) { $0.width = FilesCenter.panelDefault }
@@ -300,6 +366,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// Kept for the next launch (the layout saves itself as it changes; the camera here).
     func saveState() {
         navigator.saveState()
+        MeadowLibrary.shared.save(wait: true)
     }
 
     /// The window's width, which decides whether the default split has room for the meadow.
@@ -307,23 +374,27 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     /// View › Hide Meadow / Show Meadow (⌃⌘S, the meadow button): by what is on screen, so in a window
     /// too narrow for the default split it shows the meadow, at its narrowest.
-    @objc func toggleNavigator(_ sender: Any?) { layout.toggleNavigator(window: windowWidth) }
+    @objc func toggleNavigator(_ sender: Any?) { leaveMeadowEditing(); layout.toggleNavigator(window: windowWidth) }
 
     /// Go › Move Focus to Meadow (⌥⌘0): the keyboard goes to the meadow (or the list), on the selected
     /// workspace; Esc or Tab gives it back to the terminal.
     @objc func moveFocusToMeadow(_ sender: Any?) {
+        // Editing, the meadow fills the window already: only the keyboard moves.
+        if meadowEditing, let window { window.makeFirstResponder(navigator.meadow); return }
         layout.showNavigator(window: windowWidth)
         navigator.takeKeyboard()
     }
     @objc func showMeadowAndTerminals(_ sender: Any?) {
+        leaveMeadowEditing()
         layout.mode = .split
         layout.showNavigator(window: windowWidth)
     }
-    @objc func showTerminalsOnly(_ sender: Any?) { layout.mode = .terminalsOnly }
-    @objc func showMeadowOnly(_ sender: Any?) { layout.mode = .meadowOnly }
+    @objc func showTerminalsOnly(_ sender: Any?) { leaveMeadowEditing(); layout.mode = .terminalsOnly }
+    @objc func showMeadowOnly(_ sender: Any?) { leaveMeadowEditing(); layout.mode = .meadowOnly }
     /// View › Animate Meadow (`WorldStore.animatesMeadow`).
     @objc func toggleAnimateMeadow(_ sender: Any?) { WorldStore.shared.animatesMeadow.toggle() }
     @objc func toggleWorkspacesAsList(_ sender: Any?) {
+        leaveMeadowEditing()
         layout.navigator = layout.navigator == .list ? .meadow : .list
         layout.showNavigator(window: windowWidth)
     }
@@ -363,21 +434,25 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// and under Open. On Home already, it is that New Terminal: a workspace in your home folder, its
     /// terminal with the keyboard. (On Home it once did nothing at all, which read as broken.)
     @objc func newWorkspace(_ sender: Any?) {
+        leaveMeadowEditing()
         if workbench.isHome { workbench.newWorkspace() } else { workbench.goHome() }
     }
 
     /// Go › Home (⇧⌘H): no workspace selected; everything keeps running.
     @objc func goHome(_ sender: Any?) {
+        leaveMeadowEditing()
         workbench.goHome()
     }
 
     @objc func newTab(_ sender: Any?) {
+        leaveMeadowEditing()
         workbench.newTab()
     }
 
     /// File › Open Folder… (⌘O): the standard folder picker, then a workspace there (or the one already
     /// open on it).
     @objc func openFolder(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let window else { return }
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -392,9 +467,11 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     @objc func splitRight(_ sender: Any?) {
+        leaveMeadowEditing()
         if workbench.focusedPageID != nil { workbench.splitBesidePage(.horizontal) } else { workbench.split(.horizontal) }
     }
     @objc func splitDown(_ sender: Any?) {
+        leaveMeadowEditing()
         if workbench.focusedPageID != nil { workbench.splitBesidePage(.vertical) } else { workbench.split(.vertical) }
     }
 
@@ -402,6 +479,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     /// File › Close (⌘W): the focused pane, undoable for ten seconds; nothing is asked.
     @objc func closePane(_ sender: Any?) {
+        leaveMeadowEditing()
         if workbench.peekedPane != nil {
             // A helper looked at over the panes is put away; it keeps running.
             workbench.closePeek()
@@ -415,14 +493,16 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     /// File › Close Tab (⌥⌘W), undoable likewise.
     @objc func closeTab(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let tab = workbench.selectedTab else { return }
         workbench.requestClose(tab: tab)
     }
 
-    @objc func reopenClosedTab(_ sender: Any?) { workbench.reopenClosedTab() }
+    @objc func reopenClosedTab(_ sender: Any?) { leaveMeadowEditing(); workbench.reopenClosedTab() }
 
     /// File › Close Workspace: asks only when Claude is working or a program other than a shell runs.
     @objc func closeWorkspace(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let workspace = workbench.selectedWorkspace else { return }
         requestClose(workspace: workspace)
     }
@@ -451,11 +531,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     }
 
     @objc func renameTab(_ sender: Any?) {
+        leaveMeadowEditing()
         workbench.renamingTabID = workbench.selectedTab?.id
     }
 
     /// File › Rename Workspace…: its name is edited in place, in the tab row's workspace button.
     @objc func renameWorkspace(_ sender: Any?) {
+        leaveMeadowEditing()
         if layout.mode == .meadowOnly { layout.mode = .split }
         workbench.renamingWorkspaceID = workbench.selectedWorkspace?.id
     }
@@ -472,49 +554,52 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
 
     /// Pin Claude: the focused pane's Claude is marked and listed first.
     @objc func togglePin(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let pane = workbench.focusedPane, pane.agentRunning else { return }
         workbench.togglePin(pane: pane.id)
     }
 
     @objc func markUnread(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let pane = workbench.focusedPane else { return }
         workbench.markUnread(pane: pane.id)
     }
 
     // MARK: Moving around
 
-    @objc func focusLeft(_ sender: Any?) { workbench.moveFocus(.left) }
-    @objc func focusRight(_ sender: Any?) { workbench.moveFocus(.right) }
-    @objc func focusUp(_ sender: Any?) { workbench.moveFocus(.up) }
-    @objc func focusDown(_ sender: Any?) { workbench.moveFocus(.down) }
-    @objc func swapLeft(_ sender: Any?) { workbench.swapFocused(.left) }
-    @objc func swapRight(_ sender: Any?) { workbench.swapFocused(.right) }
-    @objc func swapUp(_ sender: Any?) { workbench.swapFocused(.up) }
-    @objc func swapDown(_ sender: Any?) { workbench.swapFocused(.down) }
-    @objc func nextPane(_ sender: Any?) { workbench.focusPane(offset: 1) }
-    @objc func previousPane(_ sender: Any?) { workbench.focusPane(offset: -1) }
-    @objc func toggleZoom(_ sender: Any?) { workbench.toggleZoom() }
+    @objc func focusLeft(_ sender: Any?) { leaveMeadowEditing(); workbench.moveFocus(.left) }
+    @objc func focusRight(_ sender: Any?) { leaveMeadowEditing(); workbench.moveFocus(.right) }
+    @objc func focusUp(_ sender: Any?) { leaveMeadowEditing(); workbench.moveFocus(.up) }
+    @objc func focusDown(_ sender: Any?) { leaveMeadowEditing(); workbench.moveFocus(.down) }
+    @objc func swapLeft(_ sender: Any?) { leaveMeadowEditing(); workbench.swapFocused(.left) }
+    @objc func swapRight(_ sender: Any?) { leaveMeadowEditing(); workbench.swapFocused(.right) }
+    @objc func swapUp(_ sender: Any?) { leaveMeadowEditing(); workbench.swapFocused(.up) }
+    @objc func swapDown(_ sender: Any?) { leaveMeadowEditing(); workbench.swapFocused(.down) }
+    @objc func nextPane(_ sender: Any?) { leaveMeadowEditing(); workbench.focusPane(offset: 1) }
+    @objc func previousPane(_ sender: Any?) { leaveMeadowEditing(); workbench.focusPane(offset: -1) }
+    @objc func toggleZoom(_ sender: Any?) { leaveMeadowEditing(); workbench.toggleZoom() }
     /// ⌘1…⌘8 a tab by number, ⌘9 the last (as Safari and Terminal).
     @objc func selectTabByNumber(_ sender: NSMenuItem) {
+        leaveMeadowEditing()
         let count = workbench.selectedWorkspace?.tabs.count ?? 0
         workbench.selectTab(at: sender.tag == 9 ? count - 1 : sender.tag - 1)
     }
-    @objc func selectWorkspaceByNumber(_ sender: NSMenuItem) { workbench.selectWorkspace(at: sender.tag - 1) }
+    @objc func selectWorkspaceByNumber(_ sender: NSMenuItem) { leaveMeadowEditing(); workbench.selectWorkspace(at: sender.tag - 1) }
     /// ⌃Tab and ⌃⇧Tab: the tab shown before, or a held ⌃'s list of recent tabs (`TabSwitcher`).
-    @objc func switchToRecentTab(_ sender: Any?) { tabSwitcher?.begin(backward: false) }
-    @objc func switchToRecentTabBackward(_ sender: Any?) { tabSwitcher?.begin(backward: true) }
-    @objc func nextTab(_ sender: Any?) { workbench.selectTab(offset: 1) }
-    @objc func previousTab(_ sender: Any?) { workbench.selectTab(offset: -1) }
-    @objc func nextWorkspace(_ sender: Any?) { workbench.selectWorkspace(offset: 1) }
-    @objc func previousWorkspace(_ sender: Any?) { workbench.selectWorkspace(offset: -1) }
-    @objc func goToNextThing(_ sender: Any?) { workbench.goToNextThing() }
+    @objc func switchToRecentTab(_ sender: Any?) { leaveMeadowEditing(); tabSwitcher?.begin(backward: false) }
+    @objc func switchToRecentTabBackward(_ sender: Any?) { leaveMeadowEditing(); tabSwitcher?.begin(backward: true) }
+    @objc func nextTab(_ sender: Any?) { leaveMeadowEditing(); workbench.selectTab(offset: 1) }
+    @objc func previousTab(_ sender: Any?) { leaveMeadowEditing(); workbench.selectTab(offset: -1) }
+    @objc func nextWorkspace(_ sender: Any?) { leaveMeadowEditing(); workbench.selectWorkspace(offset: 1) }
+    @objc func previousWorkspace(_ sender: Any?) { leaveMeadowEditing(); workbench.selectWorkspace(offset: -1) }
+    @objc func goToNextThing(_ sender: Any?) { leaveMeadowEditing(); workbench.goToNextThing() }
 
     // MARK: Terminal
 
     @objc func biggerText(_ sender: Any?) { ThemeStore.shared.setFontSize(ThemeStore.shared.fontSize + 1) }
     @objc func smallerText(_ sender: Any?) { ThemeStore.shared.setFontSize(ThemeStore.shared.fontSize - 1) }
     @objc func actualSizeText(_ sender: Any?) { ThemeStore.shared.setFontSize(ThemeStore.defaultFontSize) }
-    @objc func clearScrollback(_ sender: Any?) { workbench.focusedPane?.clearScrollback() }
+    @objc func clearScrollback(_ sender: Any?) { leaveMeadowEditing(); workbench.focusedPane?.clearScrollback() }
     /// Go › Interrupt (⌘.): Esc to Claude (how its turn is stopped), ⌃C to anything else.
     @objc func interrupt(_ sender: Any?) {
         guard let pane = workbench.focusedPane else { return }
@@ -531,6 +616,9 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         case #selector(toggleNavigator(_:)):
             item.title = layout.showsNavigator(window: windowWidth) ? String(localized: "Hide Meadow") : String(localized: "Show Meadow")
             return true
+        case #selector(toggleMeadowEditing(_:)):
+            item.state = meadowEditing ? .on : .off
+            return navigator.meadow.window != nil
         case #selector(toggleStatusBar(_:)):
             item.title = layout.showsStatusBar ? String(localized: "Hide Status Bar") : String(localized: "Show Status Bar")
             return true

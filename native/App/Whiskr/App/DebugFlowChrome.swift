@@ -37,6 +37,10 @@ extension PerfSuite {
         if only == nil || only == "home" { await homeSweep(setup) }
         if only == nil || only == "status" { await statusBarSweep(setup) }
         if only == nil || only == "changes" { await hitsAfterChanges(setup) }
+        if only == nil || only == "edit" {
+            await editBarSweep()
+            await chromeRestore(setup)
+        }
         check("chrome: no menu was shown for real (every one went to the stand-in)", MenuStandIn.tracked.isEmpty,
               MenuStandIn.tracked.joined(separator: "; "))
         await chromeRestore(setup)

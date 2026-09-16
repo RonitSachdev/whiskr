@@ -30,6 +30,9 @@ final class NavigatorController: NSViewController {
     /// Your choices followed so far (`Workbench.choices`): a new one is yours to follow; anything else
     /// that changes the selection only moves the ring.
     private var choicesFollowed = 0
+    /// The meadow's editor (View › Edit Meadow), which takes the meadow's keys and Edit menu while editing.
+    weak var editor: EditModeController?
+    private var editing: Bool { editor?.isEditing == true }
 
     private static let cameraKey = "meadowCamera"
 
@@ -53,6 +56,7 @@ final class NavigatorController: NSViewController {
         container.onFolders = { [weak self] urls in urls.forEach { self?.workbench.open(folder: $0.path) } }
         container.onAppearance = { [weak self] in self?.applySettings() }
         meadow.onKeyDown = { [weak self] event in self?.key(event) ?? false }
+        meadow.onKeyEquivalent = { [weak self] event in self?.editor?.keyEquivalent(event) ?? false }
         meadow.onViewChanged = { [weak self] in self?.updateEdges() }
         meadow.setAccessibilityLabel(String(localized: "Workspaces", comment: "Accessibility label of the sidebar's meadow"))
         meadow.takesKeyboardFocus = false
@@ -97,6 +101,13 @@ final class NavigatorController: NSViewController {
             self.sceneChanged(self.workbench.scene, choices: self.workbench.choices)
         })
         observers.append(Observing { [weak self] in self?.applySettings() })
+        // The meadow shown (the Default or one of yours), as it changes.
+        observers.append(Observing { [weak self] in
+            let scenery = MeadowLibrary.shared.scenery
+            // A drag under way draws its own picture of the meadow until it is let go.
+            guard let self, self.editor?.showsPreview != true else { return }
+            self.meadow.scenery = scenery
+        })
         // Moving to another time zone moves the sun, when where you are is guessed from it.
         zoneObserver = NotificationCenter.default.addObserver(forName: .NSSystemTimeZoneDidChange, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.applySettings() }
@@ -117,6 +128,9 @@ final class NavigatorController: NSViewController {
     private func sceneChanged(_ snapshot: SceneSnapshot, choices: Int) {
         let chosen = choices != choicesFollowed
         choicesFollowed = choices
+        // A choice of yours on the right (a workspace, a tab, Go to, ⌘J, a notification) leaves the meadow's
+        // editor first: the view comes back where it was, then follows the choice.
+        if chosen, editing { editor?.leave() }
         let changed = snapshot != scene
         guard changed || chosen else { return }
         scene = snapshot
@@ -134,9 +148,10 @@ final class NavigatorController: NSViewController {
         updateAccessibility(snapshot)
     }
 
-    /// Workspaces with a request or an error whose blanket is out of view, by edge.
+    /// Workspaces with a request or an error whose blanket is out of view, by edge (not while editing: the
+    /// view roams the whole meadow, and the status bar keeps counting who needs you).
     private func updateEdges() {
-        guard let scene, kind == .meadow, !meadow.isHiddenOrHasHiddenAncestor else {
+        guard let scene, kind == .meadow, !meadow.isHiddenOrHasHiddenAncestor, !editing else {
             edges.set(above: [], below: [])
             return
         }
@@ -258,6 +273,7 @@ final class NavigatorController: NSViewController {
     /// ↑ ↓ between workspaces, ← → through the focused workspace's cats, Return as a click, Space for
     /// its label, Esc or Tab back to the terminal (or Home); letters jump to the first workspace named so.
     private func key(_ event: NSEvent) -> Bool {
+        if editing, let editor { return editor.key(event) }
         let order = workbench.workspaces.map { $0.id.uuidString }
         let focus = meadow.keyboardFocus ?? (workbench.selectedWorkspace ?? workbench.workspaces.first).map { .blanket($0.id.uuidString) }
         guard let focus, let at = order.firstIndex(of: focus.blanketID) else { return false }
@@ -305,6 +321,8 @@ final class NavigatorController: NSViewController {
 
     /// One element per workspace, read as a sentence, with its frame in the meadow; Press selects it.
     private func updateAccessibility(_ snapshot: SceneSnapshot) {
+        // While the meadow is edited VoiceOver reads its scenery (`EditModeController`).
+        guard !editing else { return }
         let elements = snapshot.spaces.map { space -> MeadowAccessibilityElement in
             let element = MeadowAccessibilityElement(meadow: meadow, item: .blanket(space.id.uuidString)) { [weak self] in
                 self?.workbench.selectBlanket(space.id)
@@ -378,6 +396,8 @@ final class NavigatorController: NSViewController {
         guard let item, let target = MeadowMapping.target(of: item) else {
             add(String(localized: "New Terminal")) { [weak self] in self?.workbench.newWorkspace() }
             add(String(localized: "Open Folder…")) { NSApp.sendAction(#selector(MainWindowController.openFolder(_:)), to: nil, from: nil) }
+            menu.addItem(.separator())
+            add(String(localized: "Edit Meadow…", comment: "The grass's menu: begins editing the meadow")) { [weak self] in self?.editor?.enter() }
             return menu
         }
         switch target {
@@ -451,6 +471,66 @@ final class NavigatorController: NSViewController {
             }
         }
         return menu
+    }
+
+    // MARK: Editing the meadow
+
+    /// The editor begins: nothing of the sidebar's own floats over the meadow meanwhile (the hover label,
+    /// the edge capsules, the answer card).
+    func editingWillBegin() {
+        note.hide()
+        answerCard.close(restoringFocus: false)
+        edges.set(above: [], below: [])
+        meadow.keyboardFocus = nil
+    }
+
+    /// The editor has ended: the sidebar's own VoiceOver elements and capsules back.
+    func editingDidEnd() {
+        if let scene { updateAccessibility(scene) }
+        meadow.setAccessibilityLabel(String(localized: "Workspaces", comment: "Accessibility label of the sidebar's meadow"))
+        updateEdges()
+    }
+
+    /// The Edit menu's commands reach the editor while it has the keyboard (the meadow), and only then:
+    /// elsewhere ⌘Z keeps bringing back what was closed, and ⌘C copies text.
+    private nonisolated static let editorActions: Set<Selector> = [#selector(undo(_:)), #selector(redo(_:)), #selector(copy(_:)), #selector(cut(_:)),
+                                                                   #selector(paste(_:)), #selector(selectAll(_:)), #selector(delete(_:))]
+
+    /// AppKit asks on the main thread, as it walks the responder chain for a menu's action.
+    nonisolated override func responds(to selector: Selector!) -> Bool {
+        if let selector, Self.editorActions.contains(selector) {
+            return MainActor.assumeIsolated { editing && view.window?.firstResponder === meadow }
+        }
+        return super.responds(to: selector)
+    }
+
+    @objc func undo(_ sender: Any?) { editor?.undo() }
+    @objc func redo(_ sender: Any?) { editor?.redo() }
+    @objc func copy(_ sender: Any?) { editor?.copySelection() }
+    @objc func cut(_ sender: Any?) { editor?.cutSelection() }
+    @objc func paste(_ sender: Any?) { editor?.paste() }
+    @objc override func selectAll(_ sender: Any?) { editor?.selectAll() }
+    @objc func delete(_ sender: Any?) { editor?.deleteSelection() }
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        guard let editor, editing else { return false }
+        let undo = MeadowLibrary.shared.undoManager
+        switch item.action {
+        case #selector(self.undo(_:)):
+            item.title = undo.undoMenuItemTitle
+            return undo.canUndo
+        case #selector(redo(_:)):
+            item.title = undo.redoMenuItemTitle
+            return undo.canRedo
+        case #selector(copy(_:)), #selector(cut(_:)), #selector(delete(_:)):
+            return !editor.selection.isEmpty
+        case #selector(paste(_:)):
+            return editor.canPaste
+        case #selector(selectAll(_:)):
+            return !MeadowLibrary.shared.session.drawnIDs.isEmpty
+        default:
+            return true
+        }
     }
 
     // MARK: Saving and restoring

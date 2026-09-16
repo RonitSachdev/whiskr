@@ -29,7 +29,7 @@ final class Critters {
     /// Live positions, for anything that wants to watch them go by.
     private(set) var spots: ContiguousArray<Vec3> = []
     private(set) var seeds: [Vec3] = []
-    private var blooms: [Vec3]
+    private(set) var blooms: [Vec3]
     private var time: Float = 0
 
     init(_ random: inout Seeded, blooms: [Vec3]) {

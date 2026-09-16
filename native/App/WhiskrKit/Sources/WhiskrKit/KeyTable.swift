@@ -95,6 +95,9 @@ public enum KeyContext: String, Sendable, CaseIterable {
     case files
     /// The meadow and the workspace list, with the keyboard in them.
     case meadow
+    /// The meadow while it is edited, with the keyboard in it. Its ⌘ keys are taken before the menus (a
+    /// view's key equivalent comes first), each written down with what it takes the place of.
+    case meadowEditor
     /// The find bar over a terminal.
     case terminalFind
     /// ⌃Tab's list while ⌃ is held (`TabSwitcher`).
@@ -192,6 +195,7 @@ public enum KeyTable {
         KeyBinding("⌘-", "smallerText:", .menu),
         KeyBinding("⌘0", "actualSizeText:", .menu),
         KeyBinding("⌃⌘F", "toggleFullScreen:", .menu),
+        KeyBinding("⌃⌘E", "toggleMeadowEditing:", .menu),
         // AppKit adds Close All under Close Window, with ⌥.
         KeyBinding("⌥⇧⌘W", "closeAll:", .menu),
         // Editor
@@ -313,6 +317,33 @@ public enum KeyTable {
         KeyBinding("⎋", "cancel", .tabSwitcher),
         KeyBinding("↩", "open the chosen tab", .tabSwitcher),
         KeyBinding("⌘↩", "send", .focusedForm),
+        // Editing the meadow (docs/DESIGN.md, "Edit Meadow"); ⌘A, ⌘C, ⌘V, ⌘Z and ⇧⌘Z are the Edit menu's.
+        KeyBinding("V", "the Select tool", .meadowEditor),
+        KeyBinding("R", "turn the chosen things 15° clockwise", .meadowEditor),
+        KeyBinding("⇧R", "turn the chosen things 15° anticlockwise", .meadowEditor),
+        KeyBinding("⌥R", "turn the chosen things 1° clockwise", .meadowEditor),
+        KeyBinding("⌥⇧R", "turn the chosen things 1° anticlockwise", .meadowEditor),
+        KeyBinding("]", "grow the chosen things, or the next thing round the cursor", .meadowEditor),
+        KeyBinding("[", "shrink the chosen things, or the thing before round the cursor", .meadowEditor),
+        KeyBinding("←", "nudge the chosen things, or move the cursor", .meadowEditor),
+        KeyBinding("→", "nudge the chosen things, or move the cursor", .meadowEditor),
+        KeyBinding("↑", "nudge the chosen things, or move the cursor", .meadowEditor),
+        KeyBinding("↓", "nudge the chosen things, or move the cursor", .meadowEditor),
+        KeyBinding("⇧←", "nudge further", .meadowEditor),
+        KeyBinding("⇧→", "nudge further", .meadowEditor),
+        KeyBinding("⇧↑", "nudge further", .meadowEditor),
+        KeyBinding("⇧↓", "nudge further", .meadowEditor),
+        KeyBinding("↩", "choose the thing nearest the cursor", .meadowEditor),
+        KeyBinding("⌫", "delete the chosen things", .meadowEditor),
+        KeyBinding("⌦", "delete the chosen things", .meadowEditor),
+        KeyBinding("⎋", "step back: the gesture, the choice, then editing", .meadowEditor),
+        KeyBinding(",", "turn the view 45° left", .meadowEditor),
+        KeyBinding(".", "turn the view 45° right", .meadowEditor),
+        KeyBinding("0", "frame the picnic ground again", .meadowEditor),
+        KeyBinding("Space", "held: a drag slides the view", .meadowEditor),
+        KeyBinding("⇥", "to the selection's bar", .meadowEditor),
+        KeyBinding("⌘D", "duplicate the chosen things", .meadowEditor, replaces: "Split Right: no terminal is in view while editing"),
+        KeyBinding("⌘↩", "done editing", .meadowEditor),
     ]
 
     /// macOS's own, never to be given anything else.
@@ -387,6 +418,11 @@ public enum KeyTable {
         if a.command == b.command { return false }
         if a.context == .system || b.context == .system { return true }
         if a.context == b.context { return true }
+        // A key the meadow's editor takes before the menus is a decision, written down with the binding.
+        if a.context == .meadowEditor || b.context == .meadowEditor {
+            let editor = a.context == .meadowEditor ? a : b, other = a.context == .meadowEditor ? b : a
+            return other.context == .menu && editor.replaces == nil
+        }
         // A menu's key counts everywhere (a view that takes the same key first does the same command).
         if a.context == .menu || b.context == .menu { return true }
         let pair = Set([a.context, b.context])

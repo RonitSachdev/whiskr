@@ -42,7 +42,9 @@ One word for each thing, the same in menus, tooltips, notifications, accessibili
 | A turn that finished while you weren't looking | **Finished** | 完了 | done, idle, complete |
 
 "Blanket", "cat", "lantern", "meadow" and "flag" are pictures, never labels. Only the Help page that
-explains the pictures uses them. "Session" is never shown, because people hear it as Claude Code's own
+explains the pictures uses them, and the meadow's own editor (Edit Meadow, My Meadow, Revert to Default),
+where the meadow is what is being worked on. "Picnic ground" is never a label: VoiceOver says where a thing
+stands from it. "Session" is never shown, because people hear it as Claude Code's own
 sessions.
 
 ## The window
@@ -334,6 +336,71 @@ can hold (its catalog):
   for scenery.
 - Everything above still holds: the same clay, plants modelled on real ones in clumps (no shrubs, no
   dandelion clocks), props that are real objects, nothing written in the scene, no streams.
+
+### Editing the meadow
+
+**Edit Meadow** (View › Edit Meadow, ⌃⌘E, checked while editing; also the grass's menu, Settings › Meadow's
+Edit Meadow… and Go to's commands) makes the meadow theirs. No button in the top bar: it would sit unused
+most of the time.
+
+- **Going in.** The work area (tab row, panes, side panel) slides out as a region does and the meadow fills
+  the window between the top bar and the status bar, whatever the layout was (the layout itself is not
+  changed). The blankets keep the rows they had. The view glides up to look down on the meadow at about 55°,
+  framing the blankets and the picnic ground with the scenery round them. The top bar's middle cross-fades
+  from Go to's field to the meadow's name, "Editing “My Meadow”", a menu (Use Another Meadow, Revert to
+  Default); its end shows Undo and Redo, each naming its step in its tooltip, and Done. The meadow's button
+  rests while editing; Home leaves editing and goes Home. A compass floats at the meadow's top right. With
+  Reduce Motion everything cross-fades in place and the view cuts.
+- **Coming out.** Done (⌘↩), Esc once nothing is under way or chosen, or View › Edit Meadow again. Esc
+  steps back one thing at a time: the drag under way (it springs back), the marquee, the thing the keyboard
+  went to, the choice, then editing itself. Any command that needs the terminals (⌘T, ⌘N, ⌘O, ⌘W, the
+  layout's commands, the side panel) and any choice on the right (Go to, ⌘J, ⌃Tab, a notification) leaves
+  editing first, then acts. Leaving brings back exactly the layout, the meadow's width, the view (then the
+  meadow follows your choices as always) and the keyboard. Nothing is lost: every change is saved already.
+- **Meanwhile** terminals keep running, cats keep acting and asking, alerts sound and notify, and the status
+  bar keeps counting who needs you. Cats and blankets are not the editor's: a click on them does nothing.
+  No agent event moves the view; only you do. No answer card and no edge capsules while editing.
+- **The Select tool.** A click chooses a thing: a ring of the focus colour lies round its ground. ⇧-click
+  adds or lets go; ⌘-click chooses everything of its kind within 30 units ("Select All Like This" in its
+  menu); a drag on empty ground draws a dashed marquee and chooses what stands inside it; ⌘A chooses
+  everything; a click on the grass lets go. Dragging what is chosen moves it, keeping the group's shape;
+  ⌥-drag moves copies and leaves the originals. Where a thing may not stand its ring turns dashed (white
+  within, the ink without, never colour alone) and the reason shows by the pointer: "Outside the meadow",
+  "Kept clear for your workspaces", "Too close to the oak". Let go there and it springs back, the reason
+  staying a moment. Only what an edit makes worse is refused: a thing already standing close to another (the
+  Default's tight clumps) may still be nudged.
+- **Keys** (while the meadow has the keyboard): arrows nudge a quarter unit along the view's right and
+  forward (⇧: a whole one); R turns 15° clockwise, ⇧R back, ⌥ for 1°; `[` and `]` shrink and grow living
+  things a step, within what their kind grows to (stones and made things keep their size); ⌘D duplicates
+  beside (it is not Split Right while editing: no terminal is in view); ⌫ deletes; ⌘C, ⌘X, ⌘V copy, cut and
+  paste at the pointer (between meadows too); `,` and `.` turn the view 45°, `0` frames the picnic ground
+  again; Space held slides the view with a drag. With nothing chosen the arrows move a keyboard cursor (a
+  ring of the focus colour), `[` and `]` go from thing to thing nearest it, and Return chooses. Tab goes on
+  to the selection's bar.
+- **The selection's bar** floats 12 pt above what is chosen (below it when there is no room) and follows it
+  as the view moves: Turn Left, Turn Right; Smaller, Larger and Shuffle for living things (Shuffle draws a
+  new size, lean and turn, and a tree a new seed); Duplicate, Delete; More (Select All Like This, Copy,
+  Paste). A floating piece: the chrome's colour, a line, radius 10, the one soft shadow.
+- **The view while editing:** a plain drag is the tool's; ⌘-drag, right-drag or Space-drag slides; two
+  fingers turn; scrolling and pinching zoom toward the pointer, nearer than usual (5 units); the view roams
+  the whole meadow. The compass shows north; a click turns the view back to north, a drag round it turns it,
+  a double-click frames the picnic ground again.
+- **The picnic ground** is drawn while editing as a soft dashed outline (x within 20 of the column's lane,
+  z from −3 to 120), with no words. The column's lane is always x = 0. Trees, young trees and the log cannot
+  stand there; flowers, stones and mushrooms may, and like trees and the log anywhere make way when a blanket
+  comes.
+- **Undo.** ⌘Z and ⇧⌘Z (Edit › Undo names the step, "Undo Move Oak") take back each gesture: a drag, a
+  nudge, a turn, a size step, a duplicate, a deletion, a paste, a shuffle, choosing another meadow. Undoing
+  chooses what the step changed. The history lasts for the app's session, across leaving and coming back to
+  editing and across meadows; outside editing ⌘Z keeps bringing back what was closed.
+- **Saving.** Every change is saved a second after the last, and at once on leaving and at quit. The Default
+  is built in and never changes: the first change makes "My Meadow", a copy, and shows it, in the same step
+  (undone, the Default is shown again and the copy goes). Revert to Default shows the Default; your meadow
+  stays. Settings › Meadow's Your Meadow chooses which is shown.
+- **VoiceOver** reads the edited meadow as its trees and log one by one and its plants and stones as clumps
+  ("Daisies, 9"); each element chooses what it stands for. Choosing, moving, refusals with their reason,
+  undo and redo are announced. With Increase Contrast the rings and the picnic ground's outline are drawn
+  stronger.
 
 ### Motion
 

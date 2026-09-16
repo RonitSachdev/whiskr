@@ -61,9 +61,9 @@ final class Stage {
             sinceLit = 0
         }
         if mode == .meadow {
-            camera.aim = { [unowned self] in self.aim() }
-            camera.bounds = { [unowned self] in self.everything(0) }
-            camera.adjust = { [unowned self] in self.keepingFollowed($0) }
+            camera.aim = { [unowned self] in self.editing ? self.editGround : self.aim() }
+            camera.bounds = { [unowned self] in self.editing ? Self.editableGround : self.everything(0) }
+            camera.adjust = { [unowned self] in self.editing ? $0 : self.keepingFollowed($0) }
         }
         surroundings.gust = { [unowned self] x, z in self.meadow == nil ? 0 : Meadow.gust(x, z, drift: self.gustDrift) }
     }
@@ -178,6 +178,18 @@ final class Stage {
 
     // MARK: what is chosen, pointed at and held
 
+    /// The meadow is being edited (`MeadowView.isEditing`): the camera frames the picnic ground from above
+    /// and may roam the whole meadow, the blankets keep their rows, and the editor's marks are drawn.
+    var editing = false
+    /// What the editor marks on the ground (`MeadowEditMarks`).
+    var editMarks = MeadowEditMarks()
+    /// Blankets to a row while editing: as they were when editing began (nil: worked out from the width).
+    /// Held a little past the end of editing, until the view has its width back, so the rows never re-flow
+    /// for the moment the meadow is still wide.
+    var heldPerRow: Int?
+    /// Seconds the held rows stay held once editing has ended and the view has stopped moving.
+    var heldRowsLinger: Float = 0
+
     var selection: MeadowItem? { didSet { village?.chosen = selection } }
     /// What has the keyboard's attention: ringed in the focus colour.
     var keyboardFocus: MeadowItem?
@@ -242,9 +254,12 @@ final class Stage {
     private func fitVillageToView() {
         guard let village else { return }
         if village.arrangement == .column {
-            // A sidebar holds one column; a wider meadow spreads the same order into rows.
+            // A sidebar holds one column; a wider meadow spreads the same order into rows. While the meadow is
+            // edited it keeps the rows it had, however wide it grows: you arrange round the picnic you see.
             let width = camera.viewport.x - camera.coverGoal.x
-            village.perRow = width < 420 ? 1 : Swift.min(6, Swift.max(2, Int(width / 300)))
+            let fits = width < 420 ? 1 : Swift.min(6, Swift.max(2, Int(width / 300)))
+            if !editing, let held = heldPerRow, held == fits || heldRowsLinger <= 0 { heldPerRow = nil }
+            village.perRow = heldPerRow ?? fits
             return
         }
         let open = Vec2(Swift.max(camera.viewport.x - camera.coverGoal.x, 1), Swift.max(camera.viewport.y - camera.coverGoal.y, 1))
@@ -439,6 +454,7 @@ final class Stage {
 
     func update(_ seconds: Float) {
         camera.update(seconds)
+        if !editing, heldPerRow != nil, !camera.gliding { heldRowsLinger -= seconds }
         let dt = seconds * pace
         // What only sways, drifts and flickers moves with the meadow's time; the rest with `dt`.
         let drift = ambient ? dt : 0

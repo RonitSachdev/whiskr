@@ -179,6 +179,8 @@ enum MainMenu {
         menu.addItem(item(String(localized: "Show Workspaces as List"), #selector(MainWindowController.toggleWorkspacesAsList(_:))))
         // A way to stop the meadow's ambient motion (WCAG 2.2.2); cats still change as Claude does.
         menu.addItem(item(String(localized: "Animate Meadow"), #selector(MainWindowController.toggleAnimateMeadow(_:))))
+        // The meadow fills the window and its scenery can be moved, turned, copied and taken away.
+        menu.addItem(item(String(localized: "Edit Meadow"), #selector(MainWindowController.toggleMeadowEditing(_:)), "e", [.command, .control]))
         menu.addItem(.separator())
         // The side panel: choosing the mode it already shows hides it.
         menu.addItem(item(String(localized: "Files"), #selector(MainWindowController.showFilesPanel(_:)), "e", [.command, .shift]))

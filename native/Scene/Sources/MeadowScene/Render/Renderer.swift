@@ -18,6 +18,7 @@ final class Renderer {
     let cats: CatDrawer
     let meadow: MeadowDrawer
     let village: VillageDrawer
+    let editing: EditDrawer
     private let arenas: [Arena]
     private let frameBuffers: [MTLBuffer]
     private let worldBuffers: [MTLBuffer]
@@ -32,6 +33,7 @@ final class Renderer {
         cats = CatDrawer(gpu: gpu)
         meadow = MeadowDrawer(gpu: gpu)
         village = VillageDrawer(gpu: gpu)
+        editing = EditDrawer(gpu: gpu)
         arenas = (0..<Self.inFlight).map { _ in Arena(device: device, size: 4 << 20) }
         frameBuffers = (0..<Self.inFlight).map { _ in device.makeBuffer(length: MemoryLayout<FrameUniforms>.stride, options: .storageModeShared)! }
         worldBuffers = (0..<Self.inFlight).map { _ in device.makeBuffer(length: WorldUniforms.byteCount, options: .storageModeShared)! }
@@ -152,7 +154,10 @@ final class Renderer {
 
         // See-through things.
         enc.setDepthStencilState(gpu.depthRead)
-        if stage.mode == .meadow { village.encodeGround(stage, arena: arena, enc: enc) }
+        if stage.mode == .meadow {
+            village.encodeGround(stage, arena: arena, enc: enc)
+            editing.encode(stage, arena: arena, enc: enc)
+        }
         cats.encodeShadows(stage.cats, arena: arena, enc: enc)
         enc.setDepthStencilState(gpu.depthRead)
         cats.encodeSteam(stage.cats, arena: arena, enc: enc)

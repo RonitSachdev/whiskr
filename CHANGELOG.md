@@ -19,6 +19,18 @@ Nothing has been released yet. This is what the first release will contain.
   list.
 - Every one of the meadow's twelve landmark trees dapples the ground beneath it with moving shade; the
   four farthest, out in the haze, used to stand in unbroken sun.
+- Edit Meadow (View › Edit Meadow, ⌃⌘E; also the grass's menu, Settings › Meadow and Go to): the
+  terminals slide away and the meadow fills the window, seen from above. Choose its trees, flowers, stones
+  and the log with a click, ⇧-click, ⌘-click (all of a kind nearby) or a marquee; drag to move them (⌥-drag
+  copies), with a ring under each and, where one cannot stand, a dashed ring and the reason by the pointer;
+  arrows nudge, R turns, [ and ] size living things, ⌘D duplicates, ⌫ deletes, and ⌘C, ⌘X and ⌘V copy and
+  paste. A bar floats over what is chosen; a compass turns the view back to north. Every gesture is one
+  step of ⌘Z and ⇧⌘Z. Everything is saved as you go: the first change makes "My Meadow", a copy of the
+  Default, which never changes, and Revert to Default (the meadow's name in the top bar, or Settings ›
+  Meadow) shows it again. Done (⌘↩) or Esc brings the window back exactly as it was; terminals, Claudes and
+  alerts carry on throughout, and ⌘J, ⌘T and choosing anything on the right leave editing first.
+- Trees and the fallen log make way where a blanket comes, as flowers and stones always did, and come back
+  when it goes. The workspaces' column always runs down the middle of the meadow.
 - The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset
   where you are (from where real weather found you, or from your time zone; worked out on your Mac and
   never asking), through the polar day and night too. Settings › Meadow shows today's sunrise and

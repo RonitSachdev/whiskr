@@ -2,7 +2,8 @@
 # make perf: the profile build in isolated, invisible runs (`DebugPerf`), one after another so they never
 # compete: the checks (closing tabs, sizes, interactions; resizing; the bars' controls; alerts; the meadow
 # following what you choose; split tabs, tabs dragged, New Workspace from every place; the real sky and
-# weather and their switches), then the measurements with working cats in the meadow (the last of them the
+# weather and their switches; editing the meadow, and the meadow edited found again after a relaunch), then
+# the measurements with working cats in the meadow (the last of them the
 # interface's transitions, frame by frame: `DebugAnimations`), then the editor on big files. Prints each
 # run's table; fails when a check fails or a measurement passes its limit (`--perf-limits`, `--measure-limits`).
 # Timings are only comparable on a quiet Mac: each run
@@ -116,6 +117,34 @@ journey() {
     echo
 }
 
+# Editing the meadow (`DebugFlowEditor.swift`): two runs on one isolated folder. The first edits and quits
+# (a move made just before ⌘Q must be saved at quit); the second, a relaunch, finds that meadow shown as saved.
+meadow_editor() {
+    local dir="$runs/meadow-editor" phase code
+    rm -rf "$dir"; mkdir -p "$dir"
+    wait_until_quiet meadow-editor
+    for phase in first relaunch; do
+        local args=(--isolated "$dir/isolated" --background --time day --window 1440x900 --perf "$dir/table-$phase.txt" --perf-limits --perf-flows editor
+                    --editor-pictures "$dir/pictures")
+        [[ $phase == relaunch ]] && args+=(--editor-phase relaunch --keep-settings)
+        "$app/Contents/MacOS/Whiskr" $args > "$dir/log-$phase.txt" 2>&1 &
+        local pid=$! waited=0
+        while kill -0 $pid 2>/dev/null && (( waited < 600 )); do sleep 1; (( waited++ )); done
+        if kill -0 $pid 2>/dev/null; then
+            echo "meadow-editor ($phase): still running after ten minutes; stopping it"
+            kill $pid; sleep 2; kill -9 $pid 2>/dev/null
+            failed=1
+        fi
+        wait $pid
+        code=$?
+        cat "$dir/table-$phase.txt" 2>/dev/null || tail -20 "$dir/log-$phase.txt"
+        judge "meadow-editor ($phase)" $code "$dir/log-$phase.txt"
+        (( code != 0 )) && break
+    done
+    stop_host "$dir"
+    echo
+}
+
 # The editor on big files (`DebugFiles --measure-files`): opening, colouring off the main thread, scrolling,
 # jumping, typing, opening a comment that recolours the rest, reverting. Each run fails when a timing passes
 # its limit (`EditorLimits`). The files are made here: 50,000 lines of this repository's Swift, 50,000 lines
@@ -202,6 +231,7 @@ run split --window 1440x900 --perf-flows split
 run drag --window 1440x900 --perf-flows drag
 run home --window 1440x900 --perf-flows home
 run sky --window 1440x900 --perf-flows sky
+meadow_editor
 run measure --window 1440x900 --perf-cats
 make_editor_files "$runs/editor-files"
 editor editor-swift "$runs/editor-files/big50k.swift"

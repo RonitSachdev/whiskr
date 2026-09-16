@@ -15,8 +15,9 @@ enum SceneryCatalog {
         /// blanket), each fading on its own when in the way.
         case youngTree(Species)
         /// A plant, mushroom or stone: one of a few shapes (made when first drawn), drawn rooted and
-        /// instanced; `sway` in the wind; `blooms` where butterflies and bees settle.
-        case plant(@Sendable () -> [Plant], sway: Float, blooms: Bool)
+        /// instanced; `sway` in the wind; `blooms` where butterflies and bees settle; `base` how far round
+        /// its root it stands on the ground at its own size (`SceneryRules.footprint`).
+        case plant(@Sendable () -> [Plant], sway: Float, blooms: Bool, base: Float)
         /// A fallen log: ground blankets keep off along it, and it fades when in the way.
         case log
     }
@@ -26,13 +27,13 @@ enum SceneryCatalog {
         "tree.birch": .tree(.birch),
         "tree.cherry": .tree(.cherry),
         "tree.young": .youngTree(.sapling),
-        "flower.daisy": .plant({ Flora.daisies }, sway: 0.12, blooms: true),
-        "flower.buttercup": .plant({ Flora.buttercups }, sway: 0.12, blooms: true),
-        "flower.lupin": .plant({ Flora.lupins }, sway: 0.12, blooms: true),
-        "flower.poppy": .plant({ Flora.poppies }, sway: 0.12, blooms: true),
-        "fungus.flyAgaric": .plant({ Flora.mushrooms }, sway: 0, blooms: false),
-        "stone.stone": .plant({ [Flora.stones[0]] }, sway: 0, blooms: false),
-        "stone.mossy": .plant({ [Flora.stones[1]] }, sway: 0, blooms: false),
+        "flower.daisy": .plant({ Flora.daisies }, sway: 0.12, blooms: true, base: 0.3),
+        "flower.buttercup": .plant({ Flora.buttercups }, sway: 0.12, blooms: true, base: 0.3),
+        "flower.lupin": .plant({ Flora.lupins }, sway: 0.12, blooms: true, base: 0.32),
+        "flower.poppy": .plant({ Flora.poppies }, sway: 0.12, blooms: true, base: 0.3),
+        "fungus.flyAgaric": .plant({ Flora.mushrooms }, sway: 0, blooms: false, base: 0.42),
+        "stone.stone": .plant({ [Flora.stones[0]] }, sway: 0, blooms: false, base: 1.25),
+        "stone.mossy": .plant({ [Flora.stones[1]] }, sway: 0, blooms: false, base: 1.25),
         "wood.fallenLog": .log,
     ]
 

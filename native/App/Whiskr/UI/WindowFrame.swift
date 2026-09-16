@@ -122,6 +122,8 @@ final class WindowChrome {
     var showsStatusBar = true
     /// The meadow is on screen (its button in the top bar shows as on).
     var meadowShown = true
+    /// The meadow is being edited: the top bar shows the meadow's name, Undo, Redo and Done.
+    var editBar: EditBar?
     @ObservationIgnored var toggleMeadow: () -> Void = {}
 
     /// Where the close, minimise and zoom buttons end, read from the window (72 pt on macOS 26), so the
@@ -157,24 +159,45 @@ struct TopBar: View {
         ZStack {
             WindowDragArea()
             HStack(spacing: Look.Space.xs) {
+                // Editing, the meadow is all there is between the bars: its button rests (Done ends editing).
                 ChromeButton(symbol: "sidebar.left", help: String(localized: "Show or hide the meadow (⌃⌘S)"),
-                             label: String(localized: "Show or hide the meadow"), selected: chrome.meadowShown, action: chrome.toggleMeadow)
+                             label: String(localized: "Show or hide the meadow"), selected: chrome.meadowShown, enabled: chrome.editBar == nil,
+                             action: chrome.toggleMeadow)
                 ChromeButton(symbol: "house", help: String(localized: "Home (⇧⌘H)", comment: "Top bar: the Home button's tooltip"),
                              label: String(localized: "Home", comment: "Go menu and the workspace menu: no workspace selected"),
-                             selected: workbench.isHome) { workbench.goHome() }
+                             selected: workbench.isHome) {
+                    NSApp.sendAction(#selector(MainWindowController.goHome(_:)), to: nil, from: nil)
+                }
                 Spacer(minLength: 0)
-                NewMenuButton()
-                PanelButton(workbench: workbench)
-                ChromeButton(symbol: "gearshape", help: String(localized: "Settings (⌘,)"), label: String(localized: "Settings")) {
-                    NSApp.sendAction(#selector(AppDelegate.showSettings(_:)), to: nil, from: nil)
+                if let edit = chrome.editBar {
+                    EditBarButtons(edit: edit)
+                        .transition(.opacity)
+                } else {
+                    Group {
+                        NewMenuButton()
+                        PanelButton(workbench: workbench)
+                        ChromeButton(symbol: "gearshape", help: String(localized: "Settings (⌘,)"), label: String(localized: "Settings")) {
+                            NSApp.sendAction(#selector(AppDelegate.showSettings(_:)), to: nil, from: nil)
+                        }
+                    }
+                    .transition(.opacity)
                 }
             }
             .padding(.leading, chrome.leadingInset)
             .padding(.trailing, Look.Space.m)
-            GoToField()
-                .frame(maxWidth: 480)
-                .padding(.horizontal, 168)
+            Group {
+                if let edit = chrome.editBar {
+                    MeadowNameButton(edit: edit)
+                } else {
+                    GoToField()
+                        .frame(maxWidth: 480)
+                }
+            }
+            .transition(.opacity)
+            .padding(.horizontal, 168)
         }
+        // The middle and the end cross-fade between working and editing the meadow.
+        .animation(Look.Motion.animation(Look.Motion.standard), value: chrome.editBar != nil)
         // Not the window in use: the bar's content goes quiet, as the system's title bars do.
         .opacity(activeState.inUse ? 1 : 0.6)
         .frame(maxWidth: .infinity, minHeight: Look.Height.topBar, maxHeight: Look.Height.topBar)
@@ -266,11 +289,60 @@ struct ChromeButton: View {
     let help: String
     let label: String
     var selected = false
+    var enabled = true
     let action: () -> Void
 
     var body: some View {
         ChromeIcon(symbol: symbol, active: selected)
-            .barButton("bar.\(symbol)", label: label, help: help, selected: selected, action: action)
+            .barButton("bar.\(symbol)", label: label, help: help, selected: selected, enabled: enabled, action: action)
+    }
+}
+
+/// The top bar's middle while the meadow is edited: "Editing “My Meadow”", a menu of the meadows to show
+/// (the Default and yours) and Revert to Default.
+struct MeadowNameButton: View {
+    let edit: EditBar
+
+    var body: some View {
+        HStack(spacing: Look.Space.s) {
+            Text(String(localized: "Editing “\(edit.name)”", comment: "Top bar while the meadow is edited: its name"))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Color.ink2)
+        }
+        .padding(.horizontal, Look.Space.m + 2)
+        .frame(height: Look.Height.control)
+        .barMenu("bar.meadow.name", label: String(localized: "Editing “\(edit.name)”", comment: "Top bar while the meadow is edited: its name"),
+                 help: String(localized: "The meadow you are editing", comment: "Top bar: the meadow's name menu's tooltip"), menu: edit.menu)
+        .fixedSize()
+    }
+}
+
+/// The top bar's end while the meadow is edited: Undo and Redo, naming the steps they take, and Done.
+struct EditBarButtons: View {
+    let edit: EditBar
+
+    var body: some View {
+        HStack(spacing: Look.Space.xs) {
+            ChromeButton(symbol: "arrow.uturn.backward", help: edit.canUndo ? "\(edit.undoTitle) (⌘Z)" : String(localized: "Undo (⌘Z)", comment: "Top bar while editing the meadow"),
+                         label: edit.canUndo ? edit.undoTitle : String(localized: "Undo"), enabled: edit.canUndo, action: edit.undo)
+            ChromeButton(symbol: "arrow.uturn.forward", help: edit.canRedo ? "\(edit.redoTitle) (⇧⌘Z)" : String(localized: "Redo (⇧⌘Z)", comment: "Top bar while editing the meadow"),
+                         label: edit.canRedo ? edit.redoTitle : String(localized: "Redo"), enabled: edit.canRedo, action: edit.redo)
+            Text(String(localized: "Done", comment: "Meadow editor: leaves editing"))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.ink)
+                .padding(.horizontal, Look.Space.l)
+                .frame(height: Look.Height.control - 2)
+                .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(Color.content))
+                .overlay(RoundedRectangle(cornerRadius: Look.Radius.control).strokeBorder(Color.lineStrong))
+                .barButton("bar.meadow.done", label: String(localized: "Done", comment: "Meadow editor: leaves editing"),
+                           help: String(localized: "Done (⌘↩)", comment: "Top bar: the meadow editor's Done button"), action: edit.done)
+                .padding(.leading, Look.Space.xs)
+        }
     }
 }
 

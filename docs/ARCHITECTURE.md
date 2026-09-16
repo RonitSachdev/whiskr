@@ -145,6 +145,7 @@ bytes, never inside JSON.
 |---|---|---|
 | `~/Library/Application Support/Whiskr/layout.json` | Workspaces, tabs, panes, their folders, the host terminal each pane shows | Written on changes and on quit. Which workspace was selected is not kept: a launch lands on Home. One a launch cannot read is kept as `layout-unreadable-<time>.json` |
 | `…/Whiskr/agents.json` | The Claudes' last known state | So cats come back as they were after a relaunch |
+| `…/Whiskr/Meadows/*.whiskrmeadow` | Your meadows, one file each, named after the meadow (unique by " 2", " 3"); the one shown is `WorldSettings.meadow` (a file name; none: the built-in Default) | Saved a second after each change and at quit, whole (a temporary file renamed over it). One that cannot be read is left as it was and the Default shown |
 | `…/Whiskr/Themes/*.whiskrtheme` | The user's own and imported themes (plain JSON) | An imported VS Code theme is stored in Whiskr's form, with its `tokenColors` |
 | `…/Whiskr/Themes/Originals/<source>/` | The files an imported theme was read from (theme JSON and what it includes, or an extension's `package.json` and theme files) | Kept so a later version can import them again; moved to the Trash with the last theme made from them (only a folder directly in `Originals`: a theme file names its folder, and anyone can write one) |
 | `…/Whiskr/Languages/<set>/` | Languages and grammars the user added: an `index.json` and the grammar and configuration files, copied as data | Loaded at launch over the bundled ones (`LanguageRegistry.loadInstalled`); nothing in them is ever run |
@@ -373,8 +374,25 @@ tree with the stream's state it grew from; so the Default draws exactly what the
 the butterflies, fireflies and rain go on from where its growth leaves the stream, whatever the meadow
 holds. A scenery is laid when it is given, never per frame: trees already grown and meshes already made
 are kept. Everything small is drawn rooted and instanced (it shrinks where a blanket lies and sinks where
-the land is levelled); trees and logs are one draw each and fade when they stand in front of a cat. The
+the land is levelled); trees and logs are one draw each, fade when they stand in front of a cat, and
+shrink away where a blanket comes as the rooted things do (`Meadow.treeStanding`). The column's lane is
+x = 0, the middle of the picnic ground; it never looks at the scenery. The
 scene draws at most what a file may hold (`MeadowScenery.Limits`, the catalog's caps).
+
+**Editing** (`EditModeController`, docs/DESIGN.md "Editing the meadow"). The document is edited as a
+`MeadowEditSession` (WhiskrMeadow): every entry has an id that lasts while it is edited, and every edit is a
+`MeadowChange` (things removed and added with their places, things changed before and after) that undoes and
+redoes exactly; what the file holds from a newer Whiskr passes through untouched. Where a thing may stand is
+`SceneryRules` (MeadowScene): its footprint, the picnic ground, the meadow's reach, a little grass kept
+between things, judged against a grid of the others; an edit is refused only for what it makes worse.
+`MeadowLibrary` (the app) holds the meadow shown, its file and one `UndoManager` for the session (each step
+its own group), makes My Meadow on the first edit of the Default, and saves off the main thread.
+`MeadowView` takes the edit camera (`beginEditing`, `endEditing`: the view before is kept and glided back
+to exactly), picks scenery under the pointer and inside a rectangle, and draws the editor's marks
+(`MeadowEditMarks`, `EditDrawer`). A drag shows its things by giving the view a scenery with them moved;
+a scenery that differs only in places, turns, leans and sizes is placed again thing by thing
+(`Meadow.show`), the ground's shade baked again only where a tree moved and copied into its texture in the
+frame's command buffer, so a drag costs a fraction of laying the meadow.
 
 ## Rendering the meadow
 
@@ -488,7 +506,7 @@ state, tabs, splits, workspaces; three runs on one folder, across ⌘Q and ⌥�
 and Changes (`files`); the window's regions, sizes, themes and Settings (`layout`); and abuse (`robust`:
 floods, binary and wide text, pastes, resize storms, the session host going away); every control of the
 bars clicked at its middle and edges, failing a press that lands on anything but the control or on a view
-that lets the window move, and again straight after the bars change (`chrome`; the bars' hosting views,
+that lets the window move, and again straight after the bars change (`chrome`, editing's top bar too; the bars' hosting views,
 `BarHostingView`, send a press that lands on SwiftUI's own views to the bar control under it); a Claude stand-in started through a shell function of the user's kind
 with `--settings`, every event's real hook commands, and what would be heard and shown in each place a
 person can be (`alerts`); every way of choosing on the right, with the meadow moved away first, and agent
@@ -500,7 +518,10 @@ every built-in theme (`split`); tabs picked up and dropped by real press, drag a
 row, onto each side and the middle of a pane, onto another blanket, onto nothing and onto their own pane,
 and given up with Esc, each preview checked against what the drop did and the held tab's springs read
 every frame, with nothing left behind (`drag`); and New Workspace and Open Folder… from every place they
-are offered, on Home with and without workspaces (`home`).
+are offered, on Home with and without workspaces (`home`); and the meadow edited, every way in and out
+with what leaving must bring back, every gesture and key of the Select tool by real events, refusals,
+undo, saving, Revert to Default, terminals and requests carrying on meanwhile, frames while dragging, and
+pictures in each built-in theme, then a relaunch finding the meadow as it was saved at quit (`editor`).
 
 **Dragging a tab** is the app's own, not an AppKit drag session (whose picture the system moves, with no
 springs and no say in what it shows). `TabMouseView` starts it past 4 pt of movement; `TabDragging` then

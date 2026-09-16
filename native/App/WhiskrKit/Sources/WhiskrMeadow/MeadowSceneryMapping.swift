@@ -39,3 +39,13 @@ extension MeadowDocument {
         self.init(name: name, entries: entries)
     }
 }
+
+extension MeadowDocument {
+    /// The Default as its file holds it, numbers rounded as a file rounds them: what editing the Default
+    /// starts from, so what is edited is what is saved and read back. Read-only: it is never written.
+    public static let standard: MeadowDocument = {
+        let made = MeadowDocument(.standard, name: "Default")
+        guard let data = try? made.fileData(writtenBy: "0.1.0"), let read = try? MeadowDocument.read(data) else { return made }
+        return read.document
+    }()
+}

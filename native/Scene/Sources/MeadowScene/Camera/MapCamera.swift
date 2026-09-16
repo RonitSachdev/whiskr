@@ -41,6 +41,11 @@ final class MapCamera {
     var bounds: () -> Ground = { Ground(x: 0, z: 0, across: 10, deep: 10) }
     /// Reduced motion: flights and zooms jump instead of gliding.
     var calm = false
+    /// The angle above the ground a framing comes to (nil: the angle you turned the view to), as editing
+    /// looks down on the meadow from about 55°.
+    var pitchGoal: Float?
+    /// The closest the view may come (`nearest`, or nearer while editing).
+    var closest: Float = MapCamera.nearest
 
     /// The window, in points.
     var viewport = Vec2(1200, 800)
@@ -49,7 +54,9 @@ final class MapCamera {
     var coverGoal = Vec2.zero
 
     private(set) var view = CameraView(x: 0, z: 0, distance: 40, pitch: MapCamera.pitch, bearing: MapCamera.bearing)
-    private var flight: (from: CameraView, t: Float)? = nil
+    /// A flight under way: from where, to a view of its own (else the aimed ground's framing, worked out
+    /// afresh each frame), how far through, and whether it then rests on the framing.
+    private var flight: (from: CameraView, to: CameraView?, t: Float, framing: Bool)? = nil
     /// True from arriving somewhere until you move the camera yourself: while it holds, the camera keeps
     /// the aimed ground framed as blankets grow and shrink.
     private var settled = true
@@ -71,6 +78,8 @@ final class MapCamera {
 
     var moving: Bool { flight != nil || zoom != nil || glide != nil || pursuit != nil || simd_length(turnVelocity) > 0 || simd_length(slideVelocity) > 0 }
     var flying: Bool { flight != nil }
+    /// A flight to a view of its own is under way (`glide`).
+    var gliding: Bool { flight?.to != nil }
     /// A chase is under way (`chase`).
     var chasing: Bool { pursuit != nil }
     /// Resting on the framing, or on its way there: the camera keeps the aimed ground framed until you
@@ -202,7 +211,7 @@ final class MapCamera {
         letGo()
         turnVelocity = .zero
         slideVelocity = .zero
-        let goal = clamp((zoom?.goal ?? view.distance) * factor, Self.nearest, maxDistance)
+        let goal = clamp((zoom?.goal ?? view.distance) * factor, closest, maxDistance)
         var anchor = zoom?.anchor ?? target
         if zoom == nil || immediate, let hit = groundUnder(point) { anchor = hit }
         if immediate {
@@ -242,7 +251,7 @@ final class MapCamera {
     /// Glide to the aimed ground and stay with it. Ignored while you are holding the view.
     func fly() {
         if held { return }
-        flight = (view, 0)
+        flight = (view, nil, 0, true)
         zoom = nil
         glide = nil
         pursuit = nil
@@ -259,6 +268,19 @@ final class MapCamera {
         view = wanted(from: view)
     }
 
+    /// Glide to `goal` exactly, in the time a flight takes (at once when calm), then rest there, or on the
+    /// framing as a flight's end does (`thenFraming`). Ignored while you are holding the view.
+    func glide(to goal: CameraView, thenFraming: Bool) {
+        if held { return }
+        flight = (view, goal, 0, thenFraming)
+        zoom = nil
+        glide = nil
+        pursuit = nil
+        turnVelocity = .zero
+        slideVelocity = .zero
+        settled = false
+    }
+
     func setView(_ v: CameraView) {
         view = v
         flight = nil
@@ -270,7 +292,7 @@ final class MapCamera {
     /// Where the camera is headed: the end of a flight, a scroll or a chase under way, else where it is.
     var destination: CameraView {
         if let goal = pursuit?.goal { return goal }
-        if flight != nil { return wanted(from: view) }
+        if let f = flight { return f.to ?? wanted(from: view) }
         if let g = glide { var v = view; v.x = g.to.x; v.z = g.to.y; return v }
         return view
     }
@@ -314,7 +336,7 @@ final class MapCamera {
         // Panels cover part of the window; the picture's middle eases into the open part.
         let ease = calm ? 1 : min(1, dt * 8)
         cover += (coverGoal - cover) * ease
-        maxDistance = max(fit(bounds(), view) * 1.6, Self.nearest * 2)
+        maxDistance = max(fit(bounds(), view) * 1.6, closest * 2)
         let before = Pose(view)
 
         if var p = pursuit {
@@ -340,8 +362,10 @@ final class MapCamera {
             // Ease away, glide, ease in: slow at both ends so nothing lurches.
             f.t = calm ? 1 : min(1, f.t + dt / Self.flightSeconds)
             let t = f.t, eased = t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2
-            view = between(f.from, wanted(from: f.from), eased)
+            let end = f.to ?? wanted(from: f.from)
+            view = t >= 1 ? end : between(f.from, end, eased)
             flight = t >= 1 ? nil : f
+            if t >= 1 { settled = f.framing }
         } else if settled && !held {
             view = between(view, wanted(from: view), min(1, dt * 3))
         }
@@ -426,7 +450,9 @@ final class MapCamera {
 
     /// A patch of ground framed from that angle.
     func framing(_ g: Ground, from: CameraView) -> CameraView {
-        CameraView(x: g.x, z: g.z, distance: clamp(max(fit(g, from), g.least), Self.nearest, maxDistance), pitch: from.pitch, bearing: from.bearing)
+        var at = from
+        at.pitch = pitchGoal ?? from.pitch
+        return CameraView(x: g.x, z: g.z, distance: clamp(max(fit(g, at), g.least), closest, maxDistance), pitch: at.pitch, bearing: from.bearing)
     }
 
     // Part-way from one view to another, turning the short way round. Distance eases in scale.

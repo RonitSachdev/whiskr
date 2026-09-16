@@ -150,6 +150,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         SettingsWindowController.importThemes(themes, over: SettingsWindowController.shared.window)
     }
 
+    /// Settings › Meadow's Edit Meadow…: the window comes forward with its meadow being edited.
+    @objc func editMeadow(_ sender: Any?) {
+        guard let windowController else { return }
+        #if DEBUG
+        if !DebugScenario.keepsInBackground { windowController.showWindow(nil) }
+        #else
+        windowController.showWindow(nil)
+        #endif
+        if !windowController.meadowEditing { windowController.meadowEditor.enter() }
+    }
+
     @objc func showMainWindow(_ sender: Any?) {
         windowController?.showWindow(nil)
         NSApp.activate()

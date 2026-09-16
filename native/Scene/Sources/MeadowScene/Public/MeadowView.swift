@@ -75,7 +75,7 @@ public final class MeadowView: MTKView {
     /// edges) for it to count as comfortably in view (`select`): closer than this, the view moves.
     public static var comfortableInset: CGFloat { CGFloat(Stage.Comfort.edge) }
     /// What the pointer is over right now.
-    public private(set) var hovered: MeadowItem?
+    public internal(set) var hovered: MeadowItem?
     /// Called when the user clicks something (or empty ground: nil).
     public var onSelect: ((MeadowItem?) -> Void)?
     /// Called when what the pointer is over changes.
@@ -90,6 +90,32 @@ public final class MeadowView: MTKView {
     /// Keys pressed while the meadow has the keyboard (arrows, Return, Space, Esc…): return true when
     /// handled; anything else goes on up the responder chain.
     public var onKeyDown: ((NSEvent) -> Bool)?
+    /// Keys with ⌘ pressed while the meadow has the keyboard, offered before the menus take them (a view's
+    /// key equivalent comes first): return true when handled.
+    public var onKeyEquivalent: ((NSEvent) -> Bool)?
+    // Editing (the API is in MeadowView+Editing.swift).
+    /// While editing: the pointer on the meadow, with the scenery's thing under it. Dragging with ⌘ or
+    /// Space held, the right button or two fingers slides, turns or zooms the view instead; plain drags are
+    /// the editor's.
+    public var onEditPointer: ((MeadowEditPointer) -> Void)?
+    /// While editing: a right-click's menu for the scenery's thing under it (nil: the grass), at that point of
+    /// the view. When it returns a menu, the menu shows and the right button does not slide the view.
+    public var onEditMenu: ((Int?, NSPoint) -> NSMenu?)?
+    /// While editing: called after each frame drawn, so what floats over the meadow (the selection's bar, the
+    /// compass) can follow the view.
+    public var onEditViewChanged: (() -> Void)?
+    /// The view as it was before editing began, to come back to exactly.
+    var editRestore: (view: CameraView, framing: Bool, handMoved: Bool)?
+    /// A slide of the view under way, begun with ⌘ or Space held; the thing it began on, and whether the
+    /// pointer has moved (a ⌘-click that never moved is the editor's: everything of that kind nearby).
+    var editSliding = false
+    var editSlideThing: Int?
+    var editSlideMoved = false
+    /// Space is held: a drag slides the view.
+    var spaceHeld = false
+    /// The scenery's thing under the pointer while editing.
+    var editHovered: Int?
+
     /// What the keyboard is on: ringed in `MeadowChrome.focus`, two points wide, apart from the selection's
     /// ring. A blanket, a cat or a lantern; nil for none. Cleared when it leaves the world.
     public var keyboardFocus: MeadowItem? {
@@ -210,6 +236,7 @@ public final class MeadowView: MTKView {
         }
         noticeView()
         tellViewChanged()
+        tellEditViewChanged()
     }
 
     /// Measured over the last second, for diagnostics.
@@ -438,7 +465,10 @@ public final class MeadowView: MTKView {
     public override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         sizeDrawable()
-        stage.camera.fly()
+        // A flight under way works out where it ends afresh each frame, for the size the view has then (a
+        // region sliding as editing begins or ends resizes the view on the way); else the view frames
+        // again, unless it is being edited and you have moved it yourself.
+        if !stage.camera.flying, !stage.editing || stage.camera.framing { stage.camera.fly() }
         wake(.input)
     }
     public override func setBoundsSize(_ newSize: NSSize) {
@@ -452,22 +482,22 @@ public final class MeadowView: MTKView {
 
     // MARK: what is in view
 
-    private var pendingReveal: (item: MeadowItem, animated: Bool)?
+    var pendingReveal: (item: MeadowItem, animated: Bool)?
 
     // MARK: following what you choose
 
     /// A choice of yours the view has yet to follow, and when it was made.
-    private var pendingFollow: (item: MeadowItem?, at: CFTimeInterval)?
+    var pendingFollow: (item: MeadowItem?, at: CFTimeInterval)?
     /// The view was not on screen when you chose: it follows at once, a cut, as soon as it is.
     private var catchUp = false
     /// What the view last followed, and whether you have moved the view yourself since.
-    private var lastFollowed: MeadowItem?
-    private var followedOnce = false
-    private var handMoved = false
+    var lastFollowed: MeadowItem?
+    var followedOnce = false
+    var handMoved = false
 
     /// You moved the view yourself (a drag, a scroll, a pinch, a turn): it is yours until you choose
     /// something else, and a choice still waiting is dropped.
-    private func handTookOver() {
+    func handTookOver() {
         handMoved = true
         pendingFollow = nil
         catchUp = false
@@ -601,7 +631,7 @@ public final class MeadowView: MTKView {
     enum Wake { case input, change }
     /// When you last did something to the view, and when anything at all last changed.
     private var lastInput = CACurrentMediaTime(), lastChange = CACurrentMediaTime()
-    private func wake(_ cause: Wake = .change) {
+    func wake(_ cause: Wake = .change) {
         let now = clock()
         if cause == .input { lastInput = now }
         lastChange = now
@@ -808,6 +838,7 @@ public final class MeadowView: MTKView {
         if pendingReveal != nil { revealWhenLanded() }
         settle(dt * pace)
         noticeView()
+        tellEditViewChanged()
     }
 
     /// One frame, into `drawable` (from the display link, or from the layer on the stand-in clock after
@@ -864,7 +895,7 @@ public final class MeadowView: MTKView {
     }
 
     /// A point in the view, origin top left (as the web's client coordinates).
-    private func point(_ event: NSEvent) -> Vec2 {
+    func point(_ event: NSEvent) -> Vec2 {
         let p = convert(event.locationInWindow, from: nil)
         return Vec2(Float(p.x), Float(bounds.height - p.y))
     }
@@ -875,6 +906,7 @@ public final class MeadowView: MTKView {
     private var petTimer: Timer?
 
     public override func mouseMoved(with event: NSEvent) {
+        if stage.editing { return editMoved(event) }
         let p = point(event)
         stage.pointer = Vec2(p.x / Float(bounds.width) * 2 - 1, 1 - p.y / Float(bounds.height) * 2)
         let found = stage.pick(p)
@@ -887,11 +919,13 @@ public final class MeadowView: MTKView {
         wake(.input)
     }
     public override func mouseExited(with event: NSEvent) {
+        if stage.editing { return editExited(event) }
         if hovered != nil { hovered = nil; stage.hover(nil); onHover?(nil); NSCursor.arrow.set() }
     }
 
     public override func mouseDown(with event: NSEvent) {
         if takesKeyboardFocus { window?.makeFirstResponder(self) }
+        if stage.editing { return editDown(event) }
         pendingReveal = nil
         pressedAt = point(event)
         pressedTime = CACurrentMediaTime()
@@ -907,6 +941,7 @@ public final class MeadowView: MTKView {
         wake(.input)
     }
     public override func mouseDragged(with event: NSEvent) {
+        if stage.editing { return editDragged(event) }
         guard let start = pressedAt else { return }
         if simd_distance(point(event), start) >= 5 { dragged = true }
         if case .cat = hovered, !dragged { return }
@@ -917,6 +952,7 @@ public final class MeadowView: MTKView {
         wake(.input)
     }
     public override func mouseUp(with event: NSEvent) {
+        if stage.editing { return editUp(event) }
         petTimer?.invalidate()
         petTimer = nil
         let wasPetting = stage.setPetting(false)
@@ -931,7 +967,11 @@ public final class MeadowView: MTKView {
     }
 
     public override func rightMouseDown(with event: NSEvent) {
-        if let onContextMenu, let menu = onContextMenu(stage.pick(point(event))) {
+        if stage.editing, let onEditMenu, let menu = onEditMenu(stage.pickScenery(point(event)), convert(event.locationInWindow, from: nil)) {
+            NSMenu.popUpContextMenu(menu, with: event, for: self)
+            return
+        }
+        if !stage.editing, let onContextMenu, let menu = onContextMenu(stage.pick(point(event))) {
             NSMenu.popUpContextMenu(menu, with: event, for: self)
             return
         }
@@ -949,8 +989,8 @@ public final class MeadowView: MTKView {
         // A trackpad's momentum from before a follow began does not undo it: only a fresh touch does.
         if stage.camera.chasing, !event.momentumPhase.isEmpty { return }
         let precise = event.hasPreciseScrollingDeltas
-        // A sidebar's column scrolls, as any sidebar does; pinch (or ⌘-scroll) still zooms.
-        if stage.settings.arrangement == .column, !event.modifierFlags.contains(.command) {
+        // A sidebar's column scrolls, as any sidebar does; pinch (or ⌘-scroll) still zooms. Editing, it zooms.
+        if stage.settings.arrangement == .column, !stage.editing, !event.modifierFlags.contains(.command) {
             let dy = precise ? Float(event.scrollingDeltaY) : Float(event.scrollingDeltaY) * 16
             lastScrolled = CACurrentMediaTime()
             pendingReveal = nil
@@ -971,8 +1011,20 @@ public final class MeadowView: MTKView {
         wake(.input)
     }
     public override func keyDown(with event: NSEvent) {
+        if stage.editing, editKeyDown(event) { return }
         if onKeyDown?(event) == true { return }
         super.keyDown(with: event)
+    }
+
+    /// A key with ⌘ while the meadow has the keyboard, before the menus see it (`onKeyEquivalent`).
+    public override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if window?.firstResponder === self, onKeyEquivalent?(event) == true { return true }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    public override func keyUp(with event: NSEvent) {
+        if stage.editing, editKeyUp(event) { return }
+        super.keyUp(with: event)
     }
 
     /// Turning two fingers turns the view.

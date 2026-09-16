@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00A90FED89C94259E544E296 /* MeadowWords.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA3098BEAE57C4FB75B9D64C /* MeadowWords.swift */; };
 		02A6C755CAF9A724FAF31A77 /* DebugThemeSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56509B56A2FB734C43E2E767 /* DebugThemeSheet.swift */; };
 		042538BBC308AEEB967B3A26 /* AgentMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80DFFD7AC220A77ABE1D0F4 /* AgentMonitor.swift */; };
 		04BEF7167D2CF2CFDC5AE034 /* DebugShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C42D2553F6094F48D6F6052 /* DebugShell.swift */; };
@@ -83,6 +84,7 @@
 		7D613BB2A89D7E2DCB8DD3CC /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 527493257AFEDB9E55E6E9B6 /* Motion.swift */; };
 		7FC87A80CE80873B6D6F936C /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 8BD8DF56C98BCB0870B195A6 /* Localizable.xcstrings */; };
 		805E21B8155C291883A8279B /* HostLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9BBCE9BC1C3B2F5A2BA55FD /* HostLink.swift */; };
+		81375CA18F2D5F3702AB8555 /* EditModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E58AB3D4A309CE4469109 /* EditModeController.swift */; };
 		82956B46BB2DB619CE5D1EDC /* Workbench+Answering.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A6F4DE075B9F1DE379830C /* Workbench+Answering.swift */; };
 		87233B7DAA401A7E057CBB74 /* WhiskrKit in Frameworks */ = {isa = PBXBuildFile; productRef = D2B60346C8E0C29F74CDFF9E /* WhiskrKit */; };
 		8888ACFAA054B3541585E913 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6961AE69075B9D9F33ECD77 /* Repository.swift */; };
@@ -100,6 +102,7 @@
 		9D2F516F0C465C6F270B2F72 /* CodeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8DC6839F0E423384790AF /* CodeEditorView.swift */; };
 		9DB881FBC371E8FD0373EC05 /* PeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC289C6C694C32D349CD9B5E /* PeekView.swift */; };
 		A042DC5B3C3360E1361014D6 /* DebugFlowChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE09EA5125538632ECFF469 /* DebugFlowChrome.swift */; };
+		A0FFD8058CCEC5F118BCA186 /* MeadowLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D3CD3D64016196C821ED757 /* MeadowLibrary.swift */; };
 		A10F0751E4E4176E7D5FAFA0 /* DebugScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8179E0ECDB8D50C2123897FE /* DebugScript.swift */; };
 		A2C0BDCA26F1268F3684354D /* PaneHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A77045F856D5F86ACCB179 /* PaneHeader.swift */; };
 		A3CD633A547E63B85BB435C3 /* DebugInteractions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D357AB6D923D8CB08E2FC0 /* DebugInteractions.swift */; };
@@ -110,9 +113,11 @@
 		AE92240E20D2EF1A608DE210 /* SecureKeyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DFD79054C350F4C886B2984 /* SecureKeyboard.swift */; };
 		AFEF3463010BB2AC4BB3F0C2 /* WindowFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 693ECB128DE2B9D96373CC4C /* WindowFrame.swift */; };
 		B103E28811B60F6FB9557922 /* ThemeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAF56BDDC3013980379827CA /* ThemeStore.swift */; };
+		B29B44F68FB470345FEC3A28 /* SelectionBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA947DA3C8B4401A5CCD5D59 /* SelectionBar.swift */; };
 		C0053151686A2437CF9139D6 /* BarControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA749B391D095B812626685 /* BarControl.swift */; };
 		C0CA20CC39FF6FEC4091D675 /* MainWindowController+Worktrees.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A942CDA305BD98E44EBD245 /* MainWindowController+Worktrees.swift */; };
 		C16006A1EB7F78371929E976 /* Workbench+Helpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0719C8514CF0FBD0BA52EE04 /* Workbench+Helpers.swift */; };
+		C6BA5CDE0C2B319E0DCA1DC2 /* DebugFlowEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAAE23595D36C059DD40DC17 /* DebugFlowEditor.swift */; };
 		C97DA112EB51526E5D3E7585 /* DebugFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 675F991F8D4ECBE8A7FCE3BA /* DebugFiles.swift */; };
 		C984AAAB320C32D3B1DF0D52 /* DebugResize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C761C7BAEFCA43FA5164623 /* DebugResize.swift */; };
 		CD6C0D0578ADF55455CDD85F /* DebugAnimations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05B86B5BD8333EA1F7437E84 /* DebugAnimations.swift */; };
@@ -200,6 +205,7 @@
 		3AA00E26AC67318163FD1C5A /* StatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBar.swift; sourceTree = "<group>"; };
 		3C090D1CE4CE813A6745A59E /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3C23146D862927241418D929 /* FileDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileDocument.swift; sourceTree = "<group>"; };
+		3D3CD3D64016196C821ED757 /* MeadowLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeadowLibrary.swift; sourceTree = "<group>"; };
 		3D894A2B63A3115D464792D7 /* Whiskr.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Whiskr.entitlements; sourceTree = "<group>"; };
 		3E2F1D8681271BA1723B7AE3 /* DebugFlowAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowAlerts.swift; sourceTree = "<group>"; };
 		414AF36484F53CC5C854B7EC /* DebugFlowSplit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowSplit.swift; sourceTree = "<group>"; };
@@ -269,6 +275,9 @@
 		B3478E3DFAB0399DB0563DEA /* WorldSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorldSettingsView.swift; sourceTree = "<group>"; };
 		B53354B621AC1F586A9E61CD /* DebugFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowLayout.swift; sourceTree = "<group>"; };
 		B54980468C4FA9E4CE281C20 /* LiveResize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveResize.swift; sourceTree = "<group>"; };
+		BA3098BEAE57C4FB75B9D64C /* MeadowWords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeadowWords.swift; sourceTree = "<group>"; };
+		BA947DA3C8B4401A5CCD5D59 /* SelectionBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionBar.swift; sourceTree = "<group>"; };
+		BAAE23595D36C059DD40DC17 /* DebugFlowEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowEditor.swift; sourceTree = "<group>"; };
 		BF605AF19F1AD5109092F3FA /* DebugFlowMeadowFollow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowMeadowFollow.swift; sourceTree = "<group>"; };
 		C29E4D6605692460AE561F18 /* AppPlaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPlaces.swift; sourceTree = "<group>"; };
 		C2BBADA437DA2D0218538500 /* TabCells.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabCells.swift; sourceTree = "<group>"; };
@@ -290,6 +299,7 @@
 		E86C872A5C64DC9184F2E2FA /* DebugAgents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugAgents.swift; sourceTree = "<group>"; };
 		E9825C8E58C64004C16230BC /* TabDragging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabDragging.swift; sourceTree = "<group>"; };
 		E987E8F694B00000E7830F1B /* TerminalReach.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalReach.swift; sourceTree = "<group>"; };
+		EE0E58AB3D4A309CE4469109 /* EditModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditModeController.swift; sourceTree = "<group>"; };
 		EF89857D1AFDEE5A142988ED /* HelpWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpWindow.swift; sourceTree = "<group>"; };
 		F52D1567F2E05C17BB985F67 /* HomePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomePage.swift; sourceTree = "<group>"; };
 		F80DFFD7AC220A77ABE1D0F4 /* AgentMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentMonitor.swift; sourceTree = "<group>"; };
@@ -357,6 +367,16 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
+		26BB06E6A06A9D0BD2CE1097 /* MeadowEditor */ = {
+			isa = PBXGroup;
+			children = (
+				EE0E58AB3D4A309CE4469109 /* EditModeController.swift */,
+				BA3098BEAE57C4FB75B9D64C /* MeadowWords.swift */,
+				BA947DA3C8B4401A5CCD5D59 /* SelectionBar.swift */,
+			);
+			path = MeadowEditor;
+			sourceTree = "<group>";
+		};
 		297A661FC9E60EE8DC24586F /* PawTool */ = {
 			isa = PBXGroup;
 			children = (
@@ -368,6 +388,7 @@
 		3D2E67CFDC8D37DCA228465C /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				26BB06E6A06A9D0BD2CE1097 /* MeadowEditor */,
 				C3A71D59C3405AA18C674971 /* AnswerCard.swift */,
 				6FA749B391D095B812626685 /* BarControl.swift */,
 				2729BE691CBBBF0B07291C19 /* DividerGlow.swift */,
@@ -444,6 +465,7 @@
 				2813644095909713D08A1E2A /* CustomSoundFiles.swift */,
 				D557FA5E2FDCE1CC9617877C /* EditorPreferences.swift */,
 				6EC922CB2084B3FCF9DE120E /* GitWatcher.swift */,
+				3D3CD3D64016196C821ED757 /* MeadowLibrary.swift */,
 				A4562D4FB8649068E0461009 /* OtherEditorImport.swift */,
 				00CF4CD5FF8B9733A1E4C375 /* Pane.swift */,
 				4592A728154DA0B03C8628E7 /* Preferences.swift */,
@@ -547,6 +569,7 @@
 				3E2F1D8681271BA1723B7AE3 /* DebugFlowAlerts.swift */,
 				0EE09EA5125538632ECFF469 /* DebugFlowChrome.swift */,
 				A443D088B89E6974FF58302E /* DebugFlowDrag.swift */,
+				BAAE23595D36C059DD40DC17 /* DebugFlowEditor.swift */,
 				AC1D3B50F50AC02F78E6DAE7 /* DebugFlowFiles.swift */,
 				139082905DA594A0422140A4 /* DebugFlowFilesChanges.swift */,
 				8FB15C9944CE957A6183B53E /* DebugFlowFilesEditing.swift */,
@@ -758,6 +781,7 @@
 				65CD28DAD159339C50BD3CA5 /* DebugFlowAlerts.swift in Sources */,
 				A042DC5B3C3360E1361014D6 /* DebugFlowChrome.swift in Sources */,
 				E6A4F042EF7F19124B8FA9AB /* DebugFlowDrag.swift in Sources */,
+				C6BA5CDE0C2B319E0DCA1DC2 /* DebugFlowEditor.swift in Sources */,
 				A8CCA70917EB3680F1B8FF52 /* DebugFlowFiles.swift in Sources */,
 				25596B78E6D3F465D1F96BDA /* DebugFlowFilesChanges.swift in Sources */,
 				658A93B92312CE372EE92C2E /* DebugFlowFilesEditing.swift in Sources */,
@@ -785,6 +809,7 @@
 				F8D20947E58C78DDE8DCDE3D /* DiffPageView.swift in Sources */,
 				5A018DA0AAD819162FB07E3C /* DividerGlow.swift in Sources */,
 				8D32508C56EED9C415F1B04D /* DocumentSyntax.swift in Sources */,
+				81375CA18F2D5F3702AB8555 /* EditModeController.swift in Sources */,
 				340BD724451DA26B2CA576C0 /* EditorDecorations.swift in Sources */,
 				54FCCCE2E298C31FCE948029 /* EditorPreferences.swift in Sources */,
 				93E1A714B9AC4D943F2EB93F /* FileDocument.swift in Sources */,
@@ -806,6 +831,8 @@
 				C0CA20CC39FF6FEC4091D675 /* MainWindowController+Worktrees.swift in Sources */,
 				ABF4FECD8E0EB0205AA5810B /* MainWindowController.swift in Sources */,
 				66D61EECC5120FFA987A9F5A /* MarkdownPreview.swift in Sources */,
+				A0FFD8058CCEC5F118BCA186 /* MeadowLibrary.swift in Sources */,
+				00A90FED89C94259E544E296 /* MeadowWords.swift in Sources */,
 				F79514D31B733BEEEE484AFA /* MediaPreview.swift in Sources */,
 				7D613BB2A89D7E2DCB8DD3CC /* Motion.swift in Sources */,
 				6BFACD5689E65A584B6D3F96 /* NavigatorController.swift in Sources */,
@@ -824,6 +851,7 @@
 				8888ACFAA054B3541585E913 /* Repository.swift in Sources */,
 				4DE02E9113D87D9ED16E4FF6 /* ScopedKeys.swift in Sources */,
 				AE92240E20D2EF1A608DE210 /* SecureKeyboard.swift in Sources */,
+				B29B44F68FB470345FEC3A28 /* SelectionBar.swift in Sources */,
 				A7C93473301CA17AE626A4CA /* Settings.swift in Sources */,
 				18FB9B3BFE99CACEDB566279 /* SidePanel.swift in Sources */,
 				DDF202DCE9CBD06CA4639B4A /* StateMark.swift in Sources */,

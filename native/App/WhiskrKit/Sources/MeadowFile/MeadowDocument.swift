@@ -79,6 +79,22 @@ public struct MeadowDocument: Equatable, Sendable {
         return false
     }
 
+    /// How much of each kind with a cap the meadow holds (`MeadowCatalog.Cap`): things, or fence posts.
+    public func counts(_ catalog: MeadowCatalog) -> [MeadowCatalog.Cap: Int] {
+        var counts: [MeadowCatalog.Cap: Int] = [:]
+        for item in items {
+            guard let asset = catalog.asset(item.asset) else { continue }
+            for cap in asset.caps {
+                if cap == .fencePosts, case .run(let points) = item.placement {
+                    counts[cap, default: 0] += MeadowCatalog.posts(along: points)
+                } else {
+                    counts[cap, default: 0] += 1
+                }
+            }
+        }
+        return counts
+    }
+
     /// The oldest catalog that holds every asset, parameter, choice, variant and paint used here: what a
     /// file says it needs. Content kept from a newer Whiskr needs at least what its file needed.
     public func needsCatalog(_ catalog: MeadowCatalog) -> Int {

@@ -36,6 +36,9 @@ enum AppPlaces {
     /// Starts from empty settings (unless `keepingSettings`, to check what a relaunch brings back) and keeps
     /// everything in `folder`. Called before anything reads either.
     static func isolate(in folder: URL, keepingSettings: Bool = false) {
+        // Made first: a folder's standard path depends on whether it exists (/private/tmp is /tmp once it
+        // does), and a relaunch must find the same settings as the run that made the folder.
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let isolatedSuite = isolatedSuite(for: folder)
         defaults = UserDefaults(suiteName: isolatedSuite) ?? .standard
         if !keepingSettings {

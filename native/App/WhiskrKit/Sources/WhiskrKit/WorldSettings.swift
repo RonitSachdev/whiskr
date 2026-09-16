@@ -64,13 +64,16 @@ public struct WorldSettings: Equatable, Sendable, Codable {
     public var lightning: Bool
     /// The grass pales in the cold and yellows in the heat.
     public var grassColor: Bool
+    /// The meadow shown: a file in the meadows folder, by its name (`Name.whiskrmeadow`); nil for the
+    /// Default, which is built in and never changed.
+    public var meadow: String?
 
     /// How often the weather is looked up while it is on.
     public static let weatherInterval: TimeInterval = 15 * 60
 
     public init(map: Map = .meadow, timeOfDay: TimeOfDay = .followClock, picnic: Picnic = .hamper, flagSize: FlagSize = .medium,
                 realWeather: Bool = false, place: Place? = nil, sunTimes: Bool = true, moonPhase: Bool = true, clouds: Bool = true,
-                wind: Bool = true, rainAndSnow: Bool = true, lightning: Bool = true, grassColor: Bool = true) {
+                wind: Bool = true, rainAndSnow: Bool = true, lightning: Bool = true, grassColor: Bool = true, meadow: String? = nil) {
         self.map = map
         self.timeOfDay = timeOfDay
         self.picnic = picnic
@@ -84,12 +87,13 @@ public struct WorldSettings: Equatable, Sendable, Codable {
         self.rainAndSnow = rainAndSnow
         self.lightning = lightning
         self.grassColor = grassColor
+        self.meadow = meadow
     }
 
     // MARK: Saving
 
     private enum CodingKeys: String, CodingKey {
-        case map, timeOfDay, picnic, flagSize, realWeather, place, sunTimes, moonPhase, clouds, wind, rainAndSnow, lightning, grassColor
+        case map, timeOfDay, picnic, flagSize, realWeather, place, sunTimes, moonPhase, clouds, wind, rainAndSnow, lightning, grassColor, meadow
     }
 
     /// Reads what it can: anything missing or no longer known (a map since removed) keeps its default.
@@ -106,6 +110,7 @@ public struct WorldSettings: Equatable, Sendable, Codable {
                             (.rainAndSnow, \.rainAndSnow), (.lightning, \.lightning), (.grassColor, \.grassColor)] {
             if let value = try? container.decodeIfPresent(Bool.self, forKey: key) { self[keyPath: path] = value }
         }
+        if let value = try? container.decodeIfPresent(String.self, forKey: .meadow), !value.isEmpty { meadow = value }
     }
 
     public static let defaultsKey = "world"

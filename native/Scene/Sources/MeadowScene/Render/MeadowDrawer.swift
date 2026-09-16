@@ -141,6 +141,23 @@ final class MeadowDrawer {
         groundLight = texture(.r8Unorm, m.groundMap.light, 1, "ground light")
     }
 
+    /// Copies the part of the ground's map that changed (trees moved) into its texture, in this frame's
+    /// command buffer, so it lands in order after the frames still drawing from the texture.
+    private func upload(_ region: GroundMap.Region, of map: GroundMap, to texture: MTLTexture, arena: Arena, _ commandBuffer: MTLCommandBuffer) {
+        let side = GroundMap.side, width = region.columns.count, height = region.rows.count
+        let bytes = arena.alloc(UInt8.self, width * height * 4)
+        map.surface.withUnsafeBufferPointer { source in
+            for (r, row) in region.rows.enumerated() {
+                (bytes.pointer + r * width * 4).update(from: source.baseAddress! + (row * side + region.columns.lowerBound) * 4, count: width * 4)
+            }
+        }
+        guard let blit = commandBuffer.makeBlitCommandEncoder() else { return }
+        blit.copy(from: bytes.buffer, sourceOffset: bytes.offset, sourceBytesPerRow: width * 4, sourceBytesPerImage: width * height * 4,
+                  sourceSize: MTLSize(width: width, height: height, depth: 1), to: texture, destinationSlice: 0, destinationLevel: 0,
+                  destinationOrigin: MTLOrigin(x: region.columns.lowerBound, y: region.rows.lowerBound, z: 0))
+        blit.endEncoding()
+    }
+
     /// Makes what is missing or out of date before a frame is drawn from `m`.
     private func ready(_ m: Meadow) {
         if !built { build(m) }
@@ -210,13 +227,17 @@ final class MeadowDrawer {
         enc.setCullMode(.back)
         enc.setDepthStencilState(gpu.depthWrite)
         if !debugSkip.contains("plants") { drawRooted(faded: false, enc) }
-        // Trees and logs, unless faded.
+        // Trees and logs, unless faded, each as much as stands of it where a blanket has come.
         for (i, tree) in m.treeShapes.enumerated() where m.screens[tree.screen].fade >= 0.999 {
-            one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount), lit: []), enc)
+            let standing = m.treeStanding(i, stage.world.clearings, stage.clearingCount)
+            guard standing > 0.005 else { continue }
+            one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing), lit: []), enc)
             draw(trees[i], 1, enc)
         }
-        for lying in m.logs where m.screens[lying.screen].fade >= 0.999 {
-            one(arena, ClayInstance(lying.matrix, lit: .shaded), enc)
+        for (i, lying) in m.logs.enumerated() where m.screens[lying.screen].fade >= 0.999 {
+            let standing = m.logStanding(i, stage.world.clearings, stage.clearingCount)
+            guard standing > 0.005 else { continue }
+            one(arena, ClayInstance(lying.matrix * .scale(standing), lit: .shaded), enc)
             draw(log, 1, enc)
         }
         // Hills, far off.
@@ -259,6 +280,7 @@ final class MeadowDrawer {
     func prepare(_ stage: Stage, arena: Arena, commandBuffer: MTLCommandBuffer, frame: MTLBuffer, world: MTLBuffer) {
         guard let m = stage.meadow else { return }
         ready(m)
+        if let changed = m.takeGroundChanges(), let map = groundMap { upload(changed, of: m.groundMap, to: map, arena: arena, commandBuffer) }
         rootedDraws.removeAll(keepingCapacity: true)
         var total = 0
         for bed in m.beds { total += bed.matrices.count }
@@ -468,11 +490,16 @@ final class MeadowDrawer {
             enc.setRenderPipelineState(pass == 0 ? gpu.clayDepth : gpu.clayFade)
             enc.setDepthStencilState(pass == 0 ? gpu.depthWrite : gpu.depthEqual)
             for (i, tree) in m.treeShapes.enumerated() where m.screens[tree.screen].fade < 0.999 {
-                one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount), tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), lit: []), enc)
+                let standing = m.treeStanding(i, stage.world.clearings, stage.clearingCount)
+                guard standing > 0.005 else { continue }
+                one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing),
+                                        tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), lit: []), enc)
                 draw(trees[i], 1, enc)
             }
-            for lying in m.logs where m.screens[lying.screen].fade < 0.999 {
-                one(arena, ClayInstance(lying.matrix, tint: Vec4(1, 1, 1, m.screens[lying.screen].fade), lit: .shaded), enc)
+            for (i, lying) in m.logs.enumerated() where m.screens[lying.screen].fade < 0.999 {
+                let standing = m.logStanding(i, stage.world.clearings, stage.clearingCount)
+                guard standing > 0.005 else { continue }
+                one(arena, ClayInstance(lying.matrix * .scale(standing), tint: Vec4(1, 1, 1, m.screens[lying.screen].fade), lit: .shaded), enc)
                 draw(log, 1, enc)
             }
             drawRooted(faded: true, enc)

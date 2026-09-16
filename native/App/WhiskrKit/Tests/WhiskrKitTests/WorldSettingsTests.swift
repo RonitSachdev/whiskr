@@ -37,4 +37,20 @@ struct WorldSettingsSaving {
         #expect(WorldSettings() == WorldSettings(sunTimes: true, moonPhase: true, clouds: true, wind: true, rainAndSnow: true, lightning: true, grassColor: true))
         #expect(!WorldSettings().realWeather)
     }
+
+    @Test("the meadow shown: the Default until one of yours is chosen; kept by its file's name; missing in older settings")
+    func meadow() throws {
+        #expect(WorldSettings().meadow == nil)
+        let old = #"{"flagSize":"large","map":"meadow","picnic":"spread","realWeather":false,"timeOfDay":"night"}"#
+        #expect(try JSONDecoder().decode(WorldSettings.self, from: Data(old.utf8)).meadow == nil)
+        let suite = "WorldSettingsTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        WorldSettings(meadow: "My Meadow.whiskrmeadow").write(to: defaults)
+        #expect(WorldSettings.read(from: defaults).meadow == "My Meadow.whiskrmeadow")
+        let stray = #"{"meadow":42,"picnic":"spread"}"#
+        let world = try JSONDecoder().decode(WorldSettings.self, from: Data(stray.utf8))
+        #expect(world.meadow == nil && world.picnic == .spread)
+        #expect(try JSONDecoder().decode(WorldSettings.self, from: Data(#"{"meadow":""}"#.utf8)).meadow == nil)
+    }
 }

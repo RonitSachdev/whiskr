@@ -42,23 +42,62 @@ struct GroundMap {
     /// The map for trees shading the ground below them (x, z, the reach of their shade).
     static func baked(shade trees: [Vec4]) -> GroundMap {
         var map = GroundMap()
-        for tree in trees where tree.z > 0 {
-            // Only the texels within the shade's reach.
+        for tree in trees { map.shade(tree, within: Region.whole) }
+        return map
+    }
+
+    /// A rectangle of texels, columns and rows, both ends included.
+    struct Region: Equatable {
+        var columns: ClosedRange<Int>
+        var rows: ClosedRange<Int>
+        static let whole = Region(columns: 0...(side - 1), rows: 0...(side - 1))
+
+        /// The texels a tree's shade can reach (nil: none, off the map).
+        init?(shade tree: Vec4) {
+            guard tree.z > 0 else { return nil }
             func texel(_ v: Float) -> Int { Int(((v + reach) / cell).rounded(.down)) }
-            let low = (max(texel(tree.x - tree.z), 0), max(texel(tree.y - tree.z), 0))
-            let high = (min(texel(tree.x + tree.z), side - 1), min(texel(tree.y + tree.z), side - 1))
-            guard low.0 <= high.0, low.1 <= high.1 else { continue }
-            for row in low.1...high.1 {
-                for column in low.0...high.0 {
-                    let p = middle(column, row)
-                    let nearest = hypot(p.x - tree.x, p.y - tree.y) / tree.z
-                    guard nearest < 1 else { continue }
-                    let i = (row * side + column) * 4 + 3
-                    map.surface[i] = max(map.surface[i], UInt8(((1 - nearest) * 255).rounded()))
-                }
+            self.init(columns: texel(tree.x - tree.z)...texel(tree.x + tree.z), rows: texel(tree.y - tree.z)...texel(tree.y + tree.z))
+            guard let onMap = intersection(.whole) else { return nil }
+            self = onMap
+        }
+
+        init(columns: ClosedRange<Int>, rows: ClosedRange<Int>) {
+            self.columns = columns
+            self.rows = rows
+        }
+
+        func union(_ o: Region) -> Region {
+            Region(columns: min(columns.lowerBound, o.columns.lowerBound)...max(columns.upperBound, o.columns.upperBound),
+                   rows: min(rows.lowerBound, o.rows.lowerBound)...max(rows.upperBound, o.rows.upperBound))
+        }
+
+        func intersection(_ o: Region) -> Region? {
+            guard columns.overlaps(o.columns), rows.overlaps(o.rows) else { return nil }
+            return Region(columns: columns.clamped(to: o.columns), rows: rows.clamped(to: o.rows))
+        }
+    }
+
+    /// Adds a tree's shade to the texels of `region` it reaches.
+    private mutating func shade(_ tree: Vec4, within region: Region) {
+        guard let reached = Region(shade: tree)?.intersection(region) else { return }
+        for row in reached.rows {
+            for column in reached.columns {
+                let p = Self.middle(column, row)
+                let nearest = hypot(p.x - tree.x, p.y - tree.y) / tree.z
+                guard nearest < 1 else { continue }
+                let i = (row * Self.side + column) * 4 + 3
+                surface[i] = max(surface[i], UInt8(((1 - nearest) * 255).rounded()))
             }
         }
-        return map
+    }
+
+    /// The shade in `region` baked again from `trees` (after some moved), the same as baking them all
+    /// afresh, touching only those texels.
+    mutating func rebake(shade trees: [Vec4], in region: Region) {
+        for row in region.rows {
+            for column in region.columns { surface[(row * Self.side + column) * 4 + 3] = 0 }
+        }
+        for tree in trees { shade(tree, within: region) }
     }
 
     /// The shade baked at a point, as the shaders read it (bilinear between texel middles; 0 outside):

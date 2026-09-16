@@ -231,17 +231,7 @@ private struct Reader {
         guard total <= MeadowFormat.maxItems else { throw MeadowFileError.tooManyThings(count: total) }
         let newer = document.parcels.count
         guard newer <= MeadowFormat.maxNewerItems else { throw MeadowFileError.tooManyNewerThings(count: newer) }
-        var counts: [MeadowCatalog.Cap: Int] = [:]
-        for item in document.items {
-            guard let asset = catalog.asset(item.asset) else { continue }
-            for cap in asset.caps {
-                if cap == .fencePosts, case .run(let points) = item.placement {
-                    counts[cap, default: 0] += MeadowCatalog.posts(along: points)
-                } else {
-                    counts[cap, default: 0] += 1
-                }
-            }
-        }
+        let counts = document.counts(catalog)
         for cap in MeadowCatalog.Cap.allCases {
             if let count = counts[cap], count > cap.limit { throw MeadowFileError.tooManyOfKind(cap, count: count) }
         }

@@ -189,6 +189,16 @@
         }
       }
     },
+    "%@, %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、%2$lld"
+          }
+        }
+      }
+    },
     "%@, %lld changed files": {
       "localizations": {
         "ja": {
@@ -228,6 +238,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@：開いているワークスペースはすべてこのメニュー（⌥⌘1…9）と草原にあります"
+          }
+        }
+      }
+    },
+    "%lld chosen things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだもの%lld個"
           }
         }
       }
@@ -592,6 +612,36 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld Things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld個のもの"
+          }
+        }
+      }
+    },
+    "%lld things chosen": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld個を選択"
+          }
+        }
+      }
+    },
+    "%lld units %@ of the picnic ground": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ピクニック場の%2$@ %1$lldユニット"
           }
         }
       }
@@ -1020,6 +1070,26 @@
         }
       }
     },
+    "As large as it grows": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これ以上大きくなりません"
+          }
+        }
+      }
+    },
+    "As small as it grows": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "これ以上小さくなりません"
+          }
+        }
+      }
+    },
     "At %@, this file is too large to open here.": {
       "localizations": {
         "ja": {
@@ -1089,6 +1159,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "テキストを大きく"
+          }
+        }
+      }
+    },
+    "Birch": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シラカバ"
           }
         }
       }
@@ -1176,6 +1256,36 @@
         }
       }
     },
+    "Buttercup": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キンポウゲ"
+          }
+        }
+      }
+    },
+    "Buttercups": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キンポウゲ"
+          }
+        }
+      }
+    },
+    "Cherry tree": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サクラの木"
+          }
+        }
+      }
+    },
     "Choose a sound for “%@”. A short one works best: at most %lld seconds.": {
       "comment": "Settings › Alerts: the sound file picker's message",
       "localizations": {
@@ -1194,6 +1304,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "テーマ（Whiskr、iTerm2、VS Code、TextMate）、VS Code 拡張機能（.vsix またはフォルダ）、TextMate 文法を選んでください。"
+          }
+        }
+      }
+    },
+    "Chosen thing": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだもの"
           }
         }
       }
@@ -1293,6 +1413,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "選択した行をコメントにする、またはコメントを解除します。"
+          }
+        }
+      }
+    },
+    "Compass": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "方位磁針"
+          }
+        }
+      }
+    },
+    "Compass: click to face north, double-click to frame your workspaces again": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "方位磁針:クリックで北向きに、ダブルクリックでワークスペースを再び収める"
           }
         }
       }
@@ -1976,12 +2116,62 @@
         }
       }
     },
+    "Cut %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@をカット"
+          }
+        }
+      }
+    },
+    "Daisies": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デイジー"
+          }
+        }
+      }
+    },
+    "Daisy": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デイジー"
+          }
+        }
+      }
+    },
     "Dark": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "ダーク"
+          }
+        }
+      }
+    },
+    "Default": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルト"
+          }
+        }
+      }
+    },
+    "Delete": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "削除"
           }
         }
       }
@@ -2105,6 +2295,16 @@
         }
       }
     },
+    "Done (⌘↩)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "完了(⌘↩)"
+          }
+        }
+      }
+    },
     "Don’t Save": {
       "localizations": {
         "ja": {
@@ -2122,6 +2322,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "タブはドラッグして移動できます。置かれる場所ではほかのタブが左右に分かれ、ペインの上では、分割して入る半分、またはそのタブの場所に入れ替わる場合はペイン全体が色付きで示されます。ほかの場所で離すか Esc を押すと元に戻ります。"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複製"
+          }
+        }
+      }
+    },
+    "Duplicate %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を複製"
           }
         }
       }
@@ -2178,6 +2398,16 @@
         }
       }
     },
+    "east": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "東"
+          }
+        }
+      }
+    },
     "Edit": {
       "localizations": {
         "ja": {
@@ -2210,6 +2440,26 @@
         }
       }
     },
+    "Edit Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を編集"
+          }
+        }
+      }
+    },
+    "Edit Meadow…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を編集…"
+          }
+        }
+      }
+    },
     "Edited": {
       "comment": "File header: the file has unsaved changes",
       "localizations": {
@@ -2217,6 +2467,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "編集済み"
+          }
+        }
+      }
+    },
+    "Editing the meadow. Click a thing to choose it; drag to move it. Press Command-Return when done.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を編集中です。クリックで選び、ドラッグで動かします。終わったらCommand-Returnを押します。"
+          }
+        }
+      }
+    },
+    "Editing “%@”": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を編集中"
           }
         }
       }
@@ -2336,12 +2606,102 @@
         }
       }
     },
+    "Facing east": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "東向き"
+          }
+        }
+      }
+    },
+    "Facing north": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北向き"
+          }
+        }
+      }
+    },
+    "Facing north-east": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北東向き"
+          }
+        }
+      }
+    },
+    "Facing north-west": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北西向き"
+          }
+        }
+      }
+    },
+    "Facing south": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南向き"
+          }
+        }
+      }
+    },
+    "Facing south-east": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南東向き"
+          }
+        }
+      }
+    },
+    "Facing south-west": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南西向き"
+          }
+        }
+      }
+    },
+    "Facing west": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西向き"
+          }
+        }
+      }
+    },
     "Failed": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "失敗"
+          }
+        }
+      }
+    },
+    "Fallen log": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "倒木"
           }
         }
       }
@@ -2479,6 +2839,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "完了"
+          }
+        }
+      }
+    },
+    "Fly agaric": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベニテングタケ"
+          }
+        }
+      }
+    },
+    "Fly agarics": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベニテングタケ"
           }
         }
       }
@@ -3179,6 +3559,16 @@
         }
       }
     },
+    "Kept clear for your workspaces": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ワークスペースのために空けてあります"
+          }
+        }
+      }
+    },
     "Keyboard": {
       "localizations": {
         "ja": {
@@ -3207,6 +3597,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "言語：このファイルを別の言語として色分けします"
+          }
+        }
+      }
+    },
+    "Larger": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大きく"
           }
         }
       }
@@ -3441,6 +3841,26 @@
         }
       }
     },
+    "Lupin": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ルピナス"
+          }
+        }
+      }
+    },
+    "Lupins": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ルピナス"
+          }
+        }
+      }
+    },
     "Mac": {
       "comment": "Settings › Alerts: the Mac's own sounds",
       "localizations": {
@@ -3514,6 +3934,26 @@
         }
       }
     },
+    "Meadow shown": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示する草原"
+          }
+        }
+      }
+    },
+    "Meadow, being edited": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集中の草原"
+          }
+        }
+      }
+    },
     "Medium": {
       "comment": "Size of the name flags",
       "localizations": {
@@ -3564,6 +4004,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "その他"
+          }
+        }
+      }
+    },
+    "Mossy stone": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "苔むした石"
+          }
+        }
+      }
+    },
+    "Mossy stones": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "苔むした石"
+          }
+        }
+      }
+    },
+    "Move %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を移動"
           }
         }
       }
@@ -3667,6 +4137,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "“%@”をゴミ箱に入れますか？"
+          }
+        }
+      }
+    },
+    "My Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原"
+          }
+        }
+      }
+    },
+    "N": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北"
           }
         }
       }
@@ -3966,6 +4456,16 @@
         }
       }
     },
+    "No room nearby": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近くに空きがありません"
+          }
+        }
+      }
+    },
     "None": {
       "comment": "Settings › Alerts: no sound",
       "localizations": {
@@ -3973,6 +4473,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "なし"
+          }
+        }
+      }
+    },
+    "north": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北"
+          }
+        }
+      }
+    },
+    "north-east": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北東"
+          }
+        }
+      }
+    },
+    "north-west": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北西"
           }
         }
       }
@@ -4086,6 +4616,16 @@
         }
       }
     },
+    "Oak": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オーク"
+          }
+        }
+      }
+    },
     "Off in System Settings": {
       "comment": "Settings › Alerts: notifications are turned off for Whiskr",
       "localizations": {
@@ -4107,6 +4647,16 @@
         }
       }
     },
+    "on the picnic ground": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ピクニック場の上"
+          }
+        }
+      }
+    },
     "One of Claude’s helpers finished its task. From Claude Code’s SubagentStop hook.": {
       "comment": "Settings › Alerts: where an event comes from",
       "localizations": {
@@ -4114,6 +4664,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claudeのヘルパーがタスクを終えました。Claude CodeのSubagentStopフックから届きます。"
+          }
+        }
+      }
+    },
+    "Only living things change size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大きさを変えられるのは生き物だけです"
           }
         }
       }
@@ -4262,6 +4822,16 @@
         }
       }
     },
+    "Outside the meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の外です"
+          }
+        }
+      }
+    },
     "Pair with Dark Theme": {
       "comment": "Theme card's menu: makes one theme of this light one and a dark one",
       "localizations": {
@@ -4352,6 +4922,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ペースト"
+          }
+        }
+      }
+    },
+    "Paste %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@をペースト"
           }
         }
       }
@@ -4447,6 +5027,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@のサウンドを再生"
+          }
+        }
+      }
+    },
+    "Poppies": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポピー"
+          }
+        }
+      }
+    },
+    "Poppy": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポピー"
           }
         }
       }
@@ -4703,6 +5303,16 @@
         }
       }
     },
+    "Redo (⇧⌘Z)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "やり直す(⇧⌘Z)"
+          }
+        }
+      }
+    },
     "Reload": {
       "localizations": {
         "ja": {
@@ -4869,6 +5479,16 @@
         }
       }
     },
+    "Resize %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@の大きさを変更"
+          }
+        }
+      }
+    },
     "Restore Panes": {
       "localizations": {
         "ja": {
@@ -4959,6 +5579,16 @@
         }
       }
     },
+    "Revert to Default": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトに戻す"
+          }
+        }
+      }
+    },
     "Revert to Saved": {
       "localizations": {
         "ja": {
@@ -5007,6 +5637,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "実行中"
+          }
+        }
+      }
+    },
+    "Select All Like This": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じ種類をすべて選択"
           }
         }
       }
@@ -5412,6 +6052,26 @@
         }
       }
     },
+    "Shuffle": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シャッフル"
+          }
+        }
+      }
+    },
+    "Shuffle %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@をシャッフル"
+          }
+        }
+      }
+    },
     "Side by Side": {
       "localizations": {
         "ja": {
@@ -5470,6 +6130,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claudeのそばにいる小さな猫はヘルパーです。クリックすると、そのターミナルや経過を表示します。"
+          }
+        }
+      }
+    },
+    "Smaller": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小さく"
           }
         }
       }
@@ -5565,6 +6235,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "ソース、プレビュー、または左右に並べる"
+          }
+        }
+      }
+    },
+    "south": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南"
+          }
+        }
+      }
+    },
+    "south-east": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南東"
+          }
+        }
+      }
+    },
+    "south-west": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南西"
           }
         }
       }
@@ -5745,6 +6445,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ステータス"
+          }
+        }
+      }
+    },
+    "Stone": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "石"
+          }
+        }
+      }
+    },
+    "Stones": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "石"
           }
         }
       }
@@ -6110,6 +6830,36 @@
         }
       }
     },
+    "The meadow has as many things as it can hold (%lld)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原に置けるものの数がいっぱいです(%lld)"
+          }
+        }
+      }
+    },
+    "The meadow has as many trees as it can hold (%lld)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原に置ける木の数がいっぱいです(%lld)"
+          }
+        }
+      }
+    },
+    "The meadow you are editing": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集中の草原"
+          }
+        }
+      }
+    },
     "The next request, then the next finished turn, then back where you were.": {
       "localizations": {
         "ja": {
@@ -6256,6 +7006,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "これらは実際の天気を表示します。実際の天気はオフです。"
+          }
+        }
+      }
+    },
+    "Thing": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もの"
           }
         }
       }
@@ -6432,6 +7192,16 @@
         }
       }
     },
+    "Too close to the %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@に近すぎます"
+          }
+        }
+      }
+    },
     "Top bar": {
       "comment": "Accessibility label of the window's top bar",
       "localizations": {
@@ -6464,6 +7234,46 @@
         }
       }
     },
+    "Turn %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を回転"
+          }
+        }
+      }
+    },
+    "Turn Left": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左に回転"
+          }
+        }
+      }
+    },
+    "Turn Right": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右に回転"
+          }
+        }
+      }
+    },
+    "Turns the view back to north": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "視点を北向きに戻します"
+          }
+        }
+      }
+    },
     "Type a command or a place…": {
       "comment": "The command palette's field, before anything is typed",
       "localizations": {
@@ -6481,6 +7291,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "取り消す"
+          }
+        }
+      }
+    },
+    "Undo (⌘Z)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "取り消す(⌘Z)"
           }
         }
       }
@@ -6566,6 +7386,16 @@
         }
       }
     },
+    "Use Another Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別の草原を使う"
+          }
+        }
+      }
+    },
     "Use Default": {
       "localizations": {
         "ja": {
@@ -6592,6 +7422,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ターミナルのフォントを使用"
+          }
+        }
+      }
+    },
+    "Use “%@”": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を使う"
           }
         }
       }
@@ -6686,6 +7526,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "位置情報へのアクセスが拒否されたため、天気はオフになりました。システム設定 › プライバシーとセキュリティ › 位置情報サービスでWhiskrを許可してから、天気をもう一度オンにしてください。"
+          }
+        }
+      }
+    },
+    "west": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西"
           }
         }
       }
@@ -6916,12 +7766,42 @@
         }
       }
     },
+    "Young tree": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "若木"
+          }
+        }
+      }
+    },
     "Your changes will be lost if you don’t save them.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "保存しないと、変更は失われます。"
+          }
+        }
+      }
+    },
+    "Your Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あなたの草原"
+          }
+        }
+      }
+    },
+    "Your meadow is saved as you change it. The Default never changes: your first change makes a copy of it, My Meadow.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原は変更するたびに保存されます。デフォルトは変わりません。最初の変更でそのコピー「マイ草原」が作られます。"
           }
         }
       }
@@ -7437,6 +8317,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "“%@”を保存できませんでした。"
+          }
+        }
+      }
+    },
+    "“%@” couldn't be read and is kept as it was. The Default is shown.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を読み込めなかったため、そのまま残してあります。デフォルトを表示しています。"
           }
         }
       }

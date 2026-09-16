@@ -9,9 +9,12 @@ import WhiskrMeadow
 /// thing it shows, picnic things, flag size and, once there is more than one, the map.
 struct WorldSettingsView: View {
     @Bindable var store: WorldStore
+    private let library = MeadowLibrary.shared
 
     var body: some View {
         Form {
+            yourMeadow
+
             // A choice of one is no choice: the map shows once there is a second to choose.
             if WorldSettings.Map.allCases.count > 1 {
                 Section {
@@ -82,6 +85,47 @@ struct WorldSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Your Meadow: which meadow is shown (the Default or one of yours), Edit Meadow… and Revert to Default.
+    /// Choosing one is a step Edit › Undo takes back while the meadow is edited.
+    private var yourMeadow: some View {
+        Section {
+            Picker(String(localized: "Meadow shown", comment: "Settings › Meadow: which meadow is shown"), selection: Binding(
+                get: { library.active ?? "" },
+                set: { file in
+                    let chosen = file.isEmpty ? nil : file
+                    library.use(chosen, name: chosen == nil ? String(localized: "Revert to Default")
+                                                            : String(localized: "Use “\(library.displayName(chosen))”", comment: "Meadow editor: a step's name (choosing a meadow)"))
+                })) {
+                Text(library.displayName(nil)).tag("")
+                ForEach(library.files, id: \.self) { file in
+                    Text(library.displayName(file)).tag(file)
+                }
+            }
+            .pickerStyle(.radioGroup)
+            HStack {
+                Button(String(localized: "Edit Meadow…", comment: "The grass's menu: begins editing the meadow")) {
+                    NSApp.sendAction(#selector(AppDelegate.editMeadow(_:)), to: nil, from: nil)
+                }
+                Button(String(localized: "Revert to Default")) { library.revertToDefault() }
+                    .disabled(library.active == nil)
+            }
+        } header: {
+            Text(String(localized: "Your Meadow", comment: "Settings › Meadow: the section choosing and editing the meadow"))
+        } footer: {
+            Group {
+                if let unreadable = library.unreadable {
+                    Text(String(localized: "“\(library.displayName(unreadable))” couldn't be read and is kept as it was. The Default is shown.",
+                                comment: "Settings › Meadow: the meadow chosen could not be read"))
+                } else {
+                    Text(String(localized: "Your meadow is saved as you change it. The Default never changes: your first change makes a copy of it, My Meadow.",
+                                comment: "Settings › Meadow: how meadows are kept"))
+                }
+            }
+            .font(.callout).foregroundStyle(.secondary)
+        }
+        .onAppear { library.refreshFiles() }
     }
 
     private func mapName(_ map: WorldSettings.Map) -> Text {

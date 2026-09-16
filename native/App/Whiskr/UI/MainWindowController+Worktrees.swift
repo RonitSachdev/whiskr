@@ -10,12 +10,14 @@ extension MainWindowController {
     }
 
     @objc func newWorktree(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let repository = selectedRepository, let window else { return }
         if layout.mode == .meadowOnly { showMeadowAndTerminals(nil) }
         WorktreeController.shared.show(.create, repository: repository, over: window, workbench: workbench)
     }
 
     @objc func openWorktree(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let repository = selectedRepository, let window else { return }
         if layout.mode == .meadowOnly { showMeadowAndTerminals(nil) }
         WorktreeController.shared.show(.open, repository: repository, over: window, workbench: workbench)
@@ -24,6 +26,7 @@ extension MainWindowController {
     /// Asks once; asks again, plainly, when the checkout has changes that would be lost; never deletes
     /// the branch. Its workspace closes once the folder is gone.
     @objc func removeWorktree(_ sender: Any?) {
+        leaveMeadowEditing()
         guard let workspace = workbench.selectedWorkspace, let git = workspace.git, let repository = git.repository, let window else { return }
         let name = workspace.name
         let alert = NSAlert()
