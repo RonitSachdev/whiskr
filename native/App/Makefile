@@ -9,7 +9,7 @@
 #   make release    the Release configuration
 #   make dist       the Release app as an unsigned, zipped download with its checksum, in DIST
 #   make project    regenerate Whiskr.xcodeproj from project.yml (needs xcodegen)
-#   make icon       redraw the app icon from docs/logo.svg
+#   make icon       redraw the app icon from docs/logo.svg, and the meadow file's document badge
 #   make clean      remove the build folders
 #
 # Builds go to ~/Library/Developer/Xcode/DerivedData/Whiskr-make (the app) and ~/Library/Developer/Whiskr
@@ -82,6 +82,7 @@ project:
 
 icon:
 	swift Scripts/make-icon.swift ../../docs/logo.svg Whiskr/Assets.xcassets/AppIcon.appiconset
+	swift Scripts/make-meadow-icon.swift Whiskr/Assets.xcassets/MeadowDocument.imageset
 
 clean:
 	rm -rf "$(DERIVED)" "$(PROFILE_DERIVED)" "$(SCRATCH)"

@@ -52,6 +52,20 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>Whiskr Meadow</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>CFBundleTypeIconSystemGenerated</key>
+			<integer>1</integer>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>app.whiskr.meadow</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>iTerm2 Colour Preset</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
@@ -79,6 +93,31 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>whiskrtheme</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>app.whiskr.meadow</string>
+			<key>UTTypeDescription</key>
+			<string>Whiskr Meadow</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeIcons</key>
+			<dict>
+				<key>UTTypeIconBadgeName</key>
+				<string>MeadowDocument</string>
+				<key>UTTypeIconText</key>
+				<string>meadow</string>
+			</dict>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>whiskrmeadow</string>
 				</array>
 			</dict>
 		</dict>

@@ -1,0 +1,6 @@
+{
+  "name": "Orchard Study",
+  "scenery": { "things": [{ "kind": "tree.oak", "position": { "x": 1.3, "y": 0, "z": -3.9 } }], "units": "metres" },
+  "whiskrMeadow": 2,
+  "writtenBy": "3.2.0"
+}

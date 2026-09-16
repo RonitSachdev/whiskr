@@ -16,6 +16,12 @@ struct MeadowFixtureTests {
         "v1-catalog1-ground.whiskrmeadow": "986cb3512fa29fb125f55687ea215f2673f82fad1049080d6d64022548917bca",
         "v1-future-minor.whiskrmeadow": "6f36745e3ea8a55fbeff9b26a4a897cd8a82527b5b63c5aeb5582d5a92c38f1c",
         "v2-major.whiskrmeadow": "16d72a2f9d072d309420650a144a9db6a9cbd9ee4628a011bd59487feaf78afb",
+        // What importing is tried with (MeadowImportTests, `--perf-flows library`).
+        "import-damaged.whiskrmeadow": "5ee13b80dceae35f2514d5e77d6496601ae398e5be6dd91c567d7c6a38abcc20",
+        "import-newer-catalog.whiskrmeadow": "f4283071d8cd04d384e82a3e80cee2f1172c3391a0395a330e018aa724e3ddc2",
+        "import-newer-major.whiskrmeadow": "af7ecd41fa33aa98a68434f8816f85f2e9176bb6f523dfb0148a06f4eb97b0ff",
+        "import-newer-minor.whiskrmeadow": "3d3359aa84cd1cf05446a63aaa7bd0d58fe1fb69944824c9fe7a10cea6876860",
+        "import-too-many.whiskrmeadow": "b865bdbcecada2f6753f0c2b219befbcf812b74e6ee0f0beca00c2f4b61cc78e",
     ]
 
     @Test("released fixtures are never edited")

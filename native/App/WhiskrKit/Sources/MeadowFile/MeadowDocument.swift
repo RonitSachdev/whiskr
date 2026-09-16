@@ -260,7 +260,8 @@ public struct MeadowParcel: Equatable, Sendable {
         guard dx.isFinite, dz.isFinite, abs(dx) <= 2 * MeadowFormat.reach, abs(dz) <= 2 * MeadowFormat.reach else { return }
         func moved(_ value: MeadowJSON) -> MeadowJSON {
             guard let point = Self.point(value) else { return value }
-            return .array([.number(point.x + dx), .number(point.z + dz)])
+            // Rounded as a file rounds numbers, so what is moved is what is saved and read back.
+            return .array([.number(MeadowJSON.quantized(point.x + dx)), .number(MeadowJSON.quantized(point.z + dz))])
         }
         if let at = fields["at"] { fields["at"] = moved(at) }
         if let points = fields["points"]?.array { fields["points"] = .array(points.map(moved)) }

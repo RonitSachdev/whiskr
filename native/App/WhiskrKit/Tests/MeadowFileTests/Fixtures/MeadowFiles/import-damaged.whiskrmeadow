@@ -1,0 +1,14 @@
+{
+  "author": "",
+  "base": "meadow",
+  "catalog": 1,
+  "description": "",
+  "formatMinor": 0,
+  "items": [
+    { "at": [-1.61, 18.48], "id": "flower.daisy", "turn": 2.37 },
+    { "at": [-1.09, 20.91], "id": "flower.daisy", "turn": 6.279 },
+    { "at": [2.45, 20.86], "id": "flower.daisy", "turn": 4.687 },
+    { "at": [-3.17, 22.37], "id": "flower.daisy", "turn": 1.541 },
+    { "at": [3.75, 19.51], "id": "flower.daisy", "turn": 4.209 },
+    { "at": [2.06, 18.29], "id": "flower.daisy", "turn": 5.22 },
+    { "at": [0.82, 17.24], "id": "flower.dais

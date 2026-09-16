@@ -88,8 +88,14 @@ public struct MeadowEditSession: Sendable {
     public private(set) var ids: [Int]
     /// The id the next thing added takes.
     private(set) var nextID: Int
-    /// What the scene draws: the things this Whiskr can draw, in the document's order.
+    /// What the scene draws: the things this Whiskr can draw, in the document's order, and while
+    /// `showsParcels` each thing from a newer Whiskr that says where it stands, as a parcel.
     public internal(set) var scenery = MeadowScenery()
+    /// Things from a newer Whiskr shown as parcels (`MeadowScenery.parcel`), to be moved or taken away: while
+    /// the meadow is edited. Out of editing they are kept and not drawn.
+    public var showsParcels = false {
+        didSet { if showsParcels != oldValue { rebuild() } }
+    }
     /// For each of the scenery's things, the id of the entry it draws.
     public private(set) var shown: [Int] = []
     private var drawnIndex: [Int: Int] = [:]
@@ -115,12 +121,44 @@ public struct MeadowEditSession: Sendable {
         for (position, entry) in document.entries.enumerated() {
             let id = ids[position]
             positions[id] = position
-            guard case .item(let item) = entry, let thing = Self.thing(item, catalog) else { continue }
+            guard let thing = thing(entry) else { continue }
             drawnIndex[id] = things.count
             shown.append(id)
             things.append(thing)
         }
         scenery.things = things
+    }
+
+    /// The scene's form of an entry, when it is one drawn: a thing the scene draws, or, while parcels are
+    /// shown, a thing it cannot draw (from a newer Whiskr, or of the catalog with no model yet) as a parcel
+    /// where it stands, turned as it says.
+    func thing(_ entry: MeadowEntry) -> MeadowScenery.Thing? {
+        switch entry {
+        case .item(let item):
+            if let thing = Self.thing(item, catalog) { return thing }
+            guard showsParcels else { return nil }
+            return MeadowScenery.Thing(id: MeadowScenery.parcel, x: Float(item.at.x), z: Float(item.at.z), turn: Float(item.turn))
+        case .parcel(let parcel):
+            guard showsParcels, let at = parcel.at else { return nil }
+            let turn = parcel.fields["turn"]?.double.flatMap { $0.isFinite ? $0 : nil } ?? 0
+            return MeadowScenery.Thing(id: MeadowScenery.parcel, x: Float(at.x), z: Float(at.z), turn: Float(Self.normalTurn(turn)))
+        }
+    }
+
+    /// The things the scene cannot draw: from a newer Whiskr, or of the catalog with no model yet (kept, and
+    /// shown as parcels while editing). What "6 things can't be shown here" counts.
+    public var undrawnCount: Int {
+        document.entries.reduce(0) { count, entry in
+            if case .item(let item) = entry, Self.thing(item, catalog) != nil { return count }
+            return count + 1
+        }
+    }
+
+    /// Whether `id` is shown as a parcel while editing: it can be moved or taken away, and nothing more.
+    public func isParcel(_ id: Int) -> Bool {
+        guard let position = positions[id] else { return false }
+        if case .item(let item) = document.entries[position] { return Self.thing(item, catalog) == nil }
+        return true
     }
 
     /// The scene's form of an item, when it is one the scene draws (at a spot, of an id it has a builder for).
@@ -142,6 +180,19 @@ public struct MeadowEditSession: Sendable {
     public func item(_ id: Int) -> MeadowFile.MeadowItem? {
         guard let position = positions[id], case .item(let item) = document.entries[position] else { return nil }
         return item
+    }
+    /// A thing from a newer Whiskr, by id.
+    public func parcel(_ id: Int) -> MeadowParcel? {
+        guard let position = positions[id], case .parcel(let parcel) = document.entries[position] else { return nil }
+        return parcel
+    }
+    /// Where a thing stands, by id, whatever it is (one from a newer Whiskr: where it says, when it says).
+    public func spot(_ id: Int) -> MeadowPoint? {
+        guard let position = positions[id] else { return nil }
+        switch document.entries[position] {
+        case .item(let item): return item.at
+        case .parcel(let parcel): return parcel.at
+        }
     }
     /// Every thing drawn, by id, in order.
     public var drawnIDs: [Int] { shown }
@@ -210,7 +261,7 @@ public struct MeadowEditSession: Sendable {
         ids.append(placed.id)
         positions[placed.id] = position
         nextID = max(nextID, placed.id + 1)
-        guard case .item(let item) = placed.entry, let thing = Self.thing(item, catalog) else { return }
+        guard let thing = thing(placed.entry) else { return }
         drawnIndex[placed.id] = scenery.things.count
         shown.append(placed.id)
         scenery.things.append(thing)
@@ -275,9 +326,9 @@ public struct MeadowEditSession: Sendable {
     }
 
     /// Moves `ids` by `offset` (a drag let go, an arrow key), keeping the group's shape, when each may stand
-    /// there; else nothing changes and the first thing refused says why.
+    /// there; else nothing changes and the first thing refused says why. Things from a newer Whiskr move too.
     public mutating func move(_ ids: Set<Int>, by offset: SIMD2<Double>) -> Result<MeadowChange, MeadowEditRefused> {
-        edit(ids) { item, _ in item.move(by: offset.x, offset.y) }
+        edit(ids, parcels: { $0.move(by: offset.x, offset.y) }) { item, _ in item.move(by: offset.x, offset.y) }
     }
 
     /// Turns `ids` by `radians` about up (positive turns counter-clockwise, seen from above): one thing about
@@ -474,12 +525,27 @@ public struct MeadowEditSession: Sendable {
         return nil
     }
 
-    /// Changes `ids` with `change` when each may stand where it ends up; refused, nothing changes.
-    private mutating func edit(_ ids: Set<Int>, _ change: (inout MeadowFile.MeadowItem, Int) -> Void) -> Result<MeadowChange, MeadowEditRefused> {
+    /// Changes `ids` with `change` (and the things from a newer Whiskr among them with `parcels`, when given)
+    /// when each may stand where it ends up; refused, nothing changes.
+    private mutating func edit(_ ids: Set<Int>, parcels: ((inout MeadowParcel) -> Void)? = nil,
+                               _ change: (inout MeadowFile.MeadowItem, Int) -> Void) -> Result<MeadowChange, MeadowEditRefused> {
         let leaving = Set(ids.compactMap { drawnIndex[$0] })
         let field = SceneryRules.Field(scenery, leavingOut: leaving)
         var edited: [MeadowChange.Edited] = []
         for (position, id) in self.ids.enumerated() where ids.contains(id) {
+            if case .parcel(let before) = document.entries[position], let parcels {
+                var after = before
+                parcels(&after)
+                guard after != before else { continue }
+                // It stays where this Whiskr can read its spot: in the meadow.
+                guard after.at != nil else { return .failure(MeadowEditRefused(.outsideMeadow, id: id)) }
+                if let old = thing(.parcel(before)), let new = thing(.parcel(after)),
+                   let refusal = field.refusal(for: new, excusing: field.overlapping(old), wasOnPicnicGround: SceneryRules.isOnPicnicGround(old)) {
+                    return .failure(MeadowEditRefused(said(refusal), id: id))
+                }
+                edited.append(MeadowChange.Edited(id: id, before: .parcel(before), after: .parcel(after)))
+                continue
+            }
             guard case .item(let before) = document.entries[position] else { continue }
             var after = before
             change(&after, id)
@@ -488,7 +554,7 @@ public struct MeadowEditSession: Sendable {
             if case .run(let points) = after.placement, points.contains(where: { $0.reach > MeadowFormat.reach }) {
                 return .failure(MeadowEditRefused(.outsideMeadow, id: id))
             }
-            if let old = Self.thing(before, catalog), let new = Self.thing(after, catalog),
+            if let old = thing(.item(before)), let new = thing(.item(after)),
                let refusal = field.refusal(for: new, excusing: field.overlapping(old), wasOnPicnicGround: SceneryRules.isOnPicnicGround(old)) {
                 return .failure(MeadowEditRefused(said(refusal), id: id))
             } else if after.at.reach > MeadowFormat.reach {

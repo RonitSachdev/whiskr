@@ -10,12 +10,16 @@ final class SelectionBarModel {
     var count = 0
     /// They are living things: they can be sized and shuffled.
     var grows = false
+    /// Among them is a thing shown as a parcel (from a newer Whiskr, or with no model yet): they can be moved and
+    /// taken away, nothing more.
+    var onlyMoves = false
     @ObservationIgnored var act: (Action) -> Void = { _ in }
 }
 
 /// The selection's bar (docs/DESIGN.md, "Edit Meadow"): floats 12 pt above whatever is chosen in the meadow
 /// (below it when there is no room above), following it as the view moves. Turn left and right, smaller and
-/// larger and Shuffle for living things, Duplicate, Delete, and More (Select All Like This, Copy, Paste). A
+/// larger and Shuffle for living things, Duplicate, Delete, and More (Select All Like This, Copy, Paste); things
+/// shown as parcels can only be moved or taken away, so with one among them only Delete and More show. A
 /// floating piece: the chrome's colour, a line round it, radius 10 and the one soft shadow; its buttons are
 /// the bars' (hover, pressed and their tooltips with the key).
 struct SelectionBar: View {
@@ -26,16 +30,18 @@ struct SelectionBar: View {
 
     var body: some View {
         HStack(spacing: Look.Space.xxs) {
-            button(.turnLeft, "rotate.left", String(localized: "Turn Left", comment: "Selection bar"), key: "⇧R")
-            button(.turnRight, "rotate.right", String(localized: "Turn Right", comment: "Selection bar"), key: "R")
-            if model.grows {
+            if !model.onlyMoves {
+                button(.turnLeft, "rotate.left", String(localized: "Turn Left", comment: "Selection bar"), key: "⇧R")
+                button(.turnRight, "rotate.right", String(localized: "Turn Right", comment: "Selection bar"), key: "R")
+                if model.grows {
+                    separator
+                    button(.smaller, "minus", String(localized: "Smaller", comment: "Selection bar"), key: "[")
+                    button(.larger, "plus", String(localized: "Larger", comment: "Selection bar"), key: "]")
+                    button(.shuffle, "shuffle", String(localized: "Shuffle", comment: "Selection bar: draws a living thing's size, lean and shape again"), key: nil)
+                }
                 separator
-                button(.smaller, "minus", String(localized: "Smaller", comment: "Selection bar"), key: "[")
-                button(.larger, "plus", String(localized: "Larger", comment: "Selection bar"), key: "]")
-                button(.shuffle, "shuffle", String(localized: "Shuffle", comment: "Selection bar: draws a living thing's size, lean and shape again"), key: nil)
+                button(.duplicate, "plus.square.on.square", String(localized: "Duplicate", comment: "Selection bar"), key: "⌘D")
             }
-            separator
-            button(.duplicate, "plus.square.on.square", String(localized: "Duplicate", comment: "Selection bar"), key: "⌘D")
             button(.delete, "trash", String(localized: "Delete", comment: "Selection bar"), key: "⌫")
             separator
             button(.more, "ellipsis", String(localized: "More", comment: "Selection bar: a menu of further commands"), key: nil)

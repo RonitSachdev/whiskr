@@ -476,13 +476,13 @@ extension EditModeController {
     /// A click with the Eraser: the thing under the pointer taken away (of the chosen kind only, when one is
     /// chosen), a tree as well as a flower. One step.
     func erase(_ id: Int) {
-        guard let item = library.session.item(id) else { return }
-        if tray.eraseKind != EditorTray.anyKind, item.asset != tray.eraseKind {
+        guard let kind = kinds([id]).first else { return }
+        if tray.eraseKind != EditorTray.anyKind, kind != tray.eraseKind {
             let text = MeadowWords.onlyErasing(tray.eraseKind)
             showReason(text, at: pointerOrMiddle(), lasting: 2)
             return announce(text)
         }
-        let name = MeadowWords.erase([item.asset])
+        let name = MeadowWords.erase([kind])
         library.edit(name) { .success($0.delete([id])) }
         meadow.scenery = library.scenery
         hovered = nil

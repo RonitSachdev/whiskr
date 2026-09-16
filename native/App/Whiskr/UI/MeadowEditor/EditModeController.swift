@@ -91,6 +91,13 @@ final class EditModeController: NSObject {
     private(set) lazy var selectionBar = SelectionBarHost(rootView: SelectionBar(model: barModel))
     let marquee = MarqueeView()
     private let reason = HoverNote()
+    /// The quiet note along the meadow's top edge (`EditorNotice`), and the meadow whose note about things it
+    /// cannot draw was put away (it stays away for that meadow until editing begins again).
+    let noticeModel = EditorNoticeModel()
+    private(set) lazy var noticeHost = EditorNoticeHost(rootView: EditorNotice(model: noticeModel))
+    var noteClosed: String?
+    /// The parcel whose note shows by the pointer.
+    private var parcelNoted: Int?
     private var reasonTimer: Timer?
     private var observers: [NSObjectProtocol] = []
     /// The keyboard as it was before editing, given back when it ends.
@@ -145,6 +152,7 @@ final class EditModeController: NSObject {
         bar.done = { [weak self] in self?.leave() }
         bar.menu = { [weak self] in self?.nameMenu() ?? NSMenu() }
         barModel.act = { [weak self] action in self?.barAction(action) }
+        noticeModel.chose = { [weak self] choice in self?.noticeChosen(choice) }
         marquee.isHidden = true
         tray.act = { [weak self] action in self?.trayAction(action) }
         trayKeys.tray = tray
@@ -182,6 +190,9 @@ final class EditModeController: NSObject {
         debugKeyboardAtEntry = keyboardBefore
         #endif
         navigator.editingWillBegin()
+        // Things this Whiskr cannot draw show as parcels while editing, to be moved or taken away.
+        library.isEditing = true
+        meadow.scenery = library.scenery
         meadow.takesKeyboardFocus = true
         windowController.setMeadowEditing(true)
         meadow.beginEditing()
@@ -190,7 +201,8 @@ final class EditModeController: NSObject {
         meadow.onEditViewChanged = { [weak self] in self?.followView() }
         meadow.onEditScroll = { [weak self] event in self?.scrolled(event) ?? false }
         let container = navigator.view
-        for overlay in [marquee, trayHost, trayKeys, selectionBar, reason] as [NSView] where overlay.superview !== container { container.addSubview(overlay) }
+        for overlay in [marquee, trayHost, trayKeys, selectionBar, noticeHost, reason] as [NSView] where overlay.superview !== container { container.addSubview(overlay) }
+        noteClosed = nil
         marquee.frame = container.bounds
         marquee.autoresizingMask = [.width, .height]
         selectionBar.isHidden = true
@@ -226,6 +238,12 @@ final class EditModeController: NSObject {
                     self.updateFullness()
                 }
             },
+            // The note at the top: what cannot be drawn here, and a meadow changed on disk meanwhile.
+            Observing { [weak self] in
+                let library = MeadowLibrary.shared
+                _ = (library.conflict, library.active, library.keptCopy, library.session.document.entries.count)
+                Task { @MainActor in self?.updateNotice() }
+            },
         ]
         updateBar()
         updateMarks()
@@ -252,6 +270,8 @@ final class EditModeController: NSObject {
         hideReason()
         library.save()
         isEditing = false
+        library.isEditing = false
+        library.keptCopy = nil
         selection = []
         hovered = nil
         cursor = nil
@@ -262,7 +282,8 @@ final class EditModeController: NSObject {
         meadow.onEditMenu = nil
         meadow.onEditViewChanged = nil
         meadow.onEditScroll = nil
-        for overlay in [marquee, trayHost, trayKeys, selectionBar, reason] as [NSView] { overlay.removeFromSuperview() }
+        for overlay in [marquee, trayHost, trayKeys, selectionBar, noticeHost, reason] as [NSView] { overlay.removeFromSuperview() }
+        noticeModel.text = nil
         meadow.takesKeyboardFocus = false
         windowController.setMeadowEditing(false, keyboard: keyboardBefore)
         keyboardBefore = nil
@@ -321,7 +342,20 @@ final class EditModeController: NSObject {
     private func hover(_ thing: Int?) {
         guard hovered != thing else { return }
         hovered = thing
+        noteParcel(thing)
         updateMarks()
+    }
+
+    /// A thing shown as a parcel, pointed at: what it is, by it (gone when the pointer leaves it).
+    private func noteParcel(_ thing: Int?) {
+        let id = thing.flatMap(library.session.id(ofThing:))
+        let parcel = id.flatMap { library.session.isParcel($0) ? $0 : nil }
+        guard parcel != parcelNoted else { return }
+        if parcelNoted != nil, reasonText == nil { reason.hide() }
+        parcelNoted = parcel
+        guard let parcel, reasonText == nil, let index = library.session.thingIndex(of: parcel),
+              let rect = meadow.screenRect(ofScenery: [index]) else { return }
+        reason.show(title: MeadowFileWords.parcelName, detail: MeadowFileWords.parcelDetail, at: NSPoint(x: rect.midX, y: rect.maxY), within: navigator.view.bounds)
     }
 
     private func down(_ p: MeadowEditPointer) {
@@ -407,8 +441,10 @@ final class EditModeController: NSObject {
         case .pressed(let thing, let at, let flags, _):
             guard hypot(p.location.x - at.x, p.location.y - at.y) >= 4 else { return }
             if thing != nil, !selection.isEmpty, let start = meadow.groundPoint(at: at) {
-                let ids = Set(selection)
-                let copying = flags.contains(.option) || p.modifiers.contains(.option)
+                // Copies are of what can be copied: things shown as parcels are moved only.
+                let copyable = Set(selection.filter { !library.session.isParcel($0) })
+                let copying = (flags.contains(.option) || p.modifiers.contains(.option)) && !copyable.isEmpty
+                let ids = copying ? copyable : Set(selection)
                 var move = Move(ids: ids, start: start, copying: copying)
                 if copying { move.field = SceneryRules.Field(library.scenery) } else { move.check = library.session.moveCheck(ids) }
                 gesture = .moving(move)
@@ -501,7 +537,7 @@ final class EditModeController: NSObject {
             if let unchoose { choose(selection.filter { $0 != unchoose }) }
         case .moving(let move):
             gesture = nil
-            let names = selection.compactMap { library.session.item($0)?.asset }
+            let names = kinds(selection)
             if simd_length(move.offset) < 1e-4 {
                 meadow.scenery = library.scenery
             } else if move.refused.isEmpty {
@@ -754,7 +790,7 @@ final class EditModeController: NSObject {
             updateMarks()
             return
         }
-        let names = selection.compactMap { library.session.item($0)?.asset }
+        let names = kinds(selection)
         let step = direction * (far ? 1 : 0.25)
         perform(MeadowWords.move(names)) { $0.move(Set(self.selection), by: SIMD2(Double(step.x), Double(step.y))) }
     }
@@ -816,39 +852,55 @@ final class EditModeController: NSObject {
     }
 
     func turnSelection(by radians: Double) {
-        guard !selection.isEmpty else { return }
-        let names = selection.compactMap { library.session.item($0)?.asset }
-        perform(MeadowWords.turn(names)) { $0.turn(Set(self.selection), by: radians) }
+        guard let chosen = changeable() else { return }
+        perform(MeadowWords.turn(kinds(chosen))) { $0.turn(Set(chosen), by: radians) }
     }
 
     func resizeSelection(by factor: Double) {
-        guard !selection.isEmpty else { return }
-        let names = selection.compactMap { library.session.item($0)?.asset }
-        perform(MeadowWords.resize(names)) { $0.resize(Set(self.selection), by: factor) }
+        guard let chosen = changeable() else { return }
+        perform(MeadowWords.resize(kinds(chosen))) { $0.resize(Set(chosen), by: factor) }
     }
 
     func duplicateSelection() {
-        guard !selection.isEmpty else { return }
-        let names = selection.compactMap { library.session.item($0)?.asset }
+        guard let chosen = changeable() else { return }
         // Two units toward the view's lower right: beside, where you look.
         let axes = meadow.groundAxes
         let toward = axes.right - axes.forward
-        perform(MeadowWords.duplicate(names)) { $0.duplicate(Set(self.selection), toward: SIMD2(Double(toward.x), Double(toward.y))) }
+        perform(MeadowWords.duplicate(kinds(chosen))) { $0.duplicate(Set(chosen), toward: SIMD2(Double(toward.x), Double(toward.y))) }
     }
 
     func deleteSelection() {
         guard !selection.isEmpty else { return }
-        let names = selection.compactMap { library.session.item($0)?.asset }
+        let names = kinds(selection)
         let ids = Set(selection)
         perform(MeadowWords.delete(names)) { .success($0.delete(ids)) }
         choose([])
     }
 
     func shuffleSelection() {
-        guard !selection.isEmpty else { return }
-        let names = selection.compactMap { library.session.item($0)?.asset }
+        guard let chosen = changeable() else { return }
         var random = SystemRandomNumberGenerator()
-        perform(MeadowWords.shuffle(names)) { $0.shuffle(Set(self.selection), using: &random) }
+        perform(MeadowWords.shuffle(kinds(chosen))) { $0.shuffle(Set(chosen), using: &random) }
+    }
+
+    /// What is chosen that can be turned, sized, copied or shuffled: everything but the things shown as parcels
+    /// (from a newer Whiskr, or with no model yet), which can only be moved or taken away. Nil, saying so by the
+    /// selection, when nothing chosen can.
+    func changeable() -> [Int]? {
+        guard !selection.isEmpty else { return nil }
+        let chosen = selection.filter { !library.session.isParcel($0) }
+        guard chosen.isEmpty else { return chosen }
+        let text = MeadowWords.parcelsOnlyMove
+        let rect = meadow.screenRect(ofScenery: selection.compactMap(library.session.thingIndex(of:)))
+        showReason(text, at: rect.map { NSPoint(x: $0.midX, y: $0.maxY) } ?? NSPoint(x: meadow.bounds.midX, y: meadow.bounds.midY), lasting: 2.5)
+        announce(text)
+        return nil
+    }
+
+    /// The kinds of things, by id, as step names say them (a parcel as a thing from a newer Whiskr).
+    func kinds(_ ids: [Int]) -> [String] {
+        let session = library.session
+        return ids.map { session.isParcel($0) ? MeadowScenery.parcel : session.item($0)?.asset ?? MeadowScenery.parcel }
     }
 
     func selectAll() {
@@ -868,17 +920,17 @@ final class EditModeController: NSObject {
     static let pasteboardType = NSPasteboard.PasteboardType(MeadowEditSession.pasteboardType)
 
     func copySelection() {
-        guard !selection.isEmpty, let data = library.session.copied(Set(selection), writtenBy: MeadowLibrary.writtenBy) else { return }
+        guard let chosen = changeable(), let data = library.session.copied(Set(chosen), writtenBy: MeadowLibrary.writtenBy) else { return }
         let board = NSPasteboard.general
         board.clearContents()
         board.setData(data, forType: Self.pasteboardType)
     }
 
     func cutSelection() {
-        guard !selection.isEmpty else { return }
+        guard let chosen = changeable() else { return }
         copySelection()
-        let names = selection.compactMap { library.session.item($0)?.asset }
-        let ids = Set(selection)
+        let names = kinds(chosen)
+        let ids = Set(chosen)
         perform(MeadowWords.cut(names)) { .success($0.delete(ids)) }
         choose([])
     }
@@ -939,7 +991,9 @@ final class EditModeController: NSObject {
 
     // MARK: Menus
 
-    /// The meadow's name in the top bar: the meadows to show (the Default and yours), and Revert to Default.
+    /// The meadow's name in the top bar: the meadows to show (the Default and yours), My Meadows…, the meadow's own
+    /// commands (New Meadow, Duplicate, Rename…, Export…, Share…, Export Picture…, Show in Finder), and Revert to
+    /// Default.
     private func nameMenu() -> NSMenu {
         library.refreshFiles()
         let menu = NSMenu()
@@ -958,6 +1012,48 @@ final class EditModeController: NSObject {
         let useItem = NSMenuItem(title: use.title, action: nil, keyEquivalent: "")
         useItem.submenu = use
         menu.addItem(useItem)
+        menu.addItem(closureMenuItem(title: String(localized: "My Meadows…", comment: "Meadow editor: the name menu: the library of meadows")) { [weak self] in
+            self?.showLibrary()
+        })
+        menu.addItem(.separator())
+        let new = NSMenu(title: String(localized: "New Meadow", comment: "My Meadows: makes a new meadow"))
+        new.addItem(closureMenuItem(title: String(localized: "From the Default", comment: "My Meadows › New Meadow: a copy of the Default")) { [weak self] in
+            MeadowLibraryActions.newMeadow(fromDefault: true)
+            self?.meadowSwitched()
+        })
+        new.addItem(closureMenuItem(title: String(localized: "Empty", comment: "My Meadows › New Meadow: grass, hills and sky, nothing placed")) { [weak self] in
+            MeadowLibraryActions.newMeadow(fromDefault: false)
+            self?.meadowSwitched()
+        })
+        let newItem = NSMenuItem(title: new.title, action: nil, keyEquivalent: "")
+        newItem.submenu = new
+        menu.addItem(newItem)
+        let active = library.active
+        let window = meadow.window
+        menu.addItem(closureMenuItem(title: String(localized: "Duplicate “\(library.activeName)”", comment: "Meadow editor: the name menu: copies the meadow")) {
+            MeadowLibraryActions.duplicate(active)
+        })
+        if let active {
+            menu.addItem(closureMenuItem(title: String(localized: "Rename “\(library.activeName)”…", comment: "Meadow editor: the name menu: renames the meadow")) { [weak self] in
+                self?.showLibrary(renaming: active)
+            })
+        }
+        menu.addItem(.separator())
+        menu.addItem(closureMenuItem(title: String(localized: "Export…", comment: "My Meadows: a card's menu: saves the meadow as a file to share")) {
+            MeadowLibraryActions.export(active, over: window)
+        })
+        menu.addItem(closureMenuItem(title: String(localized: "Share…", comment: "My Meadows: a card's menu: the system's share picker")) { [weak self] in
+            guard let self, let content = self.meadow.window?.contentView else { return }
+            // Beside the name in the top bar.
+            let rect = NSRect(x: content.bounds.midX - 80, y: content.bounds.maxY - Look.Height.topBar, width: 160, height: Look.Height.topBar)
+            MeadowLibraryActions.share(active, from: content, rect: rect)
+        })
+        menu.addItem(closureMenuItem(title: String(localized: "Export Picture…", comment: "My Meadows: a card's menu: saves a picture of the meadow")) {
+            MeadowLibraryActions.exportPicture(active, over: window)
+        })
+        if let active {
+            menu.addItem(closureMenuItem(title: String(localized: "Show in Finder")) { MeadowLibraryActions.reveal(active) })
+        }
         menu.addItem(.separator())
         let revert = closureMenuItem(title: String(localized: "Revert to Default")) { [weak self] in
             guard let self else { return }
@@ -984,14 +1080,18 @@ final class EditModeController: NSObject {
         }
         if let thing, let id = library.session.id(ofThing: thing) {
             if !selection.contains(id) { choose([id]) }
-            add(String(localized: "Duplicate", comment: "Meadow editor: the chosen things' menu")) { [weak self] in self?.duplicateSelection() }
+            // Things shown as parcels are moved or taken away, nothing more.
+            let onlyMoves = selection.contains(where: library.session.isParcel)
+            if !onlyMoves { add(String(localized: "Duplicate", comment: "Meadow editor: the chosen things' menu")) { [weak self] in self?.duplicateSelection() } }
             add(String(localized: "Delete", comment: "Meadow editor: the chosen things' menu")) { [weak self] in self?.deleteSelection() }
             if selection.allSatisfy(library.session.grows) {
                 add(String(localized: "Shuffle", comment: "Selection bar: draws a living thing's size, lean and shape again")) { [weak self] in self?.shuffleSelection() }
             }
-            menu.addItem(.separator())
-            add(String(localized: "Select All Like This", comment: "Meadow editor: chooses everything of the kind nearby")) { [weak self] in self?.selectAllLike() }
-            add(String(localized: "Copy")) { [weak self] in self?.copySelection() }
+            if !onlyMoves {
+                menu.addItem(.separator())
+                add(String(localized: "Select All Like This", comment: "Meadow editor: chooses everything of the kind nearby")) { [weak self] in self?.selectAllLike() }
+                add(String(localized: "Copy")) { [weak self] in self?.copySelection() }
+            }
         }
         add(String(localized: "Paste"), enabled: canPaste) { [weak self] in self?.paste(at: point) }
         if thing == nil {
@@ -1041,8 +1141,10 @@ final class EditModeController: NSObject {
         case .delete: deleteSelection()
         case .more:
             let menu = NSMenu()
-            menu.addItem(closureMenuItem(title: String(localized: "Select All Like This", comment: "Meadow editor: chooses everything of the kind nearby")) { [weak self] in self?.selectAllLike() })
-            menu.addItem(closureMenuItem(title: String(localized: "Copy")) { [weak self] in self?.copySelection() })
+            if !barModel.onlyMoves {
+                menu.addItem(closureMenuItem(title: String(localized: "Select All Like This", comment: "Meadow editor: chooses everything of the kind nearby")) { [weak self] in self?.selectAllLike() })
+                menu.addItem(closureMenuItem(title: String(localized: "Copy")) { [weak self] in self?.copySelection() })
+            }
             let paste = closureMenuItem(title: String(localized: "Paste")) { [weak self] in self?.paste() }
             if !canPaste { paste.action = nil }
             menu.addItem(paste)
@@ -1100,6 +1202,7 @@ final class EditModeController: NSObject {
     private func updateBarModel() {
         barModel.count = selection.count
         barModel.grows = !selection.isEmpty && selection.allSatisfy(library.session.grows)
+        barModel.onlyMoves = selection.contains(where: library.session.isParcel)
     }
 
     /// Each frame while editing: the tray laid out for the meadow's size, the selection's bar over what is chosen.
@@ -1110,6 +1213,7 @@ final class EditModeController: NSObject {
             layoutTray()
         }
         placeSelectionBar()
+        placeNotice()
     }
 
     private var selectionBarShown = false
@@ -1199,9 +1303,9 @@ final class EditModeController: NSObject {
 
     private func announceSelection() {
         let session = library.session
-        guard let first = selection.first, let item = session.item(first) else { return }
+        guard let first = selection.first, let at = session.spot(first), let kind = kinds([first]).first else { return }
         if selection.count == 1 {
-            announce(String(localized: "\(MeadowWords.name(item.asset)), \(MeadowWords.whereIs(item.at))", comment: "VoiceOver: a chosen thing and where it is"))
+            announce(String(localized: "\(MeadowWords.name(kind)), \(MeadowWords.whereIs(at))", comment: "VoiceOver: a chosen thing and where it is"))
         } else {
             announce(String(localized: "\(selection.count) things chosen", comment: "VoiceOver: how many things are chosen"))
         }
@@ -1215,7 +1319,7 @@ final class EditModeController: NSObject {
         var elements: [NSAccessibilityElement] = []
         // A clump: the same kind within four units of any of it, gathered outward through squares of four units,
         // so a meadow of thousands of flowers is read in a moment.
-        let things = session.drawnIDs.compactMap { id in session.item(id).map { (id: id, item: $0) } }
+        let things = session.drawnIDs.filter { !session.isParcel($0) }.compactMap { id in session.item(id).map { (id: id, item: $0) } }
         func square(_ at: MeadowPoint) -> SIMD2<Int32> { SIMD2(Int32((at.x / 4).rounded(.down)), Int32((at.z / 4).rounded(.down))) }
         var squares: [SIMD2<Int32>: [Int]] = [:]
         for (k, thing) in things.enumerated() where SceneryRules.isSmall(thing.item.asset) { squares[square(thing.item.at), default: []].append(k) }
@@ -1254,6 +1358,21 @@ final class EditModeController: NSObject {
             element.setAccessibilityLabel(label)
             elements.append(element)
         }
+        // Each thing shown as a parcel on its own, saying what it is.
+        for id in session.drawnIDs where session.isParcel(id) {
+            guard let at = session.spot(id) else { continue }
+            let element = SceneryAccessibilityElement(meadow: meadow, frame: { [weak self] in
+                guard let self, let window = self.meadow.window, let index = self.library.session.thingIndex(of: id),
+                      let rect = self.meadow.screenRect(ofScenery: [index]) else { return nil }
+                return window.convertToScreen(self.meadow.convert(rect, to: nil))
+            }, press: { [weak self] in
+                self?.choose([id])
+                self?.announceSelection()
+            })
+            element.setAccessibilityLabel("\(MeadowFileWords.parcelName), \(MeadowWords.whereIs(at))")
+            element.setAccessibilityHelp(MeadowFileWords.parcelDetail)
+            elements.append(element)
+        }
         meadow.setAccessibilityChildren(elements)
         meadow.setAccessibilityLabel(String(localized: "Meadow, being edited", comment: "VoiceOver: the meadow while it is edited"))
     }
@@ -1271,6 +1390,8 @@ final class EditModeController: NSObject {
     /// The thing armed as it will be placed, and why it may not stand where its ghost is.
     var debugPending: (item: MeadowFile.MeadowItem?, refusal: MeadowEditRefusal?) { (pending, ghostRefusal) }
     var debugStrokeUnderWay: Bool { stroke != nil }
+    /// The parcel whose note shows by the pointer.
+    var debugParcelNoted: Int? { reason.isHidden ? nil : parcelNoted }
     var debugSettling: Bool { settling != nil }
     #endif
 }
