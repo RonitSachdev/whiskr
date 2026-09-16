@@ -180,7 +180,7 @@ private func fixture(_ name: String) throws -> Data {
         MeadowDocument(entries: [
             item("tree.oak", 50, 10, seed: 7),
             .parcel(MeadowParcel(fields: ["id": .string("garden.pond"), "at": .array([.number(20), .number(-30)]), "lilies": .array([.number(1)])])),
-            item("cat.box", 36, -4),
+            .parcel(MeadowParcel(fields: ["id": .string("cat.tower"), "at": .array([.number(36), .number(-4)])])),
             .parcel(MeadowParcel(fields: ["id": .string("garden.hedgeRun"), "points": .array([.array([.number(0), .number(60)]), .array([.number(10), .number(60)])])])),
             .parcel(MeadowParcel(fields: ["id": .string("light.beacon")])),
         ])
@@ -216,7 +216,7 @@ private func fixture(_ name: String) throws -> Data {
         #expect(session.document.entries == meadow.entries)
         session.apply(change)
         let back = try MeadowDocument.read(try session.document.fileData(writtenBy: "1.0.0")).document
-        #expect(back.parcels == session.document.parcels && back.parcels.count == 3)
+        #expect(back.parcels == session.document.parcels && back.parcels.count == 4)
     }
 
     @Test("taken away and put back (undone) in their place; the rest of a meadow's things from a newer Whiskr untouched")
