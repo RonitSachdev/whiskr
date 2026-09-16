@@ -15,8 +15,10 @@ struct Bed {
     var plant: Int              // index into Meadow.plants
     var sway: Float
     var matrices: [Mat4]
-    /// Young trees: each can fade on its own when it stands in the way; index of its screen.
+    /// Young trees and lamps: each can fade on its own when it stands in the way; index of its screen.
     var screens: [Int]? = nil
+    /// Lamps: which of the meadow's lamps (`MeadowLamps.lamps`) each is.
+    var lamps: [Int]? = nil
 }
 
 /// One shape a thing is drawn with: its id, which of its shapes, and the seed it grew from.
@@ -89,6 +91,11 @@ final class Meadow {
     /// The part of the ground's map changed since it was last drawn by moving trees (nil: none); a new
     /// scenery bakes it whole (`sceneryVersion`).
     private var groundChanged: GroundMap.Region?
+    /// The garden lamps, lit after dark, and the part of the map's lamplight baked since it was last drawn.
+    private(set) var lamps = MeadowLamps()
+    private var lightChanged: GroundMap.Region?
+    /// The lamps as the map bakes them, kept so baking allocates nothing.
+    private var lampLights: [GroundMap.Lamp] = []
     private(set) var critters: Critters!
     private(set) var fireflyWays: [(angle: Float, spin: Float, out: Float, high: Float, phase: Float, pulse: Float)] = []
     /// This frame's fireflies: position and glow.
@@ -254,6 +261,34 @@ final class Meadow {
         case log(Int)
     }
 
+    /// The lamplight baked again where it changed (a lamp warming up, placed, moved or carried as the ghost).
+    private func bakeLight() {
+        guard let region = lamps.takeChanged() else { return }
+        lamps.lights(into: &lampLights)
+        groundMap.light(lampLights, in: region)
+        lightChanged = lightChanged.map { $0.union(region) } ?? region
+    }
+
+    /// The part of the map's lamplight baked since this was last asked, and forgets it (nil: none).
+    func takeLightChanges() -> GroundMap.Region? {
+        defer { lightChanged = nil }
+        return lightChanged
+    }
+
+    /// The lamps moved on by `dt` seconds: lit while `lit` (the light says it is dark and lamps light at night),
+    /// at once when `steady`; `ghost`, a lamp the editor is about to place, lit with them. Their light is baked
+    /// where it changed.
+    /// A lamp standing where a blanket has come shrinks away with its light, as rooted things do (`clearings`).
+    func light(_ dt: Float, lit: Bool, steady: Bool, ghost: MeadowScenery.Thing?, clearings: [Vec4] = [], clearingCount: Int = 0) {
+        lamps.update(dt, lit: lit, steady: steady)
+        for i in lamps.lamps.indices {
+            let lamp = lamps.lamps[i]
+            lamps.stand(i, clearingCount > 0 ? Self.standing(lamp.x, lamp.z, 0, clearings, clearingCount) : 1)
+        }
+        lamps.carry(ghost.flatMap { Lamps.isLamp($0.id) ? Self.matrix(of: $0).point(Lamps.head) : nil })
+        bakeLight()
+    }
+
     /// Lays `scenery`: every thing the scene can draw, within its limits (`MeadowScenery.Limits`), in its
     /// order. Returns the flowers' tops, where butterflies and bees settle. The ground's map is baked again
     /// only when the trees' shade is not as it was (things added or taken away beside them leave it be).
@@ -262,6 +297,7 @@ final class Meadow {
         let oldTrees = Dictionary(treeShapes.map { ($0.key, $0.shape) }) { first, _ in first }
         let oldFades = Dictionary(screens.map { (ScreenKey($0), $0.fade) }) { first, _ in first }
         let oldShade = shade, oldTreads = treads
+        var placedLamps: [(x: Float, z: Float, head: Vec3)] = []
         self.scenery = scenery
         plants = []; plantKeys = []; beds = []; treeShapes = []; logs = []; screens = []; obstacles = []; shade = []; treads = []; treadOf = [:]
         laid = []; blooms = []; bloomOf = []
@@ -269,7 +305,7 @@ final class Meadow {
         bloomOf.reserveCapacity(scenery.things.count)
         var bedOf: [ShapeKey: Int] = [:]
         var grown = Set<ShapeKey>()
-        var things = 0, trees = 0, tall = 0
+        var things = 0, trees = 0, tall = 0, lit = 0
         typealias Limits = MeadowScenery.Limits
 
         func screen(_ s: Screen) -> Int {
@@ -300,6 +336,7 @@ final class Meadow {
             switch kind {
             case .tree, .youngTree: guard trees < Limits.trees, tall < Limits.tall else { continue }; trees += 1; tall += 1
             case .log: guard tall < Limits.tall else { continue }; tall += 1
+            case .plant where Lamps.isLamp(thing.id): guard lit < Limits.lamps, tall < Limits.tall else { continue }; lit += 1; tall += 1
             case .plant: break
             }
             things += 1
@@ -325,7 +362,13 @@ final class Meadow {
                 let m = Self.matrix(of: thing)
                 let all = shapes()
                 let variant = all.indices.contains(thing.variant) ? thing.variant : 0
-                let at = instance(ShapeKey(id: thing.id, variant: variant), { all[variant] }, sway: sway, m, screened: false)
+                let lamp = Lamps.isLamp(thing.id)
+                let at = instance(ShapeKey(id: thing.id, variant: variant), { all[variant] }, sway: sway, m, screened: lamp)
+                if lamp {
+                    beds[at.bed].screens?.append(screen(Self.lampScreen(m)))
+                    beds[at.bed].lamps = (beds[at.bed].lamps ?? []) + [placedLamps.count]
+                    placedLamps.append((thing.x, thing.z, m.point(Lamps.head)))
+                }
                 if SceneryCatalog.isTread(thing.id) {
                     treadOf[laid.count] = treads.count
                     treads.append(Self.tread(thing))
@@ -342,17 +385,24 @@ final class Meadow {
             }
         }
         grove.keep(grown)
+        lamps.lay(placedLamps)
         // The shade as it was (a plant brushed in or swept away, a thing taken away beside the trees): the
         // map stands, with any part still to be drawn from moved trees.
         if shade != oldShade || groundVersion == 0 {
             groundMap = GroundMap.baked(shade: shade, ground: scenery.ground, treads: treads)
             groundVersion += 1
             groundChanged = nil
+            // A fresh map holds no light yet: the lamps' is baked into it whole (and drawn with it).
+            _ = lamps.takeChanged()
+            lamps.lights(into: &lampLights)
+            groundMap.light(lampLights, in: .whole)
+            lightChanged = nil
         } else if treads != oldTreads {
             // Stepping stones laid or taken up: the turf round each worn again, or grown back.
             let changed = Set(oldTreads).symmetricDifference(Set(treads)).compactMap(GroundMap.Region.init(tread:))
             if let first = changed.first { repaint(changed.dropFirst().reduce(first) { $0.union($1) }) }
         }
+        bakeLight()
         sceneryVersion += 1
         return blooms
     }
@@ -388,6 +438,12 @@ final class Meadow {
                     let fade = screens[s].fade
                     screens[s] = Self.youngScreen(m, species, grove.tree(ShapeKey(id: thing.id, seed: thing.seed), species))
                     screens[s].fade = fade
+                }
+                if let s = beds[b].screens?[slot], let lamp = beds[b].lamps?[slot] {
+                    let fade = screens[s].fade
+                    screens[s] = Self.lampScreen(m)
+                    screens[s].fade = fade
+                    lamps.move(lamp, x: thing.x, z: thing.z, head: m.point(Lamps.head))
                 }
                 if bloomOf[i] >= 0 {
                     blooms[bloomOf[i]] = m.point(plants[beds[b].plant].top)
@@ -434,6 +490,7 @@ final class Meadow {
             groundChanged = groundChanged.map { $0.union(shaded) } ?? shaded
         }
         if let worn { repaint(worn) }
+        bakeLight()
         if bloomsMoved { critters.bloom(blooms) }
         return true
     }
@@ -460,6 +517,12 @@ final class Meadow {
         let scaleX = simd_length(Vec3(m.columns.0.x, m.columns.0.y, m.columns.0.z))
         let crown = m.point(tree.middle)
         return Screen(from: m.position, to: crown, thick: species.girth * 2 * scaleX, crown: crown, crownSize: tree.bulk * 0.85 * scaleX)
+    }
+
+    /// A lamp's screen, drawn with `m`: up its post to its finial, as wide as its lantern (no crown: nothing of it
+    /// spreads over the ground).
+    private static func lampScreen(_ m: Mat4) -> Screen {
+        Screen(from: m.position, to: m.point(Lamps.post.top), thick: 0.55, crown: nil, crownSize: 0)
     }
 
     /// Where a fallen log lies, and its screen along it.

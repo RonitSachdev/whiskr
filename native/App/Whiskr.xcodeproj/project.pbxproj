@@ -14,6 +14,7 @@
 		06E982A4C06A9AFA59C78575 /* TerminalHost in Frameworks */ = {isa = PBXBuildFile; productRef = B3440994FCF243FAB45ED4AF /* TerminalHost */; };
 		08821F60EDC53B28C0AB7623 /* OtherEditorImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4562D4FB8649068E0461009 /* OtherEditorImport.swift */; };
 		08D76F46ED23493073427A59 /* Observing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2275CC03D12210758D47F81A /* Observing.swift */; };
+		0CA3DCD303A3BF461B96F00B /* DebugFlowEditorLamps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25ED684A6EEA659F1DEF3B5E /* DebugFlowEditorLamps.swift */; };
 		0F1169F2399F5FD006BCA927 /* NavigatorList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AA0E1768019362A18F366C9 /* NavigatorList.swift */; };
 		14A31B6C0C596E49C0D6785D /* PawTool in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 377F56A0F025FEFF6B3CAF77 /* PawTool */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14C093EECE52824B077BEAF5 /* DebugFlowRobust.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC94F632D27A14E50D1F40CA /* DebugFlowRobust.swift */; };
@@ -203,6 +204,7 @@
 		1AD09F5DC207386823CDBA12 /* PaletteController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteController.swift; sourceTree = "<group>"; };
 		2275CC03D12210758D47F81A /* Observing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Observing.swift; sourceTree = "<group>"; };
 		237BB416361F1E64BA73917D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		25ED684A6EEA659F1DEF3B5E /* DebugFlowEditorLamps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowEditorLamps.swift; sourceTree = "<group>"; };
 		26543E4FE3C01FA862B01FC8 /* ChangesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangesView.swift; sourceTree = "<group>"; };
 		2729BE691CBBBF0B07291C19 /* DividerGlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DividerGlow.swift; sourceTree = "<group>"; };
 		280B20FC4D6085BAB176BFB1 /* MarkdownPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownPreview.swift; sourceTree = "<group>"; };
@@ -619,6 +621,7 @@
 				A443D088B89E6974FF58302E /* DebugFlowDrag.swift */,
 				BAAE23595D36C059DD40DC17 /* DebugFlowEditor.swift */,
 				6F77B30DC7F5A1AFEA436012 /* DebugFlowEditorGround.swift */,
+				25ED684A6EEA659F1DEF3B5E /* DebugFlowEditorLamps.swift */,
 				A9D59CCA40CA68437DDF7F40 /* DebugFlowEditorThings.swift */,
 				5197C4F0D6120D41EB214D2D /* DebugFlowEditorTools.swift */,
 				AC1D3B50F50AC02F78E6DAE7 /* DebugFlowFiles.swift */,
@@ -836,6 +839,7 @@
 				E6A4F042EF7F19124B8FA9AB /* DebugFlowDrag.swift in Sources */,
 				C6BA5CDE0C2B319E0DCA1DC2 /* DebugFlowEditor.swift in Sources */,
 				8EDAFFF87CA5A34166BC51BB /* DebugFlowEditorGround.swift in Sources */,
+				0CA3DCD303A3BF461B96F00B /* DebugFlowEditorLamps.swift in Sources */,
 				633CAB565CD83DDCA78C7A2D /* DebugFlowEditorThings.swift in Sources */,
 				779C16539C6487C281B02428 /* DebugFlowEditorTools.swift in Sources */,
 				A8CCA70917EB3680F1B8FF52 /* DebugFlowFiles.swift in Sources */,

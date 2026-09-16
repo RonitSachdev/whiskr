@@ -140,6 +140,9 @@ final class Portraits {
         enc.setVertexBuffer(gpu.placeholder, offset: 0, index: 4)
         enc.setVertexTexture(map ?? gpu.blankGroundMap, index: 0)
         enc.setFragmentTexture(map ?? gpu.blankGroundMap, index: 0)
+        // Pictured by day: no lamplight.
+        enc.setVertexTexture(gpu.blankGroundMap, index: 1)
+        enc.setFragmentTexture(gpu.blankGroundMap, index: 1)
         encode(enc)
         enc.endEncoding()
         if let blit = cb.makeBlitCommandEncoder() { blit.synchronize(resource: targets.resolve); blit.endEncoding() }

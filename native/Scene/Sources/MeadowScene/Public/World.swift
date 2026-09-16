@@ -305,7 +305,9 @@ public struct MeadowSettings: Hashable, Sendable {
         public static let lightning = Effects(rawValue: 1 << 5)
         /// The grass pales in the cold and yellows in the heat.
         public static let grassColor = Effects(rawValue: 1 << 6)
-        public static let all: Effects = [.sunTimes, .moonPhase, .clouds, .wind, .rainAndSnow, .lightning, .grassColor]
+        /// Garden lamps the meadow holds light by themselves after dark (else they stand unlit).
+        public static let lamps = Effects(rawValue: 1 << 7)
+        public static let all: Effects = [.sunTimes, .moonPhase, .clouds, .wind, .rainAndSnow, .lightning, .grassColor, .lamps]
     }
     public enum Picnic: String, Hashable, Sendable, CaseIterable {
         /// Nothing laid out.

@@ -176,7 +176,7 @@ struct MeadowMappingTests {
         #expect(scene.timeOfDay == .followClock)
         let switches: [(WritableKeyPath<WorldSettings, Bool>, MeadowSettings.Effects)] = [
             (\.sunTimes, .sunTimes), (\.moonPhase, .moonPhase), (\.clouds, .clouds), (\.wind, .wind), (\.rainAndSnow, .rainAndSnow),
-            (\.lightning, .lightning), (\.grassColor, .grassColor),
+            (\.lightning, .lightning), (\.grassColor, .grassColor), (\.lamps, .lamps),
         ]
         for (path, effect) in switches {
             var off = world

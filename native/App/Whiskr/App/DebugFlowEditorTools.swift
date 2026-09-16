@@ -121,7 +121,7 @@ extension EditorFlow {
         let ids = EditorTray.things.map(\.id)
         let drawn = MeadowCatalog.current.assets.filter { $0.inTray && $0.shape == .single && MeadowScenery.draws($0.id) }.map(\.id)
         check("the shelf offers every thing the scene draws, in the catalog's order, and nothing it cannot (\(ids.count))",
-              ids == drawn && ids.count == 28 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
+              ids == drawn && ids.count == 29 && Set(ids) == MeadowScenery.drawnIds.subtracting([MeadowScenery.parcel]), "\(ids)")
         check("the categories are those that hold something: Trees, Flowers, Stones & Wood, the Ground tool's paints, Workplace and Cat Things",
               EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .workplace, .catThings] && suite.barView("tray.category.ground") != nil
                   && suite.barView("tray.tool.ground") != nil)
@@ -481,6 +481,9 @@ extension EditorFlow {
             entries.append(.item(MeadowFile.MeadowItem(asset: asset, placement: .at(MeadowPoint(MeadowJSON.quantized(x), MeadowJSON.quantized(z))))))
             j += 1
         }
+        // As many garden lamps as a meadow holds, round its edge inside the trees (tall things: 47 trees and 32 lamps).
+        entries.removeLast(MeadowCatalog.Cap.lamps.limit)
+        entries += Self.fullMeadowLamps()
         let file = "Full Meadow.whiskrmeadow"
         do {
             let data = try MeadowDocument(name: "Full Meadow", entries: entries).fileData(writtenBy: MeadowLibrary.writtenBy)
@@ -495,8 +498,11 @@ extension EditorFlow {
               "active \(library.active ?? "Default"), \(count) things")
         meadow.scenery = library.scenery
         _ = await PerfWait.until(2000) { self.tray.fullness != nil }
-        check("past 80 % of a cap the tray says how full the meadow is, before it is reached",
-              tray.fullness == MeadowWords.fullness(MeadowFormat.maxItems - 2, of: MeadowFormat.maxItems, nil) && tray.full.isEmpty, tray.fullness ?? "nothing said")
+        // Its lamps are at their cap (the fullest, said first); the things not yet.
+        let lampsFull = MeadowWords.refusal(.full(.lamps, limit: MeadowCatalog.Cap.lamps.limit))
+        check("past 80 % of a cap the tray says how full the meadow is (the lamps, at theirs); only the lamp's tile says it is full",
+              tray.fullness == MeadowWords.fullness(MeadowCatalog.Cap.lamps.limit, of: MeadowCatalog.Cap.lamps.limit, .lamps)
+                  && tray.full == ["work.lampPost": lampsFull], "\(tray.fullness ?? "nothing said"), \(tray.full)")
         await picture("full-meadow")
         // At the caps (Stage 7's models among its things), the meadow rests as soon as any meadow must; its cost at
         // rest is recorded (the terminal printing all along this flow, its chrome limits are the idle flow's to hold).
@@ -506,6 +512,7 @@ extension EditorFlow {
         let rested = await PerfWait.until(12000) { self.meadow.isResting }
         check("a full meadow rests within 12 s of leaving editing", rested != nil, rested.map { String(format: "%.1f s", ($0 - left) / 1000) } ?? "not in 12 s")
         await suite.idleStretch("editor: idle, a full meadow", limits: false)
+        await fullMeadowAtNight()
         await enter()
         editor.debugChoose([])
         // One more tree: the 48th; then the trees' tiles say the meadow holds as many as it can.
@@ -516,8 +523,9 @@ extension EditorFlow {
         await PerfWait.sleep(300)
         let treeFull = MeadowWords.refusal(.full(.trees, limit: 48))
         check("the 48th tree is placed; then every tree's tile says, kindly, that the meadow holds as many trees as it can",
-              library.session.document.counts(.current)[.trees] == 48 && Set(tray.full.keys) == Set(EditorTray.things.filter { $0.category == .trees }.map(\.id))
-                  && tray.full.values.allSatisfy { $0 == treeFull }, "trees \(library.session.document.counts(.current)[.trees] ?? 0), tiles \(tray.full)")
+              library.session.document.counts(.current)[.trees] == 48
+                  && Set(tray.full.keys) == Set(EditorTray.things.filter { $0.category == .trees }.map(\.id)).union(["work.lampPost"])
+                  && tray.full.filter { $0.key != "work.lampPost" }.values.allSatisfy { $0 == treeFull }, "trees \(library.session.document.counts(.current)[.trees] ?? 0), tiles \(tray.full)")
         await picture("tray-full")
         await pressTray("tray.item.tree.oak")
         check("a full kind's tile arms nothing and says why", tray.armed == nil && editor.debugReason != nil, editor.debugReason ?? "nothing said")

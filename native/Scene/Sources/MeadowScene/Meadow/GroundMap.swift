@@ -14,7 +14,8 @@ import simd
 //                    meadow's own; g how short the grass is cut (painted lawn, and trodden round a stepping
 //                    stone); b painted soil; and a the trees' shade: 1 under a crown's middle, falling to 0
 //                    at its reach.
-//   light (R8):      lamplight on the ground after dark (later: garden lamps).
+//   light (R8):      the garden lamps' light on the ground (`lamps`): the square root of how bright, so the
+//                    dim edge of a pool keeps its steps fine; 0 by day and wherever no lamp reaches.
 
 struct GroundMap {
     /// A cell of the paint grid, in units.
@@ -29,6 +30,8 @@ struct GroundMap {
     private(set) var surface: [UInt8]
     /// One byte a texel, in the same order.
     private(set) var light: [UInt8]
+    /// Where the lamps' pools are added up while baking (made when first lit).
+    private var lightSums: [Float] = []
 
     /// Nothing painted, shaded or lit.
     init() {
@@ -270,5 +273,68 @@ struct GroundMap {
         }
         guard let columns, let rows else { return nil }
         return Region(cells: columns, rows)
+    }
+
+    // MARK: lamplight
+
+    /// A garden lamp as the map holds its light: where it stands and how lit it is now, 0 (out) … 1.
+    struct Lamp: Equatable {
+        var x: Float
+        var z: Float
+        var level: Float
+    }
+
+    /// How far a lamp's light reaches across the ground, in units.
+    static let lampReach: Float = 14
+    /// The height the pool's fall is reckoned from: about the lantern's own (`Lamps.head`): brightest round the post's foot
+    /// and falling away over a few strides, as a lamp on a post lights a lawn.
+    static let lampHeight: Float = 4.6
+
+    /// How brightly a lamp at full lights the ground `r` from its post: as a lamp's light does from its height
+    /// (falling with the square of the distance and the slant it lands at), eased to nothing at its reach so no
+    /// edge ever shows. 1 at the post's foot.
+    static func pool(_ r: Float) -> Float {
+        guard r < lampReach else { return 0 }
+        let h2 = lampHeight * lampHeight, fall = h2 / (h2 + r * r), edge = 1 - r * r / (lampReach * lampReach)
+        return fall * sqrt(fall) * edge * edge
+    }
+
+    /// The texels a lamp's light can reach (nil: none, off the map).
+    static func reached(by lamp: Lamp) -> Region? { Region(around: Vec2(lamp.x, lamp.z), reach: lampReach) }
+
+    /// The lamplight in `region` baked again from `lamps` (each by how lit it is now), the same as baking them all
+    /// afresh, touching only those texels. Pools that overlap add up, to a whole at most.
+    mutating func light(_ lamps: [Lamp], in region: Region) {
+        // Summed in a buffer kept for it, so lamps warming up each frame allocate nothing.
+        if lightSums.isEmpty { lightSums = [Float](repeating: 0, count: Self.side * Self.side) }
+        for row in region.rows { lightSums.withUnsafeMutableBufferPointer { $0[(row * Self.side + region.columns.lowerBound)...(row * Self.side + region.columns.upperBound)].update(repeating: 0) } }
+        for lamp in lamps where lamp.level > 0 {
+            guard let reached = Self.reached(by: lamp)?.intersection(region) else { continue }
+            for row in reached.rows {
+                for column in reached.columns {
+                    let p = Self.middle(column, row)
+                    lightSums[row * Self.side + column] += Self.pool(hypot(p.x - lamp.x, p.y - lamp.z)) * lamp.level
+                }
+            }
+        }
+        for row in region.rows {
+            for column in region.columns {
+                let i = row * Self.side + column
+                light[i] = UInt8((sqrt(min(lightSums[i], 1)) * 255).rounded())
+            }
+        }
+    }
+
+    /// The lamplight at a point, as the shaders read it: bilinear between texel middles (of the stored root, then
+    /// squared), 0 outside.
+    func lamplight(at p: Vec2) -> Float {
+        let u = (p.x + Self.reach) / Self.cell - 0.5, v = (p.y + Self.reach) / Self.cell - 0.5
+        let c = Int(u.rounded(.down)), r = Int(v.rounded(.down)), fu = u - Float(c), fv = v - Float(r)
+        func at(_ column: Int, _ row: Int) -> Float {
+            guard (0..<Self.side).contains(column), (0..<Self.side).contains(row) else { return 0 }
+            return Float(light[row * Self.side + column]) / 255
+        }
+        let root = (at(c, r) * (1 - fu) + at(c + 1, r) * fu) * (1 - fv) + (at(c, r + 1) * (1 - fu) + at(c + 1, r + 1) * fu) * fv
+        return root * root
     }
 }

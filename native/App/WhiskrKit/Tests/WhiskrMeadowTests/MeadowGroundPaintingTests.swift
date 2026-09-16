@@ -214,3 +214,30 @@ private func stroke(_ session: MeadowEditSession, _ paint: String, _ spots: [SIM
         #expect(MeadowScenery.draws("stone.stepping"))
     }
 }
+
+@Suite struct TheLampsFixture {
+    func fixture(_ name: String) throws -> Data {
+        let folder = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("MeadowFileTests/Fixtures/MeadowFiles", isDirectory: true)
+        return try Data(contentsOf: folder.appendingPathComponent(name))
+    }
+
+    @Test("a meadow of 32 garden lamps reads, draws every lamp, writes back byte for byte, and takes no 33rd")
+    func lamps() throws {
+        let data = try fixture("v1-catalog1-lamps.whiskrmeadow")
+        let reading = try MeadowDocument.read(data)
+        #expect(reading.leftOutside == 0 && !reading.keepsNewerContent)
+        var document = reading.document
+        document.readFrom = nil
+        #expect(try document.fileData(writtenBy: "0.1.0") == data)
+        let scenery = MeadowScenery(document)
+        #expect(scenery.things.count == MeadowCatalog.Cap.lamps.limit && scenery.things.allSatisfy { $0.id == "work.lampPost" })
+        #expect(MeadowScenery.Limits.lamps == MeadowCatalog.Cap.lamps.limit)
+        let session = MeadowEditSession(document)
+        #expect(session.scenery == scenery)
+        let another = MeadowItem(asset: "work.lampPost", placement: .at(MeadowPoint(60, 60)))
+        #expect(session.capacity(for: [another]) == .full(.lamps, limit: 32))
+        let fewer = MeadowEditSession(MeadowDocument(entries: Array(document.entries.dropLast())))
+        #expect(fewer.capacity(for: [another]) == nil)
+    }
+}

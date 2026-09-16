@@ -74,6 +74,11 @@ Nothing has been released yet. This is what the first release will contain.
   wheel as well as a trackpad, the filter finds things by other names too ("firewood", "zabuton"; in
   Japanese, hiragana or katakana), and the Eraser's sweep leaves made things, wood and boulders alone (a
   click takes one).
+- Garden lamps for the meadow (Edit Meadow › Workplace): a lamp post that lights by itself after sunset and
+  goes out after sunrise, the lamps coming on one by one with a little stutter as each catches. Lit, each
+  pools warm light on the grass round it, lights what stands near it and the rain or snow falling past it, and
+  glows softly, more so in fog. Placing one at night shows its light before it is put down. At most 32; never
+  on the picnic ground. Settings › Meadow › Lamps light at night turns them off.
 - Painted paths now read as pale, dry, trodden earth with a few pebbles and short tufts along their sides,
   and soil as a dark tilled bed in ridges, so the two are told apart at a glance; the earth's flecks are
   soft and round instead of small blocks.

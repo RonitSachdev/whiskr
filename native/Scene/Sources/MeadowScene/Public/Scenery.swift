@@ -177,6 +177,8 @@ public struct MeadowScenery: Equatable, Sendable {
         public static let trees = 48
         /// Tall things, each of which fades to see-through when it stands in front of a cat.
         public static let tall = 120
+        /// Garden lamps (each also tall).
+        public static let lamps = 32
         /// How far from the meadow's middle a thing may stand, in units.
         public static let reach: Float = 160
     }

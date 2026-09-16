@@ -501,7 +501,26 @@ stop drawing when nothing moves.
   the blur's reach round them, copied into the texture in the frame's command buffer; stepping stones laid,
   moved or taken up do the same round each. `Meadow.walkingEase` (public as `MeadowView.walkingEase(at:)`)
   says how gladly a cat walks at a point: 1 on a path or a stepping stone, 0.6 on lawn, 0.25 in wild grass or
-  on soil. Beside it an R8 texture is kept for lamplight on the ground.
+  on soil.
+- Garden lamps (`MeadowLamps`, `Lamps`) light the ground through the map's second texture, R8 at the same size:
+  the square root of how bright each texel is (so a pool's dim edge keeps fine steps), each lamp's pool
+  (`GroundMap.pool`: falling as a lamp's light does from its height, eased to nothing at 14 units) multiplied by
+  how lit it is and added up to a whole at most. It is baked on the CPU only where a lamp's light changed (one
+  warming up, placed, moved, taken away, or the editor's ghost carried about) into a buffer kept for it, and
+  copied into the texture in the frame's command buffer; a region baked again equals a whole bake (tested). No
+  shader loops over lamps: the ground and grass add the pool with one sample; clay adds it in `lampOn` with
+  three (the pool's slope says which way the light comes from, the lantern's height whether from above or
+  below, fading over a tall tree's lower crown); all of it is skipped by day (`Frame.weather.z`, 1 only while a
+  lamp shines), so a day's picture is the same with lamps as without. A lamp's glass is marked by its roughness
+  (its own plus 2) and lit by its instance's emissive under `LIT_LAMP`; a soft additive halo is drawn round each
+  lit lantern (wider in mist and rain), and drops falling through a pool take its colour (one CPU sample each).
+  When to light comes from the light itself (`Light.lampsLit`: the sun 2° down in the evening, 1° up in the
+  morning, or the fixed hours' night past 0.4); each lamp's sensor answers after its own delay over 24 s (a hash
+  of where it stands, so the same meadow always lights in the same order) and warms up over 1.6 s with a short
+  stutter; then nothing changes from frame to frame, so lit lamps never keep the meadow awake. With Reduce
+  Motion or the animation off, and when the meadow is first drawn, they are lit or out at once. A lamp a blanket
+  comes over makes way as every rooted thing does (`Meadow.standing`, worked out per lamp on the CPU), its light
+  with it.
 - **A cat's day** (`Roam.swift`, `Village.keepDay`) goes by the wall clock (`Village.clock`; the meadow's own
   time slows while it rests): rests between outings, when it dozes off (`dozeAt`, four to six minutes after
   it is first at leisure, whatever its Claude allows) and when it wakes from a long nap (`wakeAt`). What its

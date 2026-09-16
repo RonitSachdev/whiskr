@@ -67,6 +67,8 @@ public struct WorldSettings: Equatable, Sendable, Codable {
     /// Cats whose Claude has nothing for them wander the grass near their blankets now and then, and run
     /// home when work comes. Never with Reduce Motion or the meadow's animation off.
     public var catsWander: Bool
+    /// Garden lamps placed in the meadow light by themselves after dark (else they stand unlit).
+    public var lamps: Bool
     /// The meadow shown: a file in the meadows folder, by its name (`Name.whiskrmeadow`); nil for the
     /// Default, which is built in and never changed.
     public var meadow: String?
@@ -77,6 +79,7 @@ public struct WorldSettings: Equatable, Sendable, Codable {
     public init(map: Map = .meadow, timeOfDay: TimeOfDay = .followClock, picnic: Picnic = .hamper, flagSize: FlagSize = .medium,
                 realWeather: Bool = false, place: Place? = nil, sunTimes: Bool = true, moonPhase: Bool = true, clouds: Bool = true,
                 wind: Bool = true, rainAndSnow: Bool = true, lightning: Bool = true, grassColor: Bool = true, catsWander: Bool = true,
+                lamps: Bool = true,
                 meadow: String? = nil) {
         self.map = map
         self.timeOfDay = timeOfDay
@@ -92,13 +95,15 @@ public struct WorldSettings: Equatable, Sendable, Codable {
         self.lightning = lightning
         self.grassColor = grassColor
         self.catsWander = catsWander
+        self.lamps = lamps
         self.meadow = meadow
     }
 
     // MARK: Saving
 
     private enum CodingKeys: String, CodingKey {
-        case map, timeOfDay, picnic, flagSize, realWeather, place, sunTimes, moonPhase, clouds, wind, rainAndSnow, lightning, grassColor, catsWander, meadow
+        case map, timeOfDay, picnic, flagSize, realWeather, place, sunTimes, moonPhase, clouds, wind, rainAndSnow, lightning, grassColor, catsWander, lamps,
+             meadow
     }
 
     /// Reads what it can: anything missing or no longer known (a map since removed) keeps its default.
@@ -112,7 +117,8 @@ public struct WorldSettings: Equatable, Sendable, Codable {
         if let value = try? container.decodeIfPresent(Bool.self, forKey: .realWeather) { realWeather = value }
         if let value = try? container.decodeIfPresent(Place.self, forKey: .place) { place = value }
         for (key, path) in [(CodingKeys.sunTimes, \Self.sunTimes), (.moonPhase, \.moonPhase), (.clouds, \.clouds), (.wind, \.wind),
-                            (.rainAndSnow, \.rainAndSnow), (.lightning, \.lightning), (.grassColor, \.grassColor), (.catsWander, \.catsWander)] {
+                            (.rainAndSnow, \.rainAndSnow), (.lightning, \.lightning), (.grassColor, \.grassColor), (.catsWander, \.catsWander),
+                            (.lamps, \.lamps)] {
             if let value = try? container.decodeIfPresent(Bool.self, forKey: key) { self[keyPath: path] = value }
         }
         if let value = try? container.decodeIfPresent(String.self, forKey: .meadow), !value.isEmpty { meadow = value }

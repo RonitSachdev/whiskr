@@ -55,6 +55,8 @@ enum SceneryCatalog {
         "cat.yarn": .plant({ [CatThings.yarn] }, sway: 0, blooms: false, base: 0.5),
         "cat.bed": .plant({ [CatThings.bed] }, sway: 0, blooms: false, base: 1.6),
         "cat.bowl": .plant({ [CatThings.bowl] }, sway: 0, blooms: false, base: 0.6),
+        // Lit after dark (`MeadowLamps`), kept off the picnic ground and fading when in front of a cat.
+        "work.lampPost": .plant({ [Lamps.post] }, sway: 0, blooms: false, base: 0.8),
         // Not a catalog thing: what a thing from a newer Whiskr shows as while the meadow is edited (Parcel.swift).
         MeadowScenery.parcel: parcelKind,
     ]
@@ -62,7 +64,8 @@ enum SceneryCatalog {
     /// Things that stand alone (a boulder, wood, made things): placed and taken away one at a time (a click of
     /// the Eraser, never its sweep) and each read out by VoiceOver on its own, never as one of a clump. The other
     /// rooted things (plants, mushrooms, stones) are brushed and swept in numbers.
-    static let alone: Set<String> = ["stone.boulder", "wood.stump", "wood.logPile", "work.cushion", "cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"]
+    static let alone: Set<String> = ["stone.boulder", "wood.stump", "wood.logPile", "work.cushion", "cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl",
+                                      "work.lampPost"]
 
     /// Where a cat likes to be at each thing that invites one, on the thing as it is made (its own size and turn,
     /// y up from the ground): sitting on a stump's or a boulder's top, in a box or by a bowl, napping in a bed or
@@ -106,6 +109,8 @@ enum SceneryCatalog {
         "cat.scratchingPost": (Vec2(0.85, 0.85), false),
         "cat.yarn": (Vec2(0.38, 0.38), false),
         "work.cushion": (Vec2(0.85, 0.85), false),
+        // Mown and trodden round a lamp post's base, as round any post in a lawn.
+        "work.lampPost": (Vec2(0.7, 0.7), false),
     ]
     static func isTread(_ id: String) -> Bool { treads[id] != nil }
 

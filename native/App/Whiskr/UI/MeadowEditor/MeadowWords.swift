@@ -37,6 +37,7 @@ enum MeadowWords {
         case "cat.yarn": String(localized: "Ball of yarn", comment: "Meadow editor: a thing's name")
         case "cat.bed": String(localized: "Cat bed", comment: "Meadow editor: a thing's name")
         case "cat.bowl": String(localized: "Food bowl", comment: "Meadow editor: a thing's name (a cat's)")
+        case "work.lampPost": String(localized: "Garden lamp", comment: "Meadow editor: a thing's name (a lamp post that lights at night)")
         case "ground.path": String(localized: "Path", comment: "Meadow editor: a ground paint's name (worn earth)")
         case "ground.lawn": String(localized: "Lawn", comment: "Meadow editor: a ground paint's name (grass mown short)")
         case "ground.soil": String(localized: "Soil", comment: "Meadow editor: a ground paint's name (bare earth for flower beds)")
@@ -159,6 +160,7 @@ enum MeadowWords {
         switch cap {
         case .trees: String(localized: "\(count) of \(limit) trees", comment: "Meadow editor's tray: how full the meadow is")
         case .tall: String(localized: "\(count) of \(limit) tall things", comment: "Meadow editor's tray: how full the meadow is")
+        case .lamps: String(localized: "\(count) of \(limit) lamps", comment: "Meadow editor's tray: how full the meadow is (garden lamps)")
         default: String(localized: "\(count) of \(limit) things", comment: "Meadow editor's tray: how full the meadow is")
         }
     }
@@ -218,6 +220,7 @@ enum MeadowWords {
         case "cat.yarn": String(localized: "wool, toy, cat", comment: "Meadow editor's filter: other words for the ball of yarn, comma-separated")
         case "cat.bed": String(localized: "basket, nap, sleep, cat", comment: "Meadow editor's filter: other words for the cat bed, comma-separated")
         case "cat.bowl": String(localized: "dish, food, kibble, cat", comment: "Meadow editor's filter: other words for the food bowl, comma-separated")
+        case "work.lampPost": String(localized: "lamp post, lantern, light, night, street lamp", comment: "Meadow editor's filter: other words for the garden lamp, comma-separated")
         default: ""
         }
     }
