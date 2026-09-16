@@ -496,13 +496,13 @@ extension PerfSuite {
         await restore()
         if let view = barView("bar.tabs.new") { await hoverLook("the tab row's +", view) } else { check("chrome: the tab row's + is a control of its own", false) }
 
-        // The Claude's to-do ring, on its tab, between the title and the close button.
-        await sweep("the to-do progress button", locate: {
-            guard let view = self.tabView(setup.claudeTab) else { return nil }
-            let rect = self.windowRect(view)
-            let middle = NSPoint(x: rect.maxX - Look.Space.xs - TabMouseView.closeSize - Look.Space.s - 6, y: rect.midY)
-            return (nil, NSRect(x: middle.x - 6, y: middle.y - 6, width: 12, height: 12))
-        }, reset: {
+        // The Claude's to-do ring, on its tab, between the title and the close button: a click opens its
+        // list, a second closes it. The tab's view takes the click, where the tab is now (`TabMouseView`).
+        let ring = { () -> (NSView?, NSRect)? in
+            guard let view = self.tabView(setup.claudeTab), let ring = view.ringRect(of: setup.claudeTab.focusedPane) else { return nil }
+            return (view, view.convert(ring, to: nil))
+        }
+        let ringReset = {
             await restore()
             self.workbench.select(tab: setup.claudeTab)
             // Its to-do list is kept once its tab is on screen (the workbench's next tick).
@@ -511,11 +511,43 @@ extension PerfSuite {
                     .contains { self.workbench.monitor.details[$0.id]?.tasks.isEmpty == false }
             }
             await PerfWait.sleep(200)
-        }) {
-            let shown = await PerfWait.until(1500) { self.popoverWindow != nil }
-            self.popoverWindow?.close()
+        }
+        await sweep("the to-do progress button", locate: ring, reset: ringReset) {
+            guard await PerfWait.until(1500, { self.popoverWindow != nil }) != nil else { return "the to-do list not shown" }
+            guard let rect = ring()?.1 else { return "the ring gone once its list was shown" }
+            self.press(at: NSPoint(x: rect.midX, y: rect.midY))
+            return await PerfWait.until(1500) { self.popoverWindow == nil } == nil ? "the to-do list not closed by a second click" : nil
+        }
+        // Clicked again while its list is still closing, it opens the list anew, and the list stays up.
+        await ringReset()
+        if let rect = ring()?.1 {
+            let middle = NSPoint(x: rect.midX, y: rect.midY)
+            press(at: middle)
+            let opened = await PerfWait.until(1500) { self.popoverWindow != nil } != nil
+            press(at: middle)
+            // Each press's release comes through the run loop before the next press.
+            await PerfWait.sleep(20)
+            press(at: middle)
+            await PerfWait.sleep(600)
+            let stayed = popoverWindow != nil
+            press(at: middle)
+            let closed = await PerfWait.until(1500) { self.popoverWindow == nil } != nil
+            check("chrome: the to-do list, closed and at once opened again, stays up until the ring closes it", opened && stayed && closed,
+                  "opened \(opened), up after reopening \(stayed), closed after \(closed)")
+        } else {
+            check("chrome: the to-do list, closed and at once opened again, stays up until the ring closes it", false, "no ring on the Claude's tab")
+        }
+        // Its hover fill, a bar button's, just inside the ring's button (outside the ring's stroke).
+        await ringReset()
+        if let (view, rect) = ring(), let view {
+            let point = NSPoint(x: rect.minX + 1.5, y: rect.midY)
+            let before = shade(at: point, in: view)
+            await hover(window.contentView!.superview!, at: NSPoint(x: rect.midX, y: rect.midY))
             await PerfWait.sleep(200)
-            return shown == nil ? "the to-do list not shown" : nil
+            let over = shade(at: point, in: view)
+            await restPointer()
+            let change = before.flatMap { a in over.map { abs($0 - a) } } ?? 0
+            check("chrome: the to-do ring shows the hover fill under the pointer", change > 0.015, String(format: "shade %.3f → %.3f", before ?? -1, over ?? -1))
         }
 
         // The row's empty stretch, after the tabs (a wider window, so the tabs leave one): the window's, as
@@ -644,6 +676,13 @@ extension PerfSuite {
                 let hit = landing(at: NSPoint(x: rect.midX, y: rect.midY)).hit
                 if hit !== control && hit?.isDescendant(of: control) != true {
                     failures.append("\(moment): \(control.identifier?.rawValue ?? Self.typeName(control)) → \(hit.map(Self.typeName) ?? "nothing")")
+                }
+                // A tab's to-do rings are its view's to click, where the tab is now.
+                guard let tab = control as? TabMouseView else { continue }
+                for ring in tab.slots.compactMap({ tab.ringRect(of: $0.pane) }).map({ tab.convert($0, to: nil) }) {
+                    looked += 1
+                    let hit = landing(at: NSPoint(x: ring.midX, y: ring.midY)).hit
+                    if hit !== tab { failures.append("\(moment): a to-do ring → \(hit.map(Self.typeName) ?? "nothing")") }
                 }
             }
         }

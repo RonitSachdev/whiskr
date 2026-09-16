@@ -217,6 +217,11 @@ Nothing has been released yet. This is what the first release will contain.
   again as it settled.
 - A click on a button of the top bar, tab row or status bar right after the bars changed (a tab opened,
   closed or dropped) could be taken by the view drawn over it and do nothing.
+- A tab's to-do ring sometimes did nothing when clicked: right after its list had closed (the click was
+  taken as closing a list already gone), or a frame after a pane closed (the tab took the click). The ring
+  is now clicked where the tab's other clicks are, at once where the tab is; a click while the list is
+  closing opens it again, and a click on the ring with the list up closes it. Its hover fill now shows on
+  the selected tab too.
 - The close button on a split tab, which showed only the focused pane's name, closed every pane in the tab.
 - New Workspace (⌘N, the File menu, the "+" and workspace menus, the command palette) did nothing on Home:
   there it now starts a terminal in a new workspace, as Home's New Terminal does.

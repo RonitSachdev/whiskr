@@ -528,7 +528,9 @@ and Changes (`files`); the window's regions, sizes, themes and Settings (`layout
 floods, binary and wide text, pastes, resize storms, the session host going away); every control of the
 bars clicked at its middle and edges, failing a press that lands on anything but the control or on a view
 that lets the window move, and again straight after the bars change (`chrome`, editing's top bar too; the bars' hosting views,
-`BarHostingView`, send a press that lands on SwiftUI's own views to the bar control under it); a Claude stand-in started through a shell function of the user's kind
+`BarHostingView`, send a press that lands on SwiftUI's own views to the bar control under it; a tab's
+to-do ring, like its close button, is its `TabMouseView`'s to click, from the same segments, and that view
+owns the ring's list, opened anew by a click while the last one closes); a Claude stand-in started through a shell function of the user's kind
 with `--settings`, every event's real hook commands, and what would be heard and shown in each place a
 person can be (`alerts`); every way of choosing on the right, with the meadow moved away first, and agent
 events that must not move it (`meadow`); and every divider dragged, the window resized and each region

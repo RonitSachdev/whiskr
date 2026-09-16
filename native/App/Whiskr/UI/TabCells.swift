@@ -14,7 +14,7 @@ import WhiskrKit
 /// The row is drawn twice over the same places (docs/DESIGN.md, "Motion of the interface"). Underneath,
 /// where clicks land (`TabHit`): every tab at its new place the moment the tabs change, never animated, so
 /// a click goes to the tab (and the pane) that is there now and a closed one takes none. On top, what you
-/// see (`TabButton`, which takes no click but its own to-do button's): the same tabs easing into those
+/// see (`TabButton`, which takes no click but its rename field's): the same tabs easing into those
 /// places at `Look.Motion.standard`, a new tab or pane opening out from its leading edge, a closed one
 /// folding into it as its neighbour slides over, and the selected tab's fill and line moving across at
 /// `Look.Motion.quick`. While a tab is dragged (`TabDragging`) its picture leaves the row: the others part
@@ -31,7 +31,7 @@ struct TabCells: View {
 
     private struct Hovered: Equatable {
         let tab: UUID
-        let pane: UUID
+        let pointer: TabMouseView.Pointer
     }
 
     /// What moves the tabs' pictures when it changes: which tabs and panes are in sight, in what order,
@@ -67,9 +67,10 @@ struct TabCells: View {
                 HStack(spacing: 0) {
                     ForEach(shown, id: \.tab.id) { each in
                         TabHit(workbench: workbench, tab: each.tab, index: each.index, selected: workspace.selectedTab === each.tab, last: tabs.count == 1,
-                               slots: TabMouseView.slots(panes: each.tab.tree.panes, widths: layout.segmentWidths(each.item), label: each.item.label),
-                               hover: { pane in
-                                   if let pane { hovered = Hovered(tab: each.tab.id, pane: pane) } else if hovered?.tab == each.tab.id { hovered = nil }
+                               slots: TabMouseView.slots(panes: each.tab.tree.panes, widths: layout.segmentWidths(each.item), label: each.item.label,
+                                                         ringed: { !TabHit.tasks(of: $0, in: workbench).isEmpty }),
+                               hover: { pointer in
+                                   if let pointer { hovered = Hovered(tab: each.tab.id, pointer: pointer) } else if hovered?.tab == each.tab.id { hovered = nil }
                                })
                             .frame(width: CGFloat(layout.width(each.item)))
                     }
@@ -81,7 +82,7 @@ struct TabCells: View {
                     ForEach(pictures, id: \.shown.tab.id) { picture in
                         let tab = picture.shown.tab
                         TabButton(workbench: workbench, tab: tab, index: picture.shown.index, selected: workspace.selectedTab === tab,
-                                  widths: picture.widths, label: picture.label, hovered: hovered?.tab == tab.id ? hovered?.pane : nil)
+                                  widths: picture.widths, label: picture.label, pointer: hovered?.tab == tab.id ? hovered?.pointer : nil)
                             .frame(width: CGFloat(picture.widths.reduce(picture.label, +)), alignment: .leading)
                             // The held picture (`TabDragging`) stands for it while it is dragged and until it lands.
                             .opacity(drag.tab == tab.id || drag.landing == tab.id ? 0 : 1)
@@ -246,7 +247,7 @@ struct TabGroupLabel: View {
 /// title and its close button; a split tab, one segment per pane (`TabSegment`), joined, with a short line
 /// between them and the name you gave it, if any, leading them. Chosen, it has the content's fill (the
 /// whole tab: it opens into its panes; `TabCells` draws it under the tabs) and the focus line along the top of the pane with the keyboard. It
-/// takes no click itself (they reach `TabMouse` under it), but its to-do button's and its rename field's.
+/// takes no click itself (they reach `TabMouse` under it), but its rename field's.
 struct TabButton: View {
     let workbench: Workbench
     let tab: Tab
@@ -256,8 +257,8 @@ struct TabButton: View {
     let widths: [Double]
     /// The width of the name leading a split tab you named.
     let label: Double
-    /// The pane whose segment is under the pointer (AppKit's account of it, from `TabMouse`).
-    let hovered: UUID?
+    /// Where the pointer is on the tab (AppKit's account of it, from `TabMouse`).
+    let pointer: TabMouseView.Pointer?
     @State private var draft = ""
     @FocusState private var editing: Bool
 
@@ -273,8 +274,8 @@ struct TabButton: View {
             }
             ForEach(Array(segments.enumerated()), id: \.element.0) { position, segment in
                 TabSegment(workbench: workbench, tab: tab, index: index, pane: segment.0, selected: selected, split: split,
-                           titled: segment.1 > Double(TabStrip.iconSegment) + 0.5, hovering: hovered == segment.0,
-                           separated: position > 0 || label > 0) {
+                           titled: segment.1 > Double(TabStrip.iconSegment) + 0.5, hovering: pointer?.pane == segment.0,
+                           ring: pointer?.pane == segment.0 ? pointer?.ring ?? .off : .off, separated: position > 0 || label > 0) {
                     renameField
                 }
                 .frame(width: CGFloat(segment.1))
@@ -353,6 +354,8 @@ private struct TabSegment<Field: View>: View {
     let split: Bool
     let titled: Bool
     let hovering: Bool
+    /// The pointer on its to-do ring, and the button down there.
+    let ring: TabMouseView.Pointer.Ring
     /// A short line before it: it follows another segment, or the tab's name.
     let separated: Bool
     @ViewBuilder let renameField: () -> Field
@@ -392,9 +395,11 @@ private struct TabSegment<Field: View>: View {
                 }
                 if !tasks.isEmpty {
                     let done = tasks.filter { $0.state == .completed }.count
-                    // Drawn here; its button is in the row's click layer (`TabHit`), where the tab is now.
+                    // Drawn here with a bar button's fills, clicked through `TabMouse` (where the tab is now), as the
+                    // close button is; the keyboard's and VoiceOver's button is `TabHit`'s.
                     ProgressMark(done: done, total: tasks.count)
-                        .frame(width: TabHit.ringSize, height: TabHit.ringSize)
+                        .frame(width: TabMouseView.ringSize, height: TabMouseView.ringSize)
+                        .background(RoundedRectangle(cornerRadius: Look.Radius.small).fill(ringFill))
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
@@ -451,6 +456,15 @@ private struct TabSegment<Field: View>: View {
 
     private var tasks: [TaskItem] { TabHit.tasks(of: pane, in: workbench) }
 
+    /// The ring's fill, as every button of the bars has it (`barButton`).
+    private var ringFill: Color {
+        switch ring {
+        case .off: .clear
+        case .over: Look.Fill.hover
+        case .pressed: Look.Fill.pressed
+        }
+    }
+
     /// This segment's file has unsaved changes.
     private var editedFile: Bool {
         guard case .file(let path) = workbench.pages[pane] else { return false }
@@ -472,8 +486,9 @@ private struct TabSegment<Field: View>: View {
 }
 
 /// Where a tab takes its clicks and drags (`TabCells` lays these out under the tabs' pictures, at the tabs'
-/// places at once): AppKit's `TabMouse`, which knows the tab's segments. `make perf`'s closing check clicks
-/// every part of every tab, and the split check every segment and its close button.
+/// places at once): AppKit's `TabMouse`, which knows the tab's segments and their to-do rings. `make perf`'s
+/// closing check clicks every part of every tab, the split check every segment and its close button, and the
+/// chrome check the ring.
 private struct TabHit: View {
     let workbench: Workbench
     let tab: Tab
@@ -482,11 +497,8 @@ private struct TabHit: View {
     /// The workspace's only tab: closing it closes the workspace and goes Home, which its close button says.
     let last: Bool
     let slots: [TabMouseView.Slot]
-    let hover: (UUID?) -> Void
-    @State private var showingTasks: UUID?
-
-    /// The to-do ring's size, drawn by the segment, clicked here.
-    static let ringSize: CGFloat = 18
+    let hover: (TabMouseView.Pointer?) -> Void
+    @State private var handle = TabMouseHandle()
 
     /// The to-do list of a pane's Claude, when it keeps one.
     static func tasks(of pane: UUID, in workbench: Workbench) -> [TaskItem] {
@@ -494,25 +506,25 @@ private struct TabHit: View {
         return workbench.monitor.details[session.id]?.tasks ?? []
     }
 
+    /// How many of a pane's to-dos are done, of how many.
+    private func progress(of pane: UUID) -> (done: Int, total: Int) {
+        let tasks = Self.tasks(of: pane, in: workbench)
+        return (tasks.filter { $0.state == .completed }.count, tasks.count)
+    }
+
     var body: some View {
         mouse
-            // The to-do rings' buttons, where the segments draw the rings: before each one's close button.
+            // The keyboard's and VoiceOver's way to each to-do ring, where the segment draws it: a button that
+            // does what a click on the ring does. The pointer never reaches it; `TabMouseView` takes the click.
             .overlay(alignment: .leading) {
-                ForEach(slots.filter(\.titled), id: \.pane) { slot in
-                    let tasks = Self.tasks(of: slot.pane, in: workbench)
-                    if !tasks.isEmpty {
-                        let done = tasks.filter { $0.state == .completed }.count
-                        Color.clear
-                            .frame(width: Self.ringSize, height: Self.ringSize)
-                            .barButton("tab.todo", label: String(localized: "\(done) of \(tasks.count) to-dos done"),
-                                       help: String(localized: "To-do list: \(done) of \(tasks.count) done"), radius: Look.Radius.small) {
-                                showingTasks = showingTasks == slot.pane ? nil : slot.pane
-                            }
-                            .popover(isPresented: Binding(get: { showingTasks == slot.pane }, set: { if !$0 { showingTasks = nil } }), arrowEdge: .bottom) {
-                                TaskList(tasks: tasks)
-                            }
-                            .offset(x: slot.minX + slot.width - Look.Space.xs - TabMouseView.closeSize - Look.Space.s - Self.ringSize)
-                    }
+                ForEach(slots.filter(\.ringed), id: \.pane) { slot in
+                    let progress = progress(of: slot.pane)
+                    Button { handle.view?.toggleTasks(of: slot.pane) } label: { Color.clear }
+                        .buttonStyle(.plain)
+                        .frame(width: TabMouseView.ringSize, height: TabMouseView.ringSize)
+                        .allowsHitTesting(false)
+                        .accessibilityLabel(String(localized: "\(progress.done) of \(progress.total) to-dos done"))
+                        .offset(x: TabMouseView.ringMinX(slot))
                 }
             }
     }
@@ -534,10 +546,30 @@ private struct TabHit: View {
                  },
                  menu: { pane in TabMenu.make(workbench: workbench, tab: tab, pane: pane) },
                  title: { pane in tab.tree.panes.count > 1 ? workbench.name(ofLeaf: pane) : workbench.title(of: tab) },
-                 // One account of the pointer, AppKit's (in any window, key or not): the close button is drawn
-                 // where a click closes, and nowhere else.
+                 ringHelp: { pane in
+                     let progress = progress(of: pane)
+                     return String(localized: "To-do list: \(progress.done) of \(progress.total) done")
+                 },
+                 taskList: { pane in
+                     let list = NSHostingController(rootView: PaneTaskList(workbench: workbench, pane: pane))
+                     list.sizingOptions = [.preferredContentSize]
+                     return list
+                 },
+                 handle: handle,
+                 // One account of the pointer, AppKit's (in any window, key or not): the close button and the
+                 // ring's fill are drawn where a click closes the pane or opens the list, and nowhere else.
                  hover: hover)
             .accessibilityHidden(true)
+    }
+}
+
+/// A pane's to-do list in its ring's popover, kept current as its Claude works through it.
+private struct PaneTaskList: View {
+    let workbench: Workbench
+    let pane: UUID
+
+    var body: some View {
+        TaskList(tasks: TabHit.tasks(of: pane, in: workbench))
     }
 }
 
@@ -616,7 +648,8 @@ enum TabMenu {
 
 /// The mouse on a tab, in AppKit: chosen on mouse down (the segment's pane given the keyboard), renamed on
 /// a second click, a pane or the tab closed by its close button or a middle click, dragged after a few
-/// points of movement (`TabDragging`), its menu on a right click.
+/// points of movement (`TabDragging`), its menu on a right click, a pane's to-do list opened and closed
+/// by its ring.
 private struct TabMouse: NSViewRepresentable {
     let tab: UUID
     let last: Bool
@@ -631,7 +664,10 @@ private struct TabMouse: NSViewRepresentable {
     let rename: () -> Void
     let menu: (UUID) -> NSMenu
     let title: (UUID) -> String
-    let hover: (UUID?) -> Void
+    let ringHelp: (UUID) -> String
+    let taskList: (UUID) -> NSViewController
+    let handle: TabMouseHandle
+    let hover: (TabMouseView.Pointer?) -> Void
 
     func makeNSView(context: Context) -> TabMouseView { TabMouseView() }
 
@@ -648,28 +684,50 @@ private struct TabMouse: NSViewRepresentable {
         view.onRename = rename
         view.makeMenu = menu
         view.title = title
+        view.ringHelp = ringHelp
+        view.makeTaskList = taskList
         view.isSelected = selected
         view.onHover = hover
+        handle.view = view
     }
 }
 
-final class TabMouseView: NSView, NSViewToolTipOwner {
-    /// One pane's segment: where it is across the tab, and whether it shows its title (and so its close
-    /// button) or only its icon.
+/// A tab's AppKit view, reachable from the SwiftUI buttons that stand in for it with the keyboard and VoiceOver.
+@MainActor
+final class TabMouseHandle {
+    weak var view: TabMouseView?
+}
+
+final class TabMouseView: NSView, NSViewToolTipOwner, NSPopoverDelegate {
+    /// One pane's segment: where it is across the tab, whether it shows its title (and so its close
+    /// button) or only its icon, and whether it shows its Claude's to-do ring.
     struct Slot: Equatable {
         let pane: UUID
         let minX: CGFloat
         let width: CGFloat
         let titled: Bool
+        let ringed: Bool
     }
 
-    /// The segments of a tab's panes, after the name leading it.
-    static func slots(panes: [UUID], widths: [Double], label: Double) -> [Slot] {
+    /// The segments of a tab's panes, after the name leading it. `ringed`: the pane's Claude keeps a to-do
+    /// list (a titled segment shows its ring).
+    static func slots(panes: [UUID], widths: [Double], label: Double, ringed: (UUID) -> Bool) -> [Slot] {
         var x = CGFloat(label)
         return zip(panes, widths).map { pane, width in
             defer { x += CGFloat(width) }
-            return Slot(pane: pane, minX: x, width: CGFloat(width), titled: width > Double(TabStrip.iconSegment) + 0.5)
+            let titled = width > Double(TabStrip.iconSegment) + 0.5
+            return Slot(pane: pane, minX: x, width: CGFloat(width), titled: titled, ringed: titled && ringed(pane))
         }
+    }
+
+    /// Where the pointer is on the tab, as the segments draw it.
+    struct Pointer: Equatable {
+        let pane: UUID
+        var ring = Ring.off
+
+        /// The pointer on the segment's to-do ring (`over`), and the button down there (`pressed`), as a
+        /// bar button's fills show them.
+        enum Ring { case off, over, pressed }
     }
 
     var tab = UUID()
@@ -682,6 +740,8 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
             guard slots != oldValue else { return }
             needsLayout = true
             hoverFromPointer()
+            // The list goes with its ring (its Claude's list emptied, or the segment too narrow to show it).
+            if let shown = tasksShown, slots.first(where: { $0.pane == shown.pane })?.ringed != true { shown.popover.close() }
         }
     }
     /// The tab's pane with the keyboard: its segment shows its close button on the selected tab.
@@ -693,18 +753,21 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
     var onRename: () -> Void = {}
     var makeMenu: (UUID) -> NSMenu = { _ in NSMenu() }
     var title: (UUID) -> String = { _ in "" }
+    /// A to-do ring's tooltip, and its list, for a pane.
+    var ringHelp: (UUID) -> String = { _ in "" }
+    var makeTaskList: (UUID) -> NSViewController = { _ in NSViewController() }
     var shownTab: () -> UUID? = { nil }
     var onShow: (UUID) -> Void = { _ in }
     var isSelected = false
-    var onHover: (UUID?) -> Void = { _ in }
-    /// The pane whose segment the pointer is on. Told after the turn: it can change while SwiftUI is laying
-    /// the row out (new segments, a new frame), when its state must not be changed.
-    private var hoveredPane: UUID? {
+    var onHover: (Pointer?) -> Void = { _ in }
+    /// Where the pointer is on the tab. Told after the turn: it can change while SwiftUI is laying the row
+    /// out (new segments, a new frame), when its state must not be changed.
+    private var pointer: Pointer? {
         didSet {
-            guard hoveredPane != oldValue else { return }
+            guard pointer != oldValue else { return }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
-                self.onHover(self.hoveredPane)
+                self.onHover(self.pointer)
             }
         }
     }
@@ -713,13 +776,32 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
     /// The tab shown before this one was pressed: a drag goes back to it, so the tab can be dropped
     /// beside its panes.
     private var shownBefore: UUID?
+    /// The pane whose to-do ring the button went down on, and whether its list was up then: the click
+    /// closes it if so, else opens it, when the button comes up over the ring (as a push button acts).
+    private var ringPress: (pane: UUID, closes: Bool)?
+    /// The to-do list on show, and whose. Set when it opens, let go the moment it starts to close
+    /// (`popoverWillClose`): a press on the ring while it closes opens another, which nothing of the
+    /// closing one can take down.
+    private var tasksShown: (pane: UUID, popover: NSPopover)?
+    /// The press that closed the list, when one did: a list closes as the button goes down anywhere
+    /// outside it, its own ring too, and that press has then done what it does.
+    private var closedBy: (pane: UUID, at: TimeInterval)?
     /// What each tooltip rectangle is for.
-    private var tips: [NSView.ToolTipTag: (pane: UUID, close: Bool)] = [:]
+    private var tips: [NSView.ToolTipTag: (pane: UUID, part: Part)] = [:]
+
+    private enum Part { case title, ring, close }
 
     /// The close button, drawn by a segment at its trailing end, and its reach: the button and the
     /// segment's padding after it, the row's full height.
     static let closeSize: CGFloat = 20
     static let closeReach: CGFloat = 30
+    /// The to-do ring's button, drawn by a segment before its close button.
+    static let ringSize: CGFloat = 18
+
+    /// Where a segment's ring starts across the tab: before its close button and the room between them.
+    static func ringMinX(_ slot: Slot) -> CGFloat {
+        slot.minX + slot.width - Look.Space.xs - closeSize - Look.Space.s - ringSize
+    }
 
     private func slot(at point: NSPoint) -> Slot? {
         slots.first { point.x >= $0.minX && point.x < $0.minX + $0.width } ?? (slots.count == 1 ? slots.first : nil)
@@ -730,10 +812,21 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
         return NSRect(x: slot.minX + slot.width - Self.closeReach, y: 0, width: Self.closeReach, height: bounds.height)
     }
 
+    /// The ring's button, as a bar button's: the ring and the room round it, across the middle of the row.
+    private func ringRect(_ slot: Slot) -> NSRect? {
+        guard slot.ringed else { return nil }
+        return NSRect(x: Self.ringMinX(slot), y: bounds.midY - Self.ringSize / 2, width: Self.ringSize, height: Self.ringSize)
+    }
+
+    /// The segment whose ring is at `point`.
+    private func ring(at point: NSPoint) -> Slot? {
+        slot(at: point).flatMap { ringRect($0)?.contains(point) == true ? $0 : nil }
+    }
+
     /// The close button is drawn on the selected tab's pane with the keyboard (a tab of one pane: the
     /// tab), and on another while the pointer is on it.
     private func showsClose(_ slot: Slot) -> Bool {
-        slot.titled && ((isSelected && (slots.count == 1 || slot.pane == focusedPane)) || hoveredPane == slot.pane)
+        slot.titled && ((isSelected && (slots.count == 1 || slot.pane == focusedPane)) || pointer?.pane == slot.pane)
     }
 
     /// The middle of the close button of the tab's pane with the keyboard (where `DebugPerf` clicks it).
@@ -744,6 +837,11 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
     /// The middle of a pane's close button; nil for a segment showing only its icon.
     func closePoint(of pane: UUID) -> NSPoint? {
         slots.first { $0.pane == pane }.flatMap(closeRect).map { NSPoint(x: $0.midX, y: bounds.midY) }
+    }
+
+    /// A pane's to-do ring's button, where its segment draws the ring; nil for a segment without one.
+    func ringRect(of pane: UUID) -> NSRect? {
+        slots.first { $0.pane == pane }.flatMap(ringRect)
     }
 
     /// A point on a pane's segment that chooses it: its title's middle, or its icon's.
@@ -777,13 +875,22 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
     /// key or not: the tracking is `.activeAlways`, so a first click in a window behind others closes too).
     private func hoverFromPointer() {
         guard let window else { return }
-        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
-        hoveredPane = bounds.contains(point) && !TabDragState.shared.isDragging ? slot(at: point)?.pane : nil
+        follow(convert(window.mouseLocationOutsideOfEventStream, from: nil))
+    }
+
+    /// The pointer at `point`: its segment, and its ring, pressed while the button that went down there is.
+    private func follow(_ point: NSPoint) {
+        guard bounds.contains(point), !TabDragState.shared.isDragging, let slot = slot(at: point) else {
+            pointer = nil
+            return
+        }
+        let onRing = ringRect(slot)?.contains(point) == true
+        pointer = Pointer(pane: slot.pane, ring: !onRing ? .off : ringPress?.pane == slot.pane ? .pressed : .over)
     }
 
     override func mouseEntered(with event: NSEvent) { hoverFromPointer() }
     override func mouseMoved(with event: NSEvent) { hoverFromPointer() }
-    override func mouseExited(with event: NSEvent) { hoveredPane = nil }
+    override func mouseExited(with event: NSEvent) { pointer = nil }
 
     override func setFrameOrigin(_ newOrigin: NSPoint) {
         super.setFrameOrigin(newOrigin)
@@ -797,13 +904,19 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
 
     #if DEBUG
     /// Debug builds (`DebugAnimations`): the tab counts the pointer as on it.
-    var debugIsHovered: Bool { hoveredPane != nil }
+    var debugIsHovered: Bool { pointer != nil }
     #endif
 
     override func mouseDown(with event: NSEvent) {
         downAt = nil
         let point = convert(event.locationInWindow, from: nil)
         let slot = slot(at: point)
+        // A ring is a button of its own: it neither chooses the tab nor starts a drag.
+        if let ringed = ring(at: point) {
+            let closedNow = closedBy.map { $0.pane == ringed.pane && $0.at == event.timestamp } ?? false
+            ringPress = (ringed.pane, closedNow || tasksShown?.pane == ringed.pane)
+            return follow(point)
+        }
         // A close button's reach closes only where the button is drawn; elsewhere the segment is chosen.
         if let slot, showsClose(slot), closeRect(slot)?.contains(point) == true { return onClose(slot.pane) }
         downAt = event.locationInWindow
@@ -819,9 +932,9 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
         onClose(pane)
     }
 
-    /// The tooltips: each segment's title over it, and its close button's over the button. The view answers
-    /// for them itself: AppKit does not keep a tooltip's owner, and a string handed over as one was gone by
-    /// the time the tooltip came up (a crash with the pointer resting on ×).
+    /// The tooltips: each segment's title over it, its ring's over the ring, and its close button's over the
+    /// button. The view answers for them itself: AppKit does not keep a tooltip's owner, and a string handed
+    /// over as one was gone by the time the tooltip came up (a crash with the pointer resting on ×).
     override func layout() {
         super.layout()
         removeAllToolTips()
@@ -829,27 +942,50 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
         for slot in slots {
             let close = closeRect(slot)
             let title = NSRect(x: slot.minX, y: 0, width: slot.width - (close?.width ?? 0), height: bounds.height)
-            tips[addToolTip(title, owner: self, userData: nil)] = (slot.pane, false)
-            if let close { tips[addToolTip(close, owner: self, userData: nil)] = (slot.pane, true) }
+            if let ring = ringRect(slot) {
+                // The title's rectangle round the ring's: before, after, below and above it.
+                for part in [NSRect(x: title.minX, y: 0, width: ring.minX - title.minX, height: title.height),
+                             NSRect(x: ring.maxX, y: 0, width: title.maxX - ring.maxX, height: title.height),
+                             NSRect(x: ring.minX, y: 0, width: ring.width, height: ring.minY),
+                             NSRect(x: ring.minX, y: ring.maxY, width: ring.width, height: title.maxY - ring.maxY)] where part.width > 0 && part.height > 0 {
+                    tips[addToolTip(part, owner: self, userData: nil)] = (slot.pane, .title)
+                }
+                tips[addToolTip(ring, owner: self, userData: nil)] = (slot.pane, .ring)
+            } else {
+                tips[addToolTip(title, owner: self, userData: nil)] = (slot.pane, .title)
+            }
+            if let close { tips[addToolTip(close, owner: self, userData: nil)] = (slot.pane, .close) }
         }
+        // The list points at its ring wherever the ring has gone.
+        if let shown = tasksShown, let ring = ringRect(of: shown.pane) { shown.popover.positioningRect = ring }
     }
 
     func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?) -> String {
         // By the rectangle it was asked for, else by where the pointer is.
-        let tip = tips[tag] ?? slot(at: point).map { ($0.pane, closeRect($0)?.contains(point) == true) }
+        let tip = tips[tag] ?? slot(at: point).map { slot in
+            (slot.pane, ringRect(slot)?.contains(point) == true ? Part.ring : closeRect(slot)?.contains(point) == true ? .close : .title)
+        }
         guard let tip else { return "" }
-        if !tip.close { return index < 8 ? String(localized: "\(title(tip.pane)) (⌘\(index + 1))") : title(tip.pane) }
-        if slots.count > 1 { return String(localized: "Close Pane (⌘W)", comment: "Tooltip of a split tab's segment's close button") }
-        return isLast
-            ? String(localized: "Close Tab (⌥⌘W): the workspace's last tab, so the workspace closes and you go Home", comment: "Tooltip of the close button on a workspace's only tab")
-            : String(localized: "Close Tab (⌥⌘W)")
+        switch tip.part {
+        case .title:
+            return index < 8 ? String(localized: "\(title(tip.pane)) (⌘\(index + 1))") : title(tip.pane)
+        case .ring:
+            return ringHelp(tip.pane)
+        case .close:
+            if slots.count > 1 { return String(localized: "Close Pane (⌘W)", comment: "Tooltip of a split tab's segment's close button") }
+            return isLast
+                ? String(localized: "Close Tab (⌥⌘W): the workspace's last tab, so the workspace closes and you go Home", comment: "Tooltip of the close button on a workspace's only tab")
+                : String(localized: "Close Tab (⌥⌘W)")
+        }
     }
 
-    /// Past a few points the tab is picked up and held (`TabDragging`), the whole tab with all its panes.
+    /// Past a few points the tab is picked up and held (`TabDragging`), the whole tab with all its panes. A
+    /// ring pressed shows itself pressed only while the pointer is over it, as a push button does.
     override func mouseDragged(with event: NSEvent) {
+        if ringPress != nil { return follow(convert(event.locationInWindow, from: nil)) }
         guard let start = downAt, hypot(event.locationInWindow.x - start.x, event.locationInWindow.y - start.y) > 4 else { return }
         downAt = nil
-        hoveredPane = nil
+        pointer = nil
         let before = shownBefore != tab ? shownBefore : nil
         TabDragging.shared.begin(tab: tab, from: self, event: event, grabbedAt: start) { [onShow] in
             if let before { onShow(before) }
@@ -858,11 +994,49 @@ final class TabMouseView: NSView, NSViewToolTipOwner {
 
     override func mouseUp(with event: NSEvent) {
         downAt = nil
+        guard let press = ringPress else { return }
+        ringPress = nil
+        let point = convert(event.locationInWindow, from: nil)
+        follow(point)
+        guard ring(at: point)?.pane == press.pane else { return }
+        if press.closes { tasksShown?.popover.performClose(nil) } else { showTasks(of: press.pane) }
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let pane = slot(at: convert(event.locationInWindow, from: nil))?.pane ?? focusedPane
         onSelect(pane)
         return makeMenu(pane)
+    }
+
+    // MARK: The to-do list
+
+    /// What a click on a pane's ring does, for the keyboard and VoiceOver: its list opened, or closed if up.
+    func toggleTasks(of pane: UUID) {
+        if tasksShown?.pane == pane { tasksShown?.popover.performClose(nil) } else { showTasks(of: pane) }
+    }
+
+    /// A pane's to-do list, under its ring (any other list of the tab closed first).
+    private func showTasks(of pane: UUID) {
+        guard let ring = ringRect(of: pane), window != nil else { return }
+        tasksShown?.popover.close()
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        popover.delegate = self
+        popover.contentViewController = makeTaskList(pane)
+        popover.show(relativeTo: ring, of: self, preferredEdge: .minY)
+        tasksShown = (pane, popover)
+    }
+
+    func popoverWillClose(_ notification: Notification) {
+        guard let shown = tasksShown, notification.object as? NSPopover === shown.popover else { return }
+        tasksShown = nil
+        if let event = NSApp.currentEvent, event.type == .leftMouseDown { closedBy = (shown.pane, event.timestamp) }
+    }
+
+    /// The list goes with its tab.
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if newWindow == nil { tasksShown?.popover.close() }
     }
 }
