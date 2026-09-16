@@ -26,6 +26,17 @@ public final class MeadowView: MTKView {
     public var world: MeadowWorld = .empty {
         didSet { if world != oldValue { stage.show(world); worldChanged = true; wake() } }
     }
+    /// The scenery the meadow holds: its trees, flowers, mushrooms, stones and logs (`MeadowScenery.standard`,
+    /// the Default, until set). Setting another lays it at once (growing only the trees not seen before)
+    /// and ends the meadow's rest, as a change in the world does; blankets keep off its trees and logs.
+    public var scenery: MeadowScenery {
+        get { stage.meadow?.scenery ?? .empty }
+        set {
+            guard newValue != scenery else { return }
+            stage.show(newValue)
+            wake()
+        }
+    }
     public var settings = MeadowSettings() {
         didSet { if settings != oldValue { stage.settings = settings; wake() } }
     }

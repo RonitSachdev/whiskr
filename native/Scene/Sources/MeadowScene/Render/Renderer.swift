@@ -102,7 +102,7 @@ final class Renderer {
         F.camUp = Vec4(simd_normalize(inv.direction(Vec3(0, 1, 0))), 0)
         F.wind = Vec4(stage.windToward.x, stage.windToward.y, stage.gustDrift.x, stage.gustDrift.y)
         F.weather = Vec4(l.windCalm, flash, 0, 0)
-        F.counts = Vec4(Float(stage.clearingCount), Float(stage.treeCount), Float(stage.streamCount), Float(stage.pathCount))
+        F.counts = Vec4(Float(stage.clearingCount), 0, Float(stage.streamCount), Float(stage.pathCount))
         frameBuffers[slot].contents().storeBytes(of: F, as: FrameUniforms.self)
         stage.world.write(to: worldBuffers[slot].contents())
 
@@ -130,6 +130,10 @@ final class Renderer {
         enc.setVertexBuffer(worldBuffers[slot], offset: 0, index: 2)
         enc.setVertexBuffer(gpu.placeholder, offset: 0, index: 4)
         enc.setFragmentBuffer(worldBuffers[slot], offset: 0, index: 2)
+        let map = stage.mode == .meadow ? meadow.groundMap ?? gpu.blankGroundMap : gpu.blankGroundMap
+        enc.setVertexTexture(map, index: 0)
+        enc.setFragmentTexture(map, index: 0)
+        if stage.mode == .meadow, let light = meadow.groundLight { enc.setFragmentTexture(light, index: 1) }
         enc.setFrontFacing(.counterClockwise)
         enc.setDepthStencilState(gpu.depthWrite)
 

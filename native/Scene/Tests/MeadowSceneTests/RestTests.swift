@@ -80,6 +80,22 @@ import simd
         #expect(view.isResting)
     }
 
+    @Test("a new scenery ends the rest as a change in the world does, and it rests again")
+    func sceneryEndsRestCalmly() {
+        let (view, clock) = view(.day, workspaces: 3, working: false)
+        run(view, clock, seconds: Double(MeadowView.restAfter) + 4)
+        #expect(view.isResting)
+        view.scenery = MeadowScenery(things: Array(MeadowScenery.standard.things.dropLast(5)))
+        #expect(!view.isResting)
+        let after = run(view, clock, seconds: 2)
+        #expect(after.allSatisfy { $0 <= 30 }, "\(Set(after))")
+        run(view, clock, seconds: Double(MeadowView.restAfter) + 2)
+        #expect(view.isResting)
+        // The same scenery again is no change.
+        view.scenery = view.scenery
+        #expect(view.isResting)
+    }
+
     @Test("input brings the full rate back at once")
     func inputWakesFully() {
         let (view, clock) = view(.night, workspaces: 1, working: false)

@@ -7,6 +7,9 @@ import Foundation
 public struct Seeded: Sendable {
     private var a: UInt32
     public init(_ seed: UInt32) { a = seed }
+    /// Where the stream stands: `Seeded(state)` goes on exactly as this one does (a tree's seed is the
+    /// state it was grown from).
+    var state: UInt32 { a }
     public mutating func next() -> Double {
         a = a &+ 0x6d2b_79f5
         var t = (a ^ (a >> 15)) &* (1 | a)

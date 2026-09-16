@@ -103,12 +103,12 @@ struct MeadowValidationTests {
     @Test("things outside the meadow are left out and counted, never refused")
     func outside() throws {
         let reading = try read("""
-            { "id": "flower.daisy", "at": [150, 0] }, { "id": "flower.daisy", "at": [106.1, 106.1] },
-            { "id": "flower.daisy", "at": [1e300, 0] }, { "id": "garden.fence", "points": [[0, 0], [151, 0]] },
-            { "id": "flower.daisy", "at": [150.00004, 0] }
+            { "id": "flower.daisy", "at": [160, 0] }, { "id": "flower.daisy", "at": [113.2, 113.2] },
+            { "id": "flower.daisy", "at": [1e300, 0] }, { "id": "garden.fence", "points": [[0, 0], [161, 0]] },
+            { "id": "flower.daisy", "at": [160.00004, 0] }, { "id": "tree.oak", "at": [-119.7776, -93.5806], "seed": 1 }
             """)
         #expect(reading.leftOutside == 3)
-        #expect(reading.document.items.map(\.at) == [MeadowPoint(150, 0), MeadowPoint(150, 0)])
+        #expect(reading.document.items.map(\.at) == [MeadowPoint(160, 0), MeadowPoint(160, 0), MeadowPoint(-119.7776, -93.5806)])
     }
 
     @Test("a field this Whiskr knows with the wrong type is refused, saying where")
@@ -262,7 +262,7 @@ struct MeadowValidationTests {
         let lamp = MeadowItem(asset: "work.lampPost", placement: .at(MeadowPoint(0, 0)))
         #expect(error(MeadowDocument(entries: Array(repeating: .item(lamp), count: 32))) == nil)
         #expect(error(MeadowDocument(entries: Array(repeating: .item(lamp), count: 33))) == .tooManyOfKind(.lamps, count: 33))
-        #expect(error(MeadowDocument(entries: [.item(MeadowItem(asset: "cat.box", placement: .at(MeadowPoint(150.1, 0))))]))
+        #expect(error(MeadowDocument(entries: [.item(MeadowItem(asset: "cat.box", placement: .at(MeadowPoint(160.1, 0))))]))
             == .invalid(at: "items[0].at", .outOfRange))
         #expect(error(MeadowDocument(entries: [.item(MeadowItem(asset: "cat.box", placement: .at(MeadowPoint(1e300, .nan))))]))
             == .invalid(at: "items[0].at", .notFinite))

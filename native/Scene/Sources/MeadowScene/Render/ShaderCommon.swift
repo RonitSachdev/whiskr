@@ -13,7 +13,6 @@ enum ShaderSource {
 using namespace metal;
 
 #define MAX_CLEARINGS 48
-#define MAX_TREES 8
 #define MAX_STREAMS 4
 #define MAX_PATHS 32
 
@@ -24,7 +23,7 @@ struct Frame {
     float4x4 invViewProj;
     float4 eye;          // xyz camera position, w meadow time (kit.ts uTime)
     float4 fog;          // near, far, wind (uWind), night (uNight)
-    float4 counts;       // clearings, trees, streams, trodden path strips
+    float4 counts;       // clearings, unused, streams, trodden path strips
     float4 hemiSky;      // hemisphere light, colour × intensity
     float4 hemiGround;
     float4 keyColor;     // key light, colour × intensity
@@ -46,13 +45,12 @@ struct Frame {
 
 // Each blanket: x, z, radius (eased, as kit.ts uClearings) and the radius of the mown patch round it.
 // Each patch: stripe angle, space index, and in a sidebar's column its flag's half width (0 for none)
-// and how far behind the blanket's middle it stands. Each tree: x, z, reach of its crown.
+// and how far behind the blanket's middle it stands.
 // Each stream: x at z = 0, how far it wanders, its phase, its half width. Each strip of path trodden
 // between a worktree's blanket and its repository's: where it starts and ends (x, z each).
 struct World {
     float4 clearings[MAX_CLEARINGS];
     float4 patches[MAX_CLEARINGS];
-    float4 trees[MAX_TREES];
     float4 streams[MAX_STREAMS];
     float4 paths[MAX_PATHS];
 };
@@ -168,16 +166,23 @@ float mownAt(float2 g, constant Frame& F, constant World& W, thread float& strip
     return mown;
 }
 
+// The ground's map (`GroundMap`), baked from the scenery: painted ground, the trees' shade and lamplight.
+// Bilinear between texel middles; nothing outside it.
+#define GROUND_MAP_REACH \#(GroundMap.reach)
+constexpr sampler groundMapSampler(coord::normalized, address::clamp_to_zero, filter::linear);
+float4 groundMapAt(float2 g, texture2d<float> map) {
+    return map.sample(groundMapSampler, g / (2.0 * GROUND_MAP_REACH) + 0.5, level(0));
+}
+
 // Sunlight reaching the ground: dimmed under clouds passing with the wind and dappled beneath trees.
-float3 shadeAt(float2 g, constant Frame& F, constant World& W) {
+float3 shadeAt(float2 g, constant Frame& F, texture2d<float> map) {
     float t = F.eye.w;
     float2 p = g * 0.03 - F.wind.zw * 0.07;
     float cloud = 1.0 - smoothstep(0.52, 0.7, mNoise(p) * 0.65 + mNoise(p * 2.1 + 7.3) * 0.35);
     float tree = 1.0;
-    // Dapple only matters within a crown's reach (it adds at most 0.385 to the distance there).
-    int n = int(F.counts.y);
-    float nearest = 2.0;
-    for (int i = 0; i < n; i++) nearest = min(nearest, distance(g, W.trees[i].xy) / W.trees[i].z);
+    // How near the nearest crown's middle, as a share of its reach (1 at the reach and beyond). Dapple only
+    // matters within a crown's reach (it adds at most 0.385 to the distance there).
+    float nearest = 1.0 - groundMapAt(g, map).a;
     if (nearest < 1.0) {
         float dapple = (mNoise(g * 0.5 + t * 0.07) * 0.5 + mNoise(g * 1.7 - t * 0.05) * 0.2) * 0.55;
         tree = smoothstep(0.35, 1.0, nearest + dapple);

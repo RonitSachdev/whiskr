@@ -12,8 +12,8 @@ public struct GroundGrid: Equatable, Sendable {
     /// Cells along each side.
     public static let side = 512
     public static let cellCount = side * side
-    /// Half the grid's width, in units: the editable disc's reach.
-    public static let reach = MeadowFormat.reach
+    /// Half the grid's width, in units. Things may stand a little further out (`MeadowFormat.reach`).
+    public static let reach = 150.0
     /// The most paints one meadow lists.
     public static let maxPaints = 16
 

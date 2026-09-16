@@ -131,6 +131,31 @@ private func countingAllocations(_ body: () -> Void) -> Int {
         #expect(n == 0, "\(n) allocations in 240 updates")
     }
 
+    /// A meadow holding as much as it can draw costs a frame nothing either.
+    @Test(.enabled(if: optimized, "allocation counts mean something only in an optimised build"))
+    func fullMeadowAllocatesNothing() {
+        let view = MeadowView(frame: NSRect(x: 0, y: 0, width: 640, height: 400))
+        view.settings = MeadowSettings(timeOfDay: .night)
+        var things: [MeadowScenery.Thing] = []
+        let kinds = ["flower.daisy", "flower.buttercup", "flower.lupin", "flower.poppy", "fungus.flyAgaric", "stone.stone", "stone.mossy"]
+        for i in 0..<MeadowScenery.Limits.trees {
+            let angle = Float(i) * 0.4, out = 30 + Float(i) * 2.2
+            things.append(MeadowScenery.Thing(id: i % 4 == 0 ? "tree.young" : ["tree.oak", "tree.birch", "tree.cherry"][i % 3], x: cos(angle) * out,
+                                              z: sin(angle) * out, seed: UInt32(i)))
+        }
+        while things.count < MeadowScenery.Limits.things - 10 {
+            let k = things.count
+            things.append(MeadowScenery.Thing(id: kinds[k % kinds.count], x: Float(k % 90) - 45, z: Float(k / 90) - 30, turn: Float(k), variant: k % 2))
+        }
+        for k in 0..<10 { things.append(MeadowScenery.Thing(id: "wood.fallenLog", x: Float(k) * 16 - 80, z: -60)) }
+        view.scenery = MeadowScenery(things: things)
+        view.world = Scenes.busy()
+        view.frame(nil, besidePanelWidth: 0, animated: false)
+        view.advance(seconds: 3)
+        let n = countingAllocations { for _ in 0..<240 { view.stage.update(1.0 / 120) } }
+        #expect(n == 0, "\(n) allocations in 240 updates")
+    }
+
     /// Worktrees' stepping-stone paths, a hand-over, a report and a note in flight cost a frame nothing
     /// either.
     @Test(.enabled(if: optimized, "allocation counts mean something only in an optimised build"))

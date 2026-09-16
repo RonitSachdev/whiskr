@@ -17,6 +17,8 @@ Nothing has been released yet. This is what the first release will contain.
   their Claude. Requests ("!"), errors ("×") and finished turns ("✓") read by shape and mark as well as
   colour. Day, night with fireflies, and optional real weather. The meadow can also be shown as a plain
   list.
+- Every one of the meadow's twelve landmark trees dapples the ground beneath it with moving shade; the
+  four farthest, out in the haze, used to stand in unbroken sun.
 - The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset
   where you are (from where real weather found you, or from your time zone; worked out on your Mac and
   never asking), through the polar day and night too. Settings › Meadow shows today's sunrise and

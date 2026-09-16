@@ -30,24 +30,22 @@ struct FrameUniforms {
 }
 
 let MAX_CLEARINGS = 48
-let MAX_TREES = 8
 let MAX_STREAMS = 4
 
 /// Must match `struct World` in ShaderCommon.
 struct WorldUniforms {
     var clearings = [Vec4](repeating: Vec4(0, 0, -100, 0), count: MAX_CLEARINGS)
     var patches = [Vec4](repeating: .zero, count: MAX_CLEARINGS)
-    var trees = [Vec4](repeating: .zero, count: MAX_TREES)
     var streams = [Vec4](repeating: .zero, count: MAX_STREAMS)
     var paths = [Vec4](repeating: .zero, count: MAX_TRODDEN)
-    static var byteCount: Int { (MAX_CLEARINGS * 2 + MAX_TREES + MAX_STREAMS + MAX_TRODDEN) * 16 }
+    static var byteCount: Int { (MAX_CLEARINGS * 2 + MAX_STREAMS + MAX_TRODDEN) * 16 }
     func write(to p: UnsafeMutableRawPointer) {
         var o = p
         func put(_ list: [Vec4]) {
             list.withUnsafeBytes { o.copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
             o += list.count * 16
         }
-        put(clearings); put(patches); put(trees); put(streams); put(paths)
+        put(clearings); put(patches); put(streams); put(paths)
     }
 }
 
@@ -144,6 +142,8 @@ final class GPU {
     let rootKernel: MTLComputePipelineState
     /// Bound where a shader declares a buffer it does not read for this draw.
     let placeholder: MTLBuffer
+    /// Bound where the ground's map (`GroundMap`) would be, with no meadow: nothing painted, shaded or lit.
+    let blankGroundMap: MTLTexture
 
     init(device: MTLDevice, colorFormat: MTLPixelFormat = .bgra8Unorm_srgb, sampleCount: Int = 4) throws {
         self.device = device
@@ -203,6 +203,12 @@ final class GPU {
 
         rootKernel = try device.makeComputePipelineState(function: library.makeFunction(name: "rootKernel")!)
         placeholder = device.makeBuffer(length: 256, options: .storageModeShared)!
+        let blank = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false)
+        blank.usage = .shaderRead
+        blank.storageMode = .shared
+        blankGroundMap = device.makeTexture(descriptor: blank)!
+        blankGroundMap.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: [UInt8](repeating: 0, count: 4), bytesPerRow: 4)
+        blankGroundMap.label = "no ground map"
 
         func depth(_ compare: MTLCompareFunction, _ write: Bool) -> MTLDepthStencilState {
             let d = MTLDepthStencilDescriptor()

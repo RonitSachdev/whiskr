@@ -35,7 +35,8 @@ keeps on disk. For what the app should look and feel like, see [DESIGN.md](DESIG
 | `WhiskrKit` | `native/App/WhiskrKit/Sources/WhiskrKit` | Foundation, COniguruma | Logic with no UI: agent states from hook events, the story of a helper, layout and its saved form, themes and VS Code theme import, the TextMate grammar engine and language registry, EditorConfig, the key table, file icons' mapping, Markdown parser, diffs and their folds and one-change patches, git status and worktrees, the host protocol, fuzzy ranking and Go to's queries, ⌃Tab's order, command marks, links in terminal output, `LegacyMigration` |
 | `TerminalHost` | `…/Sources/TerminalHost` | WhiskrKit | The host server, pseudo-terminals, the client connection, the launcher |
 | `Paw` / `PawTool` | `…/Sources/Paw`, `…/Sources/PawTool` | TerminalHost | The `paw` command-line tool and its `main` |
-| `WhiskrMeadow` | `…/Sources/WhiskrMeadow` | WhiskrKit, MeadowScene | Maps the app's snapshot of workspaces and Claudes to the scene's world |
+| `WhiskrMeadow` | `…/Sources/WhiskrMeadow` | WhiskrKit, MeadowFile, MeadowScene | Maps the app's snapshot of workspaces and Claudes to the scene's world, and a meadow document to the scene's scenery |
+| `MeadowFile` | `…/Sources/MeadowFile` | Foundation | The `.whiskrmeadow` format: the meadow document, the asset catalog, reading with every check a file from anyone needs, migrations, deterministic writing |
 | `MeadowScene` | `native/Scene` | Metal, AppKit | The meadow, cats, props, camera and a small Metal renderer (`MeadowView`); `MeadowDemo` is a standalone viewer |
 | `COniguruma` | `…/Sources/COniguruma` | libc | Oniguruma 6.9.10, vendored unchanged (BSD-2-Clause), the regular expressions TextMate grammars are written for; built optimised in Debug too (`Packages.xcconfig`) |
 | `WhiskrHost` (tool target) | `native/App/WhiskrHost` | TerminalHost | The host's `main` |
@@ -262,6 +263,7 @@ Code does.
 | Session host | `app.whiskr.Whiskr.host` (executable `whiskr-host`) |
 | `paw` | `app.whiskr.Whiskr.paw` |
 | Theme file type | `app.whiskr.theme` (`.whiskrtheme`) |
+| Meadow file type | `app.whiskr.meadow` (`.whiskrmeadow`, conforms to `public.json`) |
 | Pane environment | `WHISKR_PANE`, `WHISKR_BIN`, `WHISKR_HOOKS`, `WHISKR_ZDOTDIR`, `WHISKR_XDG_DATA_DIRS`, `PAW_ID`, `PAW_SOCKET`, `PAW_PARENT`, `PAW_NAME`, `PAW_WORKTREES`, `PAW_TASK` (a `paw run` task on its way to Claude); `TERM_PROGRAM=Whiskr` |
 
 ## git
@@ -312,6 +314,68 @@ folders) once:
 
 Nothing is ever deleted except the old copies of entries already moved. Isolated test runs never migrate.
 
+## The meadow file
+
+A meadow's scenery is a `.whiskrmeadow` file: UTF-8 JSON, data only. It can never run code, name a path,
+open a URL or reach the network, and it holds no image (previews are rendered from the data). `MeadowFile`
+reads and writes it and depends on nothing but Foundation, so the same checks can run anywhere a meadow
+file is looked at.
+
+```json
+{
+  "author": "", "base": "meadow", "catalog": 1, "description": "", "formatMinor": 0,
+  "items": [
+    { "at": [12.5, -30.25], "id": "tree.oak", "seed": 3141592653, "size": [1.04, 0.97, 1], "tilt": [0.02, -0.05], "turn": 1.5708 },
+    { "at": [3.1, 7.4], "id": "flower.daisy", "variant": 1 },
+    { "id": "garden.fence", "params": { "gate": 1 }, "points": [[30, 5], [32.5, 5]] }
+  ],
+  "ground": { "cells": 512, "paints": ["ground.path"], "reach": 150, "runs": [0, 120000, 1, 14, 0, 142130] },
+  "name": "Orchard Study", "needsCatalog": 1, "whiskrMeadow": 1, "writtenBy": "1.4.0"
+}
+```
+
+- **Items.** `id` is a catalog id (`tree.oak`, `cat.box`: a lower-case namespace and dot-separated names,
+  at most 64 characters). `at` is (x, z) in units (1 unit ≈ 13 cm; the cat is 2.3 tall), within 160 of the
+  meadow's middle; height is never stored, things stand on the land. `turn` is radians about up; `size`
+  (x, y, z) and `tilt` (about x, about z) only for things that grow or are found, within the asset's
+  ranges; `seed` (32-bit) for things grown from one, which grows the same tree every time; `variant` for
+  things with several shapes; `points` (2–64) for runs such as fences; `params` for an asset's options,
+  each with a type, a range or set of choices and a default. Fields at their default are left out.
+- **Ground.** A 512 × 512 grid over x, z ∈ [−150, 150], each cell 0 (the meadow's own long grass) or a
+  1-based index into `paints`, run-length encoded row by row as `[value, count, …]`, the counts adding up to
+  262,144: plain integers, no compression library.
+- **Bytes.** Keys sorted, two-space indent, numbers rounded to 4 decimals with no exponent: the same meadow
+  is always the same bytes.
+- **Versions,** each with one job. `whiskrMeadow`, the format major and the file's magic key, changes only
+  for something an older Whiskr could misread; a newer major is refused with nothing changed. `formatMinor`
+  counts additive changes. `catalog` is the newest catalog the writing Whiskr knew; `needsCatalog` the
+  oldest that holds everything the file uses. `writtenBy` is the Whiskr that last saved it, for people only.
+  An older file is brought up to date in memory by a chain of pure migrations (`MeadowMigration`); opening
+  never rewrites it.
+- **What a newer Whiskr wrote is kept.** Unknown things (kept whole and not drawn), unknown fields,
+  parameters, choices, shapes, sections and paints are written back exactly as they were read.
+- **The catalog** (`MeadowCatalog`) says what each id is (living, found, made or paint), its ranges,
+  options, the catalog it came in and the caps it counts toward. An id once released means that thing for
+  ever; renames go through aliases; retiring an asset takes it out of the tray only.
+- **Reading a file from anyone:** at most 4 MiB, nesting 16 deep and 200,000 values; text sanitised and
+  limited (name 60, author 40, description 280 characters); numbers finite; things outside the meadow left
+  out and counted; at most 5,000 things (48 trees, 120 tall things, 32 lamps, 600 fence posts, 400 other
+  made things), refused rather than cut when over.
+- **Locks.** The fixtures in `MeadowFileTests/Fixtures/MeadowFiles` (one per format version and catalog,
+  the Default among them) are never edited once released; their digests are checked. The Default's file is
+  what the scene generates, byte for byte (`WhiskrMeadowTests`).
+
+**In the scene.** `MeadowScenery` is a meadow's things as plain values, set on `MeadowView.scenery`;
+`WhiskrMeadow` maps a document to it (a thing the scene cannot draw yet stays in the document and out of
+the picture). The **Default** (`StandardMeadow`) is generated by the growth code the meadow always had,
+from the same stream in the same order, each thing written with the lean, turn and size it drew and each
+tree with the stream's state it grew from; so the Default draws exactly what the meadow always drew, and
+the butterflies, fireflies and rain go on from where its growth leaves the stream, whatever the meadow
+holds. A scenery is laid when it is given, never per frame: trees already grown and meshes already made
+are kept. Everything small is drawn rooted and instanced (it shrinks where a blanket lies and sinks where
+the land is levelled); trees and logs are one draw each and fade when they stand in front of a cat. The
+scene draws at most what a file may hold (`MeadowScenery.Limits`, the catalog's caps).
+
 ## Rendering the meadow
 
 `MeadowScene` is its own small Metal renderer. It is not RealityKit or SceneKit: a measured spike showed
@@ -323,6 +387,12 @@ stop drawing when nothing moves.
   are baked into vertex colour and roughness, so a prop is one draw.
 - Plants are animated in a compute pass, once per plant per frame. Grass is drawn before the ground, so
   hidden ground pixels are rejected early.
+- The ground's map (`GroundMap`) is baked on the CPU when the scenery is laid and read with one texture
+  sample wherever the ground, grass, water or a rooted thing needs it, instead of a loop over trees per
+  pixel: an RGBA8 texture whose texels are the meadow file's paint cells (300/512 units), running 80 cells
+  past the paint grid each side so the shade of the largest tree at the meadow's edge fits; R, G and B are
+  kept for painted path, lawn and soil and A holds the trees' shade (1 under a crown's middle, 0 at its
+  reach), dappled per pixel as before. Beside it an R8 texture is kept for lamplight on the ground.
 - Frames come from a `CAMetalDisplayLink`, at the rate the display presents. The render scale adapts to
   hold the frame budget. The scene's per-frame update allocates nothing, and a test checks this.
 - After 5 seconds with nothing new the meadow rests at 12 Hz, its own time slowed to 0.4 so each frame

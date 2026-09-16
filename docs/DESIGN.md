@@ -314,6 +314,27 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
   the column's grass grows in front of a view looking along it from far down.
 - **No streams or rivers.** That picture is kept for a second machine, which this app does not have.
 
+### The meadow's scenery
+
+The trees, plants, stones and things standing in the meadow are its **scenery**: a meadow document
+(`.whiskrmeadow`), which people will be able to edit and share. The **Default** is the meadow as it has
+always been, written out as such a document; it is never changed (editing it makes a copy). Every grown
+tree dapples the ground beneath it (a young one is too small to). These rules govern everything a meadow
+can hold (its catalog):
+
+- **Made things are cat-sized; living things are their real size.** A bench is one a cat could sit on; an
+  oak is an oak. Made things never scale; living things vary within a range.
+- **Nothing in the scenery may look like a state or a workspace:** no extra blankets or rugs, flags,
+  lanterns, bubbles, rings or cats, and no loose copy of a working cat's props (book, laptop, magnifier,
+  lever machine, papers) lying in the grass. Books on a shelf and paper on a board are furniture.
+- **Colours of made things come from each item's own small clay palette** (4–8 swatches), never a free
+  picker; no palette holds the state colours (vermillion, finished blue) or the alert red.
+- **The picnic ground is kept for the workspaces.** Big things cannot be put where blankets lie; small
+  rooted things may, and make way when a blanket comes. Blankets are never placed by hand and never move
+  for scenery.
+- Everything above still holds: the same clay, plants modelled on real ones in clumps (no shrubs, no
+  dandelion clocks), props that are real objects, nothing written in the scene, no streams.
+
 ### Motion
 
 - Every cute reaction (a cat arriving or trotting off, a butterfly landing on a napper, a glance at the

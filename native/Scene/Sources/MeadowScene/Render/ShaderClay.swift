@@ -58,14 +58,15 @@ float3 normalTransform(float4x4 m, float3 n) {
 struct RootInfo { float4 wind; float4 light; };   // wind.xy, wind.z shrink, wind.w sink; light.rgb, light.w glow
 
 kernel void rootKernel(uint i [[thread_position_in_grid]], constant uint& count [[buffer(5)]], device const Instance* inst [[buffer(3)]],
-                       device RootInfo* out [[buffer(4)]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]]) {
+                       device RootInfo* out [[buffer(4)]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]],
+                       texture2d<float> groundMap [[texture(0)]]) {
     if (i >= count) return;
     float3 base = (inst[i].model * float4(0, 0, 0, 1)).xyz;
     float2 root = base.xz;
     float open = openGround(root, F, W);
     // w: how far it goes down with the land where that is levelled for blankets.
     out[i].wind = float4(windAt(root, F) * inst[i].extra.x, smoothstep(0.25, 0.95, open), (base.y - LAND_GROUND) * levelAt(root, F, W));
-    out[i].light = float4(shadeAt(root, F, W), picnicLight2(root, F, W) * 0.8);
+    out[i].light = float4(shadeAt(root, F, groundMap), picnicLight2(root, F, W) * 0.8);
 }
 
 ClayOut clayCommon(float3 p, float3 n, float4 c, Instance I, RootInfo R, constant Frame& F) {
@@ -111,7 +112,7 @@ vertex ClayOut skinVertex(uint vid [[vertex_id]], uint iid [[instance_id]], devi
     return clayCommon(float3(v[vid].p), float3(v[vid].n), float4(1, 1, 1, 0.6), inst[iid], RootInfo{ float4(0, 0, 1, 0), float4(1, 1, 1, 0) }, F);
 }
 
-float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W) {
+float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W, texture2d<float> groundMap) {
     uint flags = in.flags;
     float3 diffuse = in.color;
     if ((flags & LIT_GINGHAM) != 0u) {
@@ -137,7 +138,7 @@ float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W) {
     float3 N = normalize(in.normal);
     if ((flags & LIT_TWOSIDED) != 0u && !front) N = -N;
     float3 V = normalize(F.eye.xyz - in.world);
-    if ((flags & LIT_SHADED) != 0u) diffuse *= shadeAt(in.world.xz, F, W);
+    if ((flags & LIT_SHADED) != 0u) diffuse *= shadeAt(in.world.xz, F, groundMap);
     diffuse *= in.light;
     float3 c = (flags & LIT_LAMBERT) != 0u ? diffuse * lambertIrradiance(N, F) : standardLight(N, V, diffuse, in.rough, F);
     c += in.emissive;
@@ -158,8 +159,9 @@ float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W) {
     return float4(mix(c, F.horizon.rgb, in.fog), in.opacity);
 }
 
-fragment float4 clayFragment(ClayOut in [[stage_in]], bool front [[front_facing]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]]) {
-    return shadeClay(in, front, F, W);
+fragment float4 clayFragment(ClayOut in [[stage_in]], bool front [[front_facing]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]],
+                             texture2d<float> groundMap [[texture(0)]]) {
+    return shadeClay(in, front, F, W, groundMap);
 }
 
 // ---------- blob shadow (props.ts shadowTexture: a canvas gradient read as linear) ----------

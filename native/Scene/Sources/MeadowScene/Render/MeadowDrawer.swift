@@ -2,7 +2,7 @@ import Foundation
 @preconcurrency import Metal
 import simd
 
-// Draws the meadow: ground, grass, flowers, mushrooms, stones, saplings, trees, the log, hills, clouds,
+// Draws the meadow: ground, grass, flowers, mushrooms, stones, young trees, trees, logs, hills, clouds,
 // the sky's moon and stars, streams, butterflies and bees, seeds, rain and snow, fireflies, and whatever
 // stands in the way faded to see-through (screens.ts: depth first, then colour on its nearest surface).
 
@@ -22,6 +22,13 @@ final class MeadowDrawer {
     private var roots: (buffer: MTLBuffer, offset: Int)?
     private var trees: [Mesh] = []
     private var log: Mesh!
+    /// The scenery the plant and tree meshes and the ground's map were made from (`Meadow.sceneryVersion`),
+    /// and each shape's mesh, kept while the scenery uses it.
+    private var sceneryBuilt = -1
+    private var meshes: [ShapeKey: Mesh] = [:]
+    /// The ground's map (`GroundMap`) on the GPU: what is painted and shaded, and the lamplight.
+    private(set) var groundMap: MTLTexture?
+    private(set) var groundLight: MTLTexture?
     private var sphere: Mesh!, cloudBall: Mesh!, moon: Mesh!, drop: Mesh!, seed: Mesh!
     private var butterflyBody: Mesh!, butterflyWing: Mesh!, beeBody: Mesh!, beeWing: Mesh!
     private var stars: MTLBuffer!
@@ -90,10 +97,7 @@ final class MeadowDrawer {
         tufts = gpu.buffer(m.grass.tufts, label: "tufts")
         chunks = m.grass.chunks
 
-        plantMeshes = m.plants.map { gpu.mesh($0.shape.roughness.isEmpty ? $0.shape.roughened(0.8) : $0.shape, label: "plant") }
-        rootedDraws.reserveCapacity(m.beds.count * 2)
-        trees = m.treeShapes.map { gpu.mesh($0.shape, label: "tree") }
-        log = gpu.mesh(m.logShape, label: "log")
+        log = gpu.mesh(SceneryCatalog.fallenLog, label: "log")
         sphere = gpu.mesh(Shapes.sphere(1, 32, 16).colored(0xffffff, roughness: 1), label: "hill")
         cloudBall = gpu.mesh(Shapes.sphere(1, 20, 14).colored(0xffffff, roughness: 1), label: "cloud")
         moon = gpu.mesh(Shapes.sphere(16, 24, 16).colored(0xfff6d8, roughness: 1), label: "moon")
@@ -104,6 +108,43 @@ final class MeadowDrawer {
         beeBody = gpu.mesh(Critters.beeBody, label: "bee")
         beeWing = gpu.mesh(Critters.beeWing.colored(0xffffff, roughness: 1), label: "bee wing")
         stars = gpu.buffer(m.stars.flatMap { [$0.x, $0.y, $0.z] }, label: "stars")
+    }
+
+    /// Everything drawn from the meadow's scenery, made again when the scenery changes: a mesh for each
+    /// new shape (those still used are kept) and the ground's map.
+    private func buildScenery(_ m: Meadow) {
+        sceneryBuilt = m.sceneryVersion
+        var kept: [ShapeKey: Mesh] = [:]
+        func mesh(_ key: ShapeKey, _ shape: @autoclosure () -> Geometry, _ label: String) -> Mesh {
+            let made = meshes[key] ?? kept[key] ?? gpu.mesh(shape(), label: label)
+            kept[key] = made
+            return made
+        }
+        plantMeshes = zip(m.plantKeys, m.plants).map { key, plant in
+            mesh(key, plant.shape.roughness.isEmpty ? plant.shape.roughened(0.8) : plant.shape, "plant")
+        }
+        rootedDraws.reserveCapacity(m.beds.count * 2)
+        trees = m.treeShapes.map { mesh($0.key, $0.shape, "tree") }
+        meshes = kept
+
+        let side = GroundMap.side
+        func texture(_ format: MTLPixelFormat, _ bytes: [UInt8], _ perTexel: Int, _ label: String) -> MTLTexture? {
+            let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: side, height: side, mipmapped: false)
+            d.usage = .shaderRead
+            d.storageMode = .shared
+            guard let t = gpu.device.makeTexture(descriptor: d) else { return nil }
+            t.replace(region: MTLRegionMake2D(0, 0, side, side), mipmapLevel: 0, withBytes: bytes, bytesPerRow: side * perTexel)
+            t.label = label
+            return t
+        }
+        groundMap = texture(.rgba8Unorm, m.groundMap.surface, 4, "ground map")
+        groundLight = texture(.r8Unorm, m.groundMap.light, 1, "ground light")
+    }
+
+    /// Makes what is missing or out of date before a frame is drawn from `m`.
+    private func ready(_ m: Meadow) {
+        if !built { build(m) }
+        if sceneryBuilt != m.sceneryVersion { buildScenery(m) }
     }
 
     private func draw(_ mesh: Mesh, _ instances: Int, _ enc: MTLRenderCommandEncoder) {
@@ -160,7 +201,7 @@ final class MeadowDrawer {
 
     func encodeOpaque(_ stage: Stage, frame F: FrameUniforms, arena: Arena, enc: MTLRenderCommandEncoder) {
         guard let m = stage.meadow else { return }
-        if !built { build(m) }
+        ready(m)
         frustum(F.viewProj)
         let eye = stage.camera.eye
 
@@ -169,13 +210,13 @@ final class MeadowDrawer {
         enc.setCullMode(.back)
         enc.setDepthStencilState(gpu.depthWrite)
         if !debugSkip.contains("plants") { drawRooted(faded: false, enc) }
-        // Trees and the log, unless faded.
+        // Trees and logs, unless faded.
         for (i, tree) in m.treeShapes.enumerated() where m.screens[tree.screen].fade >= 0.999 {
-            one(arena, ClayInstance(.translation(m.treeAt(i, stage.world.clearings, stage.clearingCount)), lit: []), enc)
+            one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount), lit: []), enc)
             draw(trees[i], 1, enc)
         }
-        if m.screens[m.logScreen].fade >= 0.999 {
-            one(arena, ClayInstance(m.logMatrix, lit: .shaded), enc)
+        for lying in m.logs where m.screens[lying.screen].fade >= 0.999 {
+            one(arena, ClayInstance(lying.matrix, lit: .shaded), enc)
             draw(log, 1, enc)
         }
         // Hills, far off.
@@ -217,7 +258,7 @@ final class MeadowDrawer {
     /// Encoded before the render pass.
     func prepare(_ stage: Stage, arena: Arena, commandBuffer: MTLCommandBuffer, frame: MTLBuffer, world: MTLBuffer) {
         guard let m = stage.meadow else { return }
-        if !built { build(m) }
+        ready(m)
         rootedDraws.removeAll(keepingCapacity: true)
         var total = 0
         for bed in m.beds { total += bed.matrices.count }
@@ -247,6 +288,7 @@ final class MeadowDrawer {
         compute.setComputePipelineState(gpu.rootKernel)
         compute.setBuffer(frame, offset: 0, index: 0)
         compute.setBuffer(world, offset: 0, index: 2)
+        compute.setTexture(groundMap ?? gpu.blankGroundMap, index: 0)
         compute.setBuffer(inst.buffer, offset: inst.offset, index: 3)
         compute.setBuffer(info.buffer, offset: info.offset, index: 4)
         var count = UInt32(n)
@@ -426,11 +468,11 @@ final class MeadowDrawer {
             enc.setRenderPipelineState(pass == 0 ? gpu.clayDepth : gpu.clayFade)
             enc.setDepthStencilState(pass == 0 ? gpu.depthWrite : gpu.depthEqual)
             for (i, tree) in m.treeShapes.enumerated() where m.screens[tree.screen].fade < 0.999 {
-                one(arena, ClayInstance(.translation(m.treeAt(i, stage.world.clearings, stage.clearingCount)), tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), lit: []), enc)
+                one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount), tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), lit: []), enc)
                 draw(trees[i], 1, enc)
             }
-            if m.screens[m.logScreen].fade < 0.999 {
-                one(arena, ClayInstance(m.logMatrix, tint: Vec4(1, 1, 1, m.screens[m.logScreen].fade), lit: .shaded), enc)
+            for lying in m.logs where m.screens[lying.screen].fade < 0.999 {
+                one(arena, ClayInstance(lying.matrix, tint: Vec4(1, 1, 1, m.screens[lying.screen].fade), lit: .shaded), enc)
                 draw(log, 1, enc)
             }
             drawRooted(faded: true, enc)

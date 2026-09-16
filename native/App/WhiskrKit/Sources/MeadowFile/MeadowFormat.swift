@@ -52,8 +52,10 @@ public enum MeadowFormat {
     /// Nesting and value counts the parser stops at.
     public static let limits = MeadowJSON.Limits(depth: 16, values: 200_000)
 
-    /// The editable disc's radius around the meadow's middle, in units. Things outside it are left out.
-    public static let reach = 150.0
+    /// The meadow's disc: how far from its middle a thing may stand, in units. Things outside it are left
+    /// out. It reaches past the painted ground (`GroundGrid.reach`) to hold the Default's farthest tree,
+    /// which has stood 152 units out since before there were meadow files.
+    public static let reach = 160.0
     /// Things in all, including those from a newer Whiskr.
     public static let maxItems = 5_000
     /// Things from a newer Whiskr.

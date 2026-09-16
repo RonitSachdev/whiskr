@@ -12,7 +12,8 @@ import PackageDescription
 // agents through the session host); `PawTool` is its `main`, which the app embeds.
 //
 // `WhiskrMeadow` is the one piece that knows the meadow scene (`native/Scene`): it turns the
-// app's model into the scene's world, so `WhiskrKit` itself stays free of Metal and AppKit.
+// app's model into the scene's world, and a meadow file into the scene's scenery, so `WhiskrKit` and
+// `MeadowFile` stay free of Metal and AppKit.
 //
 // `MeadowFile` is the `.whiskrmeadow` format: the meadow document, the asset catalog, reading (with the
 // checks a file from anyone needs), migrations and writing. Foundation only and depending on nothing
@@ -48,7 +49,7 @@ let package = Package(
                 "ThirdParty", "unicode_fold_data.c", "unicode_property_data.c", "unicode_property_data_posix.c",
                 "unicode_egcb_data.c", "unicode_wb_data.c",
             ]),
-        .target(name: "WhiskrMeadow", dependencies: ["WhiskrKit", .product(name: "MeadowScene", package: "Scene")]),
+        .target(name: "WhiskrMeadow", dependencies: ["WhiskrKit", "MeadowFile", .product(name: "MeadowScene", package: "Scene")]),
         .target(name: "TerminalHost", dependencies: ["WhiskrKit"]),
         .target(name: "Paw", dependencies: ["TerminalHost", "WhiskrKit"]),
         .executableTarget(name: "PawTool", dependencies: ["Paw"]),
@@ -57,6 +58,6 @@ let package = Package(
         .testTarget(name: "TerminalHostTests", dependencies: ["TerminalHost", "WhiskrKit"]),
         .testTarget(name: "PawTests", dependencies: ["Paw", "TerminalHost", "WhiskrKit"]),
         .testTarget(name: "MeadowFileTests", dependencies: ["MeadowFile"], resources: [.copy("Fixtures")]),
-        .testTarget(name: "WhiskrMeadowTests", dependencies: ["WhiskrMeadow", "WhiskrKit", .product(name: "MeadowScene", package: "Scene")]),
+        .testTarget(name: "WhiskrMeadowTests", dependencies: ["WhiskrMeadow", "WhiskrKit", "MeadowFile", .product(name: "MeadowScene", package: "Scene")]),
     ]
 )

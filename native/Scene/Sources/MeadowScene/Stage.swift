@@ -21,9 +21,9 @@ final class Stage {
     /// The playground's lone cat.
     private(set) var playgroundCat: Cat?
     var pointer = Vec2.zero
-    /// What every meadow shader shares: clearings, mown patches, trees' shade, streams.
+    /// What every meadow shader shares: clearings, mown patches, streams, trodden paths.
     private(set) var world = WorldUniforms()
-    private(set) var clearingCount = 0, treeCount = 0, streamCount = 0, pathCount = 0
+    private(set) var clearingCount = 0, streamCount = 0, pathCount = 0
     var meadowTime: Float { time }
 
     private var lastBearing: Float = 0
@@ -55,8 +55,6 @@ final class Stage {
             village.obstacles = meadow.obstacles
             self.meadow = meadow
             self.village = village
-            for (i, s) in meadow.shade.enumerated() { world.trees[i] = s }
-            treeCount = meadow.shade.count
             surroundings.critters = meadow.critters.spots
             light = Daylight.light(settings)
             windToward = light.windToward
@@ -211,6 +209,13 @@ final class Stage {
             village?.ambient = ambient
             playgroundCat?.frozen = !ambient
         }
+    }
+
+    /// Lays a new scenery in the meadow; blankets keep off its trees and logs.
+    func show(_ scenery: MeadowScenery) {
+        guard let meadow, let village else { return }
+        meadow.show(scenery)
+        village.obstacles = meadow.obstacles
     }
 
     func show(_ world: MeadowWorld) {

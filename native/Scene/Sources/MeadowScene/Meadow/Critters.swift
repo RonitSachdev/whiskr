@@ -29,7 +29,7 @@ final class Critters {
     /// Live positions, for anything that wants to watch them go by.
     private(set) var spots: ContiguousArray<Vec3> = []
     private(set) var seeds: [Vec3] = []
-    private let blooms: [Vec3]
+    private var blooms: [Vec3]
     private var time: Float = 0
 
     init(_ random: inout Seeded, blooms: [Vec3]) {
@@ -45,6 +45,17 @@ final class Critters {
         for _ in 0..<40 {
             let x = (random.float() - 0.5) * 90, y = 1 + random.float() * 7, z = (random.float() - 0.5) * 90
             seeds.append(Vec3(x, y, z))
+        }
+    }
+
+    /// The meadow's flowers changed: a flyer on or bound for a bloom that is gone chooses again at once.
+    func bloom(_ tops: [Vec3]) {
+        blooms = tops
+        for i in flyers.indices where flyers[i].perchIsBloom >= 0 {
+            let k = flyers[i].perchIsBloom
+            guard k >= tops.count || tops[k] != flyers[i].perch?.at else { continue }
+            flyers[i].perchIsBloom = -1
+            flyers[i].resting = 1e-3
         }
     }
 

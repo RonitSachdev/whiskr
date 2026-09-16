@@ -45,7 +45,8 @@ vertex GroundOut groundVertex(uint vid [[vertex_id]], device const GroundIn* v [
     o.fog = fogFactor(w, F);
     return o;
 }
-fragment float4 groundFragment(GroundOut in [[stage_in]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]]) {
+fragment float4 groundFragment(GroundOut in [[stage_in]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]],
+                               texture2d<float> groundMap [[texture(0)]]) {
     float2 g = in.world.xz;
     float3 land = meadowColor(g, F);
     // The land: paler where it has been trodden round a blanket, deeper under standing grass.
@@ -64,7 +65,7 @@ fragment float4 groundFragment(GroundOut in [[stage_in]], constant Frame& F [[bu
         float s = streamDistance(g, F, W);
         c = mix(c, float3(0.16, 0.14, 0.09), (1.0 - smoothstep(0.0, 0.9, s)) * 0.6);
     }
-    c *= shadeAt(g, F, W);
+    c *= shadeAt(g, F, groundMap);
     float3 lit = c * in.irr + c * WARM * picnicLight2(g, F, W) * 0.8;
     return float4(mix(lit, F.horizon.rgb, in.fog), 1);
 }
@@ -75,7 +76,7 @@ struct Tuft { float4 rootYaw; float4 scale; };
 struct GrassOut { float4 position [[position]]; float3 land; float3 lit; float3 glow; float blade; float fog; };
 vertex GrassOut grassVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                             device const Blade* shape [[buffer(1)]], device const Tuft* tufts [[buffer(3)]],
-                            constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]]) {
+                            constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]], texture2d<float> groundMap [[texture(0)]]) {
     Tuft t = tufts[iid];
     float3 root = t.rootYaw.xyz;
     root.y = mix(root.y, LAND_GROUND, levelAt(root.xz, F, W));
@@ -100,7 +101,7 @@ vertex GrassOut grassVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     o.position = F.viewProj * float4(w, 1);
     float3 land = meadowColor(root.xz, F);
     o.land = mix(land, land * (1.06 + 0.05 * stripe), mown * 0.8);
-    o.lit = shadeAt(root.xz, F, W) * (0.93 + 0.14 * mHash(floor(root.xz * 2.0))) * lambertIrradiance(n, F);
+    o.lit = shadeAt(root.xz, F, groundMap) * (0.93 + 0.14 * mHash(floor(root.xz * 2.0))) * lambertIrradiance(n, F);
     o.glow = WARM * picnicLight2(root.xz, F, W);
     o.blade = position.y;
     o.fog = fogFactor(w, F);
@@ -127,7 +128,8 @@ vertex WaterOut waterVertex(uint vid [[vertex_id]], device const WaterIn* v [[bu
     o.fog = fogFactor(w, F);
     return o;
 }
-fragment float4 waterFragment(WaterOut in [[stage_in]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]]) {
+fragment float4 waterFragment(WaterOut in [[stage_in]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]],
+                               texture2d<float> groundMap [[texture(0)]]) {
     float t = F.eye.w;
     float edge = abs(in.across);
     // Clear shallow water over a sandy bed at the edges, deeper blue in the middle.
@@ -136,7 +138,7 @@ fragment float4 waterFragment(WaterOut in [[stage_in]], constant Frame& F [[buff
     // Ripples drifting downstream, and glints where they catch the sky.
     float r = mNoise(float2(in.along * 0.7 - t * 1.1, in.across * 2.0)) * 0.6 + mNoise(float2(in.along * 1.9 - t * 1.7, in.across * 4.0 + 3.0)) * 0.4;
     float glint = smoothstep(0.72, 0.9, r);
-    c *= shadeAt(in.world.xz, F, W);
+    c *= shadeAt(in.world.xz, F, groundMap);
     float3 sky = mix(F.skyMid.rgb, F.hemiSky.rgb * 0.5, 0.3);
     float3 lit = c * lambertIrradiance(float3(0, 1, 0), F) + sky * glint * 0.35 * (1.0 - F.fog.w * 0.7);
     // A pale lip where the water meets the bank, as in the design's drawing.
