@@ -51,6 +51,17 @@ Nothing has been released yet. This is what the first release will contain.
   are left as they are; blankets always lie on their own ground. The painting is saved in the meadow's file.
 - Stepping stones: on the Stones & Wood shelf; a click places one, a drag lays a row a stride apart, each
   set its own way across the path with the turf trodden short round it, as one step.
+- More to make the meadow theirs, each modelled on the real thing in the meadow's clay: an apple tree hung
+  with apples (a few windfalls in the grass) and a tall Scots pine, orange high on its trunk; cornflowers,
+  foxgloves, ferns and clover for the Brush; a boulder to sit on, a tree stump with its rings and a log
+  pile; a floor cushion; and Cat Things: a cardboard box with its flaps open, a scratching post, a ball of
+  yarn, a cat bed and a food bowl, the grass trodden short round them. The shelf scrolls with a mouse's
+  wheel as well as a trackpad, the filter finds things by other names too ("firewood", "zabuton"; in
+  Japanese, hiragana or katakana), and the Eraser's sweep leaves made things, wood and boulders alone (a
+  click takes one).
+- Painted paths now read as pale, dry, trodden earth with a few pebbles and short tufts along their sides,
+  and soil as a dark tilled bed in ridges, so the two are told apart at a glance; the earth's flecks are
+  soft and round instead of small blocks.
 - Trees and the fallen log make way where a blanket comes, as flowers and stones always did, and come back
   when it goes. The workspaces' column always runs down the middle of the meadow.
 - The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset

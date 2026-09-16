@@ -382,6 +382,17 @@ shrink away where a blanket comes as the rooted things do (`Meadow.treeStanding`
 x = 0, the middle of the picnic ground; it never looks at the scenery. The
 scene draws at most what a file may hold (`MeadowScenery.Limits`, the catalog's caps).
 
+What the scene draws for each catalog id is `SceneryCatalog.kinds`: a tree (grown from its seed by
+`Trees.grow`; the apple tree and the Scots pine are forms of their own, `Species.Form`), a young tree, the log,
+or a rooted thing in a bed of instances (`Flora`'s plants; `Meadow/Catalog/`: `StonesAndWood`, `Workplace`,
+`CatThings`), each with its sway, whether butterflies settle on it and the ground it stands on. Plants,
+mushrooms and stones are brushed and swept in numbers and read out as clumps (`SceneryRules.isSmall`); a
+boulder, wood and made things stand alone (`SceneryCatalog.alone`: placed, taken by a click and read out one
+by one). Made things a cat uses wear the turf as stepping stones do (`SceneryCatalog.treads`: bare under them,
+cut short round them) but are not walked on. Where a cat likes to be at a thing (sit on a stump, nap in a bed,
+scratch at a post) is catalog data, `MeadowScenery.catSpot(of:)`, and `MeadowScenery.Thing.catSpot` gives it
+in the meadow, turned and standing as the thing is; nothing uses it yet.
+
 **Editing** (`EditModeController`, docs/DESIGN.md "Editing the meadow"). The document is edited as a
 `MeadowEditSession` (WhiskrMeadow): every entry has an id that lasts while it is edited, and every edit is a
 `MeadowChange` (things removed and added with their places, things changed before and after) that undoes and
@@ -414,7 +425,7 @@ is drawn by the scene as a ghost (`MeadowEditMarks.ghost`: its own mesh, see-thr
 where refused), never as part of the scenery. A Brush stroke works on a copy of the session: each dab
 (`MeadowEditSession.dab`: a clump of one kind, each plant clear of the others through a `SceneryRules.Field`
 it joins) is appended and drawn, and on release the stroke is one `MeadowChange` of the library's history; an
-Eraser sweep likewise (`swept`: never a tree or the log), and a row of stepping stones (`steppingStone`, one
+Eraser sweep likewise (`swept`: the small things only, never a tree, wood or a made thing), and a row of stepping stones (`steppingStone`, one
 each `steppingStride` along the drag, judged as placing is). A Ground stroke (`MeadowGroundPainting`) paints
 the cells of the document's `GroundGrid` under its circle on the copy and the scene's `MeadowScenery.Ground`
 alike; on release it is one `MeadowChange` carrying a `MeadowGroundPatch`: the rectangle of cells it touched
@@ -442,14 +453,17 @@ stop drawing when nothing moves.
   sample wherever the ground, grass, water or a rooted thing needs it, instead of a loop over trees per
   pixel: an RGBA8 texture whose texels are the meadow file's paint cells (300/512 units), running 80 cells
   past the paint grid each side so the shade of the largest tree at the meadow's edge fits. R is how worn
-  the ground is (1 a painted path's bare earth, and under a stepping stone, `GroundMap.Tread`, so no grass grows
-  through it), G how short the grass is cut (painted lawn, and trodden round a stepping stone), B painted soil,
+  the ground is (1 a painted path's bare earth, and under a stepping stone or a cat's bed, `GroundMap.Tread`, so
+  no grass grows through it), G how short the grass is cut (painted lawn, and trodden round a tread), B painted soil,
   each softened over its cells with a 7-texel binomial blur so edges run in curves, not along the grid; A holds
   the trees' shade (1 under a crown's middle, 0 at its reach), dappled per pixel as before. The ground and
   grass shaders read the map a little off each point (`paintWarp`, noise up to two-thirds of a unit, so a dab
   reads round and a stroke's sides wander) and the paint through `paintedAt` (noise pushes each edge either way; each fades out within a
   blanket's clearing and its trodden ring, so blankets always lie on their own ground): bare earth and soil
-  colour the land and hide the grass, lawn cuts it short with stripes. A change of the painted ground alone
+  colour the land and hide the grass (short tufts hold on along a path's sides), lawn cuts it short with
+  stripes. The earth's pebbles, grit and clods are round specks (`speckle`: at most one in each cell of a grid
+  turned off the meadow's axes, faded out where smaller than a pixel), never thresholded value noise, which
+  breaks into blocks. A change of the painted ground alone
   (`Meadow.show`) compares the old and new cells row by row and paints again only the texels that changed and
   the blur's reach round them, copied into the texture in the frame's command buffer; stepping stones laid,
   moved or taken up do the same round each. `Meadow.walkingEase` (public as `MeadowView.walkingEase(at:)`)
