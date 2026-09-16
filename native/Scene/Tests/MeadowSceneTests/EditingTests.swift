@@ -22,7 +22,7 @@ private func thing(_ id: String, _ x: Float, _ z: Float, seed: UInt32 = 0, varia
         let log = SceneryRules.footprint(of: MeadowScenery.Thing(id: "wood.fallenLog", x: 0, z: 0, turn: .pi / 2))
         // Turned a quarter, it lies along z.
         #expect(log.count == 5 && log.allSatisfy { abs($0.x) < 1e-4 } && abs(log.last!.z + 6) < 1e-4)
-        #expect(SceneryRules.footprint(of: thing("work.desk", 0, 0)).isEmpty)
+        #expect(SceneryRules.footprint(of: thing("work.lampPost", 0, 0)).isEmpty)
     }
 
     @Test("inside the meadow, measured to the trunk's middle")
@@ -308,7 +308,7 @@ private func thing(_ id: String, _ x: Float, _ z: Float, seed: UInt32 = 0, varia
             let filled = Double(middle.filter { $0 < 0.9 }.count) / Double(middle.count)
             #expect(shade(image, 2, 2) > 0.97 && filled > 0.1, "\(id): \(filled)")
         }
-        #expect(view.portrait(of: ["work.desk"], pixels: 96, background: MeadowColor(hex: 0xffffff)) == nil, "nothing for what is not drawn")
+        #expect(view.portrait(of: ["work.lampPost"], pixels: 96, background: MeadowColor(hex: 0xffffff)) == nil, "nothing for what is not drawn")
         #expect(view.portrait(of: ["flower.daisy", "flower.poppy", "flower.lupin"], pixels: 96, background: MeadowColor(hex: 0x202020)) != nil)
     }
 }

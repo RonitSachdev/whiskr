@@ -28,9 +28,17 @@ public struct MeadowScenery: Equatable, Sendable {
         public var seed: UInt32
         /// Which of its shapes; one it does not have draws as shape 0.
         public var variant: Int
+        /// Which swatch of its palette it wears (`MeadowScenery.palette(of:)`), 0 for the first; one it does not
+        /// have, or a thing with no palette, draws as the first.
+        public var swatch: Int
+        /// A run's points along the ground (x, z), in units: a fence's posts stand at each and evenly between
+        /// (`MeadowScenery.fencePosts`). Empty for a thing at one spot; for a run, `x` and `z` are its first point.
+        public var points: [Vec2]
+        /// The span of a run (1-based, between its points) that holds a gate; 0 for none.
+        public var gate: Int
 
         public init(id: String, x: Float, z: Float, turn: Float = 0, size: Vec3 = Vec3(1, 1, 1), tilt: Vec2 = .zero, seed: UInt32 = 0,
-                    variant: Int = 0) {
+                    variant: Int = 0, swatch: Int = 0) {
             self.id = id
             self.x = x
             self.z = z
@@ -39,6 +47,26 @@ public struct MeadowScenery: Equatable, Sendable {
             self.tilt = tilt
             self.seed = seed
             self.variant = variant
+            self.swatch = swatch
+            points = []
+            gate = 0
+        }
+
+        /// A run (a fence) along `points` (at least two), a gate in span `gate` (0: none).
+        public init(id: String, points: [Vec2], gate: Int = 0) {
+            self.init(id: id, x: points.first?.x ?? 0, z: points.first?.y ?? 0)
+            self.points = points
+            self.gate = gate
+        }
+
+        /// Whether it lies along a run of points (a fence) rather than standing at one spot.
+        public var isRun: Bool { !points.isEmpty }
+
+        /// Moved along the ground by `offset` (x, z), a run's every point with it.
+        public mutating func move(by offset: Vec2) {
+            x += offset.x
+            z += offset.y
+            for i in points.indices { points[i] += offset }
         }
 
         /// Where a cat likes to be at this thing (`MeadowScenery.catSpot(of:)`), in the meadow: turned, leant and
@@ -167,6 +195,26 @@ public struct MeadowScenery: Equatable, Sendable {
     /// Where a cat likes to be at a thing of this kind, on the thing as it is made; nil for a kind that invites
     /// none (a flower, a tree, a ball of yarn).
     public static func catSpot(of id: String) -> CatSpot? { SceneryCatalog.catSpots[id] }
+
+    /// One colour a made thing can wear: its name (as a meadow file writes it) and how it looks, in sRGB, for the
+    /// editor's swatches. The colours are the meadow's own clay, drawn from the blankets' gingham.
+    public struct Swatch: Equatable, Sendable {
+        public var name: String
+        public var color: MeadowColor
+    }
+
+    /// The colours a thing of this kind can wear, the first its own; empty for a kind with no palette.
+    public static func palette(of id: String) -> [Swatch] {
+        (SceneryCatalog.palettes[id] ?? []).map { Swatch(name: $0, color: Palette.swatch($0).color) }
+    }
+
+    /// The posts a run along `points` stands on: one at each point, and evenly between them, never more than
+    /// `fencePostSpacing` apart (as a meadow file's catalog counts them). A run closed on itself (its last point
+    /// on its first) has no second post where it closes.
+    public static func fencePosts(along points: [Vec2]) -> [Vec2] { Fences.posts(along: points).map(\.at) }
+
+    /// Between a fence's posts at most, in units.
+    public static let fencePostSpacing: Float = Fences.spacing
 
     /// The most the meadow draws of each kind of thing: what a meadow file may hold (its catalog's caps).
     /// Past one, further things of that kind are left out, in order.

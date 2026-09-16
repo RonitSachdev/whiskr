@@ -56,14 +56,34 @@ public enum SceneryRules {
             // Along its length (its own x axis), as it lies turned.
             let along = Vec2(cos(thing.turn), -sin(thing.turn))
             return [Float(-6), -3, 0, 3, 6].map { t in Circle(x: thing.x + along.x * t * thing.size.x, z: thing.z + along.y * t * thing.size.x, r: 1.5) }
+        case .fence:
+            // Round each post, and along each span under its rails; none across a gate's span, so a path or a row
+            // of stepping stones may lead up to it and through.
+            let run = thing.isRun ? (points: thing.points, gate: thing.gate) : Fences.pictured
+            let (posts, spans) = Fences.layout(run.points, gate: run.gate)
+            var circles = posts.map { Circle(x: $0.at.x, z: $0.at.y, r: fencePost) }
+            for span in spans where !span.gate {
+                let a = posts[span.from].at, b = posts[span.to].at
+                let steps = max(1, Int((simd_distance(a, b) / 0.8).rounded()))
+                for k in 1..<steps {
+                    let p = a + (b - a) * (Float(k) / Float(steps))
+                    circles.append(Circle(x: p.x, z: p.y, r: fenceRail))
+                }
+            }
+            return circles
         }
     }
 
-    /// Trees, young trees and logs: kept off the picnic ground.
+    /// The ground round a fence's post, and under its rails, in units.
+    static let fencePost: Float = 0.32
+    static let fenceRail: Float = 0.24
+
+    /// Trees, young trees, logs, sheds, tents and fences: kept off the picnic ground.
     public static func isBig(_ id: String) -> Bool {
         switch SceneryCatalog.kinds[id] {
-        case .tree, .youngTree, .log: true
-        default: false
+        case .tree, .youngTree, .log, .fence: true
+        case .plant: SceneryCatalog.big.contains(id)
+        case nil: false
         }
     }
 
@@ -81,6 +101,7 @@ public enum SceneryRules {
         case .tree, .log: 0.6
         case .youngTree: 0.4
         case .plant(_, _, _, let base): base > 1 ? 0.2 : 0.1
+        case .fence: 0.1
         case nil: 0
         }
     }
@@ -122,7 +143,7 @@ public enum SceneryRules {
         /// `overlapping`), is excused, and so is the picnic ground for a big thing that stood on it before
         /// (`wasOnPicnicGround`): an edit is refused only for what it makes worse.
         public func refusal(for thing: MeadowScenery.Thing, excusing: Set<Int> = [], wasOnPicnicGround: Bool = false) -> Refusal? {
-            if hypot(thing.x, thing.z) > SceneryRules.reach { return .outsideMeadow }
+            if hypot(thing.x, thing.z) > SceneryRules.reach || thing.points.contains(where: { simd_length($0) > SceneryRules.reach }) { return .outsideMeadow }
             if !wasOnPicnicGround, SceneryRules.isOnPicnicGround(thing) { return .keptForWorkspaces }
             var nearest: (thing: Int, overlap: Float)?
             visitOverlaps(of: thing) { other, overlap in
