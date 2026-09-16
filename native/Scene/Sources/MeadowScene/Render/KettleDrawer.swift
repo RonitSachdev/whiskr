@@ -70,6 +70,32 @@ final class KettleDrawer {
         }
     }
 
+    /// The stove's warm light spilling onto the blanket round the kettle while it burns: what says "on" from
+    /// any height, by day and more so at night.
+    func encodeGround(_ stage: Stage, arena: Arena, enc: MTLRenderCommandEncoder) {
+        guard let village = stage.village else { return }
+        var n = 0
+        for plot in village.plots where plot.kettle.shown.x > 0.01 && plot.kettle.flame > 0.02 { _ = plot; n += 1 }
+        guard n > 0 else { return }
+        let night = stage.light.night
+        let inst = arena.alloc(ShadowInstance.self, n)
+        var k = 0
+        let warm = linear(0xffa646)
+        for plot in village.plots where plot.kettle.shown.x > 0.01 && plot.kettle.flame > 0.02 {
+            let at = plot.group + plot.kettle.at
+            let size = KETTLE_SIZE * 2.1 * plot.kettle.shown.x
+            inst.pointer[k] = ShadowInstance(model: .translation(Vec3(at.x, 0.035, at.z)) * .scale(Vec3(1, 1, 1) * size),
+                                             extra: Vec4(min(1, plot.kettle.flame * (0.95 + 0.3 * night)), warm.x, warm.y, warm.z))
+            k += 1
+        }
+        enc.setRenderPipelineState(gpu.halo)
+        enc.setDepthStencilState(gpu.depthRead)
+        enc.setCullMode(.none)
+        enc.setVertexBuffer(inst.buffer, offset: inst.offset, index: 3)
+        enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: n)
+        enc.setCullMode(.back)
+    }
+
     /// Steam and a snuffed flame's puff, see-through and unlit; then the flame's glow, added onto what is behind it.
     func encodeTransparent(_ stage: Stage, arena: Arena, enc: MTLRenderCommandEncoder) {
         guard let village = stage.village else { return }

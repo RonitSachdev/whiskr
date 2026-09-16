@@ -25,7 +25,7 @@ let KETTLE_BOIL: Float = 30
 /// in a moment (an `ls`) puts the flame out quietly.
 let KETTLE_WHISTLE_AFTER: Float = 1.5
 /// Steam puffs a kettle keeps track of.
-let KETTLE_PUFFS = 16
+let KETTLE_PUFFS = 22
 
 enum Kettle {
     private static func v(_ x: Float, _ y: Float, _ z: Float) -> Vec3 { Vec3(x, y, z) }
@@ -100,9 +100,10 @@ enum Kettle {
         }
         for k in 0..<9 {
             let a = (Float(k) + 0.5) / 9 * 2 * .pi
-            let c = cos(a), s = sin(a), tall: Float = k % 2 == 0 ? 0.25 : 0.19
-            let curve = QuadraticBezier(v(c * 0.1, 0.02, s * 0.1), v(c * 0.52, 0.04, s * 0.52), v(c * 0.47, tall, s * 0.47))
-            parts.append(Clay.limb(curve, 0.06, 0.008, 0xff7a1f, 0xffe08a, sides: 6, rings: 8).shape)
+            // Out past the kettle's widest (0.425), so from above the flames ring its base.
+            let c = cos(a), s = sin(a), tall: Float = k % 2 == 0 ? 0.3 : 0.23
+            let curve = QuadraticBezier(v(c * 0.1, 0.02, s * 0.1), v(c * 0.6, 0.03, s * 0.6), v(c * 0.56, tall, s * 0.56))
+            parts.append(Clay.limb(curve, 0.075, 0.01, 0xff6a14, 0xffe08a, sides: 6, rings: 8).shape)
         }
         return Geometry.join(parts)
     }
@@ -224,8 +225,8 @@ extension Village {
             let hit = Self.hash(n), side = Self.hash(n + 17.3)
             if hit > 0.3, u < 0.3 {
                 let hop = sin(u / 0.3 * .pi)
-                lift = hop * 0.022
-                tip = hop * 0.09 * (side < 0.5 ? -1 : 1)
+                lift = hop * 0.045
+                tip = hop * 0.2 * (side < 0.5 ? -1 : 1)
             }
         }
         let whistle = time - k.whistleAt
@@ -236,7 +237,7 @@ extension Village {
         // The snuffed flame's dark puff: out from under the kettle, swelling and fading as it rises.
         let snuff = (time - k.snuffedAt) / 1.1
         if snuff >= 0 && snuff < 1 {
-            k.smoke = Vec4(Kettle.burner.x + 0.05 + snuff * 0.3, Kettle.burner.y + snuff * 0.55, Kettle.burner.z + 0.12, 0.08 + snuff * 0.22)
+            k.smoke = Vec4(Kettle.burner.x + 0.1 + snuff * 0.45, Kettle.burner.y + snuff * 0.9, Kettle.burner.z + 0.2, 0.14 + snuff * 0.4)
             k.smokeAlpha = (1 - snuff) * 0.7 * min(1, snuff * 6)
         } else {
             k.smokeAlpha = 0
@@ -258,9 +259,10 @@ extension Village {
             for i in 0..<KETTLE_PUFFS {
                 let u = Float(i) / 3
                 k.life[i] = 1
-                guard i < 4, k.flame > 0.3 else { k.puffAlpha[i] = 0; continue }
-                k.puffs[i] = Vec4(tip + out * (0.1 + u * 0.22) + Vec3(sin(u * 4) * 0.05, u * u * 0.5, 0), 0.06 + u * 0.1)
-                k.puffAlpha[i] = 0.6 - u * 0.25
+                guard i < 6, k.flame > 0.3 else { k.puffAlpha[i] = 0; continue }
+                let v = Float(i) / 5
+                k.puffs[i] = Vec4(tip + out * (0.1 + v * 0.25) + Vec3(sin(v * 4) * 0.08, v * v * 1.3, 0), 0.08 + v * 0.26)
+                k.puffAlpha[i] = 0.75 - v * 0.35
             }
             return
         }
@@ -268,14 +270,14 @@ extension Village {
         let jetting = whistle >= 0 && whistle < 0.7
         let simmer = k.simmering(time)
         // Seconds between puffs: a jet's stream, a boil's, a simmer's now and then; none from a cold kettle.
-        let every: Float = jetting ? 0.05 : k.flame > 0.05 ? (simmer ? 0.6 : 0.13) : .infinity
+        let every: Float = jetting ? 0.04 : k.flame > 0.05 ? (simmer ? 0.32 : 0.1) : .infinity
         k.nextPuff -= dt
         if !every.isFinite {
             k.nextPuff = 0
         } else if k.nextPuff <= 0, let free = k.life.firstIndex(where: { $0 >= 1 }) {
             k.life[free] = 0
             k.jet[free] = jetting
-            k.span[free] = jetting ? 0.8 : simmer ? 2.4 : 1.5
+            k.span[free] = jetting ? 0.9 : simmer ? 2.6 : 1.8
             k.drift[free] = Vec2((k.random.float() - 0.5) * 0.3, (k.random.float() - 0.5) * 0.3) * (jetting ? 0.3 : 1)
             k.nextPuff = every * (0.75 + k.random.float() * 0.5)
         }
@@ -284,12 +286,13 @@ extension Village {
             k.life[i] = min(1, k.life[i] + dt / k.span[i])
             let u = k.life[i], jet = k.jet[i]
             // Out of the spout along its line first, then up, curling away with its drift; a jet shoots further.
-            let reach: Float = jet ? 0.7 : 0.26
-            let along = tip + out * (0.03 + reach * min(u * 2.5, 1)) + Vec3(0, u * u * (jet ? 0.5 : 0.95), 0)
+            // A plume: out of the spout, then up well above the kettle, so it reads from above and afar.
+            let reach: Float = jet ? 0.8 : 0.26
+            let along = tip + out * (0.03 + reach * min(u * 2.5, 1)) + Vec3(0, u * (jet ? 0.7 : simmer ? 1.2 : 1.7), 0)
             let curl = Vec3(k.drift[i].x * u + sin(u * 5 + Float(i)) * 0.05 * u, 0, k.drift[i].y * u)
-            k.puffs[i] = Vec4(along + curl, 0.045 + u * (jet ? 0.12 : 0.16))
+            k.puffs[i] = Vec4(along + curl, 0.06 + u * (jet ? 0.22 : simmer ? 0.24 : 0.34))
             // Thickest just out of the spout, thinning to nothing as it spreads.
-            k.puffAlpha[i] = (1 - u) * (1 - u) * min(1, u * 10) * (jet ? 0.8 : simmer ? 0.45 : 0.6)
+            k.puffAlpha[i] = (1 - u) * min(1, u * 10) * (jet ? 0.9 : simmer ? 0.6 : 0.8)
         }
     }
 
