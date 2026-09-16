@@ -18,12 +18,14 @@
 		14A31B6C0C596E49C0D6785D /* PawTool in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 377F56A0F025FEFF6B3CAF77 /* PawTool */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		14C093EECE52824B077BEAF5 /* DebugFlowRobust.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC94F632D27A14E50D1F40CA /* DebugFlowRobust.swift */; };
 		15D421B47BE118CF51013691 /* CodeTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB63378BF769C307E0031D42 /* CodeTextView.swift */; };
+		164015AE7962FFC8E4E89E0F /* DebugFlowLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D09219BDC62FA47C90A711C /* DebugFlowLibrary.swift */; };
 		17A1CFE0C33E205668B2D3C8 /* FileIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6CF2FC9EA3EE9FD4B8326E2 /* FileIcon.swift */; };
 		18FB9B3BFE99CACEDB566279 /* SidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 370FA0310E069DF399DFC9CC /* SidePanel.swift */; };
 		19DFDE1305E55C78AFDDE208 /* Paw in Frameworks */ = {isa = PBXBuildFile; productRef = 068E6CEC4489B560C2B7F2F8 /* Paw */; };
 		1B1C56FF32BB4EC60F4AB3C8 /* Workbench+Worktrees.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B986D180BCD49436C0FE30 /* Workbench+Worktrees.swift */; };
 		1B4E2BA66057758DEEF4261A /* Attention.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9268B0DED2DD5816BD8EE930 /* Attention.swift */; };
 		1D445BAF3E891B9D840B3EC5 /* Workbench+Scene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8434513A30A4B5A04422EC25 /* Workbench+Scene.swift */; };
+		1EBC7F5EA6B8A841C7E57834 /* ImportMeadowSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E034787876A2BAD13933606 /* ImportMeadowSheet.swift */; };
 		1FAF11659A1C907C89B416A7 /* AppMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C9B18F35A42F4386B9F6BE6 /* AppMigration.swift */; };
 		2478657F824A67DA7B321192 /* WhiskrHost in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 48AFD2264C87BC8583DE4A6B /* WhiskrHost */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		24A5C7C57BD314151F6E4694 /* StoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3099EBF3D91E30DD40927A7C /* StoryView.swift */; };
@@ -34,6 +36,7 @@
 		2BA8C3F9EB196727A0B92E4A /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61772DF7148EFC3EB7465F10 /* main.swift */; };
 		2D0B92C6DB4FFE8FBE7A48E7 /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F3A667F1BC9BE5833E6DCE /* TerminalSurface.swift */; };
 		2DD4A70388478AE10978BAB6 /* Workbench.swift in Sources */ = {isa = PBXBuildFile; fileRef = C374C75164CD8E5432189904 /* Workbench.swift */; };
+		30AEC9A15A22280538FDBFD6 /* EditorNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22BA2329FAB0E939005731D /* EditorNotice.swift */; };
 		311CC3811F51B7331CC71918 /* Workbench+Files.swift in Sources */ = {isa = PBXBuildFile; fileRef = 437DD53A1DE51F8B87F661D3 /* Workbench+Files.swift */; };
 		313FB2898BBA101524A95733 /* StatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA00E26AC67318163FD1C5A /* StatusBar.swift */; };
 		32B7AEC3194D3E721582621D /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 0F28739D3FD315CB2347963F /* LICENSE */; };
@@ -44,6 +47,7 @@
 		3965C1454BD0ADB6E426F3FF /* DebugFlowJourneyTabs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CCF1050B828989391CD58B4 /* DebugFlowJourneyTabs.swift */; };
 		399E2CAFA2ADB912188599FE /* FilePageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DBAE86AEBEF28A960334667 /* FilePageView.swift */; };
 		3A548BFEA5929F7A72298D21 /* TerminalReach.swift in Sources */ = {isa = PBXBuildFile; fileRef = E987E8F694B00000E7830F1B /* TerminalReach.swift */; };
+		3C244C07159B73C6A301D7C5 /* MeadowLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D520FEC3C8CE6105DB4FBEF5 /* MeadowLibraryView.swift */; };
 		3FC879A408DC7E1E91937D20 /* PaletteController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD09F5DC207386823CDBA12 /* PaletteController.swift */; };
 		40DB69B471DB15F9272CA625 /* AnswerCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A71D59C3405AA18C674971 /* AnswerCard.swift */; };
 		414C91410783DC5962C3697C /* GitWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC922CB2084B3FCF9DE120E /* GitWatcher.swift */; };
@@ -70,6 +74,7 @@
 		646ACAC512914AA7F4F5E525 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 2AE3662F405D97ABBE9AFCFC /* InfoPlist.xcstrings */; };
 		658A93B92312CE372EE92C2E /* DebugFlowFilesEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB15C9944CE957A6183B53E /* DebugFlowFilesEditing.swift */; };
 		65CD28DAD159339C50BD3CA5 /* DebugFlowAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2F1D8681271BA1723B7AE3 /* DebugFlowAlerts.swift */; };
+		6639E943BC5AFF4B08121176 /* EditModeController+Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA96FC47F41C07E36FEA7C3 /* EditModeController+Library.swift */; };
 		666B4C99B46D56A14DEE5EE7 /* PaneCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57771ED894C51D18CAF74A85 /* PaneCard.swift */; };
 		668C638E4C6E65DE0557C0A2 /* DebugFlowMeadowLife.swift in Sources */ = {isa = PBXBuildFile; fileRef = D049141FC0198B1DDB791FA4 /* DebugFlowMeadowLife.swift */; };
 		66D61EECC5120FFA987A9F5A /* MarkdownPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280B20FC4D6085BAB176BFB1 /* MarkdownPreview.swift */; };
@@ -91,6 +96,7 @@
 		805E21B8155C291883A8279B /* HostLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9BBCE9BC1C3B2F5A2BA55FD /* HostLink.swift */; };
 		81375CA18F2D5F3702AB8555 /* EditModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E58AB3D4A309CE4469109 /* EditModeController.swift */; };
 		82956B46BB2DB619CE5D1EDC /* Workbench+Answering.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A6F4DE075B9F1DE379830C /* Workbench+Answering.swift */; };
+		85F62D64729DD32018527504 /* MeadowLibraryActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC5B5EA5F38ED5856851374 /* MeadowLibraryActions.swift */; };
 		87233B7DAA401A7E057CBB74 /* WhiskrKit in Frameworks */ = {isa = PBXBuildFile; productRef = D2B60346C8E0C29F74CDFF9E /* WhiskrKit */; };
 		8888ACFAA054B3541585E913 /* Repository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6961AE69075B9D9F33ECD77 /* Repository.swift */; };
 		8A54414F6503F6247F636B50 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4592A728154DA0B03C8628E7 /* Preferences.swift */; };
@@ -101,12 +107,15 @@
 		8FB96437B54DE94336236392 /* WorktreePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B6E20C919911CB0DEF207A /* WorktreePanel.swift */; };
 		8FCFE6B65F748F37D88D8A38 /* DebugFlowSplit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 414AF36484F53CC5C854B7EC /* DebugFlowSplit.swift */; };
 		912C706B8D538D9B097C7FEE /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95B5060B80E5691095248104 /* FileTreeView.swift */; };
+		92F87FAE2A806D1EA056118D /* MeadowFileWords.swift in Sources */ = {isa = PBXBuildFile; fileRef = E387CEEE817C9C5F4A06FE06 /* MeadowFileWords.swift */; };
 		93E1A714B9AC4D943F2EB93F /* FileDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C23146D862927241418D929 /* FileDocument.swift */; };
 		964FD460E0348325E4F859B3 /* LiveResize.swift in Sources */ = {isa = PBXBuildFile; fileRef = B54980468C4FA9E4CE281C20 /* LiveResize.swift */; };
 		9919FE2C6450CA5210481A53 /* TabSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D9B747C5F81E8A4E6FB6D9 /* TabSwitcher.swift */; };
+		9ADE0A3731D9D45D74C1A266 /* MeadowPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE4452A57A6AD4B72432659A /* MeadowPanels.swift */; };
 		9CBE75C87E57D14C0238BC19 /* TabDragging.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9825C8E58C64004C16230BC /* TabDragging.swift */; };
 		9D2F516F0C465C6F270B2F72 /* CodeEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8DC6839F0E423384790AF /* CodeEditorView.swift */; };
 		9DB881FBC371E8FD0373EC05 /* PeekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC289C6C694C32D349CD9B5E /* PeekView.swift */; };
+		9F178A71D9138BA892AA6A4E /* MeadowPreviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C9E7A9C46AD196DF4D810AE /* MeadowPreviews.swift */; };
 		A042DC5B3C3360E1361014D6 /* DebugFlowChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE09EA5125538632ECFF469 /* DebugFlowChrome.swift */; };
 		A0FFD8058CCEC5F118BCA186 /* MeadowLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D3CD3D64016196C821ED757 /* MeadowLibrary.swift */; };
 		A10F0751E4E4176E7D5FAFA0 /* DebugScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8179E0ECDB8D50C2123897FE /* DebugScript.swift */; };
@@ -218,6 +227,7 @@
 		437DD53A1DE51F8B87F661D3 /* Workbench+Files.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workbench+Files.swift"; sourceTree = "<group>"; };
 		4592A728154DA0B03C8628E7 /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
 		48AFD2264C87BC8583DE4A6B /* WhiskrHost */ = {isa = PBXFileReference; includeInIndex = 0; path = WhiskrHost; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C9E7A9C46AD196DF4D810AE /* MeadowPreviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeadowPreviews.swift; sourceTree = "<group>"; };
 		4D454D15A4248B0F96B1B22E /* NOTICE */ = {isa = PBXFileReference; name = NOTICE; path = ../../../NOTICE; sourceTree = "<group>"; };
 		4F14460A13A5E5E87AA26044 /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
 		5197C4F0D6120D41EB214D2D /* DebugFlowEditorTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowEditorTools.swift; sourceTree = "<group>"; };
@@ -229,6 +239,8 @@
 		57771ED894C51D18CAF74A85 /* PaneCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneCard.swift; sourceTree = "<group>"; };
 		5BB918E32F1387D0D8817596 /* DebugPerf.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPerf.swift; sourceTree = "<group>"; };
 		5C184AFC6BB7007CAB0AF03E /* Git.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Git.swift; sourceTree = "<group>"; };
+		5D09219BDC62FA47C90A711C /* DebugFlowLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowLibrary.swift; sourceTree = "<group>"; };
+		5E034787876A2BAD13933606 /* ImportMeadowSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportMeadowSheet.swift; sourceTree = "<group>"; };
 		6066E62D9D03D72C537EA584 /* PaneArea.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneArea.swift; sourceTree = "<group>"; };
 		61772DF7148EFC3EB7465F10 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		63B6E20C919911CB0DEF207A /* WorktreePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreePanel.swift; sourceTree = "<group>"; };
@@ -239,6 +251,7 @@
 		6C9B18F35A42F4386B9F6BE6 /* AppMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMigration.swift; sourceTree = "<group>"; };
 		6CCF1050B828989391CD58B4 /* DebugFlowJourneyTabs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowJourneyTabs.swift; sourceTree = "<group>"; };
 		6D0CDFF0338495CABB8E5DCE /* Scene */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Scene; path = ../Scene; sourceTree = SOURCE_ROOT; };
+		6EC5B5EA5F38ED5856851374 /* MeadowLibraryActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeadowLibraryActions.swift; sourceTree = "<group>"; };
 		6EC922CB2084B3FCF9DE120E /* GitWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitWatcher.swift; sourceTree = "<group>"; };
 		6F77B30DC7F5A1AFEA436012 /* DebugFlowEditorGround.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowEditorGround.swift; sourceTree = "<group>"; };
 		6FA749B391D095B812626685 /* BarControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarControl.swift; sourceTree = "<group>"; };
@@ -269,6 +282,7 @@
 		98A77045F856D5F86ACCB179 /* PaneHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneHeader.swift; sourceTree = "<group>"; };
 		9A942CDA305BD98E44EBD245 /* MainWindowController+Worktrees.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainWindowController+Worktrees.swift"; sourceTree = "<group>"; };
 		9B4F1A4D31F87985488ADAEF /* EditorDecorations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorDecorations.swift; sourceTree = "<group>"; };
+		9BA96FC47F41C07E36FEA7C3 /* EditModeController+Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EditModeController+Library.swift"; sourceTree = "<group>"; };
 		9C42D2553F6094F48D6F6052 /* DebugShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugShell.swift; sourceTree = "<group>"; };
 		A032E2E66CF739C5345A1570 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		A049753F412D68EB5E9ED059 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -298,14 +312,18 @@
 		C3A71D59C3405AA18C674971 /* AnswerCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerCard.swift; sourceTree = "<group>"; };
 		C8B8DC6839F0E423384790AF /* CodeEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditorView.swift; sourceTree = "<group>"; };
 		D049141FC0198B1DDB791FA4 /* DebugFlowMeadowLife.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowMeadowLife.swift; sourceTree = "<group>"; };
+		D22BA2329FAB0E939005731D /* EditorNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorNotice.swift; sourceTree = "<group>"; };
 		D4225CE163952F380224CB7D /* TerminalRegionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalRegionController.swift; sourceTree = "<group>"; };
+		D520FEC3C8CE6105DB4FBEF5 /* MeadowLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeadowLibraryView.swift; sourceTree = "<group>"; };
 		D557FA5E2FDCE1CC9617877C /* EditorPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPreferences.swift; sourceTree = "<group>"; };
 		D6D9B747C5F81E8A4E6FB6D9 /* TabSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSwitcher.swift; sourceTree = "<group>"; };
 		D83B5515C5AAC6536D88D49B /* DebugFlowResize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowResize.swift; sourceTree = "<group>"; };
 		D8EC4BB58DFEEC337D34BD0D /* MediaPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaPreview.swift; sourceTree = "<group>"; };
 		DAF56BDDC3013980379827CA /* ThemeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeStore.swift; sourceTree = "<group>"; };
+		DE4452A57A6AD4B72432659A /* MeadowPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeadowPanels.swift; sourceTree = "<group>"; };
 		E1A6F4DE075B9F1DE379830C /* Workbench+Answering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Workbench+Answering.swift"; sourceTree = "<group>"; };
 		E1F7017E7B006B04CF90E23A /* DebugFlowFilesEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowFilesEditor.swift; sourceTree = "<group>"; };
+		E387CEEE817C9C5F4A06FE06 /* MeadowFileWords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeadowFileWords.swift; sourceTree = "<group>"; };
 		E3E377C07BDF09ABFDA3F24E /* NavigatorController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigatorController.swift; sourceTree = "<group>"; };
 		E6961AE69075B9D9F33ECD77 /* Repository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Repository.swift; sourceTree = "<group>"; };
 		E86C872A5C64DC9184F2E2FA /* DebugAgents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugAgents.swift; sourceTree = "<group>"; };
@@ -383,7 +401,9 @@
 			isa = PBXGroup;
 			children = (
 				EE0E58AB3D4A309CE4469109 /* EditModeController.swift */,
+				9BA96FC47F41C07E36FEA7C3 /* EditModeController+Library.swift */,
 				BE29B7D1F6CA9653C924E82B /* EditModeController+Tools.swift */,
+				D22BA2329FAB0E939005731D /* EditorNotice.swift */,
 				56B7271E1FCB8D752BCC77F2 /* EditorTray.swift */,
 				BA3098BEAE57C4FB75B9D64C /* MeadowWords.swift */,
 				BA947DA3C8B4401A5CCD5D59 /* SelectionBar.swift */,
@@ -403,6 +423,7 @@
 			isa = PBXGroup;
 			children = (
 				26BB06E6A06A9D0BD2CE1097 /* MeadowEditor */,
+				9D7D7F38CEB3CE1FA21EE6FD /* MeadowLibrary */,
 				C3A71D59C3405AA18C674971 /* AnswerCard.swift */,
 				6FA749B391D095B812626685 /* BarControl.swift */,
 				2729BE691CBBBF0B07291C19 /* DividerGlow.swift */,
@@ -480,6 +501,7 @@
 				D557FA5E2FDCE1CC9617877C /* EditorPreferences.swift */,
 				6EC922CB2084B3FCF9DE120E /* GitWatcher.swift */,
 				3D3CD3D64016196C821ED757 /* MeadowLibrary.swift */,
+				4C9E7A9C46AD196DF4D810AE /* MeadowPreviews.swift */,
 				A4562D4FB8649068E0461009 /* OtherEditorImport.swift */,
 				00CF4CD5FF8B9733A1E4C375 /* Pane.swift */,
 				4592A728154DA0B03C8628E7 /* Preferences.swift */,
@@ -496,6 +518,18 @@
 				AFF427FDC9C2F25650816B9F /* WorldStore.swift */,
 			);
 			path = Model;
+			sourceTree = "<group>";
+		};
+		9D7D7F38CEB3CE1FA21EE6FD /* MeadowLibrary */ = {
+			isa = PBXGroup;
+			children = (
+				5E034787876A2BAD13933606 /* ImportMeadowSheet.swift */,
+				E387CEEE817C9C5F4A06FE06 /* MeadowFileWords.swift */,
+				6EC5B5EA5F38ED5856851374 /* MeadowLibraryActions.swift */,
+				D520FEC3C8CE6105DB4FBEF5 /* MeadowLibraryView.swift */,
+				DE4452A57A6AD4B72432659A /* MeadowPanels.swift */,
+			);
+			path = MeadowLibrary;
 			sourceTree = "<group>";
 		};
 		A139DB34188026B2631E71BB /* Whiskr */ = {
@@ -599,6 +633,7 @@
 				6CCF1050B828989391CD58B4 /* DebugFlowJourneyTabs.swift */,
 				B53354B621AC1F586A9E61CD /* DebugFlowLayout.swift */,
 				AFD9713325C604E6911E09CF /* DebugFlowLayoutSettings.swift */,
+				5D09219BDC62FA47C90A711C /* DebugFlowLibrary.swift */,
 				BF605AF19F1AD5109092F3FA /* DebugFlowMeadowFollow.swift */,
 				D049141FC0198B1DDB791FA4 /* DebugFlowMeadowLife.swift */,
 				D83B5515C5AAC6536D88D49B /* DebugFlowResize.swift */,
@@ -815,6 +850,7 @@
 				3965C1454BD0ADB6E426F3FF /* DebugFlowJourneyTabs.swift in Sources */,
 				F18329AC854CE17B551A662F /* DebugFlowLayout.swift in Sources */,
 				F2827B6E4E4D48C241A78246 /* DebugFlowLayoutSettings.swift in Sources */,
+				164015AE7962FFC8E4E89E0F /* DebugFlowLibrary.swift in Sources */,
 				D0FD837581E0F40CA422752C /* DebugFlowMeadowFollow.swift in Sources */,
 				668C638E4C6E65DE0557C0A2 /* DebugFlowMeadowLife.swift in Sources */,
 				5C297B869F2AF5D4DD7222B1 /* DebugFlowResize.swift in Sources */,
@@ -831,9 +867,11 @@
 				F8D20947E58C78DDE8DCDE3D /* DiffPageView.swift in Sources */,
 				5A018DA0AAD819162FB07E3C /* DividerGlow.swift in Sources */,
 				8D32508C56EED9C415F1B04D /* DocumentSyntax.swift in Sources */,
+				6639E943BC5AFF4B08121176 /* EditModeController+Library.swift in Sources */,
 				3870A6D9C0B89D4F801B5050 /* EditModeController+Tools.swift in Sources */,
 				81375CA18F2D5F3702AB8555 /* EditModeController.swift in Sources */,
 				340BD724451DA26B2CA576C0 /* EditorDecorations.swift in Sources */,
+				30AEC9A15A22280538FDBFD6 /* EditorNotice.swift in Sources */,
 				54FCCCE2E298C31FCE948029 /* EditorPreferences.swift in Sources */,
 				450FB92ECCA48AB8494F180A /* EditorTray.swift in Sources */,
 				93E1A714B9AC4D943F2EB93F /* FileDocument.swift in Sources */,
@@ -849,13 +887,19 @@
 				7CEB916797AC046B21634FBB /* HookServer.swift in Sources */,
 				805E21B8155C291883A8279B /* HostLink.swift in Sources */,
 				E5A7A42A5E2C8A2E3229B6A0 /* HostNotice.swift in Sources */,
+				1EBC7F5EA6B8A841C7E57834 /* ImportMeadowSheet.swift in Sources */,
 				964FD460E0348325E4F859B3 /* LiveResize.swift in Sources */,
 				8BF8073D08FEA36C084D18B8 /* MainMenu.swift in Sources */,
 				4ECC29E6A0EF92E5948B2B75 /* MainWindowController+Files.swift in Sources */,
 				C0CA20CC39FF6FEC4091D675 /* MainWindowController+Worktrees.swift in Sources */,
 				ABF4FECD8E0EB0205AA5810B /* MainWindowController.swift in Sources */,
 				66D61EECC5120FFA987A9F5A /* MarkdownPreview.swift in Sources */,
+				92F87FAE2A806D1EA056118D /* MeadowFileWords.swift in Sources */,
 				A0FFD8058CCEC5F118BCA186 /* MeadowLibrary.swift in Sources */,
+				85F62D64729DD32018527504 /* MeadowLibraryActions.swift in Sources */,
+				3C244C07159B73C6A301D7C5 /* MeadowLibraryView.swift in Sources */,
+				9ADE0A3731D9D45D74C1A266 /* MeadowPanels.swift in Sources */,
+				9F178A71D9138BA892AA6A4E /* MeadowPreviews.swift in Sources */,
 				00A90FED89C94259E544E296 /* MeadowWords.swift in Sources */,
 				F79514D31B733BEEEE484AFA /* MediaPreview.swift in Sources */,
 				7D613BB2A89D7E2DCB8DD3CC /* Motion.swift in Sources */,

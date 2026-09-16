@@ -144,6 +144,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         } else {
             pendingFolders += folders.map(\.path)
         }
+        // Meadow files (a double-click in the Finder, Open With, the Dock icon): each through the import sheet.
+        let meadows = MeadowLibraryActions.meadowFiles(urls)
+        if !meadows.isEmpty { MeadowImport.shared.open(meadows, over: windowController?.window) }
         let themes = urls.filter { (Theme.fileExtensions + ["itermcolors"]).contains($0.pathExtension.lowercased()) }
         guard !themes.isEmpty else { return }
         SettingsWindowController.shared.show()
@@ -159,6 +162,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         windowController.showWindow(nil)
         #endif
         if !windowController.meadowEditing { windowController.meadowEditor.enter() }
+    }
+
+    /// File › Import Meadow…: the open panel, then the import sheet for each meadow chosen.
+    @objc func importMeadow(_ sender: Any?) {
+        MeadowImport.shared.choose(over: windowController?.window)
+    }
+
+    /// File › Export Meadow…: the meadow shown, as a file to share.
+    @objc func exportMeadow(_ sender: Any?) {
+        MeadowLibraryActions.export(MeadowLibrary.shared.active, over: windowController?.window)
+    }
+
+    /// File › Export Meadow Picture…: the meadow shown, drawn as a picture.
+    @objc func exportMeadowPicture(_ sender: Any?) {
+        MeadowLibraryActions.exportPicture(MeadowLibrary.shared.active, over: windowController?.window)
     }
 
     @objc func showMainWindow(_ sender: Any?) {

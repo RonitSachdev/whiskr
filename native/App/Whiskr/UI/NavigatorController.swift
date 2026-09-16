@@ -54,6 +54,7 @@ final class NavigatorController: NSViewController {
     override func loadView() {
         let container = DropView()
         container.onFolders = { [weak self] urls in urls.forEach { self?.workbench.open(folder: $0.path) } }
+        container.onMeadows = { [weak self] urls in MeadowImport.shared.open(urls, over: self?.view.window) }
         container.onAppearance = { [weak self] in
             self?.applySettings()
             // The tray's pictures are drawn over the tile's colour, which follows the appearance.
@@ -583,18 +584,24 @@ final class MenuAction: NSObject {
     @objc func fire() { run() }
 }
 
-/// A view that opens folders dropped on it as workspaces.
+/// A view that opens folders dropped on it as workspaces, and imports meadow files dropped on it (each through
+/// the import sheet).
 final class DropView: NSView {
     var onFolders: (([URL]) -> Void)?
+    var onMeadows: (([URL]) -> Void)?
     var onAppearance: (() -> Void)?
 
+    private func urls(_ info: NSDraggingInfo) -> [URL] {
+        info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+    }
+
     private func folders(_ info: NSDraggingInfo) -> [URL] {
-        let urls = info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
-        return urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+        urls(info).filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        folders(sender).isEmpty ? [] : .link
+        if !MeadowLibraryActions.meadowFiles(urls(sender)).isEmpty { return .copy }
+        return folders(sender).isEmpty ? [] : .link
     }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -602,6 +609,11 @@ final class DropView: NSView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let meadows = MeadowLibraryActions.meadowFiles(urls(sender))
+        if !meadows.isEmpty {
+            onMeadows?(meadows)
+            return true
+        }
         let found = folders(sender)
         guard !found.isEmpty else { return false }
         onFolders?(found)

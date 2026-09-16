@@ -55,6 +55,8 @@ enum SceneryCatalog {
         "cat.yarn": .plant({ [CatThings.yarn] }, sway: 0, blooms: false, base: 0.5),
         "cat.bed": .plant({ [CatThings.bed] }, sway: 0, blooms: false, base: 1.6),
         "cat.bowl": .plant({ [CatThings.bowl] }, sway: 0, blooms: false, base: 0.6),
+        // Not a catalog thing: what a thing from a newer Whiskr shows as while the meadow is edited (Parcel.swift).
+        MeadowScenery.parcel: parcelKind,
     ]
 
     /// Things that stand alone (a boulder, wood, made things): placed and taken away one at a time (a click of

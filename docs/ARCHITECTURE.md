@@ -151,7 +151,8 @@ bytes, never inside JSON.
 |---|---|---|
 | `~/Library/Application Support/Whiskr/layout.json` | Workspaces, tabs, panes, their folders, the host terminal each pane shows | Written on changes and on quit. Which workspace was selected is not kept: a launch lands on Home. One a launch cannot read is kept as `layout-unreadable-<time>.json` |
 | `…/Whiskr/agents.json` | The Claudes' last known state | So cats come back as they were after a relaunch |
-| `…/Whiskr/Meadows/*.whiskrmeadow` | Your meadows, one file each, named after the meadow (unique by " 2", " 3"); the one shown is `WorldSettings.meadow` (a file name; none: the built-in Default) | Saved a second after each change and at quit, whole (a temporary file renamed over it). One that cannot be read is left as it was and the Default shown |
+| `…/Whiskr/Meadows/*.whiskrmeadow` | Your meadows, one file each, named after the meadow (unique by " 2", " 3"); the one shown is `WorldSettings.meadow` (a file name; none: the built-in Default) | Saved a second after each change and at quit, whole (a temporary file renamed over it). One that cannot be read is left as it was and the Default shown. The folder is watched (`MeadowFolderWatch`): changes by something else are read again (`MeadowDiskChange`). Imports are added byte for byte, never over another; Move to Trash uses the Finder's Trash |
+| `$TMPDIR/Whiskr Meadows/<uuid>/` | A meadow written to be sent (Share…, a card dragged out) | The newest format; the system clears it |
 | `…/Whiskr/Themes/*.whiskrtheme` | The user's own and imported themes (plain JSON) | An imported VS Code theme is stored in Whiskr's form, with its `tokenColors` |
 | `…/Whiskr/Themes/Originals/<source>/` | The files an imported theme was read from (theme JSON and what it includes, or an extension's `package.json` and theme files) | Kept so a later version can import them again; moved to the Trash with the last theme made from them (only a folder directly in `Originals`: a theme file names its folder, and anyone can write one) |
 | `…/Whiskr/Languages/<set>/` | Languages and grammars the user added: an `index.json` and the grammar and configuration files, copied as data | Loaded at launch over the bundled ones (`LanguageRegistry.loadInstalled`); nothing in them is ever run |
@@ -270,7 +271,7 @@ Code does.
 | Session host | `app.whiskr.Whiskr.host` (executable `whiskr-host`) |
 | `paw` | `app.whiskr.Whiskr.paw` |
 | Theme file type | `app.whiskr.theme` (`.whiskrtheme`) |
-| Meadow file type | `app.whiskr.meadow` (`.whiskrmeadow`, conforms to `public.json`) |
+| Meadow file type | `app.whiskr.meadow` (`.whiskrmeadow`, exported, conforms to `public.json` and `public.data`; "Whiskr Meadow", role Viewer, rank Owner; its Finder icon the system's page with the `MeadowDocument` badge, drawn by `Scripts/make-meadow-icon.swift`) |
 | Pane environment | `WHISKR_PANE`, `WHISKR_BIN`, `WHISKR_HOOKS`, `WHISKR_ZDOTDIR`, `WHISKR_XDG_DATA_DIRS`, `PAW_ID`, `PAW_SOCKET`, `PAW_PARENT`, `PAW_NAME`, `PAW_WORKTREES`, `PAW_TASK` (a `paw run` task on its way to Claude); `TERM_PROGRAM=Whiskr` |
 
 ## git
@@ -369,8 +370,14 @@ file is looked at.
   limited (name 60, author 40, description 280 characters); numbers finite; things outside the meadow left
   out and counted; at most 5,000 things (48 trees, 120 tall things, 32 lamps, 600 fence posts, 400 other
   made things), refused rather than cut when over.
+- **Reading a file from somewhere else** (an import) starts before parsing: it must be an ordinary file (not a
+  folder, pipe or device, a link followed) of at most 4 MiB, and no more than that is ever read
+  (`MeadowLibraryFolder.data(at:)`). What it is, as people are told, is `MeadowSummary` (things, paints shown,
+  `writtenBy`, things from a newer Whiskr, a newer catalog needed, a newer minor format, things left outside):
+  the same verdicts anywhere a file is looked at.
 - **Locks.** The fixtures in `MeadowFileTests/Fixtures/MeadowFiles` (one per format version and catalog,
-  the Default among them) are never edited once released; their digests are checked. The Default's file is
+  the Default among them, and `import-*`: a newer minor format, a newer catalog, a newer major, a damaged file,
+  one with too many things) are never edited once released; their digests are checked. The Default's file is
   what the scene generates, byte for byte (`WhiskrMeadowTests`); `v1-catalog1-ground` is a meadow painted and
   laid by the editor (path, lawn, soil, a row of stepping stones), read, drawn and written back byte for byte.
 
@@ -415,6 +422,26 @@ a scenery that differs only in places, turns, leans and sizes is placed again th
 frame's command buffer, so a drag costs a fraction of laying the meadow. A scenery with things added or
 taken away is laid afresh, but its ground map is baked (and uploaded) again only when the trees' shade
 changed, so a Brush stroke or an Eraser sweep lays even a full meadow of 5,000 things in well under a frame.
+
+**My Meadows and files** (docs/DESIGN.md "My Meadows and meadow files"). `MeadowLibrary` also makes, copies,
+renames (file and name inside, written whole before the old goes; a step made before still finds it through
+the renames it records), moves to the Trash and adds imported meadows through `MeadowLibraryFolder`, never
+one over another (" 2" by the family of the name). It watches the folder (`MeadowFolderWatch`: the folder's
+vnode for files added, removed and replaced whole, the shown file's for writes in place, and again when the app
+becomes active) and keeps the digest of what it last read or wrote of the meadow shown, so its own saves are
+nothing and another's change is read again, or asked about while editing (`MeadowDiskChange`, `conflict`;
+nothing is saved while it asks; either answer keeps the other side as a meadow of its own). Pictures of meadows
+are `MeadowPreviews`: one `MeadowView` never on screen draws each (`previewImage`: by day, no effects, no world,
+a fixed view low over the picnic ground), one at a time a turn of the main loop apart, kept by the file's
+stamp. The cards are `MeadowLibraryView` (Settings › Meadow, and `MeadowLibrarySheet` from the editor); what
+a card does is `MeadowLibraryActions`, the same from the menus. Every system panel goes through
+`MeadowPanels` (replaced by `PanelStandIn` in the harness). Imports are `MeadowImport` and its
+`ImportMeadowSheet`, a queue of files each judged (`judge`: the bounded read, `MeadowDocument.read`, the
+summary, the name it would take) and shown in one sheet over the window; all text from a file is shown with
+`Text(verbatim:)`. While editing, `MeadowEditSession.showsParcels` draws each thing the scene cannot draw at
+its spot as `MeadowScenery.parcel` (a scenery id no catalog id can be, drawn by the scene's own parcel, kept out
+of `drawnIds`); a parcel moves through `MeadowParcel.move` and is taken away like any entry, nothing else.
+The note along the top of edit mode is `EditorNotice`.
 
 **The tray and its tools** (`EditorTray`, `EditModeController+Tools`). The tray is a SwiftUI floating piece
 over the meadow's bottom edge (`EditorTrayHost`, a `BarHostingView`: its tools are the bars' controls, its

@@ -74,6 +74,21 @@ Nothing has been released yet. This is what the first release will contain.
 - Painted paths now read as pale, dry, trodden earth with a few pebbles and short tufts along their sides,
   and soil as a dark tilled bed in ridges, so the two are told apart at a glance; the earth's flecks are
   soft and round instead of small blocks.
+- My Meadows (Settings › Meadow, and My Meadows… in the editor's name menu): a card for every meadow, the
+  Default first, each with a picture of it drawn by the meadow itself and what it holds ("214 things · paths
+  and lawn"); click to use one; Rename in place, Duplicate, Show in Finder, Move to Trash (asking first), and
+  New Meadow from the Default or empty.
+- Meadows as files to share: Export… (with your name and a line about it, if you like), Share…, or drag a card
+  to the Finder; Export Picture… for a post. A meadow file holds the scenery only: nothing of your Mac, your
+  folders, your workspaces, the date or you. Open one with a double-click, File › Import Meadow…, or by
+  dropping it on the meadow, My Meadows or the Dock icon: the import sheet shows it drawn, who made it, what it
+  holds and what to know, and Add or Add and Use never replaces a meadow of yours. A file from a newer Whiskr
+  opens and keeps what this one cannot show; one too new, damaged or too large says why and what to do.
+  Meadow files have their own icon in the Finder.
+- Things a newer Whiskr put in a meadow show as parcels while editing, to be moved or taken away, and are
+  never lost on save.
+- A meadow changed on disk by something else (a sync tool, the Finder) is read again; while you edit it,
+  you choose Keep Mine or Reload, and the other version is kept as a meadow of its own.
 - Trees and the fallen log make way where a blanket comes, as flowers and stones always did, and come back
   when it goes. The workspaces' column always runs down the middle of the meadow.
 - The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset

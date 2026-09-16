@@ -5,11 +5,13 @@ import SwiftUI
 import WhiskrKit
 import WhiskrMeadow
 
-/// Settings › Meadow: the meadow's time of day with the real sun and moon, real weather and a switch for each
+/// Settings › Meadow: My Meadows' cards (`MeadowLibraryView`), the meadow's time of day with the real sun and moon, real weather and a switch for each
 /// thing it shows, picnic things, flag size and, once there is more than one, the map.
 struct WorldSettingsView: View {
     @Bindable var store: WorldStore
     private let library = MeadowLibrary.shared
+    /// The Settings window, for the panels and questions My Meadows shows.
+    @State private var host = HostWindow()
 
     var body: some View {
         Form {
@@ -93,30 +95,12 @@ struct WorldSettingsView: View {
         .formStyle(.grouped)
     }
 
-    /// Your Meadow: which meadow is shown (the Default or one of yours), Edit Meadow… and Revert to Default.
-    /// Choosing one is a step Edit › Undo takes back while the meadow is edited.
+    /// Your Meadow: My Meadows' cards (the Default and yours, the one shown checked), New Meadow, Import… and Edit
+    /// Meadow…. Choosing one is a step Edit › Undo takes back while the meadow is edited; choosing the Default is
+    /// Revert to Default.
     private var yourMeadow: some View {
         Section {
-            Picker(String(localized: "Meadow shown", comment: "Settings › Meadow: which meadow is shown"), selection: Binding(
-                get: { library.active ?? "" },
-                set: { file in
-                    let chosen = file.isEmpty ? nil : file
-                    library.use(chosen, name: chosen == nil ? String(localized: "Revert to Default")
-                                                            : String(localized: "Use “\(library.displayName(chosen))”", comment: "Meadow editor: a step's name (choosing a meadow)"))
-                })) {
-                Text(library.displayName(nil)).tag("")
-                ForEach(library.files, id: \.self) { file in
-                    Text(library.displayName(file)).tag(file)
-                }
-            }
-            .pickerStyle(.radioGroup)
-            HStack {
-                Button(String(localized: "Edit Meadow…", comment: "The grass's menu: begins editing the meadow")) {
-                    NSApp.sendAction(#selector(AppDelegate.editMeadow(_:)), to: nil, from: nil)
-                }
-                Button(String(localized: "Revert to Default")) { library.revertToDefault() }
-                    .disabled(library.active == nil)
-            }
+            MeadowLibraryView(window: { host.window })
         } header: {
             Text(String(localized: "Your Meadow", comment: "Settings › Meadow: the section choosing and editing the meadow"))
         } footer: {
@@ -124,14 +108,17 @@ struct WorldSettingsView: View {
                 if let unreadable = library.unreadable {
                     Text(String(localized: "“\(library.displayName(unreadable))” couldn't be read and is kept as it was. The Default is shown.",
                                 comment: "Settings › Meadow: the meadow chosen could not be read"))
+                } else if let removed = library.removedOnDisk {
+                    Text(String(localized: "“\(library.displayName(removed))” was moved out of the Meadows folder, so the Default is shown.",
+                                comment: "Settings › Meadow: the meadow shown was removed by something else"))
                 } else {
-                    Text(String(localized: "Your meadow is saved as you change it. The Default never changes: your first change makes a copy of it, My Meadow.",
+                    Text(String(localized: "Your meadows are saved as you change them, as .whiskrmeadow files you can share. The Default never changes: your first change makes a copy of it, My Meadow. Drop a meadow file here to add it.",
                                 comment: "Settings › Meadow: how meadows are kept"))
                 }
             }
             .font(.callout).foregroundStyle(.secondary)
         }
-        .onAppear { library.refreshFiles() }
+        .background(HostWindowReader(host: host))
     }
 
     private func mapName(_ map: WorldSettings.Map) -> Text {

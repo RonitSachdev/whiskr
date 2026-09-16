@@ -477,6 +477,9 @@ most of the time.
   sweeps away the plants, mushrooms and stones it passes, never a tree, a young tree, wood, a boulder or a made
   thing (nothing big or placed with care is lost to a stroke passing it), and never a blanket or anything from
   a newer Whiskr. Choosing a kind on
+- **The Eraser** (a dashed circle in the ink): a click takes away the thing under it, a tree or a parcel too; a drag
+  sweeps away the plants, mushrooms and stones it passes, never a tree, a young tree or the log (nothing big
+  is lost to a stroke passing it), and never a blanket or anything from a newer Whiskr. Choosing a kind on
   its shelf sweeps only that kind ("The Eraser clears only daisies now" where a click falls on another).
   Each click or sweep is one step.
 - **Caps.** A meadow holds at most 5,000 things, 48 trees and 120 tall things (32 lamps when lamps come). The
@@ -507,6 +510,68 @@ most of the time.
   ("Daisies, 9"); each element chooses what it stands for. Choosing, moving, the tool, what is armed, placing,
   strokes, refusals with their reason, undo and redo are announced. With Increase Contrast the rings, the
   circles, the picnic ground's outline and the tray's line are drawn stronger.
+- **Things from a newer Whiskr** (and things of the catalog this Whiskr has no model for yet) are kept whole and
+  never drawn outside editing; while editing each shows where it stands as a **parcel** (a kraft-paper box tied
+  with string, neutral on purpose), which can be chosen, moved and taken away and nothing more (its bar holds
+  Delete and More only; R, `[` `]`, ⌘D and Copy say "Things from a newer Whiskr can only be moved or taken
+  away"). Pointed at, it says what it is ("Thing from a newer Whiskr · Kept whole: move it, or take it away"),
+  and VoiceOver reads the same. A quiet note along the top of the meadow says how many there are ("Made with a
+  newer Whiskr: 6 things can't be shown here. They're kept, and come back when you update."); its × puts it
+  away for that meadow.
+
+### My Meadows and meadow files
+
+Meadows are files people keep, share and receive: `.whiskrmeadow`, plain JSON, data only (the format:
+docs/ARCHITECTURE.md, "The meadow file").
+
+- **My Meadows** is a card for each meadow: the read-only **Default** first ("Built in · never changes"), then
+  yours in name order ("Orchard", "Orchard 2", "Orchard 10"). Each card is the meadow's picture, drawn by the
+  meadow itself from the meadow's data (by day, still air, low over the picnic ground toward the hills; no
+  blankets, cats or flags, which are yours and not the file's), its name, and what it holds ("214 things ·
+  paths and lawn", "Nothing placed yet"). The meadow shown is ringed and checked. A click on a picture shows that
+  meadow (the Default's is Revert to Default), a step ⌘Z takes back while editing. Its ⋯ (or a right-click):
+  Use, Edit, Rename, Duplicate, Export…, Share…, Export Picture…, Show in Finder, Move to Trash…. Under the
+  cards: New Meadow (From the Default, or Empty: shown and edited at once), Import… and Edit Meadow…. It is
+  Settings › Meadow's first section, and a sheet from the editor's name menu (My Meadows…).
+- **Pictures** follow the meadow: drawn again when its file changes (by you, a sync tool or the Finder), kept
+  in memory otherwise. They hold no colour of the theme, so one picture is right in every theme; the cards
+  round them are the theme's.
+- **Rename** happens in the card: the name becomes a field, Return keeps it, Esc leaves it. It is trimmed and
+  made plain text; an empty name or one over 60 characters says why under the field; a name another meadow
+  has takes the next free one, said before Return ("Another meadow has this name; this one becomes “Orchard
+  2”"). The file and the name inside it change together; the meadow shown stays shown, and steps made before
+  still find it. The editor's name menu has Rename “…”…, which opens My Meadows with the name ready.
+- **Duplicate** makes the same meadow under the next free name of its family (a copy of "Orchard 2" is
+  "Orchard 3", never "Orchard 2 2"); the Default's copy is "My Meadow". **Move to Trash…** always asks,
+  naming the meadow ("Move “Orchard” to the Trash?"; for the meadow shown, that the Default is shown
+  instead); the Finder's Put Back brings it back. The history ends there (its steps no longer fit).
+- **Export…** (the card, File › Export Meadow…, the editor's name menu) is the save panel with two optional
+  fields: "Made by:" (your name, shown with this meadow; offered again next time, never added unasked) and
+  "About it:". **Share…** hands the file to the system's share picker; a card **dragged out** to the Finder
+  becomes the file where it lands. Each is the newest format, sorted keys, the name it has here: nothing of
+  your Mac, folders, workspaces, the date or you. **Export Picture…** saves the card's picture large
+  (2400 × 1500) for a post or a gallery.
+- **Import** (File › Import Meadow…, My Meadows' Import…, a double-click or Open With in the Finder, a file
+  dropped on the meadow, on My Meadows or on the Dock icon) always goes through the **import sheet**, one file
+  after another: the meadow drawn from its data, its name, "by Hana · Made with Whiskr 1.8.2", its line in
+  quotes, what it holds, and what to know (things this Whiskr cannot draw, kept and back once updated; a newer
+  way of writing meadows, read in part and saved back untouched; things outside the meadow left out; a name
+  you already have, added as "… 2"). Cancel (Esc), Add to My Meadows, Add and Use (Return). Adding never
+  replaces a meadow; the file is added as it came. A file that cannot be opened says why and what to do, in
+  the same sheet: "“Orchard Study” needs a newer Whiskr · It was made with Whiskr 3.2.0, which saves meadows in a
+  way this version can't read. Update Whiskr to open it.", damaged ("it ends part way through, as a download
+  that stopped early does"), too large, too many things ("5,001 of 5,000"). Every text from a file is shown as
+  plain text only.
+- **Changed on disk.** The Meadows folder is watched: a meadow added, renamed or removed in the Finder or by a
+  sync tool shows as it is. The meadow shown, changed by something else, is read again (nothing of yours is
+  unsaved: changes are written within a second); while it is being edited, a quiet note asks ("“Orchard”
+  changed on disk. Keep yours, or reload it? The other is kept in My Meadows."): **Keep Mine** writes yours
+  and keeps the disk's as a meadow of its own, **Reload** shows the disk's and keeps yours as one. Removed
+  while edited: **Save Again** or **Close It**; removed otherwise, the Default is shown and Settings › Meadow
+  says why. Nothing is written over the file while the note asks; leaving editing unanswered reloads, keeping
+  yours.
+- **In the Finder** a meadow file is "Whiskr Meadow" with its own icon (a round of meadow, a tree, our cat
+  peeking up), and opens in Whiskr.
 
 ### Idle cats wander
 

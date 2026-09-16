@@ -135,8 +135,8 @@ public struct MeadowScenery: Equatable, Sendable {
     /// kept in its file and left out of the picture.
     public static func draws(_ id: String) -> Bool { SceneryCatalog.kinds[id] != nil }
 
-    /// Every id the scene can draw.
-    public static var drawnIds: Set<String> { Set(SceneryCatalog.kinds.keys) }
+    /// Every catalog id the scene can draw (the parcel a thing from a newer Whiskr shows as is not one).
+    public static var drawnIds: Set<String> { Set(SceneryCatalog.kinds.keys).subtracting([parcel]) }
 
     /// A place at a thing where a cat likes to be: sitting on a stump, in a box or by a bowl, napping in a bed,
     /// scratching at a post. For the meadow's cats to go to; nothing in the scene uses it yet.
