@@ -347,11 +347,28 @@ can hold (its catalog):
   sized for the meadow's cats: a cardboard box a cat fits in, its flaps fallen open; a sisal scratching post
   with a perch on top and a pompom; a ball of yarn; a round bed; a food bowl of kibble. Made things a cat uses
   stand on turf trodden short round them, as the grass flattens round a bed left out; found things (a stump,
-  a boulder) stand in the long grass. Until the palettes come, each made thing wears its palette's first
-  swatch (oat for the cushion, the yarn and the bed; cream for the bowl).
+  a boulder) stand in the long grass.
+- **A place they come to work in:** the Garden: a post-and-rail fence laid in runs, a flower pot with a
+  geranium, a raised planter of lettuces and marigolds, a watering can, a nest box on its post, a straw skep on
+  its stand; the Workplace: a low writing desk (a fuzukue, sat at on the floor cushion) with a mug and a little
+  plant, a bookcase of cloth-bound books, a garden bench, a fingerpost with no words, a mailbox, a noticeboard
+  with blank notes under its little roof, a garden shed with a window box, and a canvas ridge tent with its
+  flaps tied back. Made things a person uses are drawn as a cat would use them (a bench's seat a stump's height,
+  1.1 units), never scaled. Nothing lies loose that a working cat carries (rule 8): books stand on the shelf.
+- **Fences** are laid by a drag: a square post at least every 2.5 units, two rails a span following the land,
+  a corner one post; a run that ends near another's end joins it into one run. One span may hold a gate: a
+  cream ledged-and-braced gate with palings, hung on stouter capped posts, so the way through reads among the
+  weathered rails. A fence, the shed and the tent are kept off the picnic ground; a fence stops a cat but at
+  its gate.
+- **Colours:** made things with a palette (cushion, yarn, bed, bowl, pot, watering can, bench, mailbox, shed's
+  door, tent) wear one of their 4–5 swatches, chosen from the selection bar's Colour popover; the swatches are
+  the blankets' gingham colours taken toward the cloth's cream and dulled into clay, and the meadow's woods,
+  glazes and cloths, so a sage bench, a sage shed door and a sage cushion are one sage. The next one placed
+  wears the colour last chosen for its kind.
 - **Cats will like them:** each thing that invites a cat says where (sit on a stump, a boulder, a log pile,
-  the log, in a box or by a bowl; nap in a bed or on a cushion; scratch at a post). The meadow's cats do not
-  go there yet.
+  the log, a bench's seat, a desk's top, in a box, by a bowl, on a shed's doorstep, under a nest box; nap in a
+  bed, on a cushion, on a bookcase's top, in a tent's doorway; scratch at a post). The meadow's cats do not go
+  there yet.
 
 ### Editing the meadow
 
@@ -413,7 +430,7 @@ most of the time.
   it goes by, "firewood" for the log pile, "zabuton" for the cushion, "cat" for every cat thing, and in
   Japanese hiragana or katakana alike; Return arms what it found); and the fold (View ›
   Hide Editor Tray, ⌥⌘T, remembered) that leaves only that row. Below: the categories that hold something
-  (Trees, Flowers, Stones & Wood, Ground, whose tab is the Ground tool's, Workplace and Cat Things; keys 1–7), a line saying what to do now, and the shelf: each thing pictured
+  (Trees, Flowers, Stones & Wood, Ground, whose tab is the Ground tool's, Garden, Workplace and Cat Things; keys 1–7), a line saying what to do now, and the shelf: each thing pictured
   by the scene in its own clay on a round of grass, by day, on a tile of the content colour (64 pt, its name
   under it, a long name a little smaller rather than cut). Under 760 pt the tools and categories show as symbols with their names in the tooltips. The shelf
   offers exactly what the meadow can draw. A shelf longer than the tray scrolls along with a trackpad's swipe
