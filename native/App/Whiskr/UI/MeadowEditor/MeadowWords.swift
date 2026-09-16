@@ -13,15 +13,30 @@ enum MeadowWords {
         case "tree.birch": String(localized: "Birch", comment: "Meadow editor: a thing's name")
         case "tree.cherry": String(localized: "Cherry tree", comment: "Meadow editor: a thing's name")
         case "tree.young": String(localized: "Young tree", comment: "Meadow editor: a thing's name")
+        case "tree.apple": String(localized: "Apple tree", comment: "Meadow editor: a thing's name")
+        case "tree.pine": String(localized: "Pine", comment: "Meadow editor: a thing's name (a Scots pine)")
         case "flower.daisy": String(localized: "Daisy", comment: "Meadow editor: a thing's name")
         case "flower.buttercup": String(localized: "Buttercup", comment: "Meadow editor: a thing's name")
         case "flower.lupin": String(localized: "Lupin", comment: "Meadow editor: a thing's name")
         case "flower.poppy": String(localized: "Poppy", comment: "Meadow editor: a thing's name")
+        case "flower.cornflower": String(localized: "Cornflower", comment: "Meadow editor: a thing's name")
+        case "flower.foxglove": String(localized: "Foxglove", comment: "Meadow editor: a thing's name")
+        case "plant.fern": String(localized: "Fern", comment: "Meadow editor: a thing's name")
+        case "plant.clover": String(localized: "Clover", comment: "Meadow editor: a thing's name (white clover)")
         case "fungus.flyAgaric": String(localized: "Fly agaric", comment: "Meadow editor: a thing's name")
         case "stone.stone": String(localized: "Stone", comment: "Meadow editor: a thing's name")
         case "stone.mossy": String(localized: "Mossy stone", comment: "Meadow editor: a thing's name")
+        case "stone.boulder": String(localized: "Boulder", comment: "Meadow editor: a thing's name")
         case "stone.stepping": String(localized: "Stepping stone", comment: "Meadow editor: a thing's name")
         case "wood.fallenLog": String(localized: "Fallen log", comment: "Meadow editor: a thing's name")
+        case "wood.stump": String(localized: "Tree stump", comment: "Meadow editor: a thing's name")
+        case "wood.logPile": String(localized: "Log pile", comment: "Meadow editor: a thing's name")
+        case "work.cushion": String(localized: "Floor cushion", comment: "Meadow editor: a thing's name (a square cushion to sit on, a zabuton)")
+        case "cat.box": String(localized: "Cardboard box", comment: "Meadow editor: a thing's name (one a cat sits in)")
+        case "cat.scratchingPost": String(localized: "Scratching post", comment: "Meadow editor: a thing's name (a cat's)")
+        case "cat.yarn": String(localized: "Ball of yarn", comment: "Meadow editor: a thing's name")
+        case "cat.bed": String(localized: "Cat bed", comment: "Meadow editor: a thing's name")
+        case "cat.bowl": String(localized: "Food bowl", comment: "Meadow editor: a thing's name (a cat's)")
         case "ground.path": String(localized: "Path", comment: "Meadow editor: a ground paint's name (worn earth)")
         case "ground.lawn": String(localized: "Lawn", comment: "Meadow editor: a ground paint's name (grass mown short)")
         case "ground.soil": String(localized: "Soil", comment: "Meadow editor: a ground paint's name (bare earth for flower beds)")
@@ -161,8 +176,41 @@ enum MeadowWords {
         case "stone.stone": String(localized: "Stones", comment: "Meadow editor: a clump of them, for VoiceOver")
         case "stone.mossy": String(localized: "Mossy stones", comment: "Meadow editor: a clump of them, for VoiceOver")
         case "stone.stepping": String(localized: "Stepping stones", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "flower.cornflower": String(localized: "Cornflowers", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "flower.foxglove": String(localized: "Foxgloves", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "plant.fern": String(localized: "Ferns", comment: "Meadow editor: a clump of them, for VoiceOver")
         case EditorTray.wildflowers: wildflowers
         default: name(id)
+        }
+    }
+
+    /// Other words people look for a thing by, for the tray's filter (besides its name and its shelf's): what it
+    /// is also called, and what it is for. In Japanese, the readings of names written in kanji too.
+    static func keywords(_ id: String) -> String {
+        switch id {
+        case "tree.cherry": String(localized: "blossom, sakura", comment: "Meadow editor's filter: other words for the cherry tree, comma-separated")
+        case "tree.young": String(localized: "sapling", comment: "Meadow editor's filter: other words for the young tree, comma-separated")
+        case "tree.apple": String(localized: "fruit, orchard", comment: "Meadow editor's filter: other words for the apple tree, comma-separated")
+        case "tree.pine": String(localized: "Scots pine, conifer, evergreen, fir", comment: "Meadow editor's filter: other words for the pine, comma-separated")
+        case "flower.lupin": String(localized: "lupine", comment: "Meadow editor's filter: other words for the lupin, comma-separated")
+        case "flower.cornflower": String(localized: "blue, bachelor's button", comment: "Meadow editor's filter: other words for the cornflower, comma-separated")
+        case "flower.foxglove": String(localized: "digitalis, bells", comment: "Meadow editor's filter: other words for the foxglove, comma-separated")
+        case "plant.fern": String(localized: "bracken, frond, shade", comment: "Meadow editor's filter: other words for the fern, comma-separated")
+        case "plant.clover": String(localized: "shamrock, trefoil, white clover", comment: "Meadow editor's filter: other words for clover, comma-separated")
+        case "fungus.flyAgaric": String(localized: "mushroom, toadstool", comment: "Meadow editor's filter: other words for the fly agaric, comma-separated")
+        case "stone.stone", "stone.mossy": String(localized: "rock, pebble", comment: "Meadow editor's filter: other words for a stone, comma-separated")
+        case "stone.boulder": String(localized: "rock, seat", comment: "Meadow editor's filter: other words for the boulder, comma-separated")
+        case "stone.stepping": String(localized: "path, paving", comment: "Meadow editor's filter: other words for the stepping stone, comma-separated")
+        case "wood.fallenLog": String(localized: "trunk, timber", comment: "Meadow editor's filter: other words for the fallen log, comma-separated")
+        case "wood.stump": String(localized: "seat, wood", comment: "Meadow editor's filter: other words for the tree stump, comma-separated")
+        case "wood.logPile": String(localized: "logs, firewood, woodpile", comment: "Meadow editor's filter: other words for the log pile, comma-separated")
+        case "work.cushion": String(localized: "zabuton, pillow, seat", comment: "Meadow editor's filter: other words for the floor cushion, comma-separated")
+        case "cat.box": String(localized: "carton, cat", comment: "Meadow editor's filter: other words for the cardboard box, comma-separated")
+        case "cat.scratchingPost": String(localized: "scratcher, cat tree, cat", comment: "Meadow editor's filter: other words for the scratching post, comma-separated")
+        case "cat.yarn": String(localized: "wool, toy, cat", comment: "Meadow editor's filter: other words for the ball of yarn, comma-separated")
+        case "cat.bed": String(localized: "basket, nap, sleep, cat", comment: "Meadow editor's filter: other words for the cat bed, comma-separated")
+        case "cat.bowl": String(localized: "dish, food, kibble, cat", comment: "Meadow editor's filter: other words for the food bowl, comma-separated")
+        default: ""
         }
     }
 

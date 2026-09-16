@@ -1207,8 +1207,9 @@ final class EditModeController: NSObject {
         }
     }
 
-    /// The meadow as VoiceOver reads it while editing: each tree and the log on its own, the plants and stones
-    /// as clumps of one kind ("Daisies, 9"), so it never holds thousands of elements. Press chooses.
+    /// The meadow as VoiceOver reads it while editing: each tree, piece of wood, boulder and made thing on its
+    /// own, the plants and stones as clumps of one kind ("Daisies, 9"), so it never holds thousands of elements.
+    /// Press chooses.
     func updateAccessibility() {
         let session = library.session
         var elements: [NSAccessibilityElement] = []
@@ -1217,13 +1218,13 @@ final class EditModeController: NSObject {
         let things = session.drawnIDs.compactMap { id in session.item(id).map { (id: id, item: $0) } }
         func square(_ at: MeadowPoint) -> SIMD2<Int32> { SIMD2(Int32((at.x / 4).rounded(.down)), Int32((at.z / 4).rounded(.down))) }
         var squares: [SIMD2<Int32>: [Int]] = [:]
-        for (k, thing) in things.enumerated() where !SceneryRules.isBig(thing.item.asset) { squares[square(thing.item.at), default: []].append(k) }
+        for (k, thing) in things.enumerated() where SceneryRules.isSmall(thing.item.asset) { squares[square(thing.item.at), default: []].append(k) }
         var placed = [Bool](repeating: false, count: things.count)
         for k in things.indices where !placed[k] {
             let item = things[k].item
             placed[k] = true
             var members = [things[k].id]
-            if !SceneryRules.isBig(item.asset) {
+            if SceneryRules.isSmall(item.asset) {
                 var frontier = [k]
                 while let j = frontier.popLast() {
                     let at = things[j].item.at, middle = square(at)

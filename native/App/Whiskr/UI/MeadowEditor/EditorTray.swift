@@ -108,12 +108,22 @@ final class EditorTray {
         switch tool {
         case .select:
             let query = filter.trimmingCharacters(in: .whitespaces)
-            if !query.isEmpty { return Self.things.filter { $0.name.localizedStandardContains(query) || MeadowWords.categoryName($0.category).localizedStandardContains(query) } }
+            if !query.isEmpty { return Self.things.filter { Self.matches($0, query) } }
             return Self.things.filter { $0.category == category }
         case .brush: return Self.brushes
         case .erase: return Self.erasers
         case .ground: return Self.paints
         }
+    }
+
+    /// Whether the filter's `query` finds `item`: in its name, its shelf's name, the other words it goes by
+    /// (`MeadowWords.keywords`) or its id (so "cat" and "post" find their things in any language), ignoring case,
+    /// accents and, in Japanese, hiragana against katakana.
+    static func matches(_ item: Item, _ query: String) -> Bool {
+        func folded(_ text: String) -> String { text.applyingTransform(.hiraganaToKatakana, reverse: false) ?? text }
+        let words = [item.name, MeadowWords.categoryName(item.category), MeadowWords.keywords(item.id), item.id].map(folded)
+        let wanted = folded(query)
+        return words.contains { $0.localizedStandardContains(wanted) }
     }
 
     /// The Brush's shelf: its wildflower mix, then the plants it paints.
@@ -122,9 +132,9 @@ final class EditorTray {
             + things.filter { MeadowCatalog.current.asset($0.id).map(MeadowBrush.paints) ?? false }
     }
 
-    /// The Eraser's shelf: any kind, then each small kind it can be kept to.
+    /// The Eraser's shelf: any kind, then each small kind it can be kept to (what its sweep takes).
     static var erasers: [Item] {
-        [Item(id: anyKind, name: MeadowWords.anyKind, category: nil, pictured: [])] + things.filter { !SceneryRules.isBig($0.id) }
+        [Item(id: anyKind, name: MeadowWords.anyKind, category: nil, pictured: [])] + things.filter { SceneryRules.isSmall($0.id) }
     }
 
     /// The tile chosen on the shelf now: the armed thing, or the Brush's or the Eraser's kind.
@@ -487,6 +497,16 @@ final class TrayTileView: NSView {
         tray?.act(.drag(item, event.locationInWindow, ended: false))
     }
 
+    /// A mouse's wheel turns up and down only: over the shelf it scrolls the shelf along. A trackpad's sideways
+    /// swipe is the shelf's own.
+    override func scrollWheel(with event: NSEvent) {
+        if abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX), let shelf = enclosingScrollView {
+            EditorTrayHost.scrollAlong(shelf, by: event)
+        } else {
+            super.scrollWheel(with: event)
+        }
+    }
+
     override func mouseUp(with event: NSEvent) {
         defer { pressedAt = nil; dragging = false }
         guard pressedAt != nil else { return }
@@ -519,6 +539,30 @@ final class EditorTrayHost: BarHostingView<EditorTrayView> {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    /// The wheel over the tray is the tray's: what reaches the card scrolls the shelf, and never zooms the meadow
+    /// behind it.
+    override func scrollWheel(with event: NSEvent) {
+        if let shelf = shelf(in: self) { Self.scrollAlong(shelf, by: event) }
+    }
+
+    private func shelf(in view: NSView) -> NSScrollView? {
+        for sub in view.subviews {
+            if let scroll = sub as? NSScrollView { return scroll }
+            if let found = shelf(in: sub) { return found }
+        }
+        return nil
+    }
+
+    /// Scrolls the shelf along by a wheel's turn: down or right goes on along it, up or left back; a line of a
+    /// mouse's wheel is a tile's width.
+    static func scrollAlong(_ shelf: NSScrollView, by event: NSEvent) {
+        let delta = abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX) ? event.scrollingDeltaY : event.scrollingDeltaX
+        let step = event.hasPreciseScrollingDeltas ? delta : delta * (EditorTray.tile + Look.Space.m) / 3
+        let clip = shelf.contentView, width = shelf.documentView?.frame.width ?? 0
+        let x = min(max(clip.bounds.origin.x - step, 0), max(width - clip.bounds.width, 0))
+        clip.scroll(to: NSPoint(x: x, y: clip.bounds.origin.y))
+        shelf.reflectScrolledClipView(clip)
+    }
 }
 
 /// The shelf with the keyboard (Tab from the meadow): ← and → go from tile to tile, Return chooses (an armed

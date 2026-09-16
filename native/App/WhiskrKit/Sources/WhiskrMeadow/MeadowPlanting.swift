@@ -186,11 +186,12 @@ extension MeadowEditSession {
     // MARK: The Eraser
 
     /// What one sweep of the Eraser at `spot` takes: the plants, mushrooms and stones standing within `radius`
-    /// of it (of `kind` only, when one is given). Trees, young trees and the log are never swept away: only a
-    /// click takes one, so none is lost by a stroke passing it. Things kept from a newer Whiskr are never taken.
+    /// of it (of `kind` only, when one is given; `SceneryRules.isSmall`). Trees, wood, a boulder and made things
+    /// are never swept away: only a click takes one, so none is lost by a stroke passing it. Things kept from a
+    /// newer Whiskr are never taken.
     public func swept(at spot: SIMD2<Double>, radius: Double, kind: String?) -> [Int] {
         shown.filter { id in
-            guard let item = item(id), !SceneryRules.isBig(item.asset), kind == nil || item.asset == kind else { return false }
+            guard let item = item(id), SceneryRules.isSmall(item.asset), kind == nil || item.asset == kind else { return false }
             return hypot(item.at.x - spot.x, item.at.z - spot.y) <= radius
         }
     }

@@ -129,6 +129,7 @@ final class EditorFlow {
         await erasing()
         await painting()
         await steppingStones()
+        await newThings()
         await limits()
         await carryingOn()
         await revert()

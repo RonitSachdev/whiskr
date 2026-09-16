@@ -121,9 +121,10 @@ extension EditorFlow {
         let ids = EditorTray.things.map(\.id)
         let drawn = MeadowCatalog.current.assets.filter { $0.inTray && $0.shape == .single && MeadowScenery.draws($0.id) }.map(\.id)
         check("the shelf offers every thing the scene draws, in the catalog's order, and nothing it cannot (\(ids.count))",
-              ids == drawn && ids.count == 13 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
-        check("the categories are those that hold something: Trees, Flowers, Stones & Wood, and the Ground tool's paints",
-              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground] && suite.barView("tray.category.ground") != nil && suite.barView("tray.tool.ground") != nil)
+              ids == drawn && ids.count == 28 && Set(ids) == MeadowScenery.drawnIds, "\(ids)")
+        check("the categories are those that hold something: Trees, Flowers, Stones & Wood, the Ground tool's paints, Workplace and Cat Things",
+              EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .workplace, .catThings] && suite.barView("tray.category.ground") != nil
+                  && suite.barView("tray.tool.ground") != nil)
         let scale = window.backingScaleFactor
         let pictured = ids + [EditorTray.wildflowers] + EditorTray.paints.map(\.id)
         let pictures = pictured.compactMap { tray.pictures[$0] }
@@ -153,10 +154,13 @@ extension EditorFlow {
         suite.shortcut("2")
         let flowers = tray.category == .flowers && tray.shelf.allSatisfy { $0.category == .flowers }
         await pressTray("tray.category.stonesAndWood")
-        check("2 and the category's tab show that shelf", flowers && tray.category == .stonesAndWood && tray.shelf.map(\.id) == ["stone.stone", "stone.mossy", "stone.stepping", "wood.fallenLog"],
+        check("2 and the category's tab show that shelf", flowers && tray.category == .stonesAndWood
+                  && tray.shelf.map(\.id) == ["stone.stone", "stone.mossy", "stone.boulder", "stone.stepping", "wood.fallenLog", "wood.stump", "wood.logPile"],
               "\(tray.shelf.map(\.id))")
+        suite.shortcut("6")
+        let catThings = tray.category == .catThings
         suite.shortcut("1")
-        check("1: the trees again", tray.category == .trees && tray.shelf.count == 4)
+        check("6: Cat Things; 1: the trees again", catThings && tray.category == .trees && tray.shelf.count == 6)
 
         // ⌘F: the filter.
         suite.shortcut("cmd+f")

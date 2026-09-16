@@ -49,7 +49,7 @@ struct MeadowSceneryMappingTests {
         let document = MeadowDocument(name: "Mine", entries: [
             .item(MeadowItem(asset: "tree.birch", placement: .at(MeadowPoint(30, -12.5)), turn: 1.25, size: [1.1, 0.9, 1.05], tilt: [0.02, -0.01], seed: 99)),
             .item(MeadowItem(asset: "flower.poppy", placement: .at(MeadowPoint(-3, 4)), variant: 1)),
-            .item(MeadowItem(asset: "cat.box", placement: .at(MeadowPoint(5, 5)))),
+            .item(MeadowItem(asset: "work.desk", placement: .at(MeadowPoint(5, 5)))),
             .item(MeadowItem(asset: "garden.fence", placement: .run([MeadowPoint(0, 0), MeadowPoint(3, 0)]))),
             .parcel(MeadowParcel(fields: ["id": .string("water.pond"), "at": .array([.number(1), .number(2)])])),
         ])
@@ -67,9 +67,6 @@ struct MeadowSceneryMappingTests {
     /// Whiskr); the tray offers only what the scene draws. This list only ever shrinks, and is empty
     /// before catalog 1 is released.
     static let buildersToCome: [String: String] = [
-        "stone.boulder": "4", "work.cushion": "4",
-        "tree.apple": "7", "tree.pine": "7", "flower.cornflower": "7", "flower.foxglove": "7", "plant.fern": "7", "plant.clover": "7",
-        "wood.stump": "7", "wood.logPile": "7", "cat.box": "7", "cat.scratchingPost": "7", "cat.yarn": "7", "cat.bed": "7", "cat.bowl": "7",
         "garden.fence": "8", "garden.flowerPot": "8", "garden.planter": "8", "garden.wateringCan": "8", "garden.birdhouse": "8",
         "garden.skep": "8", "work.desk": "8", "work.bookshelf": "8", "work.bench": "8", "work.signpost": "8", "work.mailbox": "8",
         "work.noticeboard": "8", "place.shed": "8", "place.tent": "8",

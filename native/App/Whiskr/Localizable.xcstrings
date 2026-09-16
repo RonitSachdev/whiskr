@@ -1150,6 +1150,16 @@
         }
       }
     },
+    "Apple tree": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "りんごの木"
+          }
+        }
+      }
+    },
     "As large as it grows": {
       "localizations": {
         "ja": {
@@ -1233,6 +1243,16 @@
         }
       }
     },
+    "Ball of yarn": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "毛糸玉"
+          }
+        }
+      }
+    },
     "Bigger Text": {
       "localizations": {
         "ja": {
@@ -1249,6 +1269,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "シラカバ"
+          }
+        }
+      }
+    },
+    "Boulder": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大岩"
+          }
+        }
+      }
+    },
+    "Cardboard box": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "段ボール箱"
+          }
+        }
+      }
+    },
+    "Cat bed": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "猫ベッド"
+          }
+        }
+      }
+    },
+    "Clover": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クローバー"
+          }
+        }
+      }
+    },
+    "Cornflower": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヤグルマギク"
+          }
+        }
+      }
+    },
+    "Cornflowers": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヤグルマギク"
           }
         }
       }
@@ -1279,6 +1359,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "北を向く"
+          }
+        }
+      }
+    },
+    "Fern": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シダ"
+          }
+        }
+      }
+    },
+    "Ferns": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シダ"
+          }
+        }
+      }
+    },
+    "Floor cushion": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "座布団"
+          }
+        }
+      }
+    },
+    "Food bowl": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フードボウル"
+          }
+        }
+      }
+    },
+    "Foxglove": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ジギタリス"
+          }
+        }
+      }
+    },
+    "Foxgloves": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ジギタリス"
           }
         }
       }
@@ -1323,6 +1463,16 @@
         }
       }
     },
+    "Log pile": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "丸太の山"
+          }
+        }
+      }
+    },
     "Paint %@": {
       "localizations": {
         "ja": {
@@ -1339,6 +1489,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "小道"
+          }
+        }
+      }
+    },
+    "Pine": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "松"
+          }
+        }
+      }
+    },
+    "Scots pine, conifer, evergreen, fir": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まつ, アカマツ, 針葉樹, 常緑樹"
+          }
+        }
+      }
+    },
+    "Scratching post": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "爪とぎポール"
           }
         }
       }
@@ -1383,6 +1563,16 @@
         }
       }
     },
+    "Tree stump": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "切り株"
+          }
+        }
+      }
+    },
     "Turn View Left": {
       "localizations": {
         "ja": {
@@ -1409,6 +1599,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "野の草"
+          }
+        }
+      }
+    },
+    "basket, nap, sleep, cat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ねこべっど, ベッド, 寝床, 昼寝, 猫, ねこ"
           }
         }
       }
@@ -2407,6 +2607,46 @@
         }
       }
     },
+    "blossom, sakura": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "さくら, 桜, 花"
+          }
+        }
+      }
+    },
+    "blue, bachelor's button": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "やぐるまぎく, 矢車菊, 青い花"
+          }
+        }
+      }
+    },
+    "bracken, frond, shade": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "しだ, 羊歯, わらび, 日陰"
+          }
+        }
+      }
+    },
+    "carton, cat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "だんぼーる, 箱, はこ, 猫, ねこ"
+          }
+        }
+      }
+    },
     "cursor": {
       "comment": "Import Settings summary",
       "localizations": {
@@ -2736,6 +2976,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "ワークツリーは別のブランチのチェックアウトで、<フォルダ>/<リポジトリ>/<ブランチ> に作られます。リポジトリの隣に、専用のワークスペースとして開きます。"
+          }
+        }
+      }
+    },
+    "digitalis, bells": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "きつねのてぶくろ, 狐の手袋, 釣鐘"
+          }
+        }
+      }
+    },
+    "dish, food, kibble, cat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ごはん, 皿, えさ, 餌, カリカリ, 猫, ねこ"
           }
         }
       }
@@ -3950,6 +4210,16 @@
         }
       }
     },
+    "fruit, orchard": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "りんご, 林檎, 果樹, 果物"
+          }
+        }
+      }
+    },
     "invisibles": {
       "comment": "Import Settings summary",
       "localizations": {
@@ -4348,6 +4618,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mac"
+          }
+        }
+      }
+    },
+    "logs, firewood, woodpile": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まるた, 丸太, まき, 薪, たきぎ"
+          }
+        }
+      }
+    },
+    "lupine": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "のぼりふじ, 昇り藤"
           }
         }
       }
@@ -4974,6 +5264,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "なし"
+          }
+        }
+      }
+    },
+    "mushroom, toadstool": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "きのこ, ベニテングタケ, 毒きのこ"
           }
         }
       }
@@ -6820,6 +7120,76 @@
         }
       }
     },
+    "path, paving": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "とびいし, 飛び石, 小道, みち"
+          }
+        }
+      }
+    },
+    "rock, pebble": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いし, いわ, 岩, 小石"
+          }
+        }
+      }
+    },
+    "rock, seat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おおいわ, いわ, 岩, 石, 腰掛け"
+          }
+        }
+      }
+    },
+    "sapling": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なえぎ, 苗木, 若木"
+          }
+        }
+      }
+    },
+    "scratcher, cat tree, cat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "つめとぎ, 爪とぎ, キャットタワー, 猫, ねこ"
+          }
+        }
+      }
+    },
+    "seat, wood": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "きりかぶ, 木, 腰掛け"
+          }
+        }
+      }
+    },
+    "shamrock, trefoil, white clover": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "しろつめくさ, 白詰草, 三つ葉, 四つ葉"
+          }
+        }
+      }
+    },
     "south": {
       "localizations": {
         "ja": {
@@ -8222,6 +8592,16 @@
         }
       }
     },
+    "trunk, timber": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "とうぼく, 倒木, まるた, 丸太"
+          }
+        }
+      }
+    },
     "west": {
       "localizations": {
         "ja": {
@@ -8463,6 +8843,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "長い行を折り返す"
+          }
+        }
+      }
+    },
+    "wool, toy, cat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "けいとだま, 毛糸, けいと, おもちゃ, 猫, ねこ"
           }
         }
       }
@@ -8959,6 +9349,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ のワークツリー"
+          }
+        }
+      }
+    },
+    "zabuton, pillow, seat": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ざぶとん, クッション, 座る"
           }
         }
       }

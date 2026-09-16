@@ -66,6 +66,7 @@
 		5D93A91C488C743EAEF71D2E /* ChangesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26543E4FE3C01FA862B01FC8 /* ChangesView.swift */; };
 		612BA76AFE12B6F6A9B56EBE /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A032E2E66CF739C5345A1570 /* main.swift */; };
 		63308AA26E8FDDF3D6919D0C /* WorldSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3478E3DFAB0399DB0563DEA /* WorldSettingsView.swift */; };
+		633CAB565CD83DDCA78C7A2D /* DebugFlowEditorThings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D59CCA40CA68437DDF7F40 /* DebugFlowEditorThings.swift */; };
 		646ACAC512914AA7F4F5E525 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 2AE3662F405D97ABBE9AFCFC /* InfoPlist.xcstrings */; };
 		658A93B92312CE372EE92C2E /* DebugFlowFilesEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB15C9944CE957A6183B53E /* DebugFlowFilesEditing.swift */; };
 		65CD28DAD159339C50BD3CA5 /* DebugFlowAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2F1D8681271BA1723B7AE3 /* DebugFlowAlerts.swift */; };
@@ -273,6 +274,7 @@
 		A443D088B89E6974FF58302E /* DebugFlowDrag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowDrag.swift; sourceTree = "<group>"; };
 		A4562D4FB8649068E0461009 /* OtherEditorImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherEditorImport.swift; sourceTree = "<group>"; };
 		A6CF2FC9EA3EE9FD4B8326E2 /* FileIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileIcon.swift; sourceTree = "<group>"; };
+		A9D59CCA40CA68437DDF7F40 /* DebugFlowEditorThings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowEditorThings.swift; sourceTree = "<group>"; };
 		AC1D3B50F50AC02F78E6DAE7 /* DebugFlowFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowFiles.swift; sourceTree = "<group>"; };
 		AC289C6C694C32D349CD9B5E /* PeekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeekView.swift; sourceTree = "<group>"; };
 		AFD9713325C604E6911E09CF /* DebugFlowLayoutSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowLayoutSettings.swift; sourceTree = "<group>"; };
@@ -581,6 +583,7 @@
 				A443D088B89E6974FF58302E /* DebugFlowDrag.swift */,
 				BAAE23595D36C059DD40DC17 /* DebugFlowEditor.swift */,
 				6F77B30DC7F5A1AFEA436012 /* DebugFlowEditorGround.swift */,
+				A9D59CCA40CA68437DDF7F40 /* DebugFlowEditorThings.swift */,
 				5197C4F0D6120D41EB214D2D /* DebugFlowEditorTools.swift */,
 				AC1D3B50F50AC02F78E6DAE7 /* DebugFlowFiles.swift */,
 				139082905DA594A0422140A4 /* DebugFlowFilesChanges.swift */,
@@ -795,6 +798,7 @@
 				E6A4F042EF7F19124B8FA9AB /* DebugFlowDrag.swift in Sources */,
 				C6BA5CDE0C2B319E0DCA1DC2 /* DebugFlowEditor.swift in Sources */,
 				8EDAFFF87CA5A34166BC51BB /* DebugFlowEditorGround.swift in Sources */,
+				633CAB565CD83DDCA78C7A2D /* DebugFlowEditorThings.swift in Sources */,
 				779C16539C6487C281B02428 /* DebugFlowEditorTools.swift in Sources */,
 				A8CCA70917EB3680F1B8FF52 /* DebugFlowFiles.swift in Sources */,
 				25596B78E6D3F465D1F96BDA /* DebugFlowFilesChanges.swift in Sources */,
