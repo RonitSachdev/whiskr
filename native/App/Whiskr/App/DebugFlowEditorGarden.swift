@@ -125,7 +125,8 @@ extension EditorFlow {
         for x in stride(from: Float(24), through: 70, by: 3) {
             for dz in stride(from: Float(0), through: 30, by: 3) {
                 let a = SIMD2(x, z + dz), b = SIMD2(x + length, z + dz)
-                let probe = MeadowScenery.Thing(id: MeadowEditSession.fence, points: [a, b])
+                // The run, the leg joined to its end and the straight line across them all clear.
+                let probe = MeadowScenery.Thing(id: MeadowEditSession.fence, points: [a, b, b + SIMD2(0, -5), a])
                 guard field.refusal(for: probe) == nil, let pa = meadow.viewPoint(ofGround: a), let pb = meadow.viewPoint(ofGround: b),
                       meadow.bounds.insetBy(dx: 60, dy: 60).contains(pa), meadow.bounds.insetBy(dx: 60, dy: 60).contains(pb), !trayCard.insetBy(dx: -30, dy: -30).contains(pb)
                 else { continue }
