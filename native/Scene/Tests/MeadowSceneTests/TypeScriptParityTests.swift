@@ -132,6 +132,9 @@ private func close(_ a: Vec3, _ b: [Double], _ tolerance: Float = 1e-4) -> Bool 
     /// sidebar redrew so a state reads by its silhouette alone (docs/DESIGN.md): asking stands
     /// tall and still with one paw up, and idle (a loaf) does not exist in the web prototype.
     static let redrawnForTheSidebar: Set<AgentActivity> = [.asking, .idle]
+    /// And the eyes the Mac app keeps round where the prototype half shut them (docs/DESIGN.md, "The cat"):
+    /// no lowered lid over a sip of tea, and one unbroken close when dozing off rather than a held droop.
+    static let roundEyed: Set<AgentActivity> = [.supervising, .napping]
 
     @Test(arguments: AgentActivity.allCases.filter { !redrawnForTheSidebar.contains($0) })
     func stateWantsTheSamePose(_ activity: AgentActivity) {
@@ -151,7 +154,8 @@ private func close(_ a: Vec3, _ b: [Double], _ tolerance: Float = 1e-4) -> Bool 
             func num(_ k: String) -> Float { (want[k] as! NSNumber).floatValue }
             for (name, value) in [("lid", w.lid), ("eye", w.eye), ("pupil", w.pupil), ("earFlat", w.earFlat), ("earPerk", w.earPerk),
                                   ("tailSpeed", w.tailSpeed), ("tailAmp", w.tailAmp), ("tailPuff", w.tailPuff), ("tall", w.tall),
-                                  ("lie", w.lie), ("prone", w.prone), ("breath", w.breath), ("shiver", w.shiver), ("sway", w.sway)] {
+                                  ("lie", w.lie), ("prone", w.prone), ("breath", w.breath), ("shiver", w.shiver), ("sway", w.sway)]
+                where !(name == "lid" && Self.roundEyed.contains(activity)) {
                 #expect(abs(value - num(name)) < 1e-5, "\(key) \(name)")
             }
             #expect(["rest", "up", "curl"][w.tail.rawValue] == (want["tail"] as! String), "\(key) tail")

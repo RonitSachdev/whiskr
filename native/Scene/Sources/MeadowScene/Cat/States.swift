@@ -110,7 +110,7 @@ enum States {
 
         case .idle:
             // A loaf: down on its front with the paws tucked under (they rest against the belly, as
-            // always), head up and turned to you, eyes soft but open, tail wrapped round. Only its
+            // always), head up and turned to you, eyes round and open, tail wrapped round. Only its
             // breathing moves.
             // Half down: low enough to read as a loaf, not so far that the head bows below the eyes'
             // line from the sidebar's high camera.
@@ -118,7 +118,6 @@ enum States {
             want.tall = -0.06
             want.aim = .camera
             want.look = Vec2(0, 0)
-            want.lid = 0.78
             want.earPerk = 0.3
             want.sway = 0.008
             want.breath = 0.018
@@ -206,7 +205,6 @@ enum States {
             let sip = sipping(t.truncatingRemainder(dividingBy: 7))
             if sip > 0.5 { want.aim = .angles(0, -0.12) } else if let ward { want.aim = .at(ward) } else { want.aim = .angles(sin(t * 0.6) * 0.5, 0.12) }
             want.look = ward != nil ? Vec2(0, 0) : Vec2(sin(t * 0.6) * 0.025, -0.015)
-            want.lid = 1 - sip * 0.5
             want.hands[1] = cupPaw(sip)
             want.prop = .cup
             want.tall = 0.03
@@ -234,8 +232,9 @@ enum States {
             want.tail = .up
 
         case .napping:
-            // Eyes droop, then shut, then slow breathing. Flopped over on its side in the sun.
-            want.lid = t < 0.5 ? 0.5 : 0.06
+            // Eyes close slowly as it drifts off (one unbroken close, never held half shut), then slow
+            // breathing. Flopped over on its side in the sun.
+            want.lid = lerp(1, 0.06, smoothstep(t, 0, 0.9))
             want.aim = .angles(0, 0.24)
             want.look = Vec2(0, -0.02)
             want.sway = 0

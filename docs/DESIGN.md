@@ -267,6 +267,9 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
   shapes. Small rounded ears, not pointy ones.
 - **Always black.** Coloured coats were tried and rejected. Variety, if it ever comes, stays in dark tones.
 - **No mouth, ever, in any state.** The face is two wide white ring eyes.
+- **The eyes are round whenever it is awake:** washing, stretching, nibbling, sipping tea, lying as a loaf,
+  squinting into a gust, all with them wide open. Only a quick blink, sleep (they close in one unbroken
+  movement as it dozes off) and being petted (squeezed shut) close them. A half-shut eye read as a squint.
 - **Paws are short, fixed nubs** that only change direction. They never stretch, grow, appear or
   disappear. With nothing to hold they hang against the belly. A prop must sit within reach; never stretch
   a paw to it.

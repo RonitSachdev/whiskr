@@ -212,6 +212,10 @@ Nothing has been released yet. This is what the first release will contain.
 
 ### Fixed
 
+- Cats keep their eyes round whenever they are awake: no more half-shut look while washing, stretching,
+  nibbling, sipping tea, lying as a loaf or in a gust of wind. They still blink, shut their eyes to sleep
+  (closing them in one movement as they doze off) and squeeze them shut when petted.
+
 - Leaving the meadow's editor with the workspaces shown as a list gives the keyboard back to where it was
   every time: it is handed back once the terminals' region has finished opening, which used to take it away
   again as it settled.

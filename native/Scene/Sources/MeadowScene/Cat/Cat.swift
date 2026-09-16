@@ -86,7 +86,7 @@ final class Cat: Performer {
     var frozen = false {
         didSet {
             guard frozen, !oldValue else { return }
-            // Nothing left half done: no glance, nod or listening held for ever, no eye half shut.
+            // Nothing left half done: no glance, nod or listening held for ever, no blink held.
             glanceUntil = time; attendUntil = time; listenUntil = time; shakeUntil = time; wiggleUntil = time
             fidgetUntil = time; nodAt = -10; blinkAt = -1; twitchAt = -1
         }
@@ -382,7 +382,7 @@ final class Cat: Performer {
         yaw.spring(aim.0 + sin(t * 0.9) * now.sway, 70, 10, dt)
         pitch.spring(aim.1 + dip, nodding > 0 && nodding < 1 ? 160 : 70, 12, dt)
 
-        // Eyes: pupils drift to their target, lids blink unless they are already drooping.
+        // Eyes: pupils drift to their target; a quick blink now and then.
         let look = want.look ?? Vec2(around.pointer.x * 0.035, around.pointer.y * 0.03)
         pupilAt += (look - pupilAt) * ease
         if t > nextBlink {
@@ -488,12 +488,11 @@ final class Cat: Performer {
     // asked for, and the busier the cat, the fewer of them apply.
     private func whims(_ want: inout Want, _ t: Float, _ around: Surroundings) {
         if watched { want.earPerk = max(want.earPerk, 1) }
-        // A strong gust: ears press back and eyes narrow until it passes.
+        // A strong gust: ears press back until it passes (the eyes stay round).
         let h = head
         let gust = max(0, around.gust(h.x, h.z) - 0.72) / 0.28
         if gust > 0 && !isNapping {
             want.earFlat = max(want.earFlat, gust * 0.45)
-            want.lid = min(want.lid, 1 - gust * 0.3)
         }
         if t < shakeUntil { want.shiver = 1 }
         if t < wiggleUntil { want.roll = sin((wiggleUntil - t) * 22) * 0.14 }
@@ -560,15 +559,13 @@ final class Cat: Performer {
         let p = (t - fidgetFrom) / (fidgetUntil - fidgetFrom)
         switch fidget {
         case .wash:
-            // One paw rubbing in circles at its cheek, head tipped into it, eyes half shut.
+            // One paw rubbing in circles at its cheek, head tipped into it.
             want.hands[1] = Vec3(0.42 + cos(p * 20) * 0.05, 1.3 + sin(p * 20) * 0.07, 0.86)
             want.roll = 0.14
-            want.lid = 0.45
             want.aim = .angles(0.18, 0.1)
         case .stretch:
             want.tall = sin(.pi * p) * 0.13
             want.hands = Paws(Vec3(SIDES[0] * 0.3, 1.3, 0.92), Vec3(SIDES[1] * 0.3, 1.3, 0.92))
-            want.lid = 0.3
             want.aim = .angles(0, -0.22)
         case .nibble:
             // A rice ball held up in both paws, nibbled at in little dips of the head.
@@ -576,15 +573,13 @@ final class Cat: Performer {
             want.hands = Paws(Vec3(SIDES[0] * 0.2, 1.08 + bite * 0.05, 0.98), Vec3(SIDES[1] * 0.2, 1.08 + bite * 0.05, 0.98))
             want.prop = .snack
             want.aim = .angles(0, 0.22 + bite * 0.08)
-            want.lid = 0.7
             want.earPerk = 0.5
         case .sip:
-            // A cup of tea lifted for a slow sip, eyes half shut.
+            // A cup of tea lifted for a slow sip.
             let sip = sipping(p * 2.4)
             want.hands[1] = cupPaw(sip)
             want.prop = .cup
             want.aim = .angles(0, lerp(0.2, -0.12, sip))
-            want.lid = 1 - sip * 0.55
         case .wiggle:
             want.roll = sin(p * .pi * 6) * 0.13 * (1 - p)
             want.tailSpeed = 8
