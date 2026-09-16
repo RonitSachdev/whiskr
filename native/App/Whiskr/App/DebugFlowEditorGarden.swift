@@ -119,10 +119,10 @@ extension EditorFlow {
 
     // MARK: Fences
 
-    /// Free ground in view along a line east of the picnic ground for a fence `length` long.
+    /// Free ground in view for a fence `length` long, west of the picnic ground first (the garden stands east of it).
     private func fenceLine(z: Float, length: Float) -> (SIMD2<Float>, SIMD2<Float>)? {
         let field = SceneryRules.Field(library.scenery)
-        for x in stride(from: Float(24), through: 70, by: 3) {
+        for x in Array(stride(from: Float(-38), through: -34, by: 2)) + Array(stride(from: Float(24), through: 70, by: 3)) {
             for dz in stride(from: Float(0), through: 30, by: 3) {
                 let a = SIMD2(x, z + dz), b = SIMD2(x + length, z + dz)
                 // The run, the leg joined to its end and the straight line across them all clear.
