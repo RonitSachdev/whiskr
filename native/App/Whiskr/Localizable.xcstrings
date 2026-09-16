@@ -250,6 +250,16 @@
         }
       }
     },
+    "%@, shown, %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、表示中、%2$@"
+          }
+        }
+      }
+    },
     "%@: %@": {
       "comment": "Dock menu: a workspace and what waits there",
       "localizations": {
@@ -686,12 +696,32 @@
         }
       }
     },
+    "%lld things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もの %lld 個"
+          }
+        }
+      }
+    },
     "%lld things chosen": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "%lld個を選択"
+          }
+        }
+      }
+    },
+    "%lld things outside the meadow were left out.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の外にあるもの %lld 個は入れませんでした。"
           }
         }
       }
@@ -756,6 +786,26 @@
         }
       }
     },
+    "1 thing": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もの 1 個"
+          }
+        }
+      }
+    },
+    "1 thing outside the meadow was left out.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の外にあるもの 1 個は入れませんでした。"
+          }
+        }
+      }
+    },
     "> ": {
       "shouldTranslate": false
     },
@@ -791,12 +841,42 @@
         }
       }
     },
+    "A line about it (optional)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原についてのひとこと(任意)"
+          }
+        }
+      }
+    },
     "A loaf, then curled up asleep after ten minutes.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "香箱座り。10分たつと丸くなって眠ります。"
+          }
+        }
+      }
+    },
+    "A meadow needs a name.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原には名前が必要です。"
+          }
+        }
+      }
+    },
+    "A meadow's name is at most %lld characters.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の名前は最大 %lld 文字です。"
           }
         }
       }
@@ -830,6 +910,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "許可のリクエストの通知には「許可」と「拒否」があります。バナーか通知パネルか、その音は、システム設定 › 通知で設定します。"
+          }
+        }
+      }
+    },
+    "A picture of the meadow, drawn from its file": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルの内容から描いた草原の画像"
           }
         }
       }
@@ -917,6 +1007,16 @@
         }
       }
     },
+    "About it:": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "説明:"
+          }
+        }
+      }
+    },
     "Actual Size": {
       "localizations": {
         "ja": {
@@ -956,6 +1056,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "テーマを追加…"
+          }
+        }
+      }
+    },
+    "Add and Use": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "追加して使う"
+          }
+        }
+      }
+    },
+    "Add to My Meadows": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原ライブラリに追加"
           }
         }
       }
@@ -1110,6 +1230,16 @@
         }
       }
     },
+    "Another meadow has this name; this one becomes “%@”.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同じ名前の草原があるため、「%@」になります。"
+          }
+        }
+      }
+    },
     "Answer…": {
       "localizations": {
         "ja": {
@@ -1253,6 +1383,46 @@
         }
       }
     },
+    "Built in · never changes": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "組み込み · 変わりません"
+          }
+        }
+      }
+    },
+    "Can't be read": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込めません"
+          }
+        }
+      }
+    },
+    "Can't be read; kept as it is": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込めません。そのまま残しています"
+          }
+        }
+      }
+    },
+    "Close It": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "閉じる"
+          }
+        }
+      }
+    },
     "Drag to paint the ground · ⌥-drag brings the wild grass back · [ and ] change the size": {
       "localizations": {
         "ja": {
@@ -1263,12 +1433,72 @@
         }
       }
     },
+    "Duplicate “%@”": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を複製"
+          }
+        }
+      }
+    },
     "Editor View": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "編集中の視点"
+          }
+        }
+      }
+    },
+    "Empty": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空の草原"
+          }
+        }
+      }
+    },
+    "Export Meadow Picture…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の画像を書き出す…"
+          }
+        }
+      }
+    },
+    "Export Meadow…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を書き出す…"
+          }
+        }
+      }
+    },
+    "Export Picture…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画像を書き出す…"
+          }
+        }
+      }
+    },
+    "Export…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書き出す…"
           }
         }
       }
@@ -1293,12 +1523,222 @@
         }
       }
     },
+    "From the Default": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "デフォルトから"
+          }
+        }
+      }
+    },
     "Ground brush size": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "地面ブラシの大きさ"
+          }
+        }
+      }
+    },
+    "Hide this note": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このお知らせを隠す"
+          }
+        }
+      }
+    },
+    "Import": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込む"
+          }
+        }
+      }
+    },
+    "Import Meadow…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を読み込む…"
+          }
+        }
+      }
+    },
+    "Import…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込む…"
+          }
+        }
+      }
+    },
+    "It couldn't be added to My Meadows: there was a problem writing it. Try again, or check the disk has room.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原ライブラリに追加できませんでした。書き込み中に問題が起きました。もう一度試すか、ディスクの空きを確認してください。"
+          }
+        }
+      }
+    },
+    "It couldn't be read. It may have been moved, or Whiskr may not be allowed to read it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "読み込めませんでした。移動されたか、Whiskr に読む権限がない可能性があります。"
+          }
+        }
+      }
+    },
+    "It holds more than a meadow file can, so it isn't read.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原ファイルに入る量を超えているため、読み込みません。"
+          }
+        }
+      }
+    },
+    "It isn't a Whiskr meadow.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr の草原ではありません。"
+          }
+        }
+      }
+    },
+    "It was made with Whiskr %@, which saves meadows in a way this version can't read. Update Whiskr to open it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr %@ で作られています。そのバージョンはこのバージョンでは読めない形式で草原を保存します。開くには Whiskr をアップデートしてください。"
+          }
+        }
+      }
+    },
+    "It was made with a newer Whiskr, which saves meadows in a way this version can't read. Update Whiskr to open it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr で作られています。このバージョンでは読めない形式で保存されています。開くには Whiskr をアップデートしてください。"
+          }
+        }
+      }
+    },
+    "It's damaged: it ends part way through, as a download that stopped early does. Ask for it again.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルが壊れています。途中で止まったダウンロードのように、途中で終わっています。もう一度送ってもらってください。"
+          }
+        }
+      }
+    },
+    "It's damaged: it isn't written the way a meadow file is, so nothing in it can be read.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルが壊れています。草原ファイルの書き方になっていないため、何も読み込めません。"
+          }
+        }
+      }
+    },
+    "It's damaged: one thing in it is far larger than a thing can be (at %@).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルが壊れています。ありえないほど大きなものが 1 つあります(%@)。"
+          }
+        }
+      }
+    },
+    "It's damaged: something in it isn't what a meadow file holds (at %@).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ファイルが壊れています。草原ファイルにあるはずのない内容があります(%@)。"
+          }
+        }
+      }
+    },
+    "It's the meadow shown; the Default is shown instead. You can put it back from the Trash.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示中の草原です。代わりにデフォルトを表示します。ゴミ箱から戻せます。"
+          }
+        }
+      }
+    },
+    "It's too large to be a meadow: a meadow file is at most %@.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原にしては大きすぎます。草原ファイルは最大 %@ です。"
+          }
+        }
+      }
+    },
+    "Its author is longer than a meadow file allows (%lld characters).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作者名が草原ファイルの上限(%lld 文字)より長すぎます。"
+          }
+        }
+      }
+    },
+    "Its description is longer than a meadow file allows (%lld characters).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "説明が草原ファイルの上限(%lld 文字)より長すぎます。"
+          }
+        }
+      }
+    },
+    "Its name is longer than a meadow's name may be (%lld characters).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前が草原の名前の上限(%lld 文字)より長すぎます。"
+          }
+        }
+      }
+    },
+    "Kept whole: move it, or take it away.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのまま残ります。動かすか、取り除けます。"
           }
         }
       }
@@ -1323,6 +1763,136 @@
         }
       }
     },
+    "Made by:": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作者:"
+          }
+        }
+      }
+    },
+    "Made with Whiskr %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whiskr %@ で作成"
+          }
+        }
+      }
+    },
+    "Made with a newer Whiskr: %lld things can't be shown here. They're kept, and come back when you update.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr で作られています。ここでは %lld 個のものを表示できません。そのまま残り、アップデートすると戻ってきます。"
+          }
+        }
+      }
+    },
+    "Made with a newer Whiskr: 1 thing can't be shown here. It's kept, and comes back when you update.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr で作られています。ここでは 1 個のものを表示できません。そのまま残り、アップデートすると戻ってきます。"
+          }
+        }
+      }
+    },
+    "More for %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ のその他の操作"
+          }
+        }
+      }
+    },
+    "More for this meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この草原のその他の操作"
+          }
+        }
+      }
+    },
+    "Move to Trash…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゴミ箱に入れる…"
+          }
+        }
+      }
+    },
+    "My Meadows": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原ライブラリ"
+          }
+        }
+      }
+    },
+    "My Meadows…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原ライブラリ…"
+          }
+        }
+      }
+    },
+    "New Meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい草原"
+          }
+        }
+      }
+    },
+    "New name for %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ の新しい名前"
+          }
+        }
+      }
+    },
+    "Nothing placed yet": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ何も置いていません"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
     "Paint %@": {
       "localizations": {
         "ja": {
@@ -1339,6 +1909,56 @@
           "stringUnit": {
             "state": "translated",
             "value": "小道"
+          }
+        }
+      }
+    },
+    "Rename": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名前を変更"
+          }
+        }
+      }
+    },
+    "Rename “%@”…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の名前を変更…"
+          }
+        }
+      }
+    },
+    "Save Again": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存し直す"
+          }
+        }
+      }
+    },
+    "Saved by a newer Whiskr. Everything this one knows is shown; the rest is kept untouched and saved back as it was.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr で保存されています。この Whiskr にわかるものはすべて表示し、それ以外は手を加えずに残して、そのまま保存し直します。"
+          }
+        }
+      }
+    },
+    "Share…": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共有…"
           }
         }
       }
@@ -1383,6 +2003,86 @@
         }
       }
     },
+    "The meadow as it always was. It never changes; your first change makes a copy of it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "いつもどおりの草原です。変わることはなく、最初に変更したときにコピーが作られます。"
+          }
+        }
+      }
+    },
+    "The other version is kept in My Meadows as “%@”.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もう一方の版は「%@」としてマイ草原ライブラリに残してあります。"
+          }
+        }
+      }
+    },
+    "Thing from a newer Whiskr": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr のもの"
+          }
+        }
+      }
+    },
+    "Things from a newer Whiskr can only be moved or taken away": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr のものは、動かすか取り除くことしかできません"
+          }
+        }
+      }
+    },
+    "This meadow has more %@ than a meadow can hold (%lld of %lld).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この草原には置ける数より多くの%1$@があります(%2$lld / %3$lld)。"
+          }
+        }
+      }
+    },
+    "This meadow has more things from a newer Whiskr than this one can keep (%lld of %lld).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この草原には、この Whiskr で残せる数より多くの新しい Whiskr のものがあります(%1$lld / %2$lld)。"
+          }
+        }
+      }
+    },
+    "This meadow has more things than Whiskr can show (%lld of %lld).": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この草原には Whiskr で表示できる数より多くのものがあります(%1$lld / %2$lld)。"
+          }
+        }
+      }
+    },
+    "Too close to a thing from a newer Whiskr": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr のものに近すぎます"
+          }
+        }
+      }
+    },
     "Turn View Left": {
       "localizations": {
         "ja": {
@@ -1403,12 +2103,62 @@
         }
       }
     },
+    "Use": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使う"
+          }
+        }
+      }
+    },
     "Wild Grass": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "野の草"
+          }
+        }
+      }
+    },
+    "You can put it back from the Trash.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゴミ箱から戻せます。"
+          }
+        }
+      }
+    },
+    "You have a meadow called “%@”, so this one is added as “%@”.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%1$@」という草原がすでにあるため、これは「%2$@」として追加します。"
+          }
+        }
+      }
+    },
+    "Your meadows are saved as you change them, as .whiskrmeadow files you can share. The Default never changes: your first change makes a copy of it, My Meadow. Drop a meadow file here to add it.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原は変更するたびに、共有できる .whiskrmeadow ファイルとして保存されます。デフォルトは変わらず、最初に変更したときにそのコピー「マイ草原」が作られます。草原ファイルをここにドロップすると追加できます。"
+          }
+        }
+      }
+    },
+    "Your name, shown with this meadow (optional)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原と一緒に表示されるあなたの名前(任意)"
           }
         }
       }
@@ -2407,6 +3157,16 @@
         }
       }
     },
+    "by %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作者: %@"
+          }
+        }
+      }
+    },
     "cursor": {
       "comment": "Import Settings summary",
       "localizations": {
@@ -3187,6 +3947,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ものを絞り込む"
+          }
+        }
+      }
+    },
+    "fence posts": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柵の支柱"
           }
         }
       }
@@ -4352,6 +5122,26 @@
         }
       }
     },
+    "lamps": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ランプ"
+          }
+        }
+      }
+    },
+    "lawn": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "芝生"
+          }
+        }
+      }
+    },
     "macOS did not ask: %@": {
       "comment": "Settings › Alerts: the system refused to ask about notifications, and its reason",
       "localizations": {
@@ -4974,6 +5764,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "なし"
+          }
+        }
+      }
+    },
+    "made things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "作られたもの"
           }
         }
       }
@@ -6820,6 +7620,26 @@
         }
       }
     },
+    "paths": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小道"
+          }
+        }
+      }
+    },
+    "soil": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "土"
+          }
+        }
+      }
+    },
     "south": {
       "localizations": {
         "ja": {
@@ -7260,6 +8080,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ターミナル"
+          }
+        }
+      }
+    },
+    "tall things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背の高いもの"
           }
         }
       }
@@ -8222,6 +9052,16 @@
         }
       }
     },
+    "trees": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "木"
+          }
+        }
+      }
+    },
     "west": {
       "localizations": {
         "ja": {
@@ -8969,6 +9809,16 @@
     "×": {
       "shouldTranslate": false
     },
+    "“%@” can't be opened": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を開けません"
+          }
+        }
+      }
+    },
     "“%@” cannot be a branch name.": {
       "comment": "New Worktree: an invalid branch name",
       "localizations": {
@@ -9023,6 +9873,16 @@
         }
       }
     },
+    "“%@” changed on disk. Keep yours, or reload it? The other is kept in My Meadows.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」がディスク上で変更されました。自分の版を残しますか、再読み込みしますか? もう一方はマイ草原ライブラリに残ります。"
+          }
+        }
+      }
+    },
     "“%@” could not be saved.": {
       "localizations": {
         "ja": {
@@ -9072,12 +9932,42 @@
         }
       }
     },
+    "“%@” needs a newer Whiskr": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」には新しい Whiskr が必要です"
+          }
+        }
+      }
+    },
     "“%@” was deleted or moved. Your text is still here.": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "“%@”は削除されたか移動されました。テキストはここに残っています。"
+          }
+        }
+      }
+    },
+    "“%@” was moved or deleted on disk.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」がディスク上で移動または削除されました。"
+          }
+        }
+      }
+    },
+    "“%@” was moved out of the Meadows folder, so the Default is shown.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」が Meadows フォルダから移動されたため、デフォルトを表示しています。"
           }
         }
       }

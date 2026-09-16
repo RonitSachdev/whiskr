@@ -129,6 +129,12 @@ enum MainMenu {
         menu.addItem(item(String(localized: "Rename Workspace…"), #selector(MainWindowController.renameWorkspace(_:))))
         menu.addItem(.separator())
         menu.addItem(item(String(localized: "Import Themes and Languages…"), #selector(AppDelegate.importThemes(_:))))
+        // Meadows as files to share (docs/DESIGN.md, "My Meadows").
+        menu.addItem(.separator())
+        menu.addItem(item(String(localized: "Import Meadow…", comment: "File menu: adds meadow files someone shared"), #selector(AppDelegate.importMeadow(_:))))
+        menu.addItem(item(String(localized: "Export Meadow…", comment: "File menu: saves the meadow shown as a file to share"), #selector(AppDelegate.exportMeadow(_:))))
+        menu.addItem(item(String(localized: "Export Meadow Picture…", comment: "File menu: saves a picture of the meadow shown"),
+                          #selector(AppDelegate.exportMeadowPicture(_:))))
         return menu
     }
 

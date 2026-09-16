@@ -26,6 +26,7 @@ enum MeadowWords {
         case "ground.lawn": String(localized: "Lawn", comment: "Meadow editor: a ground paint's name (grass mown short)")
         case "ground.soil": String(localized: "Soil", comment: "Meadow editor: a ground paint's name (bare earth for flower beds)")
         case wildGround: String(localized: "Wild Grass", comment: "Meadow editor: the Ground tool's paint that brings back the meadow's own long grass")
+        case MeadowScenery.parcel: MeadowFileWords.parcelName
         default: String(localized: "Thing", comment: "Meadow editor: a thing with no name of its own")
         }
     }
@@ -48,6 +49,8 @@ enum MeadowWords {
             String(localized: "Outside the meadow", comment: "Meadow editor: why a thing cannot stand there")
         case .keptForWorkspaces:
             String(localized: "Kept clear for your workspaces", comment: "Meadow editor: why a big thing cannot stand on the picnic ground")
+        case .tooClose(MeadowScenery.parcel):
+            String(localized: "Too close to a thing from a newer Whiskr", comment: "Meadow editor: why a thing cannot stand there (a parcel is in the way)")
         case .tooClose(let id):
             String(localized: "Too close to the \(name(id).lowercased())", comment: "Meadow editor: why a thing cannot stand there (the thing in the way)")
         case .full(.trees, let limit):
@@ -143,6 +146,11 @@ enum MeadowWords {
         case .tall: String(localized: "\(count) of \(limit) tall things", comment: "Meadow editor's tray: how full the meadow is")
         default: String(localized: "\(count) of \(limit) things", comment: "Meadow editor's tray: how full the meadow is")
         }
+    }
+
+    /// A change other than moving or taking away, asked of things shown as parcels.
+    static var parcelsOnlyMove: String {
+        String(localized: "Things from a newer Whiskr can only be moved or taken away", comment: "Meadow editor: why a parcel cannot be turned, sized or copied")
     }
 
     /// The Eraser's click on a thing of another kind than the one it clears.
