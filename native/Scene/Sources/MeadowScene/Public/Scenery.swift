@@ -40,6 +40,16 @@ public struct MeadowScenery: Equatable, Sendable {
             self.seed = seed
             self.variant = variant
         }
+
+        /// Where a cat likes to be at this thing (`MeadowScenery.catSpot(of:)`), in the meadow: turned, leant and
+        /// sized as the thing is, standing on the land as it lies before any blanket levels it (a thing within a
+        /// blanket's reach makes way, and its spot with it). Nil for a kind that invites none.
+        public var catSpot: CatSpot? {
+            guard let spot = MeadowScenery.catSpot(of: id), let matrix = Meadow.alone(self)?.matrix else { return nil }
+            let toward = matrix.direction(Vec3(spot.toward.x, 0, spot.toward.y))
+            let across = Vec2(toward.x, toward.z)
+            return CatSpot(spot.kind, at: matrix.point(spot.at), toward: simd_length(across) > 0 ? simd_normalize(across) : spot.toward)
+        }
     }
 
     /// The painted ground: paths, lawn and soil over the meadow's own long grass, as a meadow file's
@@ -127,6 +137,36 @@ public struct MeadowScenery: Equatable, Sendable {
 
     /// Every id the scene can draw.
     public static var drawnIds: Set<String> { Set(SceneryCatalog.kinds.keys) }
+
+    /// A place at a thing where a cat likes to be: sitting on a stump, in a box or by a bowl, napping in a bed,
+    /// scratching at a post. For the meadow's cats to go to; nothing in the scene uses it yet.
+    public struct CatSpot: Equatable, Sendable {
+        public enum Kind: String, Sendable, CaseIterable {
+            /// Sits there (on top of it, in it, or in front of it).
+            case sit
+            /// Curls up there to sleep.
+            case nap
+            /// Stands there, stretched up, scratching.
+            case scratch
+        }
+
+        public var kind: Kind
+        /// Where its paws are: on the thing as it is made (its own size and turn, y up from the ground under
+        /// it), or, from `MeadowScenery.Thing.catSpot`, in the meadow.
+        public var at: Vec3
+        /// Which way a cat there faces, across the ground (x, z), a unit long.
+        public var toward: Vec2
+
+        public init(_ kind: Kind, at: Vec3, toward: Vec2) {
+            self.kind = kind
+            self.at = at
+            self.toward = toward
+        }
+    }
+
+    /// Where a cat likes to be at a thing of this kind, on the thing as it is made; nil for a kind that invites
+    /// none (a flower, a tree, a ball of yarn).
+    public static func catSpot(of id: String) -> CatSpot? { SceneryCatalog.catSpots[id] }
 
     /// The most the meadow draws of each kind of thing: what a meadow file may hold (its catalog's caps).
     /// Past one, further things of that kind are left out, in order.

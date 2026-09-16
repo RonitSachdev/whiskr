@@ -138,13 +138,15 @@ struct GroundMap {
 
     // MARK: the painted ground
 
-    /// A stone walked on (`SceneryCatalog.isTread`), as it lies: its middle, its turn about up and how far it
-    /// reaches each way along its own x and z.
+    /// A thing that wears the turf (`SceneryCatalog.isTread`: a stone walked on, a cat's bed), as it lies: its
+    /// middle, its turn about up and how far it reaches each way along its own x and z; and whether it is walked
+    /// on (a stepping stone) or round (a bed).
     struct Tread: Hashable {
         var x: Float
         var z: Float
         var turn: Float
         var half: Vec2
+        var walked = true
 
         /// How far past its edge the turf round it is trodden short.
         static let wornBeyond: Float = 1.1

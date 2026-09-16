@@ -67,6 +67,14 @@ public enum SceneryRules {
         }
     }
 
+    /// Plants, mushrooms and stones (a boulder aside): the small things brushed and swept away in numbers and
+    /// read out by VoiceOver as clumps of a kind. Everything else (trees, wood, a boulder, made things) is placed,
+    /// taken away and read out one at a time, so no stroke of the Eraser loses one.
+    public static func isSmall(_ id: String) -> Bool {
+        guard case .plant = SceneryCatalog.kinds[id] else { return false }
+        return !SceneryCatalog.alone.contains(id)
+    }
+
     /// The grass a thing keeps round its ground: more round trees and logs than round a flower.
     public static func gap(_ id: String) -> Float {
         switch SceneryCatalog.kinds[id] {

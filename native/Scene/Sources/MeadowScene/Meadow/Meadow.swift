@@ -449,9 +449,10 @@ final class Meadow {
                 Vec4(thing.x, thing.z, tree.crown * 1.1 * spread, 0), species.girth * 2 * spread)
     }
 
-    /// A stone walked on as it lies: turned and sized as the thing is.
+    /// A thing that wears the turf (`SceneryCatalog.treads`) as it lies: turned and sized as the thing is.
     private static func tread(_ thing: MeadowScenery.Thing) -> GroundMap.Tread {
-        GroundMap.Tread(x: thing.x, z: thing.z, turn: thing.turn, half: SceneryCatalog.treadHalf * Vec2(thing.size.x, thing.size.z))
+        let tread = SceneryCatalog.treads[thing.id] ?? (Vec2(0.64, 0.48), true)
+        return GroundMap.Tread(x: thing.x, z: thing.z, turn: thing.turn, half: tread.half * Vec2(thing.size.x, thing.size.z), walked: tread.walked)
     }
 
     /// A young tree's screen, drawn with `m`.
@@ -550,7 +551,7 @@ final class Meadow {
     func walkingEase(_ x: Float, _ z: Float) -> Float {
         let p = Vec2(x, z)
         // Only where the turf is trodden or cut can a stone be underfoot (`GroundMap.Tread.trodden`).
-        if groundMap.sample(p, channel: 1) > 0, treads.contains(where: { $0.holds(p) }) { return 1 }
+        if groundMap.sample(p, channel: 1) > 0, treads.contains(where: { $0.walked && $0.holds(p) }) { return 1 }
         guard let ground = scenery.ground, let cell = MeadowScenery.Ground.cell(at: x, z) else { return Self.walkingEase(.wild) }
         return Self.walkingEase(ground[cell.column, cell.row])
     }
