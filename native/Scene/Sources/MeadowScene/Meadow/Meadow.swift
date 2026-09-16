@@ -53,8 +53,10 @@ final class Meadow {
     let grass: (tufts: [GrassField.Tuft], chunks: [GrassField.Chunk])
     /// What the meadow holds, as it was given.
     private(set) var scenery = MeadowScenery.empty
-    /// Counts the sceneries laid, so what is drawn from one is rebuilt when it changes.
+    /// Counts the sceneries laid, so the meshes drawn from them are made when they change.
     private(set) var sceneryVersion = 0
+    /// Counts the ground's maps baked whole, so the map drawn is replaced when it changes.
+    private(set) var groundVersion = 0
     private var grove = Grove()
     /// Every plant shape (flowers, mushrooms, stones, young trees) by index, and what each is.
     private(set) var plants: [Plant] = []
@@ -131,7 +133,8 @@ final class Meadow {
     /// Shows `scenery` instead of what the meadow holds now (nothing happens if it is the same). Trees
     /// already grown, shapes already made and how faded each tall thing is are kept. When only some things
     /// moved, turned, leant or changed size (an edit, a drag under way), only those are placed again and the
-    /// ground's shade is baked again only where a tree moved; anything else lays the scenery afresh.
+    /// ground's shade is baked again only where a tree moved; anything else lays the scenery afresh (the
+    /// ground's map only if the trees' shade changed).
     func show(_ scenery: MeadowScenery) {
         guard scenery != self.scenery else { return }
         if !move(to: scenery) { critters.bloom(lay(scenery)) }
@@ -234,11 +237,13 @@ final class Meadow {
     }
 
     /// Lays `scenery`: every thing the scene can draw, within its limits (`MeadowScenery.Limits`), in its
-    /// order. Returns the flowers' tops, where butterflies and bees settle.
+    /// order. Returns the flowers' tops, where butterflies and bees settle. The ground's map is baked again
+    /// only when the trees' shade is not as it was (things added or taken away beside them leave it be).
     private func lay(_ scenery: MeadowScenery) -> [Vec3] {
         let oldPlants = Dictionary(zip(plantKeys, plants)) { first, _ in first }
         let oldTrees = Dictionary(treeShapes.map { ($0.key, $0.shape) }) { first, _ in first }
         let oldFades = Dictionary(screens.map { (ScreenKey($0), $0.fade) }) { first, _ in first }
+        let oldShade = shade
         self.scenery = scenery
         plants = []; plantKeys = []; beds = []; treeShapes = []; logs = []; screens = []; obstacles = []; shade = []
         laid = []; blooms = []; bloomOf = []
@@ -315,8 +320,13 @@ final class Meadow {
             }
         }
         grove.keep(grown)
-        groundMap = GroundMap.baked(shade: shade)
-        groundChanged = nil
+        // The shade as it was (a plant brushed in or swept away, a thing taken away beside the trees): the
+        // map stands, with any part still to be drawn from moved trees.
+        if shade != oldShade || groundVersion == 0 {
+            groundMap = GroundMap.baked(shade: shade)
+            groundVersion += 1
+            groundChanged = nil
+        }
         sceneryVersion += 1
         return blooms
     }
@@ -474,6 +484,51 @@ final class Meadow {
             let top = plants[beds[b].plant].top, size = max(thing.size.x, thing.size.y, thing.size.z)
             let base = SceneryRules.footprint(of: thing).first?.r ?? 0.3
             return [Ball(center: m.point(Vec3(0, top.y * 0.5, 0)), radius: max(top.y * 0.5 * size, base * 1.1))]
+        }
+    }
+
+    /// Where a tree's crown spreads over the ground (its middle, x and z, and how far round it), for a tree or a
+    /// young tree as it is drawn now: what the editor rings round a chosen tree. Nil for anything else.
+    func canopy(_ i: Int) -> (x: Float, z: Float, r: Float)? {
+        guard laid.indices.contains(i) else { return nil }
+        let screen: Screen
+        switch laid[i] {
+        case .tree(let t): screen = screens[treeShapes[t].screen]
+        case .bed(let b, let slot):
+            guard let s = beds[b].screens?[slot] else { return nil }
+            screen = screens[s]
+        case .none, .log: return nil
+        }
+        guard let crown = screen.crown else { return nil }
+        return (crown.x, crown.z, screen.crownSize)
+    }
+
+    // MARK: a thing on its own
+
+    /// A thing's shape on its own, as the meadow draws it, and where it stands: for the editor's ghost of
+    /// what is about to be placed, and the tray's pictures. `make` grows or builds the shape (a tree from the
+    /// thing's seed); the same `key`, the same shape, so it is made once.
+    static func alone(_ thing: MeadowScenery.Thing) -> (key: ShapeKey, make: () -> Geometry, matrix: Mat4)? {
+        guard let kind = SceneryCatalog.kinds[thing.id] else { return nil }
+        func grown(_ key: ShapeKey, _ species: Species) -> Tree {
+            if let tree = StandardMeadow.grown.trees[key] { return tree }
+            var random = Seeded(key.seed)
+            return Trees.grow(species, &random)
+        }
+        switch kind {
+        case .tree(let species):
+            let key = ShapeKey(id: thing.id, seed: thing.seed)
+            return (key, { grown(key, species).shape.roughened(0.85) }, matrix(of: thing))
+        case .youngTree(let species):
+            let key = ShapeKey(id: thing.id, seed: thing.seed)
+            return (key, { grown(key, species).shape.roughened(0.8) }, matrix(of: thing))
+        case .plant(let shapes, _, _, _):
+            let all = shapes()
+            let variant = all.indices.contains(thing.variant) ? thing.variant : 0
+            let shape = all[variant].shape
+            return (ShapeKey(id: thing.id, variant: variant), { shape.roughness.isEmpty ? shape.roughened(0.8) : shape }, matrix(of: thing))
+        case .log:
+            return (ShapeKey(id: thing.id), { SceneryCatalog.fallenLog }, matrix(of: thing, lift: -Float(Land.ground)))
         }
     }
 

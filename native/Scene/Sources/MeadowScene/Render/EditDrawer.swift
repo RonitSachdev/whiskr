@@ -3,10 +3,13 @@ import Foundation
 import simd
 
 // Draws the editor's marks on the ground while the meadow is edited (`MeadowEditMarks`): a ring of the
-// focus colour round each chosen thing's ground, a dashed ring round one that may not stand where it is,
-// a faint ring under the pointer, the keyboard's cursor, and the picnic ground's soft dashed outline. Each
-// lies a little above the land, following it, drawn twice: where it is seen, whole, and where something
-// stands in front of it (a crown, tall grass) faintly, so a mark is never lost behind what it marks.
+// focus colour round each chosen thing's ground (and, for a tree, a second round where its crown shades the
+// ground, so a chosen tree reads at a glance from any height), a dashed ring round one that may not stand
+// where it is, a faint ring under the pointer, the keyboard's cursor, the ring under the thing about to be
+// placed with a tick for which way it faces, the Brush's or the Eraser's circle, and the picnic ground's soft
+// dashed outline. Each lies a little above the land, following it, drawn twice: where it is seen, whole,
+// and where something stands in front of it (a crown, tall grass) faintly, so a mark is never lost behind
+// what it marks.
 
 final class EditDrawer {
     private let gpu: GPU
@@ -111,7 +114,9 @@ final class EditDrawer {
         }
         func outline(of i: Int) -> Outline? {
             guard things.indices.contains(i), meadow.laid[i] != .none else { return nil }
-            let thing = things[i]
+            return outline(of: things[i])
+        }
+        func outline(of thing: MeadowScenery.Thing) -> Outline? {
             let circles = SceneryRules.footprint(of: thing)
             guard let first = circles.first, let last = circles.last else { return nil }
             // Never smaller on screen than a fingertip's ring (a small stone, a young tree's trunk), so it reads.
@@ -177,7 +182,8 @@ final class EditDrawer {
                 band(o, from: 1.5 * p, to: 3.5 * p, color: white, dashed: false, lift: 0.3)
             }
         }
-        // Chosen: the focus colour, with a thin white edge inside so it reads on any green.
+        // Chosen: the focus colour, with a thin white edge inside so it reads on any green; a tree also
+        // ringed, more lightly, where its crown shades the ground.
         let refused = Set(marks.refused)
         batch(alpha: 0.95) {
             for i in marks.selected where !refused.contains(i) {
@@ -187,6 +193,15 @@ final class EditDrawer {
                 band(o, from: 1.7 * p, to: (strong ? 5 : 4) * p, color: focus, dashed: false, lift: 0.32)
             }
         }
+        batch(alpha: strong ? 0.95 : 0.8) {
+            for i in marks.selected where !refused.contains(i) {
+                guard let crown = meadow.canopy(i) else { continue }
+                let o = Outline(center: Vec2(crown.x, crown.z), along: Vec2(1, 0), half: 0, r: crown.r)
+                let p = perPoint(o.center.x, o.center.y)
+                band(o, from: -0.6 * p, to: 0.6 * p, color: white, dashed: false, lift: 0.3)
+                band(o, from: 0.6 * p, to: (strong ? 3.4 : 2.6) * p, color: focus, dashed: false, lift: 0.3)
+            }
+        }
         // May not stand there: dashed, white within and the ink without, never by colour alone.
         batch(alpha: 0.95) {
             for i in marks.refused {
@@ -194,6 +209,30 @@ final class EditDrawer {
                 let p = perPoint(o.center.x, o.center.y)
                 band(o, from: 0.5 * p, to: 2.3 * p, color: white, dashed: true, lift: 0.32)
                 band(o, from: 2.3 * p, to: 4.3 * p, color: ink, dashed: true, lift: 0.32)
+            }
+        }
+        // The thing about to be placed: its ground ringed as a chosen thing's (dashed, in the ink, where it
+        // may not stand), with a tick on the ring for which way it faces.
+        if let ghost = marks.ghost, let o = outline(of: ghost) {
+            batch(alpha: 0.95) {
+                let p = perPoint(o.center.x, o.center.y)
+                let refused = marks.ghostRefused
+                band(o, from: 0.5 * p, to: (refused ? 2.3 : 1.7) * p, color: white, dashed: refused, lift: 0.32)
+                band(o, from: (refused ? 2.3 : 1.7) * p, to: (refused ? 4.3 : strong ? 5 : 4) * p, color: refused ? ink : focus, dashed: refused, lift: 0.32)
+                // The tick: outward from the ring along the thing's own x axis, as it is turned.
+                let facing = Vec2(cos(ghost.turn), -sin(ghost.turn))
+                let r = o.r + o.half
+                let tick = Outline(center: o.center + facing * (r + 5 * p), along: facing, half: 3.5 * p, r: 0)
+                band(tick, from: 0, to: 1.6 * p, color: refused ? ink : focus, dashed: false, lift: 0.32)
+            }
+        }
+        // The Brush's circle (the focus colour) or the Eraser's (dashed, in the ink).
+        if let brush = marks.brush {
+            batch(alpha: 0.9) {
+                let o = Outline(center: Vec2(brush.center.x, brush.center.y), along: Vec2(1, 0), half: 0, r: brush.radius)
+                let p = perPoint(o.center.x, o.center.y)
+                band(o, from: -1.2 * p, to: 0.2 * p, color: white, dashed: brush.erasing, lift: 0.3)
+                band(o, from: 0.2 * p, to: (strong ? 3 : 2.2) * p, color: brush.erasing ? ink : focus, dashed: brush.erasing, lift: 0.3)
             }
         }
         // The keyboard's cursor: a small ring of the focus colour with a dot in its middle.

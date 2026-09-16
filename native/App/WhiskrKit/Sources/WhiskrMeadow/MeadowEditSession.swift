@@ -81,7 +81,8 @@ public struct MeadowEditSession: Sendable {
     public private(set) var document: MeadowDocument
     /// Each entry's id, in the document's order.
     public private(set) var ids: [Int]
-    private var nextID: Int
+    /// The id the next thing added takes.
+    private(set) var nextID: Int
     /// What the scene draws: the things this Whiskr can draw, in the document's order.
     public private(set) var scenery = MeadowScenery()
     /// For each of the scenery's things, the id of the entry it draws.
@@ -168,6 +169,12 @@ public struct MeadowEditSession: Sendable {
 
     /// Makes `change` (one made here, or the inverse of one): things away, things in, things changed.
     public mutating func apply(_ change: MeadowChange) {
+        // Only things after the rest (a placing, a Brush's dab): those alone are added to what is drawn.
+        if change.removed.isEmpty, change.edited.isEmpty, !change.added.isEmpty,
+           change.added.enumerated().allSatisfy({ $0.element.position == document.entries.count + $0.offset }) {
+            for placed in change.added { append(placed) }
+            return
+        }
         for placed in change.removed.sorted(by: { $0.position > $1.position }) where ids.indices.contains(placed.position) {
             document.entries.remove(at: placed.position)
             ids.remove(at: placed.position)
@@ -184,6 +191,19 @@ public struct MeadowEditSession: Sendable {
             if let position = where_[edited.id] { document.entries[position] = edited.after }
         }
         rebuild()
+    }
+
+    /// One thing at the end of the meadow, and in the scenery when it is drawn.
+    private mutating func append(_ placed: MeadowChange.Placed) {
+        let position = document.entries.count
+        document.entries.append(placed.entry)
+        ids.append(placed.id)
+        positions[placed.id] = position
+        nextID = max(nextID, placed.id + 1)
+        guard case .item(let item) = placed.entry, let thing = Self.thing(item, catalog) else { return }
+        drawnIndex[placed.id] = scenery.things.count
+        shown.append(placed.id)
+        scenery.things.append(thing)
     }
 
     /// Gives the meadow a name (the first edit of the Default makes "My Meadow").
@@ -236,7 +256,7 @@ public struct MeadowEditSession: Sendable {
     }
 
     /// A refusal in the session's terms (the thing in the way named by its kind).
-    private func said(_ refusal: SceneryRules.Refusal) -> MeadowEditRefusal {
+    func said(_ refusal: SceneryRules.Refusal) -> MeadowEditRefusal {
         switch refusal {
         case .outsideMeadow: .outsideMeadow
         case .keptForWorkspaces: .keptForWorkspaces
@@ -388,7 +408,7 @@ public struct MeadowEditSession: Sendable {
 
     /// `items` moved by `offset`, or by the nearest offset round it where every one may stand (`searching`),
     /// added at the end of the meadow.
-    private mutating func add(_ items: [MeadowFile.MeadowItem], offset: SIMD2<Double>, searching: Bool = true) -> Result<MeadowChange, MeadowEditRefused> {
+    mutating func add(_ items: [MeadowFile.MeadowItem], offset: SIMD2<Double>, searching: Bool = true) -> Result<MeadowChange, MeadowEditRefused> {
         guard !items.isEmpty else { return .success(MeadowChange()) }
         if let full = capacity(for: items) { return .failure(MeadowEditRefused(full)) }
         let field = SceneryRules.Field(scenery)
@@ -436,7 +456,7 @@ public struct MeadowEditSession: Sendable {
     }
 
     /// Why the meadow cannot take `items` as well (nil: it can): a cap of their kinds, or things in all.
-    private func capacity(for items: [MeadowFile.MeadowItem]) -> MeadowEditRefusal? {
+    public func capacity(for items: [MeadowFile.MeadowItem]) -> MeadowEditRefusal? {
         if document.entries.count + items.count > MeadowFormat.maxItems { return .full(nil, limit: MeadowFormat.maxItems) }
         var counts = document.counts(catalog)
         for (cap, n) in MeadowDocument(entries: items.map { .item($0) }).counts(catalog) { counts[cap, default: 0] += n }
@@ -509,7 +529,7 @@ public struct MeadowEditSession: Sendable {
     }
 
     /// A turn in [0, 2π), rounded as a file rounds it.
-    static func normalTurn(_ radians: Double) -> Double {
+    public static func normalTurn(_ radians: Double) -> Double {
         var t = radians.truncatingRemainder(dividingBy: 2 * .pi)
         if t < 0 { t += 2 * .pi }
         let q = MeadowJSON.quantized(t)

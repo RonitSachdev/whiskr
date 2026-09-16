@@ -22,19 +22,22 @@ final class EditBar {
 }
 
 /// Editing the meadow (docs/DESIGN.md, "Edit Meadow"; the design's §4–6): the terminals slide away and the
-/// meadow fills the window between the bars, the view lifts to look down on the picnic ground, and the
-/// scenery is the Select tool's: click, ⇧-click, a marquee on empty ground, ⌘-click for all of a kind
-/// nearby; drag to move (⌥-drag to copy), each thing's ground ringed and a dashed ring with the reason by
-/// the pointer where it cannot stand; arrows nudge, R turns, [ ] size living things, ⌘D duplicates, ⌫
-/// deletes, ⌘C ⌘X ⌘V copy, cut and paste; ⌘Z and ⇧⌘Z undo and redo each gesture. Everything is saved as it
-/// changes (`MeadowLibrary`). Done (⌘↩), Esc once nothing is under way or chosen, or View › Edit Meadow again
-/// brings everything back exactly as it was. Cats, terminals and alerts carry on throughout.
+/// meadow fills the window between the bars, the view lifts to look down on the picnic ground, and the tray
+/// floats along its bottom edge with the tools and a shelf of things. The Select tool: click, ⇧-click, a
+/// marquee on empty ground, ⌘-click for all of a kind nearby; drag to move (⌥-drag to copy), each thing's
+/// ground ringed and a dashed ring with the reason by the pointer where it cannot stand; arrows nudge, R turns,
+/// [ ] size living things, ⌘D duplicates, ⌫ deletes, ⌘C ⌘X ⌘V copy, cut and paste. A thing chosen in the tray
+/// waits as a ghost under the pointer and is placed with a click (⇧ keeps placing); the Brush plants clumps of
+/// flowers, the Eraser takes things away (`EditModeController+Tools.swift`). ⌘Z and ⇧⌘Z undo and redo each
+/// gesture. Everything is saved as it changes (`MeadowLibrary`). Done (⌘↩), Esc once nothing is under way,
+/// armed or chosen, or View › Edit Meadow again brings everything back exactly as it was. Cats, terminals and
+/// alerts carry on throughout.
 @MainActor
 final class EditModeController: NSObject {
     private weak var windowController: MainWindowController?
-    private let navigator: NavigatorController
-    private let library = MeadowLibrary.shared
-    private var meadow: MeadowView { navigator.meadow }
+    let navigator: NavigatorController
+    let library = MeadowLibrary.shared
+    var meadow: MeadowView { navigator.meadow }
     private(set) var isEditing = false
     /// The top bar's part while editing.
     let bar = EditBar()
@@ -42,15 +45,43 @@ final class EditModeController: NSObject {
     /// What is chosen, by id (`MeadowEditSession`), in the order it was chosen.
     private(set) var selection: [Int] = []
     /// The scenery's thing under the pointer (by its index in the scenery shown).
-    private var hovered: Int?
+    var hovered: Int?
     /// The keyboard's cursor on the ground (x, z): shown once the arrows move it with nothing chosen.
-    private(set) var cursor: SIMD2<Float>?
+    var cursor: SIMD2<Float>?
     /// `[` and `]` with nothing chosen: things nearest the cursor first, and which has the keyboard's
     /// attention (ringed faintly and read out; Return chooses it).
     private var stepping: (order: [Int], at: Int)?
     private(set) var focused: Int?
     private var gesture: Gesture?
     private var spring: Spring?
+
+    /// The tray, the shelf's keyboard, and the tiles' pictures drawn so far (`updatePictures`).
+    let tray = EditorTray()
+    private(set) lazy var trayHost = EditorTrayHost(rootView: EditorTrayView(tray: tray))
+    let trayKeys = TrayKeys()
+    var pictureCache: [String: CGImage] = [:]
+    /// The thing armed in the tray, drawn as it will be placed (nil until it has a spot), its turn, where its
+    /// ghost is, and why it may not stand there.
+    var pending: MeadowFile.MeadowItem?
+    var pendingTurn = 0.0
+    var ghostSpot: SIMD2<Float>?
+    var ghostRefusal: MeadowEditRefusal?
+    /// What a thing to be placed is judged against, made once for each state of the meadow.
+    var placingField: SceneryRules.Field?
+    /// The Brush's or the Eraser's circle, where the pointer is.
+    var brushSpot: SIMD2<Float>?
+    /// A Brush stroke or an Eraser sweep under way.
+    var stroke: Stroke?
+    /// Things just placed, settling into the meadow.
+    var settling: Settling?
+    var random = SystemRandomNumberGenerator()
+    private var watching: [Observing] = []
+
+    struct Settling {
+        var ids: [Int]
+        var started: CFTimeInterval
+        var link: CADisplayLink?
+    }
 
     /// The selection's bar, the compass, the marquee, and the note with the reason a thing cannot go.
     let barModel = SelectionBarModel()
@@ -70,6 +101,12 @@ final class EditModeController: NSObject {
         case moving(Move)
         /// A rectangle from `from`, choosing what is inside it, added to `base`.
         case marquee(from: NSPoint, base: [Int])
+        /// Pressed with a thing armed: placed where it is let go.
+        case placing
+        /// A Brush stroke or an Eraser sweep (`stroke`).
+        case stroking
+        /// Pressed with the Eraser, not yet dragged: on a thing (by id), or on the grass, where.
+        case erasing(thing: Int?, at: NSPoint)
     }
 
     /// A drag of the chosen things (or of copies of them, with ⌥).
@@ -110,6 +147,11 @@ final class EditModeController: NSObject {
         compass.onFrame = { [weak self] in self?.meadow.frameEditView() }
         compass.onTwist = { [weak self] radians in self?.meadow.twistView(by: radians) }
         marquee.isHidden = true
+        tray.act = { [weak self] action in self?.trayAction(action) }
+        trayKeys.tray = tray
+        trayKeys.editorKey = { [weak self] event in self?.key(event) ?? false }
+        trayKeys.editorKeyEquivalent = { [weak self] event in self?.keyEquivalent(event) ?? false }
+        restoreTray()
         library.onStep = { [weak self] change in self?.stepped(change) }
         let center = NotificationCenter.default
         for name in [Notification.Name.NSUndoManagerDidCloseUndoGroup, .NSUndoManagerDidUndoChange, .NSUndoManagerDidRedoChange] {
@@ -148,8 +190,9 @@ final class EditModeController: NSObject {
         meadow.onEditPointer = { [weak self] pointer in self?.pointer(pointer) }
         meadow.onEditMenu = { [weak self] thing, point in self?.contextMenu(thing, at: point) }
         meadow.onEditViewChanged = { [weak self] in self?.followView() }
+        meadow.onEditScroll = { [weak self] event in self?.scrolled(event) ?? false }
         let container = navigator.view
-        for overlay in [marquee, compass, selectionBar, reason] as [NSView] where overlay.superview !== container { container.addSubview(overlay) }
+        for overlay in [marquee, compass, trayHost, trayKeys, selectionBar, reason] as [NSView] where overlay.superview !== container { container.addSubview(overlay) }
         marquee.frame = container.bounds
         marquee.autoresizingMask = [.width, .height]
         selectionBar.isHidden = true
@@ -160,6 +203,35 @@ final class EditModeController: NSObject {
         selection = []
         cursor = nil
         stepping = nil
+        tray.tool = .select
+        tray.armed = nil
+        tray.filter = ""
+        tray.highlighted = nil
+        pending = nil
+        ghostSpot = nil
+        brushSpot = nil
+        placingField = nil
+        updatePictures()
+        updateFullness()
+        updateTools()
+        layoutTray()
+        trayHost.layer?.removeAllAnimations()
+        if let layer = trayHost.layer ?? { trayHost.wantsLayer = true; return trayHost.layer }() { OverlayMotion.appear(layer, anchor: .center) }
+        // The tray's pictures follow the theme; how full the meadow is follows every change of it.
+        watching = [
+            Observing { [weak self] in
+                _ = (ThemeStore.shared.palette, ThemeStore.shared.appearance)
+                Task { @MainActor in self?.updatePictures() }
+            },
+            Observing { [weak self] in
+                _ = MeadowLibrary.shared.session.document.entries.count
+                Task { @MainActor in
+                    guard let self, self.isEditing else { return }
+                    self.placingField = nil
+                    self.updateFullness()
+                }
+            },
+        ]
         updateBar()
         updateMarks()
         updateAccessibility()
@@ -174,6 +246,12 @@ final class EditModeController: NSObject {
         guard isEditing, let windowController else { return }
         if case .moving = gesture { cancelMove() }
         finishSpring()
+        finishStroke()
+        settling?.link?.invalidate()
+        settling = nil
+        disarm()
+        tray.dragging = nil
+        watching = []
         gesture = nil
         marquee.rect = nil
         hideReason()
@@ -188,7 +266,8 @@ final class EditModeController: NSObject {
         meadow.onEditPointer = nil
         meadow.onEditMenu = nil
         meadow.onEditViewChanged = nil
-        for overlay in [marquee, compass, selectionBar, reason] as [NSView] { overlay.removeFromSuperview() }
+        meadow.onEditScroll = nil
+        for overlay in [marquee, compass, trayHost, trayKeys, selectionBar, reason] as [NSView] { overlay.removeFromSuperview() }
         meadow.takesKeyboardFocus = false
         windowController.setMeadowEditing(false, keyboard: keyboardBefore)
         keyboardBefore = nil
@@ -202,9 +281,15 @@ final class EditModeController: NSObject {
     private func pointer(_ p: MeadowEditPointer) {
         switch p.phase {
         case .moved:
-            hover(p.thing)
+            moved(p)
         case .exited:
             hover(nil)
+            if gesture == nil {
+                brushSpot = nil
+                if tray.armed != nil { ghostSpot = cursor }
+                hideReason()
+                tray.armed != nil ? drawPending() : updateMarks()
+            }
         case .down:
             down(p)
         case .dragged:
@@ -212,6 +297,29 @@ final class EditModeController: NSObject {
         case .up:
             up(p)
         }
+    }
+
+    /// The pointer over the meadow with nothing pressed: what it is on ringed faintly, the armed thing's ghost or
+    /// the Brush's or the Eraser's circle under it.
+    private func moved(_ p: MeadowEditPointer) {
+        switch tray.tool {
+        case .select where tray.armed != nil:
+            hover(nil)
+            ghostSpot = meadow.groundPoint(at: p.location) ?? ghostSpot
+            drawPending()
+            sayGhost(at: p.location, lasting: nil)
+        case .select:
+            hover(p.thing)
+        case .brush, .erase:
+            brushSpot = meadow.groundPoint(at: p.location)
+            hovered = tray.tool == .erase ? p.thing : nil
+            updateMarks()
+        }
+    }
+
+    /// Why the ghost may not stand where it is, by the pointer (gone once it may).
+    func sayGhost(at point: NSPoint, lasting: TimeInterval?) {
+        if let refusal = ghostRefusal { showReason(MeadowWords.refusal(refusal), at: point, lasting: lasting) } else { hideReason() }
     }
 
     private func hover(_ thing: Int?) {
@@ -223,6 +331,25 @@ final class EditModeController: NSObject {
     private func down(_ p: MeadowEditPointer) {
         finishSpring()
         hideReason()
+        switch tray.tool {
+        case .select where tray.armed != nil:
+            // Pressed with a thing armed: it is placed where it is let go (dragged meanwhile, its ghost follows).
+            ghostSpot = meadow.groundPoint(at: p.location) ?? ghostSpot
+            drawPending()
+            gesture = .placing
+            return
+        case .brush:
+            guard let ground = meadow.groundPoint(at: p.location) else { return }
+            brushSpot = ground
+            gesture = .stroking
+            beginStroke(at: ground, erasing: p.modifiers.contains(.option))
+            return
+        case .erase:
+            gesture = .erasing(thing: p.thing.flatMap(library.session.id(ofThing:)), at: p.location)
+            return
+        case .select:
+            break
+        }
         let id = p.thing.flatMap(library.session.id(ofThing:))
         let shift = p.modifiers.contains(.shift)
         if p.modifiers.contains(.command), let id {
@@ -252,6 +379,21 @@ final class EditModeController: NSObject {
 
     private func dragged(_ p: MeadowEditPointer) {
         switch gesture {
+        case .placing:
+            ghostSpot = meadow.groundPoint(at: p.location) ?? ghostSpot
+            drawPending()
+            sayGhost(at: p.location, lasting: nil)
+        case .stroking:
+            guard let ground = meadow.groundPoint(at: p.location) else { return }
+            brushSpot = ground
+            continueStroke(to: ground)
+            updateMarks()
+        case .erasing(_, let at):
+            guard hypot(p.location.x - at.x, p.location.y - at.y) >= 4, let start = meadow.groundPoint(at: at) else { return }
+            gesture = .stroking
+            hovered = nil
+            beginStroke(at: start, erasing: true)
+            dragged(p)
         case .pressed(let thing, let at, let flags, _):
             guard hypot(p.location.x - at.x, p.location.y - at.y) >= 4 else { return }
             if thing != nil, !selection.isEmpty, let start = meadow.groundPoint(at: at) {
@@ -311,6 +453,28 @@ final class EditModeController: NSObject {
             updateSelectionBar(appearing: true)
         }
         switch gesture {
+        case .placing:
+            gesture = nil
+            if ghostRefusal == nil {
+                placePending(searching: false, keepArmed: p.modifiers.contains(.shift))
+            } else if let refusal = ghostRefusal {
+                // Refused: nothing placed, still armed, the reason staying a moment.
+                let text = MeadowWords.refusal(refusal)
+                showReason(text, at: p.location, lasting: 2.5)
+                announce(text)
+            }
+        case .stroking:
+            gesture = nil
+            finishStroke()
+        case .erasing(let thing, let at):
+            gesture = nil
+            if let thing {
+                erase(thing)
+            } else if let ground = meadow.groundPoint(at: at) {
+                // A click on the grass sweeps the circle once.
+                beginStroke(at: ground, erasing: true)
+                finishStroke()
+            }
         case .pressed(_, _, _, let unchoose):
             gesture = nil
             if let unchoose { choose(selection.filter { $0 != unchoose }) }
@@ -352,7 +516,7 @@ final class EditModeController: NSObject {
     /// A drag, or things springing back, draw the meadow as they are now rather than as it is saved.
     var showsPreview: Bool {
         if case .moving = gesture { return true }
-        return spring != nil
+        return spring != nil || stroke != nil
     }
 
     /// Let go where they cannot stand (or Esc mid-drag): the things spring back to where they came from,
@@ -414,38 +578,50 @@ final class EditModeController: NSObject {
 
     // MARK: Keys
 
-    /// Keys while the meadow has the keyboard and is edited (`KeyTable`'s `.meadowEditor`).
+    /// Keys while the meadow (or the tray's shelf) has the keyboard and is edited (`KeyTable`'s `.meadowEditor`).
     func key(_ event: NSEvent) -> Bool {
         let flags = event.modifierFlags.intersection([.command, .control, .option, .shift])
         guard !flags.contains(.command), !flags.contains(.control) else { return false }
         let shift = flags.contains(.shift)
+        let inMeadow = meadow.window?.firstResponder === meadow
         switch event.keyCode {
         case 53: escape(); return true
         case 51, 117: deleteSelection(); return true
-        case 36, 76: chooseNearestCursor(); return true
+        case 36, 76: returnKey(); return true
         case 123, 124, 125, 126: arrow(event.keyCode, far: shift); return true
         case 48:
-            // Tab: on to the selection's bar (Full Keyboard Access), when it shows.
-            if !selectionBar.isHidden, selectionBar.superview != nil {
+            // Tab: on to the selection's bar when it shows (Full Keyboard Access), else to the tray's shelf;
+            // ⇧Tab to the shelf.
+            if !shift, inMeadow, !selectionBar.isHidden, selectionBar.superview != nil {
                 meadow.window?.selectKeyView(following: meadow)
                 if let window = meadow.window, !(window.firstResponder is NSView && (window.firstResponder as? NSView)?.isDescendant(of: selectionBar) == true) {
                     window.makeFirstResponder(selectionBar)
                 }
+            } else {
+                giveTrayTheKeyboard()
             }
             return true
         default: break
         }
-        switch event.charactersIgnoringModifiers?.lowercased() {
-        case "v": return true
+        guard let typed = event.charactersIgnoringModifiers?.lowercased() else { return false }
+        if let number = Int(typed), (1...EditorTray.categories.count).contains(number), flags.isEmpty {
+            trayAction(.category(EditorTray.categories[number - 1]))
+            return true
+        }
+        switch typed {
+        case "v": use(.select); return true
+        case "b": use(.brush); return true
+        case "e": use(.erase); return true
         case "r":
             let degrees: Double = flags.contains(.option) ? 1 : 15
-            turnSelection(by: (shift ? 1 : -1) * degrees * .pi / 180)
+            let radians = (shift ? 1 : -1) * degrees * .pi / 180
+            if tray.armed != nil { turnPending(by: radians) } else { turnSelection(by: radians) }
             return true
         case "[":
-            if selection.isEmpty { step(-1) } else { resizeSelection(by: 1 / Self.sizeStep) }
+            if tray.tool != .select { stepRadius(-1) } else if selection.isEmpty { step(-1) } else { resizeSelection(by: 1 / Self.sizeStep) }
             return true
         case "]":
-            if selection.isEmpty { step(1) } else { resizeSelection(by: Self.sizeStep) }
+            if tray.tool != .select { stepRadius(1) } else if selection.isEmpty { step(1) } else { resizeSelection(by: Self.sizeStep) }
             return true
         case ",": meadow.turnView(by: .pi / 4); return true
         case ".": meadow.turnView(by: -.pi / 4); return true
@@ -454,12 +630,16 @@ final class EditModeController: NSObject {
         }
     }
 
-    /// Keys with ⌘ the editor takes before the menus: ⌘D duplicates (no terminal is in view to split), ⌘↩ is Done.
+    /// Keys with ⌘ the editor takes before the menus: ⌘D duplicates (no terminal is in view to split), ⌘F finds
+    /// in the tray (no terminal or file is in view to search), ⌘↩ is Done.
     func keyEquivalent(_ event: NSEvent) -> Bool {
         guard isEditing, event.modifierFlags.intersection([.command, .control, .option, .shift]) == .command else { return false }
         switch event.charactersIgnoringModifiers?.lowercased() {
         case "d":
             duplicateSelection()
+            return true
+        case "f":
+            findInTray()
             return true
         case "\r":
             leave()
@@ -469,14 +649,43 @@ final class EditModeController: NSObject {
         }
     }
 
+    /// ⌥-scroll with a thing armed turns it, a degree a step of the wheel or the trackpad.
+    private func scrolled(_ event: NSEvent) -> Bool {
+        guard tray.armed != nil, event.modifierFlags.contains(.option) else { return false }
+        let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY / 4 : event.scrollingDeltaY * 4
+        turnPending(by: Double(delta) * .pi / 180)
+        return true
+    }
+
+    /// Return: the armed thing placed at the keyboard's cursor (or nearest it), one dab of the Brush or sweep of
+    /// the Eraser there, else the thing gone to (or nearest the cursor) chosen.
+    private func returnKey() {
+        if tray.armed != nil {
+            ghostSpot = cursor ?? ghostSpot ?? viewMiddle()
+            drawPending()
+            placePending(searching: true, keepArmed: false)
+        } else if tray.tool != .select {
+            dabAtCursor()
+        } else {
+            chooseNearestCursor()
+        }
+    }
+
     /// One size step of `[` and `]`, and of the bar's − and +.
     static let sizeStep = 1.06
 
-    /// Esc steps back: the drag or marquee under way, then the choice, then editing itself.
+    /// Esc steps back: the gesture under way (a drag springs back, a stroke is not kept), the thing armed,
+    /// the Brush or the Eraser (back to Select), then the choice, then editing itself.
     func escape() {
         switch gesture {
         case .moving:
             cancelMove()
+        case .placing, .erasing:
+            gesture = nil
+            disarm()
+        case .stroking:
+            gesture = nil
+            cancelStroke()
         case .marquee(_, let base):
             gesture = nil
             marquee.rect = nil
@@ -484,7 +693,12 @@ final class EditModeController: NSObject {
             updateSelectionBar(appearing: true)
         case .pressed, nil:
             gesture = nil
-            if !selection.isEmpty || cursor != nil || focused != nil {
+            if tray.armed != nil {
+                disarm()
+                announce(String(localized: "Put back", comment: "VoiceOver: the thing armed in the meadow editor's tray put back"))
+            } else if tray.tool != .select {
+                use(.select)
+            } else if !selection.isEmpty || cursor != nil || focused != nil {
                 choose([])
                 cursor = nil
                 updateMarks()
@@ -502,12 +716,19 @@ final class EditModeController: NSObject {
         case 126: axes.forward
         default: -axes.forward
         }
-        if selection.isEmpty {
-            // The keyboard's cursor, from the view's middle.
-            let from = cursor ?? viewMiddle() ?? .zero
+        if selection.isEmpty || tray.armed != nil || tray.tool != .select {
+            // The keyboard's cursor, from the view's middle (or where the ghost is): the armed thing and the
+            // Brush's or the Eraser's circle go with it.
+            let from = cursor ?? (tray.armed != nil ? ghostSpot : brushSpot) ?? viewMiddle() ?? .zero
             cursor = from + direction * (far ? 2 : 0.5)
             stepping = nil
             focused = nil
+            if tray.armed != nil {
+                ghostSpot = cursor
+                drawPending()
+            } else if tray.tool != .select {
+                brushSpot = cursor
+            }
             updateMarks()
             return
         }
@@ -517,7 +738,7 @@ final class EditModeController: NSObject {
     }
 
     /// The spot on the ground in the view's middle.
-    private func viewMiddle() -> SIMD2<Float>? {
+    func viewMiddle() -> SIMD2<Float>? {
         meadow.groundPoint(at: NSPoint(x: meadow.bounds.midX, y: meadow.bounds.midY))
     }
 
@@ -654,6 +875,7 @@ final class EditModeController: NSObject {
     // MARK: Undo
 
     func undo() {
+        finishStroke()
         guard library.undoManager.canUndo else { return }
         let name = library.undoManager.undoMenuItemTitle
         finishSpring()
@@ -662,6 +884,7 @@ final class EditModeController: NSObject {
     }
 
     func redo() {
+        finishStroke()
         guard library.undoManager.canRedo else { return }
         let name = library.undoManager.redoMenuItemTitle
         finishSpring()
@@ -683,7 +906,7 @@ final class EditModeController: NSObject {
 
     // MARK: Choosing
 
-    private func choose(_ ids: [Int]) {
+    func choose(_ ids: [Int]) {
         var seen = Set<Int>()
         selection = ids.filter { seen.insert($0).inserted }
         stepping = nil
@@ -779,7 +1002,7 @@ final class EditModeController: NSObject {
 
     // MARK: What is drawn over the meadow
 
-    private func updateMarks() {
+    func updateMarks() {
         guard isEditing else { return }
         let session = library.session
         var marks = MeadowEditMarks(highContrast: Look.increasesContrast)
@@ -799,7 +1022,19 @@ final class EditModeController: NSObject {
                 marks.hovered = hovered
             }
         }
-        marks.cursor = selection.isEmpty ? cursor : nil
+        // The armed thing's ghost (its spot is the cursor's while the keys move it); the Brush's or the Eraser's
+        // circle, where the pointer or the cursor is.
+        if tray.armed != nil, let pending, let ghost = session.thing(pending) {
+            marks.ghost = ghost
+            marks.ghostRefused = ghostRefusal != nil
+        } else {
+            marks.cursor = selection.isEmpty ? cursor : nil
+        }
+        if tray.tool != .select, let spot = brushSpot ?? cursor {
+            marks.brush = MeadowEditMarks.BrushCircle(center: spot, radius: Float(radius), erasing: tray.tool == .erase || stroke?.erasing == true)
+            marks.cursor = nil
+            if tray.tool == .erase, let hovered, hovered < session.scenery.things.count, stroke == nil { marks.hovered = hovered }
+        }
         meadow.editMarks = marks
         updateBarModel()
     }
@@ -819,12 +1054,18 @@ final class EditModeController: NSObject {
     private func followView() {
         compass.bearing = meadow.viewBearing
         let container = navigator.view.bounds
+        if container.size != trayLaidFor {
+            trayLaidFor = container.size
+            layoutTray()
+        }
         let place = NSPoint(x: container.maxX - CompassView.size - Look.Space.l, y: container.maxY - CompassView.size - Look.Space.l)
         if compass.frame.origin != place { compass.setFrameOrigin(place) }
         placeSelectionBar()
     }
 
     private var selectionBarShown = false
+    /// The container's size the tray was last laid out for.
+    private var trayLaidFor = NSSize.zero
 
     /// Shows (fading in, growing from 98 %) or places the selection's bar over the chosen things.
     private func updateSelectionBar(appearing: Bool) {
@@ -845,22 +1086,27 @@ final class EditModeController: NSObject {
         selectionBar.isHidden = true
     }
 
-    /// 12 pt above the chosen things' box on screen, or below it when there is no room above; inside the
-    /// meadow, clear of the compass. Hidden while they are out of view.
+    /// 12 pt under the rings round the chosen things on the ground (where the choice is marked, so the bar
+    /// never covers what is chosen and stays near it however tall a tree is), or 12 pt over the things when
+    /// there is no room below; inside the meadow, clear of the compass and the tray. Hidden while they are out
+    /// of view.
     private func placeSelectionBar() {
         guard selectionBarShown else { return }
         let indices = selection.compactMap(library.session.thingIndex(of:))
-        guard let rect = meadow.screenRect(ofScenery: indices), rect.maxY > 0, rect.minY < meadow.bounds.height else {
+        guard let things = meadow.screenRect(ofScenery: indices), let marks = meadow.screenRect(ofGroundMarks: indices) ?? Optional(things),
+              things.maxY > 0, things.minY < meadow.bounds.height else {
             selectionBar.isHidden = true
             return
         }
         selectionBar.isHidden = false
         let size = selectionBar.fittingSize, margin = SelectionBar.margin
         let bounds = meadow.bounds
-        var y = rect.maxY + Look.Space.l - margin
-        if y + size.height - margin > bounds.maxY - Look.Space.m { y = rect.minY - Look.Space.l - size.height + margin }
-        y = min(max(y, bounds.minY + Look.Space.m - margin), bounds.maxY - size.height + margin - Look.Space.m)
-        var x = rect.midX - size.width / 2
+        // Above the tray's card, when it shows.
+        let floor = trayHost.superview == nil ? bounds.minY : meadow.convert(trayHost.frame, from: trayHost.superview).maxY - EditorTrayView.margin
+        var y = marks.minY - Look.Space.l - size.height + margin
+        if y + margin < floor + Look.Space.m { y = things.maxY + Look.Space.l - margin }
+        y = min(max(y, floor + Look.Space.m - margin), bounds.maxY - size.height + margin - Look.Space.m)
+        var x = marks.midX - size.width / 2
         x = min(max(x, bounds.minX + Look.Space.m - margin), bounds.maxX - size.width + margin - Look.Space.m)
         let frame = NSRect(x: x.rounded(), y: y.rounded(), width: size.width, height: size.height)
         if selectionBar.frame != frame { selectionBar.frame = frame }
@@ -869,7 +1115,7 @@ final class EditModeController: NSObject {
     /// The reason by the pointer, as shown now.
     private var reasonText: String?
 
-    private func showReason(_ text: String, at point: NSPoint, lasting: TimeInterval?) {
+    func showReason(_ text: String, at point: NSPoint, lasting: TimeInterval?) {
         reasonText = text
         reason.show(title: "⃠ " + text, detail: nil, at: point, within: navigator.view.bounds)
         reasonTimer?.invalidate()
@@ -878,7 +1124,7 @@ final class EditModeController: NSObject {
         }
     }
 
-    private func hideReason() {
+    func hideReason() {
         reasonTimer?.invalidate()
         reasonTimer = nil
         reasonText = nil
@@ -897,7 +1143,7 @@ final class EditModeController: NSObject {
 
     // MARK: VoiceOver
 
-    private func announce(_ text: String) {
+    func announce(_ text: String) {
         NSAccessibility.post(element: meadow, notification: .announcementRequested,
                              userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }
@@ -914,33 +1160,45 @@ final class EditModeController: NSObject {
 
     /// The meadow as VoiceOver reads it while editing: each tree and the log on its own, the plants and stones
     /// as clumps of one kind ("Daisies, 9"), so it never holds thousands of elements. Press chooses.
-    private func updateAccessibility() {
+    func updateAccessibility() {
         let session = library.session
         var elements: [NSAccessibilityElement] = []
-        var placed = Set<Int>()
-        for id in session.drawnIDs where !placed.contains(id) {
-            guard let item = session.item(id) else { continue }
-            let big = SceneryRules.isBig(item.asset)
-            var members = [id]
-            if !big {
-                // A clump: the same kind within four units of any of it, gathered outward.
-                var frontier = [item.at]
-                while let at = frontier.popLast() {
-                    for other in session.drawnIDs where !placed.contains(other) && !members.contains(other) {
-                        guard let o = session.item(other), o.asset == item.asset, hypot(o.at.x - at.x, o.at.z - at.z) < 4 else { continue }
-                        members.append(other)
-                        frontier.append(o.at)
+        // A clump: the same kind within four units of any of it, gathered outward through squares of four units,
+        // so a meadow of thousands of flowers is read in a moment.
+        let things = session.drawnIDs.compactMap { id in session.item(id).map { (id: id, item: $0) } }
+        func square(_ at: MeadowPoint) -> SIMD2<Int32> { SIMD2(Int32((at.x / 4).rounded(.down)), Int32((at.z / 4).rounded(.down))) }
+        var squares: [SIMD2<Int32>: [Int]] = [:]
+        for (k, thing) in things.enumerated() where !SceneryRules.isBig(thing.item.asset) { squares[square(thing.item.at), default: []].append(k) }
+        var placed = [Bool](repeating: false, count: things.count)
+        for k in things.indices where !placed[k] {
+            let item = things[k].item
+            placed[k] = true
+            var members = [things[k].id]
+            if !SceneryRules.isBig(item.asset) {
+                var frontier = [k]
+                while let j = frontier.popLast() {
+                    let at = things[j].item.at, middle = square(at)
+                    for dx in Int32(-1)...1 {
+                        for dz in Int32(-1)...1 {
+                            for m in squares[middle &+ SIMD2(dx, dz)] ?? [] where !placed[m] {
+                                let o = things[m].item
+                                guard o.asset == item.asset, hypot(o.at.x - at.x, o.at.z - at.z) < 4 else { continue }
+                                placed[m] = true
+                                members.append(things[m].id)
+                                frontier.append(m)
+                            }
+                        }
                     }
                 }
             }
-            placed.formUnion(members)
-            let label = members.count == 1 ? "\(MeadowWords.name(item.asset)), \(MeadowWords.whereIs(item.at))" : MeadowWords.clump(item.asset, count: members.count)
+            let clump = members
+            let label = clump.count == 1 ? "\(MeadowWords.name(item.asset)), \(MeadowWords.whereIs(item.at))" : MeadowWords.clump(item.asset, count: clump.count)
             let element = SceneryAccessibilityElement(meadow: meadow, frame: { [weak self] in
                 guard let self, let window = self.meadow.window,
-                      let rect = self.meadow.screenRect(ofScenery: members.compactMap(self.library.session.thingIndex(of:))) else { return nil }
+                      let rect = self.meadow.screenRect(ofScenery: clump.compactMap(self.library.session.thingIndex(of:))) else { return nil }
                 return window.convertToScreen(self.meadow.convert(rect, to: nil))
             }, press: { [weak self] in
-                self?.choose(members)
+                self?.choose(clump)
                 self?.announceSelection()
             })
             element.setAccessibilityLabel(label)
@@ -960,6 +1218,10 @@ final class EditModeController: NSObject {
     var debugReason: String? { reason.isHidden ? nil : reasonText }
     var debugSelectionBarShown: Bool { selectionBarShown && !selectionBar.isHidden && selectionBar.superview != nil }
     func debugChoose(_ ids: [Int]) { choose(ids) }
+    /// The thing armed as it will be placed, and why it may not stand where its ghost is.
+    var debugPending: (item: MeadowFile.MeadowItem?, refusal: MeadowEditRefusal?) { (pending, ghostRefusal) }
+    var debugStrokeUnderWay: Bool { stroke != nil }
+    var debugSettling: Bool { settling != nil }
     #endif
 }
 

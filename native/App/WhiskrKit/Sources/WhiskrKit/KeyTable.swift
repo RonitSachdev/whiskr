@@ -98,6 +98,8 @@ public enum KeyContext: String, Sendable, CaseIterable {
     /// The meadow while it is edited, with the keyboard in it. Its ⌘ keys are taken before the menus (a
     /// view's key equivalent comes first), each written down with what it takes the place of.
     case meadowEditor
+    /// The meadow editor's tray, with the keyboard on its shelf of things.
+    case editorTray
     /// The find bar over a terminal.
     case terminalFind
     /// ⌃Tab's list while ⌃ is held (`TabSwitcher`).
@@ -196,6 +198,7 @@ public enum KeyTable {
         KeyBinding("⌘0", "actualSizeText:", .menu),
         KeyBinding("⌃⌘F", "toggleFullScreen:", .menu),
         KeyBinding("⌃⌘E", "toggleMeadowEditing:", .menu),
+        KeyBinding("⌥⌘T", "toggleEditorTray:", .menu),
         // AppKit adds Close All under Close Window, with ⌥.
         KeyBinding("⌥⇧⌘W", "closeAll:", .menu),
         // Editor
@@ -319,30 +322,42 @@ public enum KeyTable {
         KeyBinding("⌘↩", "send", .focusedForm),
         // Editing the meadow (docs/DESIGN.md, "Edit Meadow"); ⌘A, ⌘C, ⌘V, ⌘Z and ⇧⌘Z are the Edit menu's.
         KeyBinding("V", "the Select tool", .meadowEditor),
-        KeyBinding("R", "turn the chosen things 15° clockwise", .meadowEditor),
-        KeyBinding("⇧R", "turn the chosen things 15° anticlockwise", .meadowEditor),
-        KeyBinding("⌥R", "turn the chosen things 1° clockwise", .meadowEditor),
-        KeyBinding("⌥⇧R", "turn the chosen things 1° anticlockwise", .meadowEditor),
-        KeyBinding("]", "grow the chosen things, or the next thing round the cursor", .meadowEditor),
-        KeyBinding("[", "shrink the chosen things, or the thing before round the cursor", .meadowEditor),
-        KeyBinding("←", "nudge the chosen things, or move the cursor", .meadowEditor),
-        KeyBinding("→", "nudge the chosen things, or move the cursor", .meadowEditor),
-        KeyBinding("↑", "nudge the chosen things, or move the cursor", .meadowEditor),
-        KeyBinding("↓", "nudge the chosen things, or move the cursor", .meadowEditor),
+        KeyBinding("B", "the Brush", .meadowEditor),
+        KeyBinding("E", "the Eraser", .meadowEditor),
+    ] + (1...7).map { KeyBinding("\($0)", "the tray's category \($0)", .meadowEditor) } + [
+        KeyBinding("R", "turn the chosen things, or the thing to place, 15° clockwise", .meadowEditor),
+        KeyBinding("⇧R", "turn the chosen things, or the thing to place, 15° anticlockwise", .meadowEditor),
+        KeyBinding("⌥R", "turn the chosen things, or the thing to place, 1° clockwise", .meadowEditor),
+        KeyBinding("⌥⇧R", "turn the chosen things, or the thing to place, 1° anticlockwise", .meadowEditor),
+        KeyBinding("]", "grow the chosen things, the next thing round the cursor, or a larger Brush or Eraser", .meadowEditor),
+        KeyBinding("[", "shrink the chosen things, the thing before round the cursor, or a smaller Brush or Eraser", .meadowEditor),
+        KeyBinding("←", "nudge the chosen things, or move the cursor (and the thing to place)", .meadowEditor),
+        KeyBinding("→", "nudge the chosen things, or move the cursor (and the thing to place)", .meadowEditor),
+        KeyBinding("↑", "nudge the chosen things, or move the cursor (and the thing to place)", .meadowEditor),
+        KeyBinding("↓", "nudge the chosen things, or move the cursor (and the thing to place)", .meadowEditor),
         KeyBinding("⇧←", "nudge further", .meadowEditor),
         KeyBinding("⇧→", "nudge further", .meadowEditor),
         KeyBinding("⇧↑", "nudge further", .meadowEditor),
         KeyBinding("⇧↓", "nudge further", .meadowEditor),
-        KeyBinding("↩", "choose the thing nearest the cursor", .meadowEditor),
+        KeyBinding("↩", "place the thing at the cursor, a dab of the Brush or the Eraser there, or choose the thing nearest it", .meadowEditor),
         KeyBinding("⌫", "delete the chosen things", .meadowEditor),
         KeyBinding("⌦", "delete the chosen things", .meadowEditor),
-        KeyBinding("⎋", "step back: the gesture, the choice, then editing", .meadowEditor),
+        KeyBinding("⎋", "step back: the gesture, the thing to place, the Brush or Eraser, the choice, then editing", .meadowEditor),
         KeyBinding(",", "turn the view 45° left", .meadowEditor),
         KeyBinding(".", "turn the view 45° right", .meadowEditor),
         KeyBinding("0", "frame the picnic ground again", .meadowEditor),
         KeyBinding("Space", "held: a drag slides the view", .meadowEditor),
-        KeyBinding("⇥", "to the selection's bar", .meadowEditor),
+        KeyBinding("⇥", "to the selection's bar, or the tray's shelf", .meadowEditor),
+        KeyBinding("⇧⇥", "to the tray's shelf", .meadowEditor),
         KeyBinding("⌘D", "duplicate the chosen things", .meadowEditor, replaces: "Split Right: no terminal is in view while editing"),
+        KeyBinding("⌘F", "the tray's filter field", .meadowEditor, replaces: "Find: no terminal or file is in view while editing"),
+        // The tray's shelf with the keyboard; the editor's other keys work there too.
+        KeyBinding("←", "the thing before", .editorTray),
+        KeyBinding("→", "the next thing", .editorTray),
+        KeyBinding("↩", "choose it (a thing to place waits at the cursor)", .editorTray),
+        KeyBinding("⇥", "back to the meadow", .editorTray),
+        KeyBinding("⇧⇥", "back to the meadow", .editorTray),
+        KeyBinding("⎋", "back to the meadow", .editorTray),
         KeyBinding("⌘↩", "done editing", .meadowEditor),
     ]
 

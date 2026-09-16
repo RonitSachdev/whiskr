@@ -104,6 +104,9 @@ public final class MeadowView: MTKView {
     /// While editing: called after each frame drawn, so what floats over the meadow (the selection's bar, the
     /// compass) can follow the view.
     public var onEditViewChanged: (() -> Void)?
+    /// While editing: a scroll or a swipe over the meadow, offered to the editor first (⌥-scroll turns what
+    /// is about to be placed); return true when taken, else it zooms as always.
+    public var onEditScroll: ((NSEvent) -> Bool)?
     /// The view as it was before editing began, to come back to exactly.
     var editRestore: (view: CameraView, framing: Bool, handMoved: Bool)?
     /// A slide of the view under way, begun with ⌘ or Space held; the thing it began on, and whether the
@@ -377,7 +380,9 @@ public final class MeadowView: MTKView {
     // MARK: setup
 
     let stage: Stage
-    private var renderer: Renderer?
+    private(set) var renderer: Renderer?
+    /// Pictures of single things for the editor's tray (`portrait(of:pixels:background:)`), made when first asked.
+    var portraits: Portraits?
     private let driver = FrameDriver()
     /// Frames come from a CAMetalDisplayLink on the view's Metal layer, which calls back only when a
     /// drawable is ready, at the cadence the display really gives this window. MTKView's own loop (which
@@ -986,6 +991,7 @@ public final class MeadowView: MTKView {
 
     /// Scrolling zooms toward whatever is under the cursor; a trackpad's momentum carries on smoothly.
     public override func scrollWheel(with event: NSEvent) {
+        if stage.editing, onEditScroll?(event) == true { return }
         // A trackpad's momentum from before a follow began does not undo it: only a fresh touch does.
         if stage.camera.chasing, !event.momentumPhase.isEmpty { return }
         let precise = event.hasPreciseScrollingDeltas

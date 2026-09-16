@@ -123,6 +123,11 @@ final class EditorFlow {
         await keys()
         await copying()
         await theSelectionBar()
+        await theTray()
+        await placing()
+        await brushing()
+        await erasing()
+        await limits()
         await carryingOn()
         await revert()
         await pictures(looks: true)
@@ -174,7 +179,7 @@ final class EditorFlow {
     }
 
     /// The meadow has stopped moving (the view landed, regions settled).
-    private func still() async {
+    func still() async {
         _ = await PerfWait.until(4000) { !self.meadow.cameraMoving }
         await PerfWait.sleep(350)
         _ = await PerfWait.until(2000) { !self.meadow.cameraMoving }
@@ -302,7 +307,7 @@ final class EditorFlow {
 
     // MARK: The first edit
 
-    private func enter() async {
+    func enter() async {
         // Settled first: a choice still arriving (the keyboard reaching a terminal) would end it at once.
         await PerfWait.sleep(300)
         if !controller.meadowEditing { suite.shortcut("cmd+ctrl+e") }
@@ -371,7 +376,10 @@ final class EditorFlow {
         }
         // A marquee round a few things.
         let center = NSPoint(x: meadow.bounds.midX, y: meadow.bounds.midY)
-        let rect = NSRect(x: center.x - 220, y: center.y - 150, width: 440, height: 300)
+        // Its first corner on the grass, nothing under it.
+        let corners = (0..<12).map { NSPoint(x: center.x - 220 + CGFloat($0 % 4) * 23, y: center.y + 150 + CGFloat($0 / 4) * 19) }
+        let corner = corners.first { meadow.sceneryThing(at: $0) == nil } ?? corners[0]
+        let rect = NSRect(x: corner.x, y: corner.y - 300, width: 440, height: 300)
         let inside = meadow.sceneryThings(in: rect).compactMap(library.session.id(ofThing:))
         let from = NSPoint(x: rect.minX, y: rect.maxY), to = NSPoint(x: rect.maxX, y: rect.minY)
         if meadow.sceneryThing(at: from) == nil {
@@ -614,17 +622,20 @@ final class EditorFlow {
         await clickThing(tree)
         await PerfWait.sleep(300)
         let bar = editor.selectionBar.frame.insetBy(dx: SelectionBar.margin, dy: SelectionBar.margin)
-        let thing = meadow.screenRect(ofScenery: [library.session.thingIndex(of: tree)!]) ?? .zero
-        check("the selection's bar floats just above what is chosen (or below it), inside the meadow",
-              editor.debugSelectionBarShown && (abs(bar.minY - thing.maxY - Look.Space.l) < 2 || abs(thing.minY - bar.maxY - Look.Space.l) < 2) && meadow.bounds.contains(bar),
-              "bar \(bar), thing \(thing)")
+        let index = library.session.thingIndex(of: tree)!
+        let thing = meadow.screenRect(ofScenery: [index]) ?? .zero, rings = meadow.screenRect(ofGroundMarks: [index]) ?? .zero
+        check("the selection's bar hangs just under the rings round what is chosen (or over it, without room), inside the meadow and clear of the tray",
+              editor.debugSelectionBarShown && (abs(rings.minY - bar.maxY - Look.Space.l) < 2 || abs(bar.minY - thing.maxY - Look.Space.l) < 2) && meadow.bounds.contains(bar)
+                  && !bar.intersects(trayCard), "bar \(bar), rings \(rings), thing \(thing)")
+        check("a chosen tree is ringed round its trunk and, more lightly, round its crown's shade, and lit a little", meadow.editMarks.selected == [index]
+              && meadow.screenRect(ofGroundMarks: [index]).map { $0.width > (meadow.screenRect(ofScenery: [index])?.width ?? 0) * 0.6 } == true)
         await picture("selection-bar")
         // It follows the view.
         meadow.simulateDrag(dx: 0, dy: 60, slide: true)
         await still()
         let moved = editor.selectionBar.frame.insetBy(dx: SelectionBar.margin, dy: SelectionBar.margin)
-        let thingNow = meadow.screenRect(ofScenery: [library.session.thingIndex(of: tree)!]) ?? .zero
-        check("…and follows it as the view moves", abs(moved.midX - thingNow.midX) < 2 || !meadow.bounds.contains(thingNow), "bar \(moved), thing \(thingNow)")
+        let ringsNow = meadow.screenRect(ofGroundMarks: [library.session.thingIndex(of: tree)!]) ?? .zero
+        check("…and follows it as the view moves", abs(moved.midX - ringsNow.midX) < 2 || !meadow.bounds.contains(ringsNow), "bar \(moved), rings \(ringsNow)")
         suite.shortcut("0")
         await still()
         // Its buttons, clicked.
@@ -731,6 +742,7 @@ final class EditorFlow {
                 if let tree = visible(kind: "tree.young") ?? visible(kind: "tree.oak") { await clickThing(tree) }
                 await PerfWait.sleep(400)
                 await picture("\(name)-\(wide)")
+                await toolPictures("\(name)-\(wide)", wide: wide == "wide")
                 suite.shortcut("cmd+return")
                 _ = await PerfWait.until(2000) { !self.controller.meadowEditing }
                 await still()
@@ -738,9 +750,24 @@ final class EditorFlow {
         }
         window.setContentSize(NSSize(width: 1440, height: 900))
         await PerfWait.sleep(400)
+        // Increase Contrast's look: rings, the tray's line and the circles stronger.
+        store.themeID = BuiltInThemes.defaultID
+        store.appearance = .light
+        Look.debugIncreasesContrast = true
+        await PerfWait.sleep(400)
+        await enter()
+        if let tree = visible(kind: "tree.young") ?? visible(kind: "tree.oak") { await clickThing(tree) }
+        await PerfWait.sleep(300)
+        check("with Increase Contrast the marks are drawn stronger", meadow.editMarks.highContrast)
+        await picture("high-contrast")
+        await toolPictures("high-contrast", wide: true)
+        suite.shortcut("cmd+return")
+        _ = await PerfWait.until(2000) { !self.controller.meadowEditing }
+        Look.debugIncreasesContrast = false
+        await still()
     }
 
-    private func picture(_ name: String) async {
+    func picture(_ name: String) async {
         DebugShell.snapshot(window: controller, workbench: suite.workbench, to: pictures.appendingPathComponent("editor-\(name).png"))
     }
 
@@ -784,13 +811,13 @@ final class EditorFlow {
 
     // MARK: Pieces
 
-    private func hook(_ pane: Pane, _ event: String, _ extra: [String: JSONValue]) {
+    func hook(_ pane: Pane, _ event: String, _ extra: [String: JSONValue]) {
         var payload: [String: JSONValue] = ["hook_event_name": .string(event), "session_id": .string("editor-\(pane.id.uuidString)"), "cwd": .string(pane.folder)]
         payload.merge(extra) { _, new in new }
         suite.workbench.monitor.simulate(paneID: pane.id, payload: .object(payload))
     }
 
-    private func item(_ path: [String]) -> NSMenuItem? {
+    func item(_ path: [String]) -> NSMenuItem? {
         var menu = NSApp.mainMenu
         var found: NSMenuItem?
         for title in path {
@@ -801,14 +828,14 @@ final class EditorFlow {
     }
 
     /// A menu item chosen as the menu bar would: validated, then sent through the responder chain.
-    private func menu(_ path: [String]) {
+    func menu(_ path: [String]) {
         guard let entry = item(path), let action = entry.action else { return check("the menu item \(path.joined(separator: " › "))", false) }
         // Through the window's own controller, as the menu bar reaches it (a window nobody sees is never key).
         NSApp.sendAction(action, to: entry.target ?? controller, from: entry)
     }
 
     /// Go to's commands (⇧⌘P): `text` typed into its field, then Return.
-    private func commandPalette(_ text: String) async {
+    func commandPalette(_ text: String) async {
         suite.shortcut("cmd+shift+p")
         let panel = { self.window.childWindows?.last { $0 is NSPanel && $0.firstResponder is NSText } }
         guard await PerfWait.until(1500, { panel() != nil }) != nil, let panel = panel() else { return check("⇧⌘P opens the commands", false) }
@@ -825,7 +852,7 @@ final class EditorFlow {
     }
 
     /// A drawn thing of a kind well inside the view (not `other`), by id.
-    private func visible(kind: String, other: Int? = nil) -> Int? {
+    func visible(kind: String, other: Int? = nil) -> Int? {
         let session = library.session
         let inset = meadow.bounds.insetBy(dx: 120, dy: 110)
         let candidates = session.drawnIDs.filter { id in
@@ -839,13 +866,13 @@ final class EditorFlow {
     }
 
     /// Where to press on a thing: a little above where it stands, on its body.
-    private func grabPoint(_ id: Int) -> NSPoint? {
+    func grabPoint(_ id: Int) -> NSPoint? {
         guard let item = library.session.item(id), let base = meadow.viewPoint(ofGround: SIMD2(Float(item.at.x), Float(item.at.z))) else { return nil }
         return NSPoint(x: base.x, y: base.y + 4)
     }
 
     /// A point of the view on grass, with nothing within a few units.
-    private func grassPoint() -> NSPoint? {
+    func grassPoint() -> NSPoint? {
         for y in stride(from: meadow.bounds.midY, to: meadow.bounds.maxY - 80, by: 23) {
             for x in stride(from: meadow.bounds.midX, to: meadow.bounds.maxX - 80, by: 31) {
                 let point = NSPoint(x: x, y: y)
@@ -858,7 +885,7 @@ final class EditorFlow {
     }
 
     /// Free ground near a spot, in view, where a thing may stand (off the picnic ground for a big one).
-    private func freeSpot(near spot: SIMD2<Float>, big: Bool) -> SIMD2<Float>? {
+    func freeSpot(near spot: SIMD2<Float>, big: Bool) -> SIMD2<Float>? {
         let field = SceneryRules.Field(library.scenery)
         for ring in stride(from: Float(6), through: 40, by: 2) {
             for k in 0..<16 {
@@ -872,7 +899,7 @@ final class EditorFlow {
         return nil
     }
 
-    private func send(_ type: NSEvent.EventType, at point: NSPoint, flags: NSEvent.ModifierFlags = [], count: Int = 1) {
+    func send(_ type: NSEvent.EventType, at point: NSPoint, flags: NSEvent.ModifierFlags = [], count: Int = 1) {
         let location = meadow.convert(point, to: nil)
         PointerStandIn.location = location
         guard let event = NSEvent.mouseEvent(with: type, location: location, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
@@ -882,19 +909,19 @@ final class EditorFlow {
     }
 
     /// A click at a point of the meadow, with modifiers held.
-    private func click(at point: NSPoint, flags: NSEvent.ModifierFlags = []) {
+    func click(at point: NSPoint, flags: NSEvent.ModifierFlags = []) {
         send(.leftMouseDown, at: point, flags: flags)
         send(.leftMouseUp, at: point, flags: flags)
     }
 
-    private func clickThing(_ id: Int, flags: NSEvent.ModifierFlags = []) async {
+    func clickThing(_ id: Int, flags: NSEvent.ModifierFlags = []) async {
         guard let point = grabPoint(id) else { return check("thing \(id) in view to click", false) }
         click(at: point, flags: flags)
         await PerfWait.sleep(120)
     }
 
     /// A press, a drag in steps a frame apart, a rest (`midway` runs then), and a release (or Esc).
-    private func dragPointer(from: NSPoint, to: NSPoint, steps: Int = 24, flags: NSEvent.ModifierFlags = [], finish: PerfSuite.DragEnd = .drop,
+    func dragPointer(from: NSPoint, to: NSPoint, steps: Int = 24, flags: NSEvent.ModifierFlags = [], finish: PerfSuite.DragEnd = .drop,
                              midway: (() async -> Void)? = nil) async {
         send(.leftMouseDown, at: from, flags: flags)
         for step in 1...steps {
@@ -910,7 +937,7 @@ final class EditorFlow {
     }
 
     /// Picks up a thing and drops it so its spot lands on `ground`.
-    private func drag(from id: Int, toGround ground: SIMD2<Float>, steps: Int = 24, flags: NSEvent.ModifierFlags = [], finish: PerfSuite.DragEnd = .drop,
+    func drag(from id: Int, toGround ground: SIMD2<Float>, steps: Int = 24, flags: NSEvent.ModifierFlags = [], finish: PerfSuite.DragEnd = .drop,
                       midway: (() async -> Void)? = nil) async {
         guard let item = library.session.item(id), let start = grabPoint(id), let base = meadow.viewPoint(ofGround: SIMD2(Float(item.at.x), Float(item.at.z))),
               let pressGround = meadow.groundPoint(at: start), let target = meadow.viewPoint(ofGround: ground + (pressGround - SIMD2(Float(item.at.x), Float(item.at.z)))) else {
@@ -922,7 +949,7 @@ final class EditorFlow {
     }
 
     /// Clicks the selection's bar's `index`th button (0: Turn Left …).
-    private func clickBarButton(index: Int) async {
+    func clickBarButton(index: Int) async {
         let host = editor.selectionBar
         let grows = editor.barModel.grows
         // Buttons are 28 wide with 2 between, and a separator (1 + 4) after Turn Right, after Shuffle, after Delete.

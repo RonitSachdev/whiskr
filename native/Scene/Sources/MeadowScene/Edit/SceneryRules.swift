@@ -80,7 +80,7 @@ public enum SceneryRules {
     /// The ground of the scenery's things but those left out, sorted into squares, so each thing put down
     /// is judged against its neighbours only.
     public struct Field: Sendable {
-        private let ids: [String]
+        private var ids: [String]
         private var cells: [Int64: [(thing: Int, circle: Circle)]] = [:]
         private static let cell: Float = 8
 
@@ -90,6 +90,14 @@ public enum SceneryRules {
             for (i, thing) in scenery.things.enumerated() where !leavingOut.contains(i) {
                 for circle in SceneryRules.footprint(of: thing) { insert(i, circle) }
             }
+        }
+
+        /// `thing` added after the scenery's things (at the next index): one just brushed, so the next of a
+        /// stroke keeps its grass from it too.
+        public mutating func add(_ thing: MeadowScenery.Thing) {
+            let index = ids.count
+            ids.append(thing.id)
+            for circle in SceneryRules.footprint(of: thing) { insert(index, circle) }
         }
 
         private static func key(_ cx: Int, _ cz: Int) -> Int64 { Int64(cx) << 32 | Int64(UInt32(bitPattern: Int32(cz))) }

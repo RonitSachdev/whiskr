@@ -2,9 +2,10 @@ import Foundation
 import simd
 
 /// What the meadow draws on the ground for its editor: rings under the chosen things (in the focus colour,
-/// as a chosen cat's), a dashed ring under each one that may not stand where it is now, a faint ring under
-/// the one the pointer is on, the keyboard's cursor, and the picnic ground's dashed outline. Things are
-/// named by their index in the scenery shown.
+/// as a chosen cat's; a chosen tree also ringed where its crown shades the ground, and lit a little), a
+/// dashed ring under each one that may not stand where it is now, a faint ring under the one the pointer is
+/// on, the keyboard's cursor, the thing about to be placed, the Brush's or the Eraser's circle, and the
+/// picnic ground's dashed outline. Things are named by their index in the scenery shown.
 public struct MeadowEditMarks: Equatable, Sendable {
     /// Chosen: a ring of the focus colour round each one's ground.
     public var selected: [Int]
@@ -14,14 +15,41 @@ public struct MeadowEditMarks: Equatable, Sendable {
     public var hovered: Int?
     /// Where the keyboard's cursor is on the ground (x, z), when it shows.
     public var cursor: SIMD2<Float>?
+    /// The thing about to be placed (the tray's item, armed): drawn see-through where it would stand, its
+    /// ground ringed and its turn marked by a tick on the ring. It is not part of the scenery: nothing
+    /// shades, blooms or makes way for it.
+    public var ghost: MeadowScenery.Thing?
+    /// The ghost may not stand where it is: drawn greyed, its ring dashed (never told by colour alone).
+    public var ghostRefused: Bool
+    /// The Brush's or the Eraser's circle on the ground.
+    public var brush: BrushCircle?
     /// Increase Contrast: rings and the picnic ground's outline at 3:1 against the grass.
     public var highContrast: Bool
 
-    public init(selected: [Int] = [], refused: [Int] = [], hovered: Int? = nil, cursor: SIMD2<Float>? = nil, highContrast: Bool = false) {
+    /// A circle of ground the Brush paints or the Eraser clears.
+    public struct BrushCircle: Equatable, Sendable {
+        /// Its middle (x, z) and radius, in units.
+        public var center: SIMD2<Float>
+        public var radius: Float
+        /// The Eraser's (drawn dashed, in the ink) rather than the Brush's (the focus colour).
+        public var erasing: Bool
+
+        public init(center: SIMD2<Float>, radius: Float, erasing: Bool) {
+            self.center = center
+            self.radius = radius
+            self.erasing = erasing
+        }
+    }
+
+    public init(selected: [Int] = [], refused: [Int] = [], hovered: Int? = nil, cursor: SIMD2<Float>? = nil, ghost: MeadowScenery.Thing? = nil,
+                ghostRefused: Bool = false, brush: BrushCircle? = nil, highContrast: Bool = false) {
         self.selected = selected
         self.refused = refused
         self.hovered = hovered
         self.cursor = cursor
+        self.ghost = ghost
+        self.ghostRefused = ghostRefused
+        self.brush = brush
         self.highContrast = highContrast
     }
 }

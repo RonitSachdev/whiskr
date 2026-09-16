@@ -53,6 +53,16 @@
         }
       }
     },
+    "%@ ready to place. Click where it should stand; press Return to place it at the cursor.": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を置けます。置きたい場所をクリックするか、Returnでカーソルの位置に置きます。"
+          }
+        }
+      }
+    },
     "%@ theme": {
       "localizations": {
         "ja": {
@@ -69,6 +79,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@テーマ、選択中"
+          }
+        }
+      }
+    },
+    "%@ tool": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ツール"
           }
         }
       }
@@ -216,6 +236,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@、%2$lld件のファイル"
+          }
+        }
+      }
+    },
+    "%@, %lld planted": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、%2$lld本植えました"
           }
         }
       }
@@ -562,6 +592,26 @@
         }
       }
     },
+    "%lld of %lld tall things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "背の高いもの %1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もの %1$lld / %2$lld"
+          }
+        }
+      }
+    },
     "%lld of %lld to-dos done": {
       "localizations": {
         "en": {
@@ -574,6 +624,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "To-do %2$lld件中%1$lld件完了"
+          }
+        }
+      }
+    },
+    "%lld of %lld trees": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "木 %1$lld / %2$lld"
           }
         }
       }
@@ -642,6 +702,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ピクニック場の%2$@ %1$lldユニット"
+          }
+        }
+      }
+    },
+    "%lld units across": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "幅%lld"
           }
         }
       }
@@ -1050,6 +1120,16 @@
         }
       }
     },
+    "Any Kind": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "どの種類も"
+          }
+        }
+      }
+    },
     "Any menu command can have a different shortcut: System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts.": {
       "localizations": {
         "ja": {
@@ -1256,6 +1336,36 @@
         }
       }
     },
+    "Brush": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラシ"
+          }
+        }
+      }
+    },
+    "Brush %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@をブラシで植える"
+          }
+        }
+      }
+    },
+    "Brush size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラシの大きさ"
+          }
+        }
+      }
+    },
     "Buttercup": {
       "localizations": {
         "ja": {
@@ -1272,6 +1382,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "キンポウゲ"
+          }
+        }
+      }
+    },
+    "Cat Things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "猫のもの"
           }
         }
       }
@@ -1293,6 +1413,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "「%1$@」のサウンドを選んでください。短いものが向いています（最長%2$lld秒）。"
+          }
+        }
+      }
+    },
+    "Choose a thing to place, or drag it onto the meadow": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "置くものを選ぶか、草原へドラッグします"
           }
         }
       }
@@ -1358,6 +1488,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claudeのターンがエラーで止まりました。Claude CodeのStopFailureフックから届きます。"
+          }
+        }
+      }
+    },
+    "Click a thing to take it away · drag to sweep plants and stones · [ and ] change the size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリックでものを取り除く · ドラッグで草花や石を払う · [ と ] で大きさを変える"
+          }
+        }
+      }
+    },
+    "Click to place it · ⇧-click to place more · R turns it · Esc puts it back": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "クリックで置く · ⇧クリックで続けて置く · Rで回す · Escで戻す"
           }
         }
       }
@@ -2196,6 +2346,26 @@
         }
       }
     },
+    "Dense": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密に"
+          }
+        }
+      }
+    },
+    "Density": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "密度"
+          }
+        }
+      }
+    },
     "Deny": {
       "comment": "Notification button: refuses Claude's permission request",
       "localizations": {
@@ -2322,6 +2492,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "タブはドラッグして移動できます。置かれる場所ではほかのタブが左右に分かれ、ペインの上では、分割して入る半分、またはそのタブの場所に入れ替わる場合はペイン全体が色付きで示されます。ほかの場所で離すか Esc を押すと元に戻ります。"
+          }
+        }
+      }
+    },
+    "Drag on the grass to plant · ⌥-drag clears · [ and ] change the size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草の上をドラッグして植える · ⌥ドラッグで払う · [ と ] で大きさを変える"
           }
         }
       }
@@ -2523,6 +2703,16 @@
         }
       }
     },
+    "Editor Tools": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集ツール"
+          }
+        }
+      }
+    },
     "Editor, %@": {
       "comment": "Accessibility: the editor and its file",
       "localizations": {
@@ -2551,6 +2741,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "フルスクリーンにする"
+          }
+        }
+      }
+    },
+    "Erase": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消しゴム"
+          }
+        }
+      }
+    },
+    "Erase %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を取り除く"
+          }
+        }
+      }
+    },
+    "Eraser size": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消しゴムの大きさ"
           }
         }
       }
@@ -2760,6 +2980,16 @@
         }
       }
     },
+    "Filter": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "絞り込み"
+          }
+        }
+      }
+    },
     "Filter checkouts…": {
       "comment": "Open Worktree: the filter field",
       "localizations": {
@@ -2767,6 +2997,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "チェックアウトを絞り込む…"
+          }
+        }
+      }
+    },
+    "Filter the things on the shelf (⌘F)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棚のものを絞り込む（⌘F）"
+          }
+        }
+      }
+    },
+    "Filter things": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ものを絞り込む"
           }
         }
       }
@@ -2843,6 +3093,16 @@
         }
       }
     },
+    "Flowers": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "花"
+          }
+        }
+      }
+    },
     "Fly agaric": {
       "localizations": {
         "ja": {
@@ -2870,6 +3130,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "霧"
+          }
+        }
+      }
+    },
+    "Fold the Tray": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トレイをたたむ"
           }
         }
       }
@@ -2944,6 +3214,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "VS Code から"
+          }
+        }
+      }
+    },
+    "Garden": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "庭"
           }
         }
       }
@@ -3123,6 +3403,16 @@
         }
       }
     },
+    "Ground": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地面"
+          }
+        }
+      }
+    },
     "Hamper and a few things": {
       "localizations": {
         "ja": {
@@ -3245,6 +3535,16 @@
         }
       }
     },
+    "Hide Editor Tray": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集トレイをたたむ"
+          }
+        }
+      }
+    },
     "Hide Files and Changes": {
       "localizations": {
         "ja": {
@@ -3361,6 +3661,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ホーム：フォルダやターミナルを開くか、ワークスペースに離れたときのまま戻ります。起動するといつもここから始まり、ワークスペースを閉じるとここに戻ります。どれも動き続けます。"
+          }
+        }
+      }
+    },
+    "How thickly the Brush plants: %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラシで植える密度：%@"
           }
         }
       }
@@ -3914,6 +4224,16 @@
         }
       }
     },
+    "Meadow editor's tray": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原エディタのトレイ"
+          }
+        }
+      }
+    },
     "Meadow Only": {
       "localizations": {
         "ja": {
@@ -4177,6 +4497,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "名前の旗"
+          }
+        }
+      }
+    },
+    "Natural": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自然に"
           }
         }
       }
@@ -4536,6 +4866,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "なし"
+          }
+        }
+      }
+    },
+    "Nothing by that name": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その名前のものはありません"
           }
         }
       }
@@ -4988,6 +5328,16 @@
         }
       }
     },
+    "Place %@": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@を置く"
+          }
+        }
+      }
+    },
     "Plain terminals are lanterns, lit after dark: warm while a command runs, red when one failed.": {
       "localizations": {
         "ja": {
@@ -5129,6 +5479,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "問題：%@"
+          }
+        }
+      }
+    },
+    "Put back": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "戻しました"
           }
         }
       }
@@ -5641,6 +6001,16 @@
         }
       }
     },
+    "Select": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択"
+          }
+        }
+      }
+    },
     "Select All Like This": {
       "localizations": {
         "ja": {
@@ -5843,6 +6213,16 @@
         }
       }
     },
+    "Show Editor Tray": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集トレイを広げる"
+          }
+        }
+      }
+    },
     "Show Files and Changes": {
       "localizations": {
         "ja": {
@@ -5947,6 +6327,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "ターミナルを表示"
+          }
+        }
+      }
+    },
+    "Show the Shelf": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棚を表示"
           }
         }
       }
@@ -6108,6 +6498,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "サイズ"
+          }
+        }
+      }
+    },
+    "Size %lld": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大きさ %lld"
+          }
+        }
+      }
+    },
+    "Size ([ and ])": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大きさ（[ と ]）"
           }
         }
       }
@@ -6301,6 +6711,16 @@
         }
       }
     },
+    "Sparse": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まばらに"
+          }
+        }
+      }
+    },
     "Split Down": {
       "localizations": {
         "ja": {
@@ -6465,6 +6885,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "石"
+          }
+        }
+      }
+    },
+    "Stones & Wood": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "石と木"
           }
         }
       }
@@ -6798,6 +7228,16 @@
         }
       }
     },
+    "The Eraser clears only %@ now": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消しゴムはいま%@だけを取り除きます"
+          }
+        }
+      }
+    },
     "The file goes back to its last staged or committed version. This can’t be undone.": {
       "localizations": {
         "ja": {
@@ -6830,6 +7270,36 @@
         }
       }
     },
+    "The meadow has as many lamps as it can hold (%lld)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原に置けるランプの数がいっぱいです(%lld)"
+          }
+        }
+      }
+    },
+    "The meadow has as many made things as it can hold (%lld)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原に置ける作られたものの数がいっぱいです(%lld)"
+          }
+        }
+      }
+    },
+    "The meadow has as many tall things as it can hold (%lld)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原に置ける背の高いものの数がいっぱいです(%lld)"
+          }
+        }
+      }
+    },
     "The meadow has as many things as it can hold (%lld)": {
       "localizations": {
         "ja": {
@@ -6846,6 +7316,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "草原に置ける木の数がいっぱいです(%lld)"
+          }
+        }
+      }
+    },
+    "The meadow has as much fence as it can hold (%lld posts)": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原に置ける柵がいっぱいです(柱%lld本)"
           }
         }
       }
@@ -7011,6 +7491,16 @@
       }
     },
     "Thing": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "もの"
+          }
+        }
+      }
+    },
+    "Things": {
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -7220,6 +7710,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "行末の空白"
+          }
+        }
+      }
+    },
+    "Tray folded": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トレイをたたみました"
+          }
+        }
+      }
+    },
+    "Tray unfolded": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トレイを広げました"
+          }
+        }
+      }
+    },
+    "Trees": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "木"
           }
         }
       }
@@ -7602,6 +8122,16 @@
         }
       }
     },
+    "Wildflowers": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "野の花"
+          }
+        }
+      }
+    },
     "Wind": {
       "comment": "Settings › Meadow: the real wind in the grass",
       "localizations": {
@@ -7663,6 +8193,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "作業中"
+          }
+        }
+      }
+    },
+    "Workplace": {
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仕事場"
           }
         }
       }

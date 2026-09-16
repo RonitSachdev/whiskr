@@ -22,10 +22,13 @@ final class MeadowDrawer {
     private var roots: (buffer: MTLBuffer, offset: Int)?
     private var trees: [Mesh] = []
     private var log: Mesh!
-    /// The scenery the plant and tree meshes and the ground's map were made from (`Meadow.sceneryVersion`),
-    /// and each shape's mesh, kept while the scenery uses it.
+    /// The scenery the plant and tree meshes were made from (`Meadow.sceneryVersion`), and each shape's
+    /// mesh, kept while the scenery uses it; the ground's map uploaded (`Meadow.groundVersion`).
     private var sceneryBuilt = -1
+    private var groundBuilt = -1
     private var meshes: [ShapeKey: Mesh] = [:]
+    /// The editor's ghost: the shape it was last drawn with (`Meadow.alone`).
+    private var ghost: (key: ShapeKey, mesh: Mesh)?
     /// The ground's map (`GroundMap`) on the GPU: what is painted and shaded, and the lamplight.
     private(set) var groundMap: MTLTexture?
     private(set) var groundLight: MTLTexture?
@@ -110,8 +113,8 @@ final class MeadowDrawer {
         stars = gpu.buffer(m.stars.flatMap { [$0.x, $0.y, $0.z] }, label: "stars")
     }
 
-    /// Everything drawn from the meadow's scenery, made again when the scenery changes: a mesh for each
-    /// new shape (those still used are kept) and the ground's map.
+    /// The meshes drawn from the meadow's scenery, made again when the scenery changes: a mesh for each new
+    /// shape (those still used are kept).
     private func buildScenery(_ m: Meadow) {
         sceneryBuilt = m.sceneryVersion
         var kept: [ShapeKey: Mesh] = [:]
@@ -126,7 +129,11 @@ final class MeadowDrawer {
         rootedDraws.reserveCapacity(m.beds.count * 2)
         trees = m.treeShapes.map { mesh($0.key, $0.shape, "tree") }
         meshes = kept
+    }
 
+    /// The ground's map on the GPU, made again when it is baked whole.
+    private func buildGround(_ m: Meadow) {
+        groundBuilt = m.groundVersion
         let side = GroundMap.side
         func texture(_ format: MTLPixelFormat, _ bytes: [UInt8], _ perTexel: Int, _ label: String) -> MTLTexture? {
             let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: side, height: side, mipmapped: false)
@@ -162,6 +169,7 @@ final class MeadowDrawer {
     private func ready(_ m: Meadow) {
         if !built { build(m) }
         if sceneryBuilt != m.sceneryVersion { buildScenery(m) }
+        if groundBuilt != m.groundVersion { buildGround(m) }
     }
 
     private func draw(_ mesh: Mesh, _ instances: Int, _ enc: MTLRenderCommandEncoder) {
@@ -231,13 +239,13 @@ final class MeadowDrawer {
         for (i, tree) in m.treeShapes.enumerated() where m.screens[tree.screen].fade >= 0.999 {
             let standing = m.treeStanding(i, stage.world.clearings, stage.clearingCount)
             guard standing > 0.005 else { continue }
-            one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing), lit: []), enc)
+            one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing), emissive: lift(tree: i), lit: []), enc)
             draw(trees[i], 1, enc)
         }
         for (i, lying) in m.logs.enumerated() where m.screens[lying.screen].fade >= 0.999 {
             let standing = m.logStanding(i, stage.world.clearings, stage.clearingCount)
             guard standing > 0.005 else { continue }
-            one(arena, ClayInstance(lying.matrix * .scale(standing), lit: .shaded), enc)
+            one(arena, ClayInstance(lying.matrix * .scale(standing), emissive: lift(log: i), lit: .shaded), enc)
             draw(log, 1, enc)
         }
         // Hills, far off.
@@ -275,11 +283,43 @@ final class MeadowDrawer {
         enc.setCullMode(.back)
     }
 
+    // MARK: chosen while editing
+
+    /// The big things chosen in the editor, each lit a little so it reads as chosen at a glance (the rings
+    /// round its ground and its crown are `EditDrawer`'s): trees and logs by index, young trees by bed and
+    /// slot. Worked out when the choice or the scenery changes, never per frame.
+    private var lifted = (trees: Set<Int>(), logs: Set<Int>(), young: Set<SIMD2<Int32>>())
+    private var liftedFor: (selected: [Int], version: Int, editing: Bool) = ([], -1, false)
+    private var liftColor = Vec3.zero
+
+    /// How much a chosen big thing is lit: a touch of the focus colour over its own.
+    static let liftStrength: Float = 0.22
+
+    private func updateLifted(_ stage: Stage, _ m: Meadow) {
+        let selected = stage.editing ? stage.editMarks.selected : []
+        guard selected != liftedFor.selected || m.sceneryVersion != liftedFor.version || stage.editing != liftedFor.editing else { return }
+        liftedFor = (selected, m.sceneryVersion, stage.editing)
+        lifted = ([], [], [])
+        liftColor = stage.settings.chrome.focus.linearRGB * Self.liftStrength
+        for i in selected where m.laid.indices.contains(i) {
+            switch m.laid[i] {
+            case .tree(let t): lifted.trees.insert(t)
+            case .log(let l): lifted.logs.insert(l)
+            case .bed(let b, let slot) where m.beds[b].screens != nil: lifted.young.insert(SIMD2(Int32(b), Int32(slot)))
+            default: break
+            }
+        }
+    }
+
+    private func lift(tree i: Int) -> Vec3 { lifted.trees.contains(i) ? liftColor : .zero }
+    private func lift(log i: Int) -> Vec3 { lifted.logs.contains(i) ? liftColor : .zero }
+
     /// Gathers this frame's rooted plants and works out, once per plant, what its vertices share.
     /// Encoded before the render pass.
     func prepare(_ stage: Stage, arena: Arena, commandBuffer: MTLCommandBuffer, frame: MTLBuffer, world: MTLBuffer) {
         guard let m = stage.meadow else { return }
         ready(m)
+        updateLifted(stage, m)
         if let changed = m.takeGroundChanges(), let map = groundMap { upload(changed, of: m.groundMap, to: map, arena: arena, commandBuffer) }
         rootedDraws.removeAll(keepingCapacity: true)
         var total = 0
@@ -287,13 +327,15 @@ final class MeadowDrawer {
         let inst = arena.alloc(ClayInstance.self, total)
         let info = arena.alloc(Vec4.self, total * 2)
         var n = 0
-        for bed in m.beds {
+        for (b, bed) in m.beds.enumerated() {
             if let screens = bed.screens {
                 // Saplings: the solid ones, then those faded because they stand in the way.
                 for faded in [false, true] {
                     let first = n
                     for (i, matrix) in bed.matrices.enumerated() where (m.screens[screens[i]].fade < 0.999) == faded {
-                        inst.pointer[n] = ClayInstance(matrix, tint: Vec4(1, 1, 1, m.screens[screens[i]].fade), sway: bed.sway, lit: .rooted)
+                        let chosen = !lifted.young.isEmpty && lifted.young.contains(SIMD2(Int32(b), Int32(i)))
+                        inst.pointer[n] = ClayInstance(matrix, tint: Vec4(1, 1, 1, m.screens[screens[i]].fade), emissive: chosen ? liftColor : .zero,
+                                                       sway: bed.sway, lit: .rooted)
                         n += 1
                     }
                     if n > first { rootedDraws.append(RootedDraw(mesh: bed.plant, first: first, count: n - first, faded: faded)) }
@@ -493,19 +535,42 @@ final class MeadowDrawer {
                 let standing = m.treeStanding(i, stage.world.clearings, stage.clearingCount)
                 guard standing > 0.005 else { continue }
                 one(arena, ClayInstance(m.treeMatrix(i, stage.world.clearings, stage.clearingCount) * .scale(standing),
-                                        tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), lit: []), enc)
+                                        tint: Vec4(1, 1, 1, m.screens[tree.screen].fade), emissive: lift(tree: i), lit: []), enc)
                 draw(trees[i], 1, enc)
             }
             for (i, lying) in m.logs.enumerated() where m.screens[lying.screen].fade < 0.999 {
                 let standing = m.logStanding(i, stage.world.clearings, stage.clearingCount)
                 guard standing > 0.005 else { continue }
-                one(arena, ClayInstance(lying.matrix * .scale(standing), tint: Vec4(1, 1, 1, m.screens[lying.screen].fade), lit: .shaded), enc)
+                one(arena, ClayInstance(lying.matrix * .scale(standing), tint: Vec4(1, 1, 1, m.screens[lying.screen].fade), emissive: lift(log: i), lit: .shaded), enc)
                 draw(log, 1, enc)
             }
             drawRooted(faded: true, enc)
         }
         enc.setDepthStencilState(gpu.depthRead)
     }
+
+    /// The editor's ghost (`MeadowEditMarks.ghost`): the thing about to be placed, where it would stand, see-
+    /// through over the meadow and under the flags and bubbles (its depth first, then its colour on its nearest
+    /// surface, as a faded tree), greyed where it may not stand. It never bobs or sways. Its shape is made once
+    /// for each new one.
+    func encodeGhost(_ stage: Stage, arena: Arena, enc: MTLRenderCommandEncoder) {
+        guard stage.editing, let thing = stage.editMarks.ghost, let alone = Meadow.alone(thing) else { return }
+        if ghost?.key != alone.key { ghost = (alone.key, meshes[alone.key] ?? gpu.mesh(alone.make(), label: "ghost")) }
+        guard let mesh = ghost?.mesh else { return }
+        var inst = ClayInstance(alone.matrix, tint: Vec4(1, 1, 1, Self.ghostOpacity), lit: stage.editMarks.ghostRefused ? .greyed : [])
+        inst.extra.z = stage.editMarks.ghostRefused ? 0.85 : 0
+        enc.setCullMode(.back)
+        for pass in 0..<2 {
+            enc.setRenderPipelineState(pass == 0 ? gpu.clayDepth : gpu.clayFade)
+            enc.setDepthStencilState(pass == 0 ? gpu.depthWrite : gpu.depthEqual)
+            one(arena, inst, enc)
+            draw(mesh, 1, enc)
+        }
+        enc.setDepthStencilState(gpu.depthRead)
+    }
+
+    /// How solid the ghost is drawn.
+    static let ghostOpacity: Float = 0.6
 
     /// Bee wings, rain or snow, and the fireflies round the picnics.
     func encodeParticles(_ stage: Stage, frame F: FrameUniforms, arena: Arena, enc: MTLRenderCommandEncoder) {

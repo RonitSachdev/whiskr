@@ -242,6 +242,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
                 // while they slid (⌃⌘S twice in quick succession, the window resized).
                 self?.sliding = false
                 self?.applyLayout(animated: false)
+                // The split view's own end of the slide comes in the same turn: the keyboard after it.
+                DispatchQueue.main.async { [weak self] in self?.giveKeyboardBackAfterEditing() }
             }
         } else {
             // At once: with Reduce Motion, in a window out of sight, and over a slide still on its way (the
@@ -280,7 +282,7 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
     /// meadow and, at the end, back where it was (`keyboard`). With Reduce Motion the change cross-fades in
     /// place.
     func setMeadowEditing(_ on: Bool, keyboard: NSResponder? = nil) {
-        guard let window, meadowEditing != on else { return }
+        guard window != nil, meadowEditing != on else { return }
         meadowEditing = on
         chrome.editBar = on ? meadowEditor.bar : nil
         if !Look.Motion.moves, let layer = split.view.layer {
@@ -292,38 +294,37 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         }
         applyLayout(animated: true)
         guard !on else { return }
-        // The keyboard back where it was: a pane's terminal, a file, Home, or the meadow (⌥⌘0). One in a
-        // region still opening takes it as soon as it can.
-        let giveBack: @MainActor () -> Bool = { [weak self] in
-            guard let self else { return true }
-            if let view = keyboard as? NSView, view.window === window, !view.isHiddenOrHasHiddenAncestor {
-                return window.makeFirstResponder(view)
-            }
-            if keyboard == nil || keyboard === window || (keyboard as? NSView)?.window !== window {
-                if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else if workbench.isHome { terminals.focusHome() }
-                return true
-            }
-            return false
-        }
-        // Tried again each 50 ms while the terminals' region opens (at most a second).
-        func retry(_ left: Int) {
-            guard left > 0 else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                guard let self, !self.meadowEditing else { return }
-                if !giveBack() { retry(left - 1) }
-            }
-        }
-        if !giveBack() { retry(20) }
-        // A region shown on the way back (the workspaces' list) can leave the keyboard with nobody once it has
-        // appeared: then it goes back where it was again.
-        DispatchQueue.main.asyncAfter(deadline: .now() + Look.Motion.region + 0.2) { [weak self] in
-            guard let self, !self.meadowEditing, window.firstResponder === window else { return }
-            _ = giveBack()
-        }
+        // The keyboard back where it was (a pane's terminal, a file, Home, or the meadow: ⌥⌘0) once the regions
+        // have settled: a region coming back opens through the split view's slide, whose end hides and shows
+        // its view again, and a view given the keyboard before that loses it to nobody.
+        keyboardAfterEditing = .some(keyboard)
+        if !sliding { DispatchQueue.main.async { [weak self] in self?.giveKeyboardBackAfterEditing() } }
+    }
+
+    /// Where the keyboard goes once the regions have settled after editing ends (`setMeadowEditing`); nil when
+    /// nothing waits.
+    private var keyboardAfterEditing: NSResponder??
+
+    private func giveKeyboardBackAfterEditing() {
+        guard let pending = keyboardAfterEditing, let window, !meadowEditing, !sliding else { return }
+        keyboardAfterEditing = nil
+        if let view = pending as? NSView, view.window === window, !view.isHiddenOrHasHiddenAncestor, window.makeFirstResponder(view) { return }
+        if let pane = workbench.focusedPane { workbench.onFocusPane?(pane) } else if workbench.isHome { terminals.focusHome() }
     }
 
     /// View › Edit Meadow (⌃⌘E), checked while editing; also the grass's menu, Settings › Meadow and Go to.
     @objc func toggleMeadowEditing(_ sender: Any?) { meadowEditor.toggle() }
+
+    /// View › Editor Tools: Select, Brush or Erase (by the item's tag), while the meadow is edited.
+    @objc func chooseEditorTool(_ sender: Any?) {
+        guard meadowEditing, let tag = (sender as? NSMenuItem)?.tag, EditorTray.Tool.allCases.indices.contains(tag) else { return }
+        meadowEditor.use(EditorTray.Tool.allCases[tag])
+    }
+
+    /// View › Hide Editor Tray / Show Editor Tray (⌥⌘T): the tray folded to its top row, or all of it.
+    @objc func toggleEditorTray(_ sender: Any?) {
+        if meadowEditing { meadowEditor.toggleTray() }
+    }
 
     /// A command that needs the terminals leaves the meadow's editor first; nothing is lost (every change is
     /// saved already).
@@ -619,6 +620,13 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSMenuIt
         case #selector(toggleMeadowEditing(_:)):
             item.state = meadowEditing ? .on : .off
             return navigator.meadow.window != nil
+        case #selector(chooseEditorTool(_:)):
+            item.state = meadowEditing && EditorTray.Tool.allCases.firstIndex(of: meadowEditor.tray.tool) == item.tag ? .on : .off
+            return meadowEditing
+        case #selector(toggleEditorTray(_:)):
+            item.title = meadowEditing && meadowEditor.tray.collapsed ? String(localized: "Show Editor Tray", comment: "View menu: unfolds the meadow editor's tray")
+                                                                     : String(localized: "Hide Editor Tray", comment: "View menu: folds the meadow editor's tray to its top row")
+            return meadowEditing
         case #selector(toggleStatusBar(_:)):
             item.title = layout.showsStatusBar ? String(localized: "Hide Status Bar") : String(localized: "Show Status Bar")
             return true

@@ -392,7 +392,28 @@ to exactly), picks scenery under the pointer and inside a rectangle, and draws t
 (`MeadowEditMarks`, `EditDrawer`). A drag shows its things by giving the view a scenery with them moved;
 a scenery that differs only in places, turns, leans and sizes is placed again thing by thing
 (`Meadow.show`), the ground's shade baked again only where a tree moved and copied into its texture in the
-frame's command buffer, so a drag costs a fraction of laying the meadow.
+frame's command buffer, so a drag costs a fraction of laying the meadow. A scenery with things added or
+taken away is laid afresh, but its ground map is baked (and uploaded) again only when the trees' shade
+changed, so a Brush stroke or an Eraser sweep lays even a full meadow of 5,000 things in well under a frame.
+
+**The tray and its tools** (`EditorTray`, `EditModeController+Tools`). The tray is a SwiftUI floating piece
+over the meadow's bottom edge (`EditorTrayHost`, a `BarHostingView`: its tools are the bars' controls, its
+tiles AppKit views under their drawing, `TrayTileView`, so a press can be dragged out onto the meadow); its
+shelf offers every catalog asset the scene draws (`MeadowScenery.draws`), so a model the scene learns to
+draw joins it with no change here. The shelf takes the keyboard through `TrayKeys`, a responder that draws
+nothing. Its pictures are drawn by the scene itself (`MeadowView.portrait`, `Portraits`): the thing's own
+mesh on a round of turf, lit as by day, framed square on, over the tile's colour in the theme, at the
+screen's scale; kept in memory per theme and scale (a dozen take a few milliseconds). New things come from
+`MeadowEditSession.fresh` (WhiskrMeadow: a size, lean, shape and seed of its own within its kind's), are
+judged by `placingRefusal` (the caps, then `SceneryRules`) and placed by `place`; the thing about to be placed
+is drawn by the scene as a ghost (`MeadowEditMarks.ghost`: its own mesh, see-through after everything, greyed
+where refused), never as part of the scenery. A Brush stroke works on a copy of the session: each dab
+(`MeadowEditSession.dab`: a clump of one kind, each plant clear of the others through a `SceneryRules.Field`
+it joins) is appended and drawn, and on release the stroke is one `MeadowChange` of the library's history; an
+Eraser sweep likewise (`swept`: never a tree or the log). A chosen tree is lit a little in the focus colour
+(`MeadowDrawer`'s lift) and ringed round its crown as well as its trunk; the selection's bar hangs under the
+rings (`MeadowView.screenRect(ofGroundMarks:)`). The camera frames the picnic ground above the tray
+(`MeadowView.editingCover`, the camera's bottom cover).
 
 ## Rendering the meadow
 
@@ -520,8 +541,11 @@ and given up with Esc, each preview checked against what the drop did and the he
 every frame, with nothing left behind (`drag`); and New Workspace and Open Folder… from every place they
 are offered, on Home with and without workspaces (`home`); and the meadow edited, every way in and out
 with what leaving must bring back, every gesture and key of the Select tool by real events, refusals,
-undo, saving, Revert to Default, terminals and requests carrying on meanwhile, frames while dragging, and
-pictures in each built-in theme, then a relaunch finding the meadow as it was saved at quit (`editor`).
+undo, saving, Revert to Default, terminals and requests carrying on meanwhile, frames while dragging, the
+tray (tools, categories, filter, the shelf by keys, folding), placing (ghost, refusals, a click, ⇧-click, a
+tile dragged out, a double-click, the keys alone), the Brush and the Eraser by real strokes with their frame
+rates, the caps on a meadow of 5,000 things, and pictures of each state in each built-in theme and with
+Increase Contrast, then a relaunch finding the meadow as it was saved at quit (`editor`).
 
 **Dragging a tab** is the app's own, not an AppKit drag session (whose picture the system moves, with no
 springs and no say in what it shows). `TabMouseView` starts it past 4 pt of movement; `TabDragging` then

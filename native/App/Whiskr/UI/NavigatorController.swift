@@ -54,7 +54,11 @@ final class NavigatorController: NSViewController {
     override func loadView() {
         let container = DropView()
         container.onFolders = { [weak self] urls in urls.forEach { self?.workbench.open(folder: $0.path) } }
-        container.onAppearance = { [weak self] in self?.applySettings() }
+        container.onAppearance = { [weak self] in
+            self?.applySettings()
+            // The tray's pictures are drawn over the tile's colour, which follows the appearance.
+            if self?.editing == true { self?.editor?.updatePictures() }
+        }
         meadow.onKeyDown = { [weak self] event in self?.key(event) ?? false }
         meadow.onKeyEquivalent = { [weak self] event in self?.editor?.keyEquivalent(event) ?? false }
         meadow.onViewChanged = { [weak self] in self?.updateEdges() }
@@ -491,7 +495,7 @@ final class NavigatorController: NSViewController {
         updateEdges()
     }
 
-    /// The Edit menu's commands reach the editor while it has the keyboard (the meadow), and only then:
+    /// The Edit menu's commands reach the editor while it has the keyboard (the meadow, or its tray's shelf), and only then:
     /// elsewhere ⌘Z keeps bringing back what was closed, and ⌘C copies text.
     private nonisolated static let editorActions: Set<Selector> = [#selector(undo(_:)), #selector(redo(_:)), #selector(copy(_:)), #selector(cut(_:)),
                                                                    #selector(paste(_:)), #selector(selectAll(_:)), #selector(delete(_:))]
@@ -499,7 +503,10 @@ final class NavigatorController: NSViewController {
     /// AppKit asks on the main thread, as it walks the responder chain for a menu's action.
     nonisolated override func responds(to selector: Selector!) -> Bool {
         if let selector, Self.editorActions.contains(selector) {
-            return MainActor.assumeIsolated { editing && view.window?.firstResponder === meadow }
+            return MainActor.assumeIsolated {
+                let keyboard = view.window?.firstResponder
+                return editing && (keyboard === meadow || keyboard === editor?.trayKeys)
+            }
         }
         return super.responds(to: selector)
     }

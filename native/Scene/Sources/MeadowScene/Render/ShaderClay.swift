@@ -18,12 +18,13 @@ struct SkinVertex { packed_float3 p; packed_float3 n; };
 #define LIT_GLOW    128u   // lamplight on a surface standing in the meadow (`shaded` glow)
 #define LIT_GINGHAM 256u   // a blanket: gingham in the tint colour (sRGB); extra.z checks per unit, extra.w faded
 #define LIT_MOON    512u   // the moon: unlit colour, lit only on the side facing the sun (`emissive`), the rest see-through
+#define LIT_GREYED 1024u   // greyed by extra.z (the editor's ghost where it may not stand)
 
 struct Instance {
     float4x4 model;
     float4 tint;       // multiplies the colour; a = opacity
     float4 emissive;   // added after lighting
-    float4 extra;      // x sway (rooted), y roughness override (< 0: per vertex), z, w unused
+    float4 extra;      // x sway (rooted), y roughness override (< 0: per vertex), z greyed (LIT_GREYED), w unused
     uint4 info;        // x lighting bits
 };
 
@@ -38,7 +39,7 @@ struct ClayOut {
     float3 light;      // per-vertex ground shade for rooted plants
     float glow;        // per-vertex lamplight for rooted plants
     float2 local;      // object-space x, z (the blanket's gingham)
-    float2 pattern;    // gingham: repeat, faded
+    float2 pattern;    // gingham: repeat, faded; greyed: how grey
     float fog;
     uint flags [[flat]];
 };
@@ -156,6 +157,7 @@ float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W, t
         c += diffuse * WARM * picnicLight2(in.world.xz, F, W) * 0.85;
     }
     if ((flags & LIT_ROOTED) != 0u) c += diffuse * WARM * in.glow;
+    if ((flags & LIT_GREYED) != 0u) c = mix(c, float3(dot(c, float3(0.2126, 0.7152, 0.0722))), in.pattern.x);
     return float4(mix(c, F.horizon.rgb, in.fog), in.opacity);
 }
 

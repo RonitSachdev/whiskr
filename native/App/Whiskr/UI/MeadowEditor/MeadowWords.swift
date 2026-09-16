@@ -1,5 +1,6 @@
 import Foundation
 import MeadowFile
+import MeadowScene
 import WhiskrMeadow
 
 /// What the meadow's editor says, in the app's words (docs/DESIGN.md, "Words"): the names of the things a
@@ -26,17 +27,7 @@ enum MeadowWords {
 
     /// A clump of one kind, for VoiceOver ("Daisies, 9").
     static func clump(_ id: String, count: Int) -> String {
-        let plural: String = switch id {
-        case "flower.daisy": String(localized: "Daisies", comment: "Meadow editor: a clump of them, for VoiceOver")
-        case "flower.buttercup": String(localized: "Buttercups", comment: "Meadow editor: a clump of them, for VoiceOver")
-        case "flower.lupin": String(localized: "Lupins", comment: "Meadow editor: a clump of them, for VoiceOver")
-        case "flower.poppy": String(localized: "Poppies", comment: "Meadow editor: a clump of them, for VoiceOver")
-        case "fungus.flyAgaric": String(localized: "Fly agarics", comment: "Meadow editor: a clump of them, for VoiceOver")
-        case "stone.stone": String(localized: "Stones", comment: "Meadow editor: a clump of them, for VoiceOver")
-        case "stone.mossy": String(localized: "Mossy stones", comment: "Meadow editor: a clump of them, for VoiceOver")
-        default: name(id)
-        }
-        return String(localized: "\(plural), \(count)", comment: "VoiceOver: a clump of one kind of plant or stone, and how many")
+        String(localized: "\(clumpName(id)), \(count)", comment: "VoiceOver: a clump of one kind of plant or stone, and how many")
     }
 
     /// The things an edit is about, in a step's name: one by its name, several by how many.
@@ -54,9 +45,17 @@ enum MeadowWords {
             String(localized: "Kept clear for your workspaces", comment: "Meadow editor: why a big thing cannot stand on the picnic ground")
         case .tooClose(let id):
             String(localized: "Too close to the \(name(id).lowercased())", comment: "Meadow editor: why a thing cannot stand there (the thing in the way)")
-        case .full(.trees, let limit), .full(.tall, let limit):
+        case .full(.trees, let limit):
             String(localized: "The meadow has as many trees as it can hold (\(limit))", comment: "Meadow editor: a cap reached")
-        case .full(_, let limit):
+        case .full(.tall, let limit):
+            String(localized: "The meadow has as many tall things as it can hold (\(limit))", comment: "Meadow editor: a cap reached (trees, the log and other tall things)")
+        case .full(.lamps, let limit):
+            String(localized: "The meadow has as many lamps as it can hold (\(limit))", comment: "Meadow editor: a cap reached")
+        case .full(.fencePosts, let limit):
+            String(localized: "The meadow has as much fence as it can hold (\(limit) posts)", comment: "Meadow editor: a cap reached")
+        case .full(.madeThings, let limit):
+            String(localized: "The meadow has as many made things as it can hold (\(limit))", comment: "Meadow editor: a cap reached (benches, boxes and the like)")
+        case .full(nil, let limit):
             String(localized: "The meadow has as many things as it can hold (\(limit))", comment: "Meadow editor: a cap reached")
         case .noRoom:
             String(localized: "No room nearby", comment: "Meadow editor: copies found no free ground near")
@@ -69,6 +68,91 @@ enum MeadowWords {
         }
     }
 
+    // The tray's words.
+
+    /// A shelf's category, as its tab says it.
+    static func categoryName(_ category: MeadowAsset.Category?) -> String {
+        switch category {
+        case .trees: String(localized: "Trees", comment: "Meadow editor's tray: a category")
+        case .flowers: String(localized: "Flowers", comment: "Meadow editor's tray: a category (flowers, plants, mushrooms)")
+        case .stonesAndWood: String(localized: "Stones & Wood", comment: "Meadow editor's tray: a category")
+        case .ground: String(localized: "Ground", comment: "Meadow editor's tray: a category (paths, lawn, soil)")
+        case .garden: String(localized: "Garden", comment: "Meadow editor's tray: a category")
+        case .workplace: String(localized: "Workplace", comment: "Meadow editor's tray: a category")
+        case .catThings: String(localized: "Cat Things", comment: "Meadow editor's tray: a category")
+        case nil: ""
+        }
+    }
+
+    /// A category's symbol, where the tray is narrow.
+    static func categorySymbol(_ category: MeadowAsset.Category) -> String {
+        switch category {
+        case .trees: "tree"
+        case .flowers: "camera.macro"
+        case .stonesAndWood: "mountain.2"
+        case .ground: "square.split.diagonal.2x2"
+        case .garden: "leaf"
+        case .workplace: "chair.lounge"
+        case .catThings: "pawprint"
+        }
+    }
+
+    /// The Brush's mix of the meadow's own wildflowers, and the Eraser's choice of any small thing.
+    static var wildflowers: String { String(localized: "Wildflowers", comment: "Meadow editor's tray: the Brush's mix of daisies, buttercups, lupins and poppies") }
+    static var anyKind: String { String(localized: "Any Kind", comment: "Meadow editor's tray: the Eraser clears whatever small thing it passes") }
+
+    static func density(_ density: MeadowBrush.Density) -> String {
+        switch density {
+        case .sparse: String(localized: "Sparse", comment: "Meadow editor's tray: how thickly the Brush plants")
+        case .natural: String(localized: "Natural", comment: "Meadow editor's tray: how thickly the Brush plants")
+        case .dense: String(localized: "Dense", comment: "Meadow editor's tray: how thickly the Brush plants")
+        }
+    }
+
+    /// What to do now, in the tray's line.
+    static func hint(_ tool: EditorTray.Tool, armed: Bool) -> String {
+        switch tool {
+        case .select where armed:
+            String(localized: "Click to place it · ⇧-click to place more · R turns it · Esc puts it back", comment: "Meadow editor's tray: what to do with a thing armed")
+        case .select:
+            String(localized: "Choose a thing to place, or drag it onto the meadow", comment: "Meadow editor's tray: what to do with the Select tool")
+        case .brush:
+            String(localized: "Drag on the grass to plant · ⌥-drag clears · [ and ] change the size", comment: "Meadow editor's tray: what to do with the Brush")
+        case .erase:
+            String(localized: "Click a thing to take it away · drag to sweep plants and stones · [ and ] change the size",
+                   comment: "Meadow editor's tray: what to do with the Eraser")
+        }
+    }
+
+    /// How full the meadow is, in the tray's top row ("4,212 of 5,000 things", "40 of 48 trees").
+    static func fullness(_ count: Int, of limit: Int, _ cap: MeadowCatalog.Cap?) -> String {
+        switch cap {
+        case .trees: String(localized: "\(count) of \(limit) trees", comment: "Meadow editor's tray: how full the meadow is")
+        case .tall: String(localized: "\(count) of \(limit) tall things", comment: "Meadow editor's tray: how full the meadow is")
+        default: String(localized: "\(count) of \(limit) things", comment: "Meadow editor's tray: how full the meadow is")
+        }
+    }
+
+    /// The Eraser's click on a thing of another kind than the one it clears.
+    static func onlyErasing(_ id: String) -> String {
+        String(localized: "The Eraser clears only \(clumpName(id).lowercased()) now", comment: "Meadow editor: the Eraser's kind is set to another")
+    }
+
+    /// The name of several of a kind ("Daisies").
+    static func clumpName(_ id: String) -> String {
+        switch id {
+        case "flower.daisy": String(localized: "Daisies", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "flower.buttercup": String(localized: "Buttercups", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "flower.lupin": String(localized: "Lupins", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "flower.poppy": String(localized: "Poppies", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "fungus.flyAgaric": String(localized: "Fly agarics", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "stone.stone": String(localized: "Stones", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case "stone.mossy": String(localized: "Mossy stones", comment: "Meadow editor: a clump of them, for VoiceOver")
+        case EditorTray.wildflowers: wildflowers
+        default: name(id)
+        }
+    }
+
     // Each step's name, as Edit › Undo and the top bar's Undo say it.
     static func move(_ ids: [String]) -> String { String(localized: "Move \(things(ids))", comment: "Meadow editor: a step's name") }
     static func turn(_ ids: [String]) -> String { String(localized: "Turn \(things(ids))", comment: "Meadow editor: a step's name") }
@@ -78,6 +162,12 @@ enum MeadowWords {
     static func cut(_ ids: [String]) -> String { String(localized: "Cut \(things(ids))", comment: "Meadow editor: a step's name") }
     static func paste(_ ids: [String]) -> String { String(localized: "Paste \(things(ids))", comment: "Meadow editor: a step's name") }
     static func shuffle(_ ids: [String]) -> String { String(localized: "Shuffle \(things(ids))", comment: "Meadow editor: a step's name") }
+    static func place(_ ids: [String]) -> String { String(localized: "Place \(things(ids))", comment: "Meadow editor: a step's name") }
+    static func erase(_ ids: [String]) -> String { String(localized: "Erase \(things(ids))", comment: "Meadow editor: a step's name") }
+    /// A Brush stroke: "Brush Daisies", "Brush Wildflowers".
+    static func brush(_ kind: String) -> String {
+        String(localized: "Brush \(clumpName(kind))", comment: "Meadow editor: a step's name (a Brush stroke and what it planted)")
+    }
 
     /// Where a thing is, for VoiceOver: "12 units north-west of the picnic ground", or on it.
     static func whereIs(_ at: MeadowPoint) -> String {

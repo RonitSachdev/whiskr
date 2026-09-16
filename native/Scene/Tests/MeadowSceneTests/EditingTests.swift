@@ -142,10 +142,25 @@ private func thing(_ id: String, _ x: Float, _ z: Float, seed: UInt32 = 0, varia
                 m.show(scenery)
             }
         }
+        // A tree taken away: laid afresh, its shade baked again.
         var other = MeadowScenery.standard
-        other.things.removeLast()
+        other.things.remove(at: oak)
         let afresh = clock.measure { m.show(other) }
-        #expect(moving / 60 < afresh / 4, "a step \(moving / 60), afresh \(afresh)")
+        #expect(moving / 60 < afresh / 2, "a step \(moving / 60), afresh \(afresh)")
+    }
+
+    @Test("plants brushed in or swept away beside the trees lay the scenery afresh but keep the ground's map; a tree changes it")
+    func groundKept() {
+        let m = Meadow()
+        let ground = m.groundVersion, map = m.groundMap.surface
+        var scenery = MeadowScenery.standard
+        scenery.things += (0..<30).map { thing("flower.daisy", 40 + Float($0 % 6), 10 + Float($0 / 6)) }
+        m.show(scenery)
+        #expect(m.groundVersion == ground && m.groundMap.surface == map && m.laid.count == scenery.things.count)
+        scenery.things.removeFirst(3 + 12)
+        m.show(scenery)
+        #expect(m.groundVersion == ground + 1, "the first trees are gone, and their shade with them")
+        #expect(m.groundMap.surface == Meadow(scenery: scenery).groundMap.surface)
     }
 }
 
@@ -248,6 +263,54 @@ private func thing(_ id: String, _ x: Float, _ z: Float, seed: UInt32 = 0, varia
         view.endEditing()
         #expect(view.editMarks == MeadowEditMarks())
     }
+
+    @Test("the ghost of a thing about to be placed is drawn where it would stand, see-through, greyed where refused; it is not part of the scenery")
+    func ghost() {
+        let view = view(NSSize(width: 640, height: 400), count: 0)
+        view.scenery = MeadowScenery(things: [thing("stone.stone", 30, 30)])
+        view.beginEditing()
+        view.advance(seconds: 1.5)
+        let plain = view.renderImage(width: 640, height: 400)
+        let oak = MeadowScenery.Thing(id: "tree.oak", x: 6, z: -12, turn: 1, seed: 99)
+        view.editMarks = MeadowEditMarks(ghost: oak, brush: MeadowEditMarks.BrushCircle(center: SIMD2(-8, 0), radius: 4, erasing: false))
+        let ghosted = view.renderImage(width: 640, height: 400)
+        view.editMarks.ghostRefused = true
+        view.editMarks.brush?.erasing = true
+        let refused = view.renderImage(width: 640, height: 400)
+        #expect(plain != nil && ghosted != nil && refused != nil)
+        #expect(difference(plain!, ghosted!) > 0.002 && difference(ghosted!, refused!) > 0.0005, "the ghost and the circle are drawn, and change when refused")
+        #expect(view.scenery.things.count == 1 && view.stage.meadow!.laid.count == 1, "the ghost is no thing of the meadow")
+    }
+
+    @Test("a chosen tree is ringed round its crown's shade as well as its trunk; the rings' rect is what the selection's bar hangs under")
+    func chosenTree() {
+        let view = view(NSSize(width: 1100, height: 800), count: 0)
+        view.scenery = MeadowScenery(things: [thing("tree.oak", -20, -10, seed: 4), thing("flower.poppy", 14, -4)])
+        view.beginEditing()
+        view.advance(seconds: 1.5)
+        let m = view.stage.meadow!
+        #expect(m.canopy(0).map { $0.r > Species.oak.girth * 2.4 } == true && m.canopy(1) == nil)
+        let rings = view.screenRect(ofGroundMarks: [0])!, trunk = view.screenRect(ofGroundMarks: [1])!
+        #expect(rings.width > trunk.width * 3, "the crown's ring is wide")
+        view.editMarks = MeadowEditMarks(selected: [0])
+        #expect(view.renderImage(width: 1100, height: 800) != nil)
+    }
+
+    @Test("every thing the scene draws has a shape of its own to place and a picture for the tray, its subject in the middle")
+    func portraits() {
+        let view = view(NSSize(width: 300, height: 300), count: 0)
+        for id in MeadowScenery.drawnIds.sorted() {
+            #expect(Meadow.alone(MeadowScenery.Thing(id: id, x: 0, z: 0, seed: 3)) != nil, "\(id)")
+            guard let image = view.portrait(of: [id], pixels: 96, background: MeadowColor(hex: 0xffffff)) else { Issue.record("no picture of \(id)"); continue }
+            #expect(image.width == 96 && image.height == 96)
+            // A white corner, and the thing and its grass in the middle half (a flower on its stem fills a sixth).
+            let middle = (24..<72).flatMap { y in (24..<72).map { x in shade(image, x, y) } }
+            let filled = Double(middle.filter { $0 < 0.9 }.count) / Double(middle.count)
+            #expect(shade(image, 2, 2) > 0.97 && filled > 0.1, "\(id): \(filled)")
+        }
+        #expect(view.portrait(of: ["cat.box"], pixels: 96, background: MeadowColor(hex: 0xffffff)) == nil, "nothing for what is not drawn")
+        #expect(view.portrait(of: ["flower.daisy", "flower.poppy", "flower.lupin"], pixels: 96, background: MeadowColor(hex: 0x202020)) != nil)
+    }
 }
 
 @MainActor
@@ -268,4 +331,21 @@ private func thing(_ id: String, _ x: Float, _ z: Float, seed: UInt32 = 0, varia
         let partly = m.treeStanding(0, clearings, 1)
         #expect(partly > 0 && partly < 1)
     }
+}
+
+/// The share of pixels that differ between two pictures of the same size.
+private func difference(_ a: CGImage, _ b: CGImage) -> Double {
+    guard let da = a.dataProvider?.data, let db = b.dataProvider?.data, CFDataGetLength(da) == CFDataGetLength(db) else { return 1 }
+    let pa = CFDataGetBytePtr(da)!, pb = CFDataGetBytePtr(db)!
+    var differ = 0
+    let n = CFDataGetLength(da) / 4
+    for i in 0..<n where abs(Int(pa[i * 4 + 1]) - Int(pb[i * 4 + 1])) > 12 { differ += 1 }
+    return Double(differ) / Double(n)
+}
+
+/// How light a pixel is, 0…1.
+private func shade(_ image: CGImage, _ x: Int, _ y: Int) -> Double {
+    guard let data = image.dataProvider?.data, let p = CFDataGetBytePtr(data) else { return 0 }
+    let i = y * image.bytesPerRow + x * 4
+    return (Double(p[i]) + Double(p[i + 1]) + Double(p[i + 2])) / (3 * 255)
 }

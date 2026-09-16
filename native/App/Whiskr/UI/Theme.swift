@@ -100,8 +100,16 @@ enum Look {
 
     /// The system's Increase Contrast (or a high-contrast appearance a debug run draws in).
     static var increasesContrast: Bool {
-        NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast || Palette.isHighContrast(NSApp.effectiveAppearance)
+        #if DEBUG
+        if debugIncreasesContrast { return true }
+        #endif
+        return NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast || Palette.isHighContrast(NSApp.effectiveAppearance)
     }
+
+    #if DEBUG
+    /// Debug runs: Increase Contrast's look without changing the Mac's setting (the editor flow's pictures).
+    nonisolated(unsafe) static var debugIncreasesContrast = false
+    #endif
 
     /// How the interface moves (docs/DESIGN.md, "Motion"): one small set of durations and one curve, so
     /// every transition in the window feels like the same app. The action itself never waits for them: a
@@ -125,7 +133,17 @@ enum Look {
         }
 
         /// Whether to move at all: false with Reduce Motion (then only fades, or nothing).
-        @MainActor static var moves: Bool { !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+        @MainActor static var moves: Bool {
+            #if DEBUG
+            if debugReducesMotion { return false }
+            #endif
+            return !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
+
+        #if DEBUG
+        /// Debug runs: Reduce Motion's look without changing the Mac's setting (the editor flow's checks).
+        @MainActor static var debugReducesMotion = false
+        #endif
     }
 }
 

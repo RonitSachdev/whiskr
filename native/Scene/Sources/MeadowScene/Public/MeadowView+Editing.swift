@@ -46,6 +46,7 @@ extension MeadowView {
         guard stage.editing else { return }
         stage.editing = false
         stage.editMarks = MeadowEditMarks()
+        stage.camera.coverGoal.y = 0
         stage.camera.pitchGoal = nil
         stage.camera.closest = MapCamera.nearest
         stage.heldRowsLinger = 0.6
@@ -89,6 +90,27 @@ extension MeadowView {
     /// Where some of the scenery's things are drawn, all together, in the view's coordinates; nil when none is.
     public func screenRect(ofScenery things: [Int]) -> NSRect? {
         guard let box = stage.screenBox(ofScenery: things) else { return nil }
+        return NSRect(x: CGFloat(box.left), y: bounds.height - CGFloat(box.bottom), width: CGFloat(box.right - box.left), height: CGFloat(box.bottom - box.top))
+    }
+
+    /// Where the editor's rings round some of the scenery's things lie on the ground (round their ground, and
+    /// round a tree's crown where it shades the ground), all together, in the view's coordinates; nil when none
+    /// is drawn. What the selection's bar hangs under.
+    public func screenRect(ofGroundMarks things: [Int]) -> NSRect? {
+        guard let meadow = stage.meadow else { return nil }
+        var box = ScreenBox.empty
+        for i in things where meadow.scenery.things.indices.contains(i) && meadow.laid[i] != .none {
+            var circles = SceneryRules.footprint(of: meadow.scenery.things[i])
+            if let crown = meadow.canopy(i) { circles.append(SceneryRules.Circle(x: crown.x, z: crown.z, r: crown.r)) }
+            for c in circles {
+                for k in 0..<16 {
+                    let a = Float(k) / 16 * 2 * .pi, x = c.x + cos(a) * c.r, z = c.z + sin(a) * c.r
+                    let p = stage.screen(Vec3(x, Land.height(x, z), z))
+                    if p.z <= 1 { box.add(Vec2(p.x, p.y)) }
+                }
+            }
+        }
+        guard !box.isEmpty else { return nil }
         return NSRect(x: CGFloat(box.left), y: bounds.height - CGFloat(box.bottom), width: CGFloat(box.right - box.left), height: CGFloat(box.bottom - box.top))
     }
 
@@ -144,6 +166,20 @@ extension MeadowView {
     public func frameEditView() {
         stage.camera.fly()
         wake(.input)
+    }
+
+    /// While editing: how many points along the view's bottom edge something floats over (the editor's
+    /// tray), so the picnic ground is framed in the part above it. The view eases to it when it frames itself
+    /// (unless you have moved it yourself since). Ending editing sets it back to none.
+    public var editingCover: CGFloat {
+        get { CGFloat(stage.camera.coverGoal.y) }
+        set {
+            let goal = Float(max(0, newValue))
+            guard stage.editing, goal != stage.camera.coverGoal.y else { return }
+            stage.camera.coverGoal.y = goal
+            if stage.camera.framing, !stage.camera.flying { stage.camera.fly() }
+            wake(.input)
+        }
     }
 
     // MARK: Input while editing (from MeadowView's own handlers)

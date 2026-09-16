@@ -29,6 +29,19 @@ Nothing has been released yet. This is what the first release will contain.
   Default, which never changes, and Revert to Default (the meadow's name in the top bar, or Settings ›
   Meadow) shows it again. Done (⌘↩) or Esc brings the window back exactly as it was; terminals, Claudes and
   alerts carry on throughout, and ⌘J, ⌘T and choosing anything on the right leave editing first.
+- The meadow's editor has a tray along its bottom edge: Select (V), Brush (B) and Erase (E), the shelf of
+  everything the meadow can hold, each pictured by the meadow itself in its clay, by category (1–3) or by
+  filter (⌘F), folded to one row with ⌥⌘T. Click a thing and its ghost follows the pointer, greyed with the
+  reason where it cannot stand; a click places it (⇧-click places more), or drag it straight out of the tray;
+  each one grows its own size, lean and shape (no two oaks alike) and settles into the meadow. The Brush
+  plants loose clumps of flowers (or the meadow's own wildflower mix) along a stroke, never an even sprinkle,
+  with a size and a density; ⌥-drag clears. The Eraser takes away what you click, or sweeps plants and stones
+  (one kind, if you like) and never a tree. Every placing, stroke and sweep is one step of ⌘Z. The tray says
+  how full the meadow is before a cap is reached (5,000 things, 48 trees, 120 tall things) and why at one.
+  All of it works from the keyboard alone (Tab to the shelf, Return to arm, arrows to move, Return to place)
+  and with VoiceOver.
+- A chosen tree in the editor is ringed round its crown's shade as well as its trunk and lit a little, and
+  the bar for what is chosen hangs just under its rings instead of high above the crown.
 - Trees and the fallen log make way where a blanket comes, as flowers and stones always did, and come back
   when it goes. The workspaces' column always runs down the middle of the meadow.
 - The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset
@@ -199,6 +212,9 @@ Nothing has been released yet. This is what the first release will contain.
 
 ### Fixed
 
+- Leaving the meadow's editor with the workspaces shown as a list gives the keyboard back to where it was
+  every time: it is handed back once the terminals' region has finished opening, which used to take it away
+  again as it settled.
 - A click on a button of the top bar, tab row or status bar right after the bars changed (a tab opened,
   closed or dropped) could be taken by the view drawn over it and do nothing.
 - The close button on a split tab, which showed only the focused pane's name, closed every pane in the tab.

@@ -157,6 +157,8 @@ final class Renderer {
         if stage.mode == .meadow {
             village.encodeGround(stage, arena: arena, enc: enc)
             editing.encode(stage, arena: arena, enc: enc)
+            // The editor's ghost, under the flags, bubbles and notes drawn after it.
+            meadow.encodeGhost(stage, arena: arena, enc: enc)
         }
         cats.encodeShadows(stage.cats, arena: arena, enc: enc)
         enc.setDepthStencilState(gpu.depthRead)

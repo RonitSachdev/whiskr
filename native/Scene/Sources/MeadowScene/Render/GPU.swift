@@ -79,6 +79,8 @@ struct Lit: OptionSet {
     static let gingham = Lit(rawValue: 256)
     /// The moon: lit from the direction in `emissive` (its phase), the dark side see-through.
     static let moon = Lit(rawValue: 512)
+    /// Greyed, by `extra.z` (0 as it is … 1 grey): the editor's ghost where it may not stand.
+    static let greyed = Lit(rawValue: 1024)
 }
 
 /// Must match `struct Sprite` in ShaderOverlay.
