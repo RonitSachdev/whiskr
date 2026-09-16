@@ -762,7 +762,9 @@ nonisolated final class MeadowAccessibilityElement: NSAccessibilityElement {
     }
 
     override func accessibilityFrame() -> NSRect {
-        let meadow = meadow, item = item
+        // Read on the main thread, as AppKit asks; the view is only touched there.
+        nonisolated(unsafe) let meadow = meadow
+        let item = item
         return MainActor.assumeIsolated {
             guard let meadow, let rect = meadow.screenRect(of: item), let window = meadow.window else { return .zero }
             return window.convertToScreen(meadow.convert(rect, to: nil))

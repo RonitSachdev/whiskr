@@ -23,9 +23,12 @@ Nothing has been released yet. This is what the first release will contain.
   The moment Claude has work it runs home, ears back, and skids onto its blanket; its bubble and the tab say
   so from the start. Long idle, it naps out there, in a tree's shade or back on its blanket. Settings › Meadow
   › Cats wander when idle (on by default); never with Reduce Motion or the meadow's animation off. The meadow
-  still rests between outings.
+  still rests between outings. An idle cat is up and about on and off for some minutes before it naps, and
+  wakes now and then from a long nap for a stretch and a short outing. Cats use what the meadow offers them:
+  they sit on stumps and boulders, sit and nap in boxes, nap in beds and on cushions, scratch posts and look in
+  bowls, one at a time, and take painted paths and stepping stones when one is near.
 - A workspace of plain terminals has a camp kettle on its blanket instead of an empty cloth: cold at the
-  prompt, lit and steaming while a command runs (calming to a simmer for a dev server), a whistle of steam
+  prompt, lit, glowing and steaming while a command runs (it reads at a glance from the sidebar) (calming to a simmer for a dev server), a whistle of steam
   when it ends well, and a little red flag when it fails until you look at that terminal, all from the shell's
   command marks. It makes way for the cat when Claude starts there. VoiceOver reads "Command running",
   "Command finished" or "Command failed".

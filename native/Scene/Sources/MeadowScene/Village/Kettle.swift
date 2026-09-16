@@ -257,7 +257,6 @@ extension Village {
         let tip = Kettle.spoutTip, out = Kettle.spoutOut
         if hushed {
             for i in 0..<KETTLE_PUFFS {
-                let u = Float(i) / 3
                 k.life[i] = 1
                 guard i < 6, k.flame > 0.3 else { k.puffAlpha[i] = 0; continue }
                 let v = Float(i) / 5

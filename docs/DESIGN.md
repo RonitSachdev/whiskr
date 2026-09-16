@@ -149,8 +149,10 @@ Each state differs by **silhouette**, **mark**, **colour** (on the mark only, ne
   urgent mark of its panes, and helpers' requests roll up to their boss's tab.
 - **A blanket of plain terminals has a camp kettle** where a cat would sit, beside the hamper: a small
   enamel kettle on a little brass stove, showing what the shells' command marks (OSC 133) say. Cold while
-  the shell waits at its prompt. Lit, the lid rattling and steam rising, while a command runs; after half a
-  minute it calms to a steady simmer (a dev server), lower flame, a slow wisp, and the meadow rests. A
+  the shell waits at its prompt. While a command runs it reads at a glance from the sidebar: the stove's warm
+  light spills onto the blanket round it (stronger at night), flames lick out past its base, a plume of steam
+  rises well above it and the lid tips as it rattles; after half a minute it calms to a steady simmer (a dev
+  server), the glow kept, a lower flame and a calmer plume, and the meadow rests. A
   command that ends well: one whistle of steam, then the flame goes out (no sound; a command over in a
   moment, an `ls`, just goes out). One that fails: the flame is snuffed with a small dark puff and a little
   red flag stands by the kettle until its terminal has been seen. Running in one terminal and failed in
@@ -581,18 +583,32 @@ short fixed nubs, so a walk is a waddle that lifts it a little with each step, a
 is a few hops with a look round between, and it moves on only while it is up off its paws, so it never slides.
 It turns before it sets off. At each stop it sits up to watch whatever flies past, sniffs a flower, or lies as
 a loaf, then goes on or wanders home. Out in short bursts, with long still stops between, so the meadow rests
-between them as it always did.
+between them as it always did; in a meadow of many idle cats, two at most are out and about at once.
+
+- **Its afternoon.** Its Claude may let it nap soon after its turn; it stays up and about on and off for four
+  to six minutes first (each cat its own), then naps, and after a long nap (twenty minutes to three quarters of
+  an hour) now and then wakes, stretches, takes one short outing and naps again. A meadow of idle cats is
+  gently alive over an afternoon and still rests between their bursts.
+- **The meadow's things.** What invites a cat is used, one cat at a time and preferred to bare grass when it
+  is in reach: it hops up to sit on a stump, a boulder, a log pile or the fallen log, sits in a box (and naps in
+  it), naps in a bed or on a cushion, stands up at a scratching post for a scratch (its paws stroking down in
+  turn, never lengthening), and looks in the bowl. Things that make way for a blanket (shrunk near one) are
+  not used. The ball of yarn is left as it is: a cat batting it would need the ball to answer, and a ball that
+  only rocks in place reads as a mistake, so it stays a picture.
+- **Paths.** Routes and stops take the ground cats like (`MeadowView.walkingEase`): a painted path or stepping
+  stones when one is near, lawn before long grass; stepping stones are walked on, not gone round.
 
 - **Its own patch.** Within a few cat-lengths of its blanket's edge, nearer its blanket than any other, clear
   of other blankets and every flag, and in view: whose cat it is always reads, and its blanket's flag stays on
   its blanket. It goes round trees, stones, logs, flowers, whatever the meadow holds, the picnic things and
-  other cats, never through them. Helpers do the same round their boss's blanket. Routes may prefer ground
-  cats like (paths, stepping stones) when the meadow has some.
+  other cats, never through them. Helpers do the same round their boss's blanket. For one of the meadow's
+  things it goes a little further, to where things stand whole.
 - **Work calls it home.** The moment its Claude works, asks, finishes or fails, it turns and runs home, ears
   flat, low fast bounds, and skids to a stop on its blanket, then takes up its pose. Nothing waits for the
   run: its bubble is up as it runs, and the tab, the status bar and the blanket's ring say so at once.
-- **Napping anywhere.** Long idle, it naps where it is, or first goes to a tree's shade or back to its
-  blanket, circling once before it curls up. Woken by work, it runs home the same way.
+- **Napping anywhere.** It naps where it is, or first goes to a free bed, box or cushion, a tree's shade or
+  back to its blanket, circling once before it curls up. Woken by work, it runs home the same way (down off a
+  stump, out of a box, with a hop first).
 - **Off** with Settings › Meadow › "Cats wander when idle", Reduce Motion, or the animation off: cats then stay
   on their blankets, and one out comes home at once.
 - A cat out in the grass is pointed at, clicked (choosing its terminal) and read by VoiceOver as on its

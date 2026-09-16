@@ -502,6 +502,17 @@ stop drawing when nothing moves.
   moved or taken up do the same round each. `Meadow.walkingEase` (public as `MeadowView.walkingEase(at:)`)
   says how gladly a cat walks at a point: 1 on a path or a stepping stone, 0.6 on lawn, 0.25 in wild grass or
   on soil. Beside it an R8 texture is kept for lamplight on the ground.
+- **A cat's day** (`Roam.swift`, `Village.keepDay`) goes by the wall clock (`Village.clock`; the meadow's own
+  time slows while it rests): rests between outings, when it dozes off (`dozeAt`, four to six minutes after
+  it is first at leisure, whatever its Claude allows) and when it wakes from a long nap (`wakeAt`). What its
+  Claude says is shown through `Village.display`, which holds a nap off until then. Two cats at most are out
+  at once. Measured on a clock of the test's own (`CatAfternoons.dutyCycle`): over the first five minutes the
+  meadow is awake 14 % of the time with one idle cat and 45 % with ten; asleep, a waking a minute long every
+  twenty to forty-five. The app's idle measurement lets the cats doze off before it starts
+  (`MeadowView.letCatsDozeOff`).
+- **The meadow's things** (`Village.places`, from `MeadowScenery.Thing.catSpot`): each a place with where the
+  cat stands to reach it, a hop up and down for one on or in a thing, one cat at a time (`Roam.spot`), only
+  where the thing stands whole (`Meadow.standing`).
 - **Cats out in the grass** (`Roam.swift`). Each cat (`Actor.roam`) rests on its blanket, then sets off on an
   outing of a stop or three; a stop is chosen in its patch (`Village.inPatch`) and reached by a route over a
   grid of half-unit cells round its blanket (`RoamField`: A*, eight ways, corners pulled straight where a
