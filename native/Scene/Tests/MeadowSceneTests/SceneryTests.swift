@@ -44,8 +44,9 @@ import simd
         #expect(m.scenery == .standard)
         #expect(m.treeShapes.count == 12 && m.logs.count == 1 && m.shade.count == 12)
         #expect(m.obstacles == Meadow.obstaclesForTests)
-        // All twelve dapple the ground, the four far ones too (once only the first eight did).
-        for tree in m.shade { #expect(m.groundMap.shade(at: Vec2(tree.x, tree.y)) > 0.95) }
+        // All twelve dapple the ground, the four far ones too (once only the first eight did): full shade at the
+        // middle, as far as the map's texels show it for a crown that wide.
+        for tree in m.shade { #expect(m.groundMap.shade(at: Vec2(tree.x, tree.y)) > 1 - GroundMap.cell / tree.z, "\(tree)") }
     }
 }
 

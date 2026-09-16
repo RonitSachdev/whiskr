@@ -34,6 +34,13 @@ Nothing has been released yet. This is what the first release will contain.
   "Command finished" or "Command failed".
 - Every one of the meadow's twelve landmark trees dapples the ground beneath it with moving shade; the
   four farthest, out in the haze, used to stand in unbroken sun.
+- Every tree reads as its kind from the editor's height and the sidebar as well as from the side: crowns of
+  many overlapping masses of leaves with gaps where the limbs show, sunlit outside and shaded within, instead
+  of a few big smooth lumps. An oak spreads in a broad dome; a birch is narrow and airy over a white trunk
+  marked with black; a cherry's blossom gathers in clouds along its branches; an apple tree is low and open
+  with small apples among its leaves; a Scots pine carries flat dark plates high on its bare trunk. They cost
+  less to draw than before (the apple tree and the pine about half), and the Default meadow keeps every
+  flower, stone and cat where it was.
 - Edit Meadow (View › Edit Meadow, ⌃⌘E; also the grass's menu, Settings › Meadow and Go to): the
   terminals slide away and the meadow fills the window, seen from above. Choose its trees, flowers, stones
   and the log with a click, ⇧-click, ⌘-click (all of a kind nearby) or a marquee; drag to move them (⌥-drag
@@ -66,8 +73,8 @@ Nothing has been released yet. This is what the first release will contain.
   are left as they are; blankets always lie on their own ground. The painting is saved in the meadow's file.
 - Stepping stones: on the Stones & Wood shelf; a click places one, a drag lays a row a stride apart, each
   set its own way across the path with the turf trodden short round it, as one step.
-- More to make the meadow theirs, each modelled on the real thing in the meadow's clay: an apple tree hung
-  with apples (a few windfalls in the grass) and a tall Scots pine, orange high on its trunk; cornflowers,
+- More to make the meadow theirs, each modelled on the real thing in the meadow's clay: an apple tree with
+  apples among its leaves (a few windfalls in the grass) and a tall Scots pine, orange high on its trunk; cornflowers,
   foxgloves, ferns and clover for the Brush; a boulder to sit on, a tree stump with its rings and a log
   pile; a floor cushion; and Cat Things: a cardboard box with its flaps open, a scratching post, a ball of
   yarn, a cat bed and a food bowl, the grass trodden short round them. The shelf scrolls with a mouse's

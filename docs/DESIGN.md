@@ -356,9 +356,17 @@ can hold (its catalog):
 - **Every new thing is looked up first:** how the real one is shaped, joined, coloured and weathered, and how
   it meets the grass, then simplified into the clay, rounded and a little chunky, with nothing thin enough to
   shimmer, readable on a 64 pt tile and from the editor's height. Plants keep their blooms about twice life
-  size, as the meadow's always have (an apple too).
-- **What the meadow holds today:** oak, birch, cherry, young tree, apple tree (hung with apples, windfalls
-  beneath) and Scots pine (bare below, orange high on its trunk, a flat-topped crown of needle pads); daisy,
+  size, as the meadow's always have; fruit hung on a tree stays near life size, among the leaves (larger, on a
+  crown seen from above, it reads as boils).
+- **Trees read as foliage from every camera**, judged from the editor's height and the sidebar's as much as from
+  the side: a crown is many masses of leaves of different sizes, each a cloud of small clumps with a broken
+  edge, overlapping, with gaps where the limbs and the shade show, sunlit outside and dark within; never a few
+  big smooth balloons. Each kind keeps its own shape: an oak's broad dome on a short trunk, a birch's narrow,
+  airy crown of hanging leaves over a white, black-marked trunk, a cherry's blossom in clouds along its
+  branches, a young tree's few branches, an apple tree's low, wide crown open in the middle with apples among
+  its leaves, a Scots pine's flat-topped umbrella of dark plates high on a bare, orange-topped trunk.
+- **What the meadow holds today:** oak, birch, cherry, young tree, apple tree (apples among its leaves,
+  windfalls beneath) and Scots pine (bare below, orange high on its trunk, a flat-topped crown of needle plates); daisy,
   buttercup, lupin, poppy, cornflower, foxglove, fern, clover and fly agaric; stone, mossy stone, boulder
   (a seat), stepping stone, fallen log, tree stump and log pile; a floor cushion (a zabuton); and Cat Things,
   sized for the meadow's cats: a cardboard box a cat fits in, its flaps fallen open; a sisal scratching post

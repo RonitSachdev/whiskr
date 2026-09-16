@@ -5,7 +5,9 @@ import simd
 // by the code that always grew it (src/meadow/Meadow.ts, in the web version's order, which the parity
 // tests hold), from the same stream and in the same order, so the same flowers stand in the same places.
 // Each thing is written with the lean, turn and size it drew; each tree with the state of the stream it
-// was grown from (its seed), so drawing the scenery grows the very same tree.
+// was grown from (its seed), so drawing the scenery grows the very same tree. A tree grows from its seed
+// alone, and the stream is moved on past it as far as it always was (`treeDraws`): the trees can be
+// reshaped and every flower, stone and critter still stands where it stood.
 
 enum StandardMeadow {
     /// The meadow's stream (`Meadow.seed`) where the scenery begins: after the grass.
@@ -27,6 +29,19 @@ enum StandardMeadow {
     static let saplingSpots: [(Float, Float)] = [(-18, -21), (22, -25), (-34, 3), (34, 7), (-5, -42)]
     /// Fly agarics ring the roots of only the nearest landmark trees (the first eight).
     static let ringedTrees = 8
+    /// How far along the stream each tree's growth took it when the Default was laid out (the landmark trees in
+    /// order, then the three young ones). A tree now grows from its seed alone, however many draws that takes;
+    /// the stream is moved on as far as it always was, so every flower, stone and critter after a tree stands
+    /// where it always stood.
+    static let treeDraws = (landmarks: [141, 107, 133, 129, 111, 121, 121, 129, 111, 125, 125, 141], young: [93, 93, 97])
+
+    /// The tree whose seed is where the stream stands; the stream then moved on `draws`.
+    private static func tree(_ species: Species, _ random: inout Seeded, draws: Int) -> Tree {
+        var own = random
+        let tree = Trees.grow(species, &own)
+        for _ in 0..<draws { _ = random.next() }
+        return tree
+    }
 
     /// The Default, and the trees grown on the way (so the meadow showing it grows none twice).
     struct Grown {
@@ -45,12 +60,12 @@ enum StandardMeadow {
 
         // Each landmark tree grown on its own, so no two share a shape.
         var roots: [(x: Float, z: Float, girth: Float)] = []
-        for (id, degrees, out) in landmarks {
+        for (k, (id, degrees, out)) in landmarks.enumerated() {
             let angle = degrees * .pi / 180
             let x = sin(angle) * out, z = cos(angle) * out
             let species = SceneryCatalog.species(id)!
             let key = Grove.Key(id: id, seed: random.state)
-            trees[key] = Trees.grow(species, &random)
+            trees[key] = tree(species, &random, draws: treeDraws.landmarks[k])
             things.append(MeadowScenery.Thing(id: id, x: x, z: z, seed: key.seed))
             roots.append((x, z, species.girth))
         }
@@ -161,9 +176,9 @@ enum StandardMeadow {
         // Young trees, three shapes among five: tall enough to stand in the way of a picnic, so each can
         // fade on its own; like everything rooted, one makes way if a blanket is ever laid where it stands.
         var young: [(id: String, variant: Int, seed: UInt32)] = []
-        for _ in 0..<3 {
+        for k in 0..<3 {
             let key = Grove.Key(id: "tree.young", seed: random.state)
-            trees[key] = Trees.grow(.sapling, &random)
+            trees[key] = tree(.sapling, &random, draws: treeDraws.young[k])
             young.append((key.id, 0, key.seed))
         }
         let places = saplingSpots.enumerated().map { i, s in Place(x: s.0, z: s.1, size: 0.9 + random.float() * 0.4, variant: i % young.count, lean: 0.03) }

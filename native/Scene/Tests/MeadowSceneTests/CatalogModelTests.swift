@@ -104,8 +104,8 @@ private func model(_ id: String, seed: UInt32 = 1) -> Geometry? {
         #expect(m.groundMap.shade(at: Vec2(30, 30)) > 0.9 && m.groundMap.shade(at: Vec2(-30, 30)) > 0.9)
     }
 
-    @Test("the Default's trees grow exactly as before (the apple and the pine leave the broadleaf growth alone)")
-    func broadleafUnchanged() {
+    @Test("the Default's trees grow from their seeds alone, as the meadow showing it grew them")
+    func defaultTreesFromSeeds() {
         for thing in MeadowScenery.standard.things.prefix(40) where SceneryCatalog.species(thing.id) != nil {
             var random = Seeded(thing.seed)
             #expect(Trees.grow(SceneryCatalog.species(thing.id)!, &random).shape.positions == StandardMeadow.grown.trees[ShapeKey(id: thing.id, seed: thing.seed)]?.shape.positions)
@@ -209,8 +209,8 @@ private func model(_ id: String, seed: UInt32 = 1) -> Geometry? {
         return view.renderImage(width: 480, height: 360)
     }
 
-    /// Pictures in a grid with a caption under each, as one PNG.
-    static func sheet(_ pictures: [(String, CGImage)], columns: Int, to name: String) {
+    /// Pictures in a grid with a caption under each, as one PNG in `folder`.
+    static func sheet(_ pictures: [(String, CGImage)], columns: Int, to name: String, in folder: String? = CatalogPictures.folder) {
         guard let folder, !pictures.isEmpty else { return }
         let w = pictures[0].1.width, h = pictures[0].1.height, caption = 26
         let rows = (pictures.count + columns - 1) / columns

@@ -205,17 +205,4 @@ private func close(_ a: Vec3, _ b: [Double], _ tolerance: Float = 1e-4) -> Bool 
         check(Flora.stones[1].shape, flora["stone1"] as! [String: Any], vertexTolerance: 2000, boundsTolerance: 0.02)
         #expect(close(Flora.daisies[0].top, (flora["daisyTop"] as! [NSNumber]).map(\.doubleValue)))
     }
-
-    /// A tree grown from the same seed has the same shape and uses up exactly as much of the random stream.
-    @Test func treesGrowTheSame() {
-        let trees = Captured.shared["trees"] as! [String: Any]
-        var r = Seeded(5)
-        let oak = Trees.grow(.oak, &r)
-        let want = trees["oak"] as! [String: Any]
-        check(oak.shape, want, vertexTolerance: 2000, boundsTolerance: 0.05)
-        #expect(abs(Double(oak.crown) - (want["crown"] as! NSNumber).doubleValue) < 1e-3)
-        #expect(abs(Double(oak.bulk) - (want["bulk"] as! NSNumber).doubleValue) < 1e-3)
-        #expect(close(oak.middle, (want["middle"] as! [NSNumber]).map(\.doubleValue), 1e-3))
-        #expect(r.next() == (trees["afterOak"] as! NSNumber).doubleValue)
-    }
 }
