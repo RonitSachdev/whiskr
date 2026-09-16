@@ -438,6 +438,19 @@ stop drawing when nothing moves.
   past the paint grid each side so the shade of the largest tree at the meadow's edge fits; R, G and B are
   kept for painted path, lawn and soil and A holds the trees' shade (1 under a crown's middle, 0 at its
   reach), dappled per pixel as before. Beside it an R8 texture is kept for lamplight on the ground.
+- **Cats out in the grass** (`Roam.swift`). Each cat (`Actor.roam`) rests on its blanket, then sets off on an
+  outing of a stop or three; a stop is chosen in its patch (`Village.inPatch`) and reached by a route over a
+  grid of half-unit cells round its blanket (`RoamField`: A*, eight ways, corners pulled straight where a
+  straight line costs no more), laid afresh for each leg from the scenery's footprints (`SceneryRules`), the
+  picnic things, the other cats and where they are going; a cell's cost may be lowered where cats like
+  walking (`Village.liking`, nil until the meadow paints paths). A walk or a run moves the cat on only by its
+  step's lift (`Cat.stride`); a bound is carried by the village (`Cat.leap`), along and up on one clock. A
+  change of state that is not leisure calls it home (`Village.reconsider`, from `show(world)`). Nothing is
+  allocated per frame: routes, the grid and its heap are kept. A burst is not `still`, so the meadow wakes at
+  the calm rate (a run home at the full rate) and rests again at the next stop.
+- **The kettle** (`Kettle.swift`, `KettleDrawer`): its seat is laid as a cat's would be, its steam is a fixed
+  list of puffs, and a simmer is `still`, so a dev server running for hours lets the meadow rest at its slow
+  tick like the fireflies; only the first half-minute's boil, a whistle and a snuffed flame keep it awake.
 - Frames come from a `CAMetalDisplayLink`, at the rate the display presents. The render scale adapts to
   hold the frame budget. The scene's per-frame update allocates nothing, and a test checks this.
 - After 5 seconds with nothing new the meadow rests at 12 Hz, its own time slowed to 0.4 so each frame
@@ -539,7 +552,10 @@ to-do ring, like its close button, is its `TabMouseView`'s to click, from the sa
 owns the ring's list, opened anew by a click while the last one closes); a Claude stand-in started through a shell function of the user's kind
 with `--settings`, every event's real hook commands, and what would be heard and shown in each place a
 person can be (`alerts`); every way of choosing on the right, with the meadow moved away first, and agent
-events that must not move it (`meadow`); and every divider dragged, the window resized and each region
+events that must not move it, then the meadow's own life from real state changes: a real shell's kettle
+through `sleep`, `false` out of sight and a Claude stand-in in that terminal, and a stand-in Claude's cat going
+out into the grass, clicked there, called home by hooks and napping out there, with pictures in each built-in
+theme (`meadow`); and every divider dragged, the window resized and each region
 shown and hidden, looked at mid-drag (`resize`); a tab split into panes, as the owner used it, with real
 clicks on its segments, their close buttons, middle clicks, ⌘W, Close Tab and ⌘Z, "+" after the last tab,
 the panes' headers, and the line between panes and the focused header read from the drawn window in

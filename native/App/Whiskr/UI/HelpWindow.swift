@@ -60,6 +60,9 @@ private struct HelpPage: View {
                              text: String(localized: "Head down at a book, a laptop or a lever: no mark, nothing to do."))
                     HelpMark(mark: nil, title: String(localized: "Idle"),
                              text: String(localized: "A loaf, then curled up asleep after ten minutes."))
+                    HelpMark(mark: nil, title: String(localized: "Wandering", comment: "Help page: an idle cat out in the grass"),
+                             text: String(localized: "Now and then an idle cat wanders the grass near its blanket, and runs home the moment Claude has work. Settings › Meadow can keep cats on their blankets.",
+                                          comment: "Help page: idle cats wander"))
                     HelpMark(mark: nil, title: String(localized: "Helpers", comment: "Help page: what the small cats are"),
                              text: String(localized: "Small cats beside a Claude are its helpers. Click one to see its terminal or its story.", comment: "Help page: helpers"))
                 }

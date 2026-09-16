@@ -140,8 +140,8 @@ Each state differs by **silhouette**, **mark**, **colour** (on the mark only, ne
 | **Error** (turn ended on an error) | Sitting, facing you, ears back | "×" bubble | Vermillion | One hop, then still |
 | **Finished** (not yet seen) | Sitting upright, tail wrapped | "✓" bubble | Blue `#0072B2` | None |
 | **Working** | Head down at a prop within paw's reach: book (reading), laptop (editing), lever (running), magnifier (searching), chin on paw (thinking), sorting (tidying), watching helpers (supervising) | None | None | A small anchored loop; never travels across the meadow |
-| **Idle** (seen) | A loaf | None | None | Breathing |
-| **Napping** (idle over 10 minutes) | Curled | A small "z" | Grey | As idle |
+| **Idle** (seen) | A loaf | None | None | Breathing; now and then a wander in the grass by its blanket (below) |
+| **Napping** (idle a while) | Curled, where it is | A small "z" | Grey | As idle |
 
 - **Finished until seen.** A finished turn keeps its "✓" until its pane has been on screen for a second.
 - **The same marks everywhere.** Tabs, the workspace button, Go to and the Dock use the same marks.
@@ -464,10 +464,36 @@ most of the time.
   strokes, refusals with their reason, undo and redo are announced. With Increase Contrast the rings, the
   circles, the picnic ground's outline and the tray's line are drawn stronger.
 
+### Idle cats wander
+
+A cat whose Claude has nothing for it (idle or awake at its prompt, no request, no finished turn unseen, no
+error) gets up after a while and wanders near its blanket, as real cats do, in this cat's own way: its paws are
+short fixed nubs, so a walk is a waddle that lifts it a little with each step, a bound through the long grass
+is a few hops with a look round between, and it moves on only while it is up off its paws, so it never slides.
+It turns before it sets off. At each stop it sits up to watch whatever flies past, sniffs a flower, or lies as
+a loaf, then goes on or wanders home. Out in short bursts, with long still stops between, so the meadow rests
+between them as it always did.
+
+- **Its own patch.** Within a few cat-lengths of its blanket's edge, nearer its blanket than any other, clear
+  of other blankets and every flag, and in view: whose cat it is always reads, and its blanket's flag stays on
+  its blanket. It goes round trees, stones, logs, flowers, whatever the meadow holds, the picnic things and
+  other cats, never through them. Helpers do the same round their boss's blanket. Routes may prefer ground
+  cats like (paths, stepping stones) when the meadow has some.
+- **Work calls it home.** The moment its Claude works, asks, finishes or fails, it turns and runs home, ears
+  flat, low fast bounds, and skids to a stop on its blanket, then takes up its pose. Nothing waits for the
+  run: its bubble is up as it runs, and the tab, the status bar and the blanket's ring say so at once.
+- **Napping anywhere.** Long idle, it naps where it is, or first goes to a tree's shade or back to its
+  blanket, circling once before it curls up. Woken by work, it runs home the same way.
+- **Off** with Settings › Meadow › "Cats wander when idle", Reduce Motion, or the animation off: cats then stay
+  on their blankets, and one out comes home at once.
+- A cat out in the grass is pointed at, clicked (choosing its terminal) and read by VoiceOver as on its
+  blanket.
+
 ### Motion
 
 - Every cute reaction (a cat arriving or trotting off, a butterfly landing on a napper, a glance at the
-  pointer) is anchored to its spot, lasts 2 seconds or less, and never plays on a cat with a request.
+  pointer) is anchored to its spot, lasts 2 seconds or less, and never plays on a cat with a request. An idle
+  cat's wander (above) is the one outing, and it ends the moment anything is asked of it.
 - Nothing cute in the top bar, tab row, status bar, panes, menus, notifications, the answer card or the
   palette.
 - While you type, ambient reactions wait and only state changes animate. With Reduce Motion, hops, walks

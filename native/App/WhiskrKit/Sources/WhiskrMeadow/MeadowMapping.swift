@@ -241,7 +241,7 @@ public enum MeadowMapping {
         }
         return MeadowSettings(map: MeadowSettings.Map(rawValue: world.map.rawValue) ?? .meadow, arrangement: arrangement, timeOfDay: time,
                               weather: world.realWeather ? weather : nil, place: place(world, timeZone: timeZone), effects: effects, picnic: picnic,
-                              flagSize: Float(world.flagSize.scale), chrome: chrome)
+                              flagSize: Float(world.flagSize.scale), chrome: chrome, catsWander: world.catsWander)
     }
 
     /// Where the sun and moon are reckoned for: where real weather last found you (kept even while weather

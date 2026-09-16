@@ -64,9 +64,15 @@ struct WorldSettingsView: View {
 
             Section {
                 Toggle(String(localized: "Animate the meadow"), isOn: $store.animatesMeadow)
+                Toggle(String(localized: "Cats wander when idle", comment: "Settings › Meadow: cats with nothing to do wander the grass near their blankets"),
+                       isOn: $store.settings.catsWander)
             } footer: {
-                Text(String(localized: "Off, the grass, butterflies and cats' little movements hold still, and there is no lightning. Cats still change as Claude does. Also in View › Animate Meadow."))
-                    .font(.callout).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: "Off, the grass, butterflies and cats' little movements hold still, and there is no lightning. Cats still change as Claude does. Also in View › Animate Meadow."))
+                    Text(String(localized: "A cat with nothing to do now and then wanders the grass near its blanket, and runs home the moment Claude has work. Never with Reduce Motion or the animation off.",
+                                comment: "Settings › Meadow: what Cats wander when idle does"))
+                }
+                .font(.callout).foregroundStyle(.secondary)
             }
 
             Section {

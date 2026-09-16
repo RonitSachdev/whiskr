@@ -17,6 +17,18 @@ Nothing has been released yet. This is what the first release will contain.
   their Claude. Requests ("!"), errors ("×") and finished turns ("✓") read by shape and mark as well as
   colour. Day, night with fireflies, and optional real weather. The meadow can also be shown as a plain
   list.
+- Idle cats wander: a cat whose Claude has nothing for it now and then gets up and wanders the grass near its
+  blanket, a waddle or a few hops at a time, stopping to watch a butterfly, sniff a flower or lie as a loaf,
+  going round trees, stones, flowers, picnic things and other cats and keeping to its own patch, in view.
+  The moment Claude has work it runs home, ears back, and skids onto its blanket; its bubble and the tab say
+  so from the start. Long idle, it naps out there, in a tree's shade or back on its blanket. Settings › Meadow
+  › Cats wander when idle (on by default); never with Reduce Motion or the meadow's animation off. The meadow
+  still rests between outings.
+- A workspace of plain terminals has a camp kettle on its blanket instead of an empty cloth: cold at the
+  prompt, lit and steaming while a command runs (calming to a simmer for a dev server), a whistle of steam
+  when it ends well, and a little red flag when it fails until you look at that terminal, all from the shell's
+  command marks. It makes way for the cat when Claude starts there. VoiceOver reads "Command running",
+  "Command finished" or "Command failed".
 - Every one of the meadow's twelve landmark trees dapples the ground beneath it with moving shade; the
   four farthest, out in the haze, used to stand in unbroken sun.
 - Edit Meadow (View › Edit Meadow, ⌃⌘E; also the grass's menu, Settings › Meadow and Go to): the

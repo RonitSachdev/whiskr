@@ -70,6 +70,7 @@
 		658A93B92312CE372EE92C2E /* DebugFlowFilesEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FB15C9944CE957A6183B53E /* DebugFlowFilesEditing.swift */; };
 		65CD28DAD159339C50BD3CA5 /* DebugFlowAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E2F1D8681271BA1723B7AE3 /* DebugFlowAlerts.swift */; };
 		666B4C99B46D56A14DEE5EE7 /* PaneCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57771ED894C51D18CAF74A85 /* PaneCard.swift */; };
+		668C638E4C6E65DE0557C0A2 /* DebugFlowMeadowLife.swift in Sources */ = {isa = PBXBuildFile; fileRef = D049141FC0198B1DDB791FA4 /* DebugFlowMeadowLife.swift */; };
 		66D61EECC5120FFA987A9F5A /* MarkdownPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280B20FC4D6085BAB176BFB1 /* MarkdownPreview.swift */; };
 		66DE6BA697A8A3774B05A2D3 /* TerminalFindBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FFBFF357477D8A54A1E1BC3 /* TerminalFindBar.swift */; };
 		67C0DFBAD73277D1A0324AC3 /* CustomSoundFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2813644095909713D08A1E2A /* CustomSoundFiles.swift */; };
@@ -292,6 +293,7 @@
 		C374C75164CD8E5432189904 /* Workbench.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workbench.swift; sourceTree = "<group>"; };
 		C3A71D59C3405AA18C674971 /* AnswerCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerCard.swift; sourceTree = "<group>"; };
 		C8B8DC6839F0E423384790AF /* CodeEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditorView.swift; sourceTree = "<group>"; };
+		D049141FC0198B1DDB791FA4 /* DebugFlowMeadowLife.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugFlowMeadowLife.swift; sourceTree = "<group>"; };
 		D4225CE163952F380224CB7D /* TerminalRegionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalRegionController.swift; sourceTree = "<group>"; };
 		D557FA5E2FDCE1CC9617877C /* EditorPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPreferences.swift; sourceTree = "<group>"; };
 		D6D9B747C5F81E8A4E6FB6D9 /* TabSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSwitcher.swift; sourceTree = "<group>"; };
@@ -592,6 +594,7 @@
 				B53354B621AC1F586A9E61CD /* DebugFlowLayout.swift */,
 				AFD9713325C604E6911E09CF /* DebugFlowLayoutSettings.swift */,
 				BF605AF19F1AD5109092F3FA /* DebugFlowMeadowFollow.swift */,
+				D049141FC0198B1DDB791FA4 /* DebugFlowMeadowLife.swift */,
 				D83B5515C5AAC6536D88D49B /* DebugFlowResize.swift */,
 				FC94F632D27A14E50D1F40CA /* DebugFlowRobust.swift */,
 				16EE546CA9542BC8BEAFC870 /* DebugFlowSky.swift */,
@@ -805,6 +808,7 @@
 				F18329AC854CE17B551A662F /* DebugFlowLayout.swift in Sources */,
 				F2827B6E4E4D48C241A78246 /* DebugFlowLayoutSettings.swift in Sources */,
 				D0FD837581E0F40CA422752C /* DebugFlowMeadowFollow.swift in Sources */,
+				668C638E4C6E65DE0557C0A2 /* DebugFlowMeadowLife.swift in Sources */,
 				5C297B869F2AF5D4DD7222B1 /* DebugFlowResize.swift in Sources */,
 				14C093EECE52824B077BEAF5 /* DebugFlowRobust.swift in Sources */,
 				74A662713454C5699D6082AB /* DebugFlowSky.swift in Sources */,

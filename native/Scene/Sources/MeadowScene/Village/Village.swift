@@ -69,13 +69,16 @@ final class Actor {
     var helpers: [Actor] = []
     /// A walk on its blanket under way: being handed its task, reporting, saying goodbye (`Errand`).
     var errand: Errand?
+    /// Its life off the blanket while its Claude has nothing for it (`Roam.swift`).
+    var roam: Roam
     var head = Vec3.zero
     /// Which way from the face its bubble sits on screen (a unit vector, y down), eased; whether it was
     /// placed last frame.
     var bubbleSide = Village.bubbleSides[0]
     var bubbleSeen = false
-    init(cat: Cat, view: MeadowAgent, shownAt: Float, shownSize: Float) {
+    init(cat: Cat, view: MeadowAgent, shownAt: Float, shownSize: Float, seed: String) {
         self.cat = cat; self.view = view; self.shownAt = shownAt; self.shownSize = shownSize
+        roam = Roam(seed: seed)
         queue.reserveCapacity(4)
     }
 }
@@ -166,16 +169,34 @@ final class Village {
     private(set) var plots: [Plot] = []
     private var byID: [String: Plot] = [:]
     private(set) var time: Float = 0
-    /// Reduce Motion: helpers do not trot and notes do not float; cats only look at each other.
-    var reduceMotion = false
+    /// Reduce Motion: helpers do not trot and notes do not float; cats only look at each other, and stay on
+    /// their blankets.
+    var reduceMotion = false { didSet { if !wanders { bringEveryoneHome() } } }
     /// Ambient motion on (`MeadowView.animatesAmbient`). Off, every cat's own clock stops (`Cat.frozen`)
     /// and the ladybirds keep still; arrivals, departures and changes of state still show.
     var ambient = true {
         didSet {
             guard ambient != oldValue else { return }
             for plot in plots { for actor in plot.actors.values { actor.cat.frozen = !ambient } }
+            if !wanders { bringEveryoneHome() }
         }
     }
+    /// Cats wander when idle (Settings › Meadow; `MeadowSettings.catsWander`), with the motion playing and
+    /// Reduce Motion off (`wanders`). Off, they stay on their blankets.
+    var catsWander = true { didSet { if !wanders { bringEveryoneHome() } } }
+    /// How much cats like walking on a spot of ground (x, z), 0 (plain grass) to 1, for the routes they take:
+    /// painted paths and stepping stones, say. Nil: all ground alike.
+    var liking: ((Vec2) -> Float)?
+    /// What cats out in the grass go round, sniff and nap under (`lay`): the scenery's footprints, its
+    /// flowers' blooms (x, height, z) and its trees' shade (x, z, reach).
+    var footing: [SceneryRules.Circle] = []
+    var blooms: [Vec3] = []
+    var treeShade: [Vec3] = []
+    /// The grid a route is found on, kept from route to route; and the camera's projection as it was when
+    /// last laid (`Roam.swift`).
+    var roamField = RoamField()
+    var screenMatrix = Mat4.identity
+    var screenSize = Vec2(1, 1)
     /// Reduce Motion or ambient motion off: no trots or floating notes, and a helper appears in its seat
     /// rather than walking there from its boss.
     var hushed: Bool { reduceMotion || !ambient }
@@ -359,7 +380,8 @@ final class Village {
                 let cat = Cat(seed: "\(view.id)/\(agent.id)")
                 cat.frozen = !ambient
                 cat.setActivity(effective)
-                let actor = Actor(cat: cat, view: agent, shownAt: time, shownSize: sizeAt(depthOf[agent.id] ?? 0))
+                let actor = Actor(cat: cat, view: agent, shownAt: time, shownSize: sizeAt(depthOf[agent.id] ?? 0), seed: "\(view.id)/\(agent.id)")
+                actor.roam.until = time + actor.roam.pick(ROAM_FIRST_REST.least, ROAM_FIRST_REST.more)
                 plot.actors[agent.id] = actor
                 plot.order.append(agent.id)
                 arrivals.append(actor)
@@ -368,6 +390,8 @@ final class Village {
             actor.depth = depthOf[agent.id] ?? 0
             actor.cat.needsYou = agent.needsYou
             actor.cat.doneUnseen = agent.doneUnseen
+            // Work, a request or a word from its Claude: a cat out in the grass runs home for it.
+            reconsider(actor, in: plot)
         }
         // Lanterns: lit while running, dark when finished, red if failed.
         let lanternIDs = Set(view.lanterns.map(\.id))
@@ -1001,7 +1025,7 @@ final class Village {
                 if going && ambient { actor.cat.spin += dt * 11 }
                 actor.pop.spring(going ? 0 : 1, 180, 16, dt)
                 actor.shownSize += (actor.size - actor.shownSize) * min(1, dt * 5)
-                if actor.errand != nil { runErrand(actor, in: plot) } else { actor.rootLocal += (actor.spot - actor.rootLocal) * min(1, dt * 3.5) }
+                if actor.errand != nil { runErrand(actor, in: plot) } else { roam(actor, in: plot, dt, stage) }
                 actor.cat.position = plot.group + actor.rootLocal
                 actor.cat.size = max(actor.pop.x, 0.001) * actor.shownSize
                 actor.cat.update(dt, around)
@@ -1028,6 +1052,8 @@ final class Village {
         if !notes.isEmpty || !waitingNotes.isEmpty { return false }
         for plot in plots {
             for actor in plot.actors.values where actor.leaving || actor.errand != nil || actor.pop.x < 0.98 || !actor.cat.restful { return false }
+            // Running home for work is drawn at the full rate.
+            for actor in plot.actors.values where actor.roam.phase == .recalled || actor.roam.phase == .settling { return false }
         }
         return true
     }
@@ -1317,11 +1343,13 @@ final class Village {
         return best
     }
 
-    /// What the camera should always be able to see, as balls: each blanket with its cats, its flag, and
-    /// the chosen cat's head.
+    /// What the camera should always be able to see, as balls: each blanket with its cats, its flag, every
+    /// cat out in the grass, and the chosen cat's head.
     func sights(into balls: inout [Ball]) -> Int {
-        // Written into a list kept from frame to frame; it only grows when blankets are added.
-        let needed = plots.count * 2 + 1
+        // Written into a list kept from frame to frame; it only grows when blankets are added or cats go out.
+        var out = 0
+        for plot in plots { for actor in plot.actors.values where actor.roam.out { out += 1 } }
+        let needed = plots.count * 2 + 1 + out
         if balls.count < needed { balls.append(contentsOf: repeatElement(Ball(center: .zero, radius: 0), count: needed - balls.count)) }
         var n = 0
         for plot in plots {
@@ -1329,6 +1357,11 @@ final class Village {
             // Its flag too, so a tree in front of the name fades as well.
             balls[n + 1] = Ball(center: plot.flagAt + Vec3(0, plot.flagHeight * 0.5, 0), radius: plot.flagHeight * plot.label.aspect * 0.5)
             n += 2
+            // A tree between you and a cat out in the grass fades too.
+            for actor in plot.actors.values where actor.roam.out {
+                balls[n] = Ball(center: actor.cat.position + Vec3(0, 1.1 * actor.shownSize, 0), radius: 1.3 * actor.shownSize)
+                n += 1
+            }
         }
         if case .cat(let b, let a) = chosen, let actor = byID[b]?.actors[a], !actor.leaving {
             balls[n] = Ball(center: actor.head, radius: 1)

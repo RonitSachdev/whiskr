@@ -13,6 +13,7 @@ public typealias Mat4 = simd_float4x4
 @inline(__always) func lerp(_ a: Float, _ b: Float, _ t: Float) -> Float { a + (b - a) * t }
 @inline(__always) func lerp(_ a: Double, _ b: Double, _ t: Double) -> Double { a + (b - a) * t }
 @inline(__always) func lerp(_ a: Vec3, _ b: Vec3, _ t: Float) -> Vec3 { a + (b - a) * t }
+@inline(__always) func lerp(_ a: Vec2, _ b: Vec2, _ t: Float) -> Vec2 { a + (b - a) * t }
 
 /// three.js `MathUtils.smoothstep(x, min, max)` argument order.
 @inline(__always) public func smoothstep(_ x: Float, _ e0: Float, _ e1: Float) -> Float {

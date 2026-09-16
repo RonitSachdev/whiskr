@@ -183,6 +183,32 @@ private func countingAllocations(_ body: () -> Void) -> Int {
         #expect(n == 0, "\(n) allocations in 240 updates")
     }
 
+    /// Kettles boiling, whistling and flagged, and cats out in the grass (planning their routes, bounding,
+    /// walking, running home) cost a frame nothing either.
+    @Test(.enabled(if: optimized, "allocation counts mean something only in an optimised build"))
+    func kettlesAndRoamingAllocateNothing() {
+        let view = MeadowView(frame: NSRect(x: 0, y: 0, width: 900, height: 600))
+        view.settings = MeadowSettings(timeOfDay: .night)
+        func world(_ command: MeadowCommand, _ activity: AgentActivity) -> MeadowWorld {
+            MeadowWorld(machines: [MeadowMachine(id: "m", name: "m", spaces: [
+                MeadowSpace(id: "a", name: "a", blankets: [MeadowBlanket(id: "a", title: "a", color: .account(0), agents: [
+                    MeadowAgent(id: "main", activity: activity), MeadowAgent(id: "h", parentID: "main", activity: .awake)])]),
+                MeadowSpace(id: "k", name: "k", blankets: [MeadowBlanket(id: "k", title: "k", color: .account(1),
+                                                                         lanterns: [MeadowLantern(id: "t", command: command), MeadowLantern(id: "u", command: .failed)])]),
+            ])])
+        }
+        view.world = world(.running, .idle)
+        view.frame(nil, besidePanelWidth: 0, animated: false)
+        view.advance(seconds: 3)
+        for plot in view.stage.village!.plots { for actor in plot.actors.values { actor.roam.until = 0 } }
+        view.advance(seconds: 2)
+        let roaming = countingAllocations { for _ in 0..<2400 { view.stage.update(1.0 / 120) } }
+        view.world = world(.finished, .reading)
+        view.stage.update(1.0 / 120)
+        let called = countingAllocations { for _ in 0..<480 { view.stage.update(1.0 / 120) } }
+        #expect(roaming == 0 && called == 0, "\(roaming) allocations while roaming, \(called) while running home and whistling")
+    }
+
     /// A whole frame, encoding included. Metal's own per-frame objects (command buffer, encoder, its
     /// completion block) are counted too; this reports them so a change in our share shows.
     @Test(.enabled(if: optimized, "allocation counts mean something only in an optimised build"))

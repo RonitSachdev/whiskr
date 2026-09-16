@@ -337,10 +337,14 @@ public struct MeadowSettings: Hashable, Sendable {
     public var flagSize: Float
     /// The host app's theme colours for flags, rings and the "needs you" bubble.
     public var chrome: MeadowChrome
+    /// Cats whose Claude has nothing for them wander the grass near their blankets now and then, and run
+    /// home when work comes (never with Reduce Motion or the animation off). Off, they stay on their blankets.
+    public var catsWander: Bool
 
     public init(map: Map = .meadow, arrangement: Arrangement = .picnic, timeOfDay: TimeOfDay = .followClock, weather: MeadowWeather? = nil,
-                place: MeadowPlace? = nil, effects: Effects = .all, picnic: Picnic = .hamper, flagSize: Float = 1, chrome: MeadowChrome = .standard) {
+                place: MeadowPlace? = nil, effects: Effects = .all, picnic: Picnic = .hamper, flagSize: Float = 1, chrome: MeadowChrome = .standard,
+                catsWander: Bool = true) {
         self.map = map; self.arrangement = arrangement; self.timeOfDay = timeOfDay; self.weather = weather; self.place = place
-        self.effects = effects; self.picnic = picnic; self.flagSize = flagSize; self.chrome = chrome
+        self.effects = effects; self.picnic = picnic; self.flagSize = flagSize; self.chrome = chrome; self.catsWander = catsWander
     }
 }

@@ -53,6 +53,7 @@ final class Stage {
             let meadow = Meadow()
             let village = Village()
             village.obstacles = meadow.obstacles
+            village.lay(meadow.scenery, shade: meadow.shade)
             self.meadow = meadow
             self.village = village
             surroundings.critters = meadow.critters.spots
@@ -74,6 +75,7 @@ final class Stage {
         }
         village?.flagSize = settings.flagSize
         village?.setPicnic(settings.picnic)
+        village?.catsWander = settings.catsWander
         if let village, village.arrangement != settings.arrangement {
             village.arrangement = settings.arrangement
             if settings.arrangement == .column {
@@ -228,6 +230,7 @@ final class Stage {
         guard let meadow, let village else { return }
         meadow.show(scenery)
         village.obstacles = meadow.obstacles
+        village.lay(meadow.scenery, shade: meadow.shade)
     }
 
     func show(_ world: MeadowWorld) {

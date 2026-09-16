@@ -33,7 +33,8 @@ private enum Fidget: Int, CaseIterable {
 }
 
 private let PUPIL: Float = 0.172
-private let GRAVITY: Float = -26
+/// How fast a hop falls back, units a second squared (a bound through the grass is timed by it, `Roam.swift`).
+let GRAVITY: Float = -26
 private let TAILS: [[Vec3]] = [
     [Vec3(0.25, 0.3, -0.5), Vec3(0.85, 0.16, -0.8), Vec3(1.32, 0.42, -0.7), Vec3(1.45, 0.98, -0.55), Vec3(1.4, 1.52, -0.45)],
     [Vec3(0.25, 0.3, -0.5), Vec3(0.7, 0.25, -0.85), Vec3(1.0, 0.7, -0.88), Vec3(1.06, 1.4, -0.78), Vec3(1.0, 2.0, -0.68)],
@@ -79,6 +80,43 @@ final class Cat: Performer {
     /// keep their shape. Whoever stages the cat moves it there; nil while it simply sits.
     var going: Vec3? = nil
     var trotting = false
+    /// Out in the grass while its Claude has nothing for it (`Roam.swift`): how it gets about. Whoever moves
+    /// it advances `stride`, the step's phase, and moves it on only while its body is up off its paws, so a
+    /// step never slides; a bound is one of its hops (`jump`), carried forward while it is in the air.
+    var gait = Gait.none
+    var stride: Float = 0
+    /// A bound under way: how high it is and how fast it rises (falling: below 0), given every frame of it.
+    var leap: (height: Float, speed: Float)? = nil
+    /// What it does at a stop out in the grass; nil on its blanket or on the move.
+    var outing: Outing? = nil
+
+    enum Gait { case none, walk, bound, run }
+    enum Outing: Equatable {
+        /// Sitting up, looking about and following whatever flies past.
+        case watch
+        /// Leaning in to a flower, nose to it.
+        case sniff(Vec3)
+        /// Down as a loaf in the grass.
+        case loaf
+    }
+    /// How each gait moves the body: its bounce with every step, its squash on landing, its rock from side
+    /// to side, its lean into the way it goes, and how flat its ears lie.
+    private struct Carriage {
+        var bounce: Float = 0, landing: Float = 0, rock: Float = 0, lean: Float = 0, ears: Float = 0
+        static func of(_ gait: Gait) -> Carriage {
+            switch gait {
+            case .none, .bound: Carriage()
+            // A waddle: little lifts, rolling from side to side on its short paws.
+            case .walk: Carriage(bounce: 0.13, landing: 0.05, rock: 0.11, lean: 0.06)
+            // Urgent: big low bounds, leaning hard into it, ears flat back.
+            case .run: Carriage(bounce: 0.42, landing: 0.1, rock: 0.05, lean: 0.28, ears: 0.7)
+            }
+        }
+        mutating func ease(toward c: Carriage, _ k: Float) {
+            bounce += (c.bounce - bounce) * k; landing += (c.landing - landing) * k; rock += (c.rock - rock) * k
+            lean += (c.lean - lean) * k; ears += (c.ears - ears) * k
+        }
+    }
     /// Ambient motion is switched off (`MeadowView.animatesAmbient`): its own clock stops, so breathing,
     /// blinks, twitches, fidgets, glances, the tail and the loop of its work all hold still, and it never
     /// hops. A change of state still shows, easing into the new pose. Its clock carries on from where it
@@ -141,6 +179,11 @@ final class Cat: Performer {
     private var nodAt: Float = -10
     private var trot: Float = 0, trotPhase: Float = 0
     private var wasGoing = false
+    /// How far into a gait of its own it is (eased 0…1), and that gait's carriage, eased from the last.
+    private var moving: Float = 0
+    private var carriage = Carriage()
+    /// When it last skidded to a stop on arriving at a run.
+    private var skidAt: Float = -10
     private var fidget = Fidget.wash, fidgetFrom: Float = 0, fidgetUntil: Float = 0, nextFidget: Float
     private var nextStartle: Float = 0, shakeUntil: Float = 0, wiggleUntil: Float = 0
     /// Which way this cat cocks its head, so a crowd doesn't all tilt the same way.
@@ -233,6 +276,28 @@ final class Cat: Performer {
 
     func hop() { jump(7.5, 2.5) }
 
+    /// Starts one of its fidgets now (`wash`, `stretch`, `nibble`, `sip`, `wiggle`, `peek`), for pictures of each.
+    func fidget(_ name: String) {
+        guard let kind = Fidget.allCases.first(where: { "\($0)" == name }) else { return }
+        fidget = kind
+        fidgetFrom = time
+        fidgetUntil = time + kind.seconds
+        nextFidget = fidgetUntil + 5
+    }
+
+    /// Arriving at a run: it skids, leaning back on its paws and squashing down, before it settles.
+    func skid() {
+        if frozen { return }
+        skidAt = time
+        squash.v = -2.2
+    }
+
+    /// How far its body is turned from facing `spot`, in radians: a cat turns before it sets off.
+    func turned(from spot: Vec3) -> Float {
+        guard hypot(spot.x - position.x, spot.z - position.z) > 0.05 else { return 0 }
+        return abs(turnFrom(heading, atan2(spot.x - position.x, spot.z - position.z)))
+    }
+
     func jump(_ speed: Float, _ stretch: Float) {
         if frozen { return }
         if height == 0 { velocity = speed }
@@ -266,11 +331,13 @@ final class Cat: Performer {
     var still: Bool {
         height == 0 && velocity == 0 && trot < 0.01 && going == nil && time >= attendUntil && time >= listenUntil
             && time >= shakeUntil && time >= wiggleUntil && time - nodAt >= 0.5 && abs(turnFrom(heading, facing ?? heading)) < 0.05
+            && gait == .none && moving < 0.01 && time - skidAt >= 0.5
     }
     /// Nothing on it moves fast, so the scene can be drawn at a gentler pace.
     var restful: Bool {
-        if needsYou || trot > 0.01 || time < attendUntil { return false }
-        switch activity { case .awake, .idle, .napping, .supervising, .thinking: return height == 0
+        if needsYou || trot > 0.01 || time < attendUntil || gait == .run || time - skidAt < 0.5 { return false }
+        // A walk or a bound through the grass is unhurried: the calm rate draws it well.
+        switch activity { case .awake, .idle, .napping, .supervising, .thinking: return height == 0 || gait == .bound
         default: return false }
     }
 
@@ -302,6 +369,8 @@ final class Cat: Performer {
         heading += turnFrom(heading, facing!) * min(1, dt * (errand == nil ? 5 : 9))
         trot += ((trotting ? 1 : 0) - trot) * min(1, dt * 8)
         trotPhase += dt * 11 * trot
+        moving += ((gait == .none ? 0 : 1) - moving) * min(1, dt * 8)
+        carriage.ease(toward: .of(gait), min(1, dt * 8))
         let turnY = heading + spin
 
         var want = Want()
@@ -312,17 +381,23 @@ final class Cat: Performer {
             States.act(acting, &want, t - started, self)
         }
         whims(&want, t, around)
-        // On an errand, or attending to someone: sitting up, paws free, looking where it goes or at them.
-        if (t < attendUntil || trot > 0.05 || going != nil) && !needsYou {
-            want.aim = t < attendUntil ? .at(attending) : .angles(0, 0.08)
+        // On an errand, or attending to someone: sitting up, paws free, looking where it goes or at them. On its
+        // way across the grass the same, whatever it is called back for (its bubble already up), and running
+        // home with its ears flat.
+        if (t < attendUntil || trot > 0.05 || going != nil) && !needsYou || gait != .none {
+            want.aim = gait == .run ? .angles(0, 0.14) : t < attendUntil && !needsYou ? .at(attending) : .angles(0, 0.08)
             want.look = Vec2(0, 0)
-            want.earPerk = 1
+            want.earPerk = gait == .run ? 0 : 1
+            want.earFlat = max(want.earFlat, carriage.ears * moving)
             want.lid = 1
             want.prop = nil
             want.hands = Paws()
             want.prone = 0
             want.lie = 0
             want.tall = max(want.tall, 0.02)
+            if gait == .run || gait == .bound { want.tail = .up }
+        } else if let outing, !isNapping, !needsYou, !doneUnseen, !petting {
+            Self.out(outing, &want, t, around, near: head, size: size)
         } else if t < listenUntil && !needsYou && !doneUnseen {
             want.aim = .camera
             want.look = Vec2(0, 0)
@@ -336,8 +411,14 @@ final class Cat: Performer {
         now.ease(toward: want, ease)
         if needsYou, want.bubble == .alert { want.bubble = .needsYou }
 
-        // Hop: stretch in the air, then a landing thump that jiggles out.
-        if height > 0 || velocity > 0 {
+        // Hop: stretch in the air, then a landing thump that jiggles out. A bound through the grass is carried
+        // by whoever moves the cat (`leap`), so it is up exactly while it is carried forward.
+        if let leap {
+            if height == 0 && leap.height > 0 { squash.v = 1.2 }
+            if leap.height <= 0 && height > 0 { squash.v = min(leap.speed * 0.5, -3) }
+            height = max(0, leap.height)
+            velocity = height > 0 ? leap.speed : 0
+        } else if height > 0 || velocity > 0 {
             velocity += GRAVITY * dt
             height += velocity * dt
             if height <= 0 {
@@ -353,9 +434,15 @@ final class Cat: Performer {
         // stretches out on its front, leaning over whatever it holds, shifted back the same way.
         // Trotting: a bounce with every step, the whole body lifting off its paws (which keep their shape),
         // squashing a little as it lands, leaning into the way it goes and rocking side to side.
-        let step = abs(sin(trotPhase))
-        let bounce = step * 0.3 * trot, landing = (1 - step) * 0.07 * trot
-        let tip = now.lie * 1.3 * lean + sin(trotPhase) * 0.07 * trot, forward = now.prone * 0.55 + 0.12 * trot
+        // Out in the grass, the same with its own gait's carriage, stepping with `stride`; a bound pitches the
+        // body with the leap, nose up as it rises and down as it comes in to land; a skid leans it back.
+        let step = abs(sin(trotPhase)), pace = abs(sin(stride))
+        let bounce = step * 0.3 * trot + pace * carriage.bounce * moving
+        let landing = (1 - step) * 0.07 * trot + (1 - pace) * carriage.landing * moving
+        let leap = gait == .bound ? clamp(-velocity * 0.03, -0.2, 0.22) : 0
+        let skidding = sin(.pi * clamp((t - skidAt) / 0.45, 0, 1))
+        let tip = now.lie * 1.3 * lean + sin(trotPhase) * 0.07 * trot + sin(stride) * carriage.rock * moving
+        let forward = now.prone * 0.55 + 0.12 * trot + carriage.lean * moving + leap - 0.26 * skidding
         let bodyPos = Vec3(sin(t * 60) * 0.014 * now.shiver + sin(tip) * 0.9, height + bounce, -sin(forward) * 0.7)
         let bodyScale = Vec3(1 - tall * 0.55 + landing * 0.5, 1 + tall + sin(t * 2.1) * now.breath - landing, 1 - tall * 0.55 + landing * 0.5)
         rootMatrix = .translation(position) * .rotationY(turnY) * .scale(size)
@@ -375,7 +462,8 @@ final class Cat: Performer {
         case .at(let spot): aim = aimToward(spot)
         }
         // Whatever it attends to, it keeps its face to you: asleep, or on its way somewhere, it may not.
-        if !isNapping && going == nil && trot < 0.05 { aim = facingYou(aim, turnY: turnY, forward: forward, tip: tip, around) }
+        // Walking or bounding about it glances back at you, as far as its neck turns; running home it looks ahead.
+        if !isNapping && (going == nil && trot < 0.05 || gait == .walk || gait == .bound) { aim = facingYou(aim, turnY: turnY, forward: forward, tip: tip, around) }
         // A nod: the head dips once and comes back up.
         let nodding = clamp((t - nodAt) / 0.5, 0, 1)
         let dip = nodding > 0 && nodding < 1 ? sin(nodding * .pi) * 0.34 : 0
@@ -586,6 +674,52 @@ final class Cat: Performer {
         case .peek:
             // Has a slow look around.
             want.aim = .angles(sin(p * .pi * 2) * 0.7, 0.05)
+        }
+    }
+
+    /// What it does at a stop out in the grass (real cats' sit-and-watch, a sniff at a flower, a loaf in the
+    /// sun), over whatever its state asked: no prop and nothing in its paws out there.
+    private static func out(_ outing: Outing, _ want: inout Want, _ t: Float, _ around: Surroundings, near head: Vec3, size: Float) {
+        want.prop = nil
+        want.hands = Paws()
+        want.lie = 0
+        want.lid = 1
+        switch outing {
+        case .watch:
+            // Sitting up tall, tail wrapped round, looking about; anything on the wing nearby gets watched.
+            want.prone = 0
+            want.tall = 0.03
+            want.earPerk = 0.8
+            want.tail = .curl
+            want.tailAmp = 0.35
+            want.look = Vec2(0, 0)
+            var closest = 7 * size
+            var seen: Vec3?
+            for spot in around.critters where simd_distance(spot, head) < closest {
+                closest = simd_distance(spot, head)
+                seen = spot
+            }
+            want.aim = seen.map { .at($0) } ?? .angles(sin(t * 0.45) * 0.55, 0.02 + sin(t * 0.31) * 0.05)
+        case .sniff(let flower):
+            // Leaning in, nose down to the bloom, ears forward.
+            want.prone = 0.3
+            want.tall = -0.05
+            want.earPerk = 0.7
+            want.aim = .at(flower)
+            want.look = Vec2(0, -0.03)
+            want.tailSpeed = 2.2
+        case .loaf:
+            // Down as a loaf in the grass, as on its blanket.
+            want.prone = 0.45
+            want.tall = -0.06
+            want.aim = .camera
+            want.look = Vec2(0, 0)
+            want.earPerk = 0.3
+            want.sway = 0.008
+            want.breath = 0.018
+            want.tail = .curl
+            want.tailAmp = 0.1
+            want.tailSpeed = 0.7
         }
     }
 

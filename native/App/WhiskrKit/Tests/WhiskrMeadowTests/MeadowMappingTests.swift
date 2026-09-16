@@ -193,6 +193,38 @@ struct MeadowMappingTests {
         #expect(MeadowMapping.settings(world, weather: nil, chrome: .standard, stoppedAt: moment).timeOfDay == .day)
     }
 
+    @Test("Settings › Meadow's Cats wander when idle reaches the scene")
+    func catsWanderReachesTheScene() {
+        #expect(MeadowMapping.settings(WorldSettings(), weather: nil, chrome: .standard).catsWander)
+        #expect(!MeadowMapping.settings(WorldSettings(catsWander: false), weather: nil, chrome: .standard).catsWander)
+    }
+
+    @Test("a plain terminal's command marks reach its lantern, which the blanket's kettle reads", arguments: [
+        (SceneSnapshot.Command.idle, MeadowCommand.idle), (.running, .running), (.finished, .finished), (.failed, .failed),
+    ])
+    func commandReachesTheKettle(_ given: SceneSnapshot.Command, _ shown: MeadowCommand) {
+        let plain = SceneSnapshot(spaces: [SceneSnapshot.Space(id: space, name: "shop", folder: "/", status: nil, blankets: [
+            SceneSnapshot.Blanket(id: tab, title: "zsh", status: nil, panes: [SceneSnapshot.Pane(id: shell, name: "zsh", kind: .terminal(lantern: .dark, command: given))]),
+        ])])
+        let blanket = MeadowMapping.world(plain, accountColors: colors, machineName: "").blankets[0]
+        #expect(blanket.agents.isEmpty)
+        #expect(blanket.lanterns.map(\.command) == [shown])
+    }
+
+    @Test("the kettle VoiceOver reads: running and failed at once, finished only when neither; none beside a Claude")
+    func kettleWords() {
+        func blanket(_ commands: [SceneSnapshot.Command], claude: Bool = false) -> SceneSnapshot.Blanket {
+            var panes = commands.map { SceneSnapshot.Pane(id: UUID(), name: "zsh", kind: .terminal(lantern: .dark, command: $0)) }
+            if claude { panes.append(SceneSnapshot.Pane(id: UUID(), name: "Claude", kind: .agent(status: .working, accountIndex: 0, failed: false, agents: []))) }
+            return SceneSnapshot.Blanket(id: UUID(), title: "w", status: nil, panes: panes)
+        }
+        #expect(MeadowMapping.kettle(of: blanket([.idle]))! == (false, false, false))
+        #expect(MeadowMapping.kettle(of: blanket([.running, .failed]))! == (true, true, false))
+        #expect(MeadowMapping.kettle(of: blanket([.finished, .idle]))! == (false, false, true))
+        #expect(MeadowMapping.kettle(of: blanket([.running], claude: true)) == nil)
+        #expect(MeadowMapping.kettle(of: blanket([])) == nil)
+    }
+
     @Test("the theme's surface, text and red become the scene's chrome")
     func chrome() throws {
         let theme = try #require(BuiltInThemes.theme(id: BuiltInThemes.defaultID))

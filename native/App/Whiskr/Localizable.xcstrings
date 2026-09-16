@@ -769,6 +769,17 @@
         }
       }
     },
+    "A cat with nothing to do now and then wanders the grass near its blanket, and runs home the moment Claude has work. Never with Reduce Motion or the animation off.": {
+      "comment": "Settings › Meadow: what Cats wander when idle does",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "することのない猫は、ときどきブランケットの近くの草むらを歩き回り、Claude に仕事が入るとすぐに駆け戻ります。視差効果を減らしているときやアニメーションがオフのときは歩き回りません。"
+          }
+        }
+      }
+    },
     "A helper finished": {
       "comment": "Notification body: one of Claude's helpers is done",
       "localizations": {
@@ -1403,6 +1414,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "猫のもの"
+          }
+        }
+      }
+    },
+    "Cats wander when idle": {
+      "comment": "Settings › Meadow: cats with nothing to do wander the grass near their blankets",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暇な猫は散歩する"
           }
         }
       }
@@ -5000,6 +5022,17 @@
         }
       }
     },
+    "Now and then an idle cat wanders the grass near its blanket, and runs home the moment Claude has work. Settings › Meadow can keep cats on their blankets.": {
+      "comment": "Help page: idle cats wander",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暇な猫はときどきブランケットの近くの草むらを歩き回り、Claude に仕事が入るとすぐに駆け戻ります。設定の「草原」で猫をブランケットにとどめておけます。"
+          }
+        }
+      }
+    },
     "Oak": {
       "localizations": {
         "ja": {
@@ -8080,6 +8113,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "たった今から待機中"
+          }
+        }
+      }
+    },
+    "Wandering": {
+      "comment": "Help page: an idle cat out in the grass",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "散歩"
           }
         }
       }

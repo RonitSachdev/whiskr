@@ -504,7 +504,10 @@ final class PerfSuite {
         if wants("layout") { await layoutCheck() }
         if wants("robust") { await robustCheck() }
         if wants("alerts") { await alertsCheck() }
-        if wants("meadow") { await meadowFollowCheck() }
+        if wants("meadow") {
+            await meadowFollowCheck()
+            await meadowLifeCheck()
+        }
         if wants("chrome") { await chromeCheck() }
         if wants("resize") { await resizeCheck() }
         if wants("split") { await splitCheck() }

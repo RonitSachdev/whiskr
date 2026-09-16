@@ -173,15 +173,15 @@ extension PerfSuite {
         tabs.select(pane: "meadow")
         defer { window.orderOut(nil) }
         func switchesNow() -> [NSSwitch] { Self.controls(in: root).compactMap { $0 as? NSSwitch } }
-        // Off: the sun's, the moon's, real weather's and the animation's only (the weather's are disabled,
-        // with a reason).
-        let off = await PerfWait.until(3000) { switchesNow().count == 4 }
+        // Off: the sun's, the moon's, real weather's, the animation's and the cats' wandering only (the weather's
+        // are disabled, with a reason).
+        let off = await PerfWait.until(3000) { switchesNow().count == 5 }
         check("sky: with real weather off, its five switches are disabled", off != nil, "\(switchesNow().count) switches enabled")
 
         guard let answer = MeadowWeather(openMeteo: Data(Self.stormAnswer.utf8)) else { return check("sky: the storm's answer reads", false) }
         store.useWeather(answer)
-        let on = await PerfWait.until(3000) { switchesNow().count == 9 }
-        check("sky: with real weather on, all nine switches can be worked", on != nil, "\(switchesNow().count) switches enabled")
+        let on = await PerfWait.until(3000) { switchesNow().count == 10 }
+        check("sky: with real weather on, all ten switches can be worked", on != nil, "\(switchesNow().count) switches enabled")
         // The wind eases round to the storm's over a few seconds.
         guard let all = await shown({ $0.settings.weather != nil && $0.sky.windToward.z < -0.68 }) else {
             return check("sky: the storm reaches the meadow, its wind eased round", false, "\(meadow.sky)")
