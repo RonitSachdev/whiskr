@@ -453,20 +453,32 @@ extension EditorFlow {
         await enter()
         editor.debugChoose([])
         let mine = library.active
-        // A meadow of 47 trees (round its edge, out of the way) and 4,999 things in all.
+        // A meadow of 47 trees (round its edge, out of the way: young trees, apple trees and pines) and 4,998 things in
+        // all: the plants of the Flowers shelf, and every twelfth a made thing or wood, as many made things as it may hold.
         var entries = library.session.document.entries
         var trees = library.session.document.counts(.current)[.trees, default: 0]
         var k = 0
         while trees < 47 {
             let a = Double(k) * 0.19
-            entries.append(.item(MeadowFile.MeadowItem(asset: "tree.young", placement: .at(MeadowPoint(MeadowJSON.quantized(cos(a) * 157), MeadowJSON.quantized(sin(a) * 157))), seed: UInt32(k + 1))))
+            entries.append(.item(MeadowFile.MeadowItem(asset: ["tree.young", "tree.apple", "tree.pine"][k % 3],
+                                                        placement: .at(MeadowPoint(MeadowJSON.quantized(cos(a) * 157), MeadowJSON.quantized(sin(a) * 157))), seed: UInt32(k + 1))))
             trees += 1
             k += 1
         }
-        var j = 0
+        var j = 0, made = library.session.document.counts(.current)[.madeThings, default: 0]
+        let plants = ["flower.daisy", "plant.clover", "flower.cornflower", "plant.fern", "flower.foxglove"]
+        let things = ["cat.box", "cat.bed", "wood.stump", "cat.bowl", "cat.yarn", "wood.logPile", "cat.scratchingPost", "work.cushion", "stone.boulder"]
         while entries.count < MeadowFormat.maxItems - 2 {
             let x = Double(j % 60) * 1.1 - 80, z = Double(j / 60) * 1.1 - 30
-            entries.append(.item(MeadowFile.MeadowItem(asset: "flower.daisy", placement: .at(MeadowPoint(MeadowJSON.quantized(x), MeadowJSON.quantized(z))))))
+            var asset = plants[j % plants.count]
+            if j % 12 == 0 {
+                let thing = things[(j / 12) % things.count]
+                if MeadowCatalog.current.asset(thing)?.caps.contains(.madeThings) != true || made < MeadowCatalog.Cap.madeThings.limit - 10 {
+                    asset = thing
+                    if MeadowCatalog.current.asset(thing)?.caps.contains(.madeThings) == true { made += 1 }
+                }
+            }
+            entries.append(.item(MeadowFile.MeadowItem(asset: asset, placement: .at(MeadowPoint(MeadowJSON.quantized(x), MeadowJSON.quantized(z))))))
             j += 1
         }
         let file = "Full Meadow.whiskrmeadow"
@@ -486,6 +498,16 @@ extension EditorFlow {
         check("past 80 % of a cap the tray says how full the meadow is, before it is reached",
               tray.fullness == MeadowWords.fullness(MeadowFormat.maxItems - 2, of: MeadowFormat.maxItems, nil) && tray.full.isEmpty, tray.fullness ?? "nothing said")
         await picture("full-meadow")
+        // At the caps (Stage 7's models among its things), the meadow rests as soon as any meadow must; its cost at
+        // rest is recorded (the terminal printing all along this flow, its chrome limits are the idle flow's to hold).
+        suite.shortcut("cmd+return")
+        _ = await PerfWait.until(2000) { !self.controller.meadowEditing }
+        let left = perfNow()
+        let rested = await PerfWait.until(12000) { self.meadow.isResting }
+        check("a full meadow rests within 12 s of leaving editing", rested != nil, rested.map { String(format: "%.1f s", ($0 - left) / 1000) } ?? "not in 12 s")
+        await suite.idleStretch("editor: idle, a full meadow", limits: false)
+        await enter()
+        editor.debugChoose([])
         // One more tree: the 48th; then the trees' tiles say the meadow holds as many as it can.
         suite.shortcut("1")
         guard let spot = freeSpotInView(big: true) else { return check("free ground for the 48th tree", false) }

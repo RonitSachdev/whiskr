@@ -1174,7 +1174,7 @@ final class PerfSuite {
     /// One idle stretch: once the meadow has come to rest (waiting up to 20 s, which is itself a finding;
     /// not waited for while it is hidden), 5 s of the process's CPU time and wakeups, its session host's, the
     /// meadow's frames and GPU time, terminal frames and chrome updates.
-    private func idleStretch(_ name: String, limits: Bool) async {
+    func idleStretch(_ name: String, limits: Bool) async {
         let meadow = controller.navigator.meadow
         let begun = perfNow()
         let rested = meadow.assumesOnScreen ? await PerfWait.until(20000) { meadow.isResting } : nil
