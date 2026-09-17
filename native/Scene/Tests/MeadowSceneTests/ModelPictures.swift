@@ -33,7 +33,13 @@ import simd
             return [MeadowScenery.Thing(id: id, points: [spot + SIMD2(-7, 2), spot + SIMD2(0, 2), spot + SIMD2(4, -3)], gate: 1)]
         }
         if id == "stone.stepping" {
-            return (0..<4).map { k in MeadowScenery.Thing(id: id, x: spot.x - 2.4 + Float(k) * 1.6, z: spot.y + 0.4 * sin(Float(k)), turn: Float(k) * 0.7) }
+            // A row as the editor lays one along a drag (`MeadowEditSession.stepping`): a stride apart, each across
+            // the way, a little turned and sized its own.
+            return (0..<6).map { k in
+                let f = Float(k)
+                return MeadowScenery.Thing(id: id, x: spot.x - 2.75 + f * 1.1, z: spot.y + 0.06 * sin(f * 2.1), turn: -.pi / 2 + 0.2 * sin(f * 1.7),
+                                           size: Vec3(1 + 0.08 * sin(f * 2.9), 1, 0.9 + 0.05 * cos(f * 1.3)))
+            }
         }
         var things = [MeadowScenery.Thing(id: id, x: spot.x, z: spot.y, turn: 0.4, seed: 7)]
         guard SceneryRules.isSmall(id) else { return things }
@@ -74,7 +80,10 @@ import simd
         guard let plot = view.stage.village?.plots.first else { return nil }
         // Beside the first blanket, toward the camera's left, where a column leaves grass in view.
         let spot = SIMD2(plot.middle.x - plot.radius - (SceneryRules.isBig(id) ? 3.6 : 2.4), plot.middle.z + plot.radius * 0.9)
-        view.scenery = MeadowScenery(things: things(id, at: spot))
+        // A fence runs along the column, its gate in its middle span, as far out as it stands whole: nearer the
+        // blankets its parts give way, as every rooted thing's do, and at a sidebar's width that is at its edge.
+        view.scenery = MeadowScenery(things: id == "garden.fence" ? [MeadowScenery.Thing(id: id, points: [spot + SIMD2(-3, -3.75), spot + SIMD2(-3, 3.75)], gate: 1)]
+                                                                  : things(id, at: spot))
         view.advance(seconds: 3)
         return (view, spot)
     }
@@ -107,7 +116,7 @@ import simd
                 if let image = view.renderImage(width: Int(TreePictures.window.width * 4), height: Int(TreePictures.window.height * 4)),
                    let c = TreePictures.crop(view, image, at: spot, w: 100, h: 75, below: 26) { zoom.append((id, c)) }
                 // Close up, one alone (a plant out of its clump).
-                let one = Self.editor(Array(Self.things(id, at: spot).prefix(id == "stone.stepping" ? 4 : 1)))
+                let one = Self.editor(Array(Self.things(id, at: spot).prefix(id == "stone.stepping" ? 6 : 1)))
                 if let image = Self.close(one, at: spot, tall: Self.tall(id)) { close.append((id, image)) }
                 for (time, into) in [(MeadowSettings.TimeOfDay.hour(19.6), 0), (.night, 1)] {
                     let v = Self.editor(Self.things(id, at: spot), time: time)
@@ -131,6 +140,25 @@ import simd
     }
 
     /// One whole sidebar with a few of the things beside its blankets, as small as the sidebar shows them.
+    /// A fence's gate, judged on its own: a run of three spans with the gate in the middle one, from the editor's
+    /// framing (as drawn and at twice the density), a sidebar's column and close, by day and by night.
+    @Test(.enabled(if: folder != nil)) func gate() {
+        var pictures: [(String, CGImage)] = []
+        let at = Self.spot + simd_normalize(Self.spot - TreePictures.spot) * -9
+        let run = [MeadowScenery.Thing(id: "garden.fence", points: [at + SIMD2(-3.6, 0), at + SIMD2(3.6, 0)], gate: 1)]
+        for (mood, time) in [("day", MeadowSettings.TimeOfDay.day), ("night", .night)] {
+            let view = Self.editor(run, time: time)
+            if let c = Self.editorCrop(view, at: at) { pictures.append(("editor, \(mood)", c)) }
+            if let image = view.renderImage(width: Int(TreePictures.window.width * 4), height: Int(TreePictures.window.height * 4)),
+               let c = TreePictures.crop(view, image, at: at, w: 100, h: 75, below: 26) { pictures.append(("editor 4x, \(mood)", c)) }
+            if let image = Self.close(view, at: at, tall: 4) { pictures.append(("close, \(mood)", image)) }
+        }
+        if let (v, at) = Self.sidebar("garden.fence"), let image = Self.image(v), let c = TreePictures.crop(v, image, at: at, w: 220, h: 220, below: 90) {
+            pictures.append(("sidebar", c))
+        }
+        CatalogPictures.sheet(pictures.map { ($0.0, $0.1) }, columns: 4, to: "gate", in: Self.folder)
+    }
+
     @Test(.enabled(if: folder != nil)) func sidebars() {
         var pictures: [(String, CGImage)] = []
         for id in ["wood.logPile", "plant.fern", "cat.bed", "place.tent", "work.cushion", "stone.mossy"] {
@@ -280,7 +308,7 @@ import simd
             if CatAfternoons.until(view, 2, { actor.roam.phase == .recalled && actor.roam.ramp > 0.8 }) { Self.shots(view, actor, "run home", into: &pictures) }
         }
         let spots: [(String, Bool)] = [("wood.stump", false), ("stone.boulder", false), ("work.bench", false), ("cat.box", false), ("cat.scratchingPost", false),
-                                       ("cat.bowl", false), ("cat.bed", true), ("work.cushion", true)]
+                                       ("cat.bowl", false), ("garden.birdhouse", false), ("wood.logPile", false), ("cat.bed", true), ("work.cushion", true)]
         for (id, nap) in spots {
             let view = CatAfternoons.view([(id, CatAfternoons.front(SceneryRules.isBig(id) ? 7.6 : 6.6, 1.0))])
             let actor = Roaming.actor(view)

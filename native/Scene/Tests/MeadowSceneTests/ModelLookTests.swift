@@ -135,6 +135,42 @@ private func mossy(_ c: Vec3) -> Bool { c.y > c.x * 1.4 && c.y > c.z * 1.6 }
         #expect(fill(disc, cell: 0.05) > 0.5, "a sparse patch")
     }
 
+    @Test("a cat sitting by a nest box (a tall thing, which fades when in front of a cat), as first placed, does not fade it")
+    func catBesideTheNestBox() throws {
+        let spot = try #require(SceneryCatalog.catSpots["garden.birdhouse"])
+        let plant = try #require(SceneryCatalog.shape(of: MeadowScenery.Thing(id: "garden.birdhouse", x: 0, z: 0))?.make())
+        let screen = Meadow.madeScreen(.identity, plant)
+        // The cat as the meadow sees it (`Village.sights`), from the editor's and a sidebar's cameras.
+        let cat = Ball(center: spot.at + Vec3(0, 1.1, 0), radius: 1.3)
+        for (pitch, bearing) in [(Stage.editPitch, Float(0)), (Stage.editPitch, MapCamera.bearing), (MapCamera.columnPitch, 0)] {
+            let eye = Vec3(sin(bearing) * cos(pitch), sin(pitch), cos(bearing) * cos(pitch)) * 60 + Vec3(0, 1.2, 0)
+            #expect(!Occlusion.blocks(screen, eye: eye, sights: [cat], count: 1), "the nest box fades for the cat by it, seen from \(pitch), \(bearing)")
+        }
+    }
+
+    @Test("a log pile is a tidy stack wider than it is tall, its logs laid front to back so their ends make its face")
+    func logPile() throws {
+        let g = try #require(shape("wood.logPile"))
+        let b = g.bounds
+        #expect(b.max.x - b.min.x > (b.max.y - b.min.y) * 1.7, "\(b)")
+        // The sawn ends' pale wood faces the front: far more of it looks along +z than along x.
+        let pale = g.positions.indices.filter { g.colors[$0].x > 0.45 && g.colors[$0].y > 0.3 && g.colors[$0].x > g.colors[$0].z * 1.4 }
+        let front = pale.filter { g.normals[$0].z > 0.8 }.count, aside = pale.filter { abs(g.normals[$0].x) > 0.8 }.count
+        #expect(front > aside * 4 && front > 100, "\(front) facing front, \(aside) to the side")
+    }
+
+    @Test("a stepping stone is a flat grey slab, longer across the path than along it, a row a stride apart leaving turf between")
+    func steppingStone() {
+        let b = SceneryCatalog.steppingStone.bounds
+        #expect(b.max.y < 0.07 && b.max.y > 0.02, "it stands \(b.max.y) proud of the turf")
+        #expect(b.max.x - b.min.x > 1.4 && b.max.z - b.min.z < 1.0, "\(b)")
+        // As the editor lays a row (`MeadowEditSession.stepping`: a stride, 1.1, apart, each at most 0.95 its size
+        // along the path), a strip of turf is left between each two.
+        #expect((b.max.z - b.min.z) * 0.95 < 1.1 - 0.1)
+        let mean = SceneryCatalog.steppingStone.colors.reduce(Vec3.zero, +) / Float(SceneryCatalog.steppingStone.colors.count)
+        #expect(abs(mean.x - mean.y) < 0.05 && abs(mean.y - mean.z) < 0.06, "stone grey, not \(mean)")
+    }
+
     @Test("a kettle's steam is soft wisps, each puff billowing unevenly, and thins out within about a kettle's height")
     func steam() {
         var reach: [Float] = []
