@@ -96,13 +96,14 @@ private func mossy(_ c: Vec3) -> Bool { c.y > c.x * 1.4 && c.y > c.z * 1.6 }
         #expect(sizes.max()! > sizes.min()! * 1.6, "\(sizes)")
         let one = Moss.patch([Moss.Cushion(at: .zero, up: Vec3(0, 1, 0), size: 1)], seed: 2)
         // Its outline from above: the reach at each angle round it varies, as a lobed cushion's does.
-        var reach = [Float](repeating: 0, count: 24)
+        let bins = 8
+        var reach = [Float](repeating: 0, count: bins)
         for p in one.positions {
-            let k = Int(((atan2(p.z, p.x) + .pi) / (2 * .pi) * 24).rounded(.down)) % 24
+            let k = Int(((atan2(p.z, p.x) + .pi) / (2 * .pi) * Float(bins)).rounded(.down)) % bins
             reach[k] = max(reach[k], hypot(p.x, p.z))
         }
-        let mean = reach.reduce(0, +) / 24
-        let spread = (reach.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / 24).squareRoot() / mean
+        let mean = reach.reduce(0, +) / Float(bins)
+        let spread = (reach.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Float(bins)).squareRoot() / mean
         #expect(spread > 0.08, "a cushion's outline varies by \(spread) round it")
         // Low: far wider than it is high.
         #expect(one.bounds.max.y < mean * 0.55, "\(one.bounds.max.y) high for \(mean) across")

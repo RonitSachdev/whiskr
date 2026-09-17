@@ -10,8 +10,8 @@ enum StonesAndWood {
 
     /// The end grain of a sawn log, facing up at y = 0: pale sapwood round a warmer heart, its growth rings
     /// drawn in fine darker lines, a dark pith at the middle, and the cut a hair dished.
-    static func endGrain(radius: Float, rings: Int = 6) -> Geometry {
-        let around = 28, steps = rings * 2
+    static func endGrain(radius: Float, rings: Int = 6, around: Int = 28) -> Geometry {
+        let steps = rings * 2
         var g = Geometry()
         let pith = linear(0x7a5634), heart = linear(0xc69a62), sap = linear(0xe2c597), line = linear(0xae8250)
         for i in 0...steps {
@@ -113,7 +113,7 @@ enum StonesAndWood {
             parts.append(log)
             // Both sawn ends.
             for end: Float in [-1, 1] {
-                var cut = endGrain(radius: radius * 0.94, rings: 4)
+                var cut = endGrain(radius: radius * 0.94, rings: 4, around: 16)
                 cut.apply(.compose(v(end * half + shift + end * 0.005, y, z), euler: v(0, 0, -end * .pi / 2)))
                 parts.append(cut)
             }

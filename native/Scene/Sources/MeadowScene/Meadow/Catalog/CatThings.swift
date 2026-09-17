@@ -85,7 +85,7 @@ enum CatThings {
         var parts = [Clay.blob(at: v(0, r * 0.94, 0), size: v(r, r * 0.94, r), color: color.0, top: color.1)]
         // Wraps laid at angles, each a strand standing a little proud of the ball.
         for (k, tilt) in [(0.3, 0.2), (1.2, 0.9), (2.0, 0.4), (2.7, 1.3), (0.8, 1.6), (1.7, 0.1), (2.4, 2.0), (3.0, 0.7)].enumerated() {
-            let ring = Shapes.torus(r * 0.97, 0.04, 6, 44).applied(.compose(v(0, r * 0.94, 0), euler: v(Float(tilt.1), Float(tilt.0), Float(k) * 0.4), scale: v(1, 0.94, 1)))
+            let ring = Shapes.torus(r * 0.97, 0.04, 6, 32).applied(.compose(v(0, r * 0.94, 0), euler: v(Float(tilt.1), Float(tilt.0), Float(k) * 0.4), scale: v(1, 0.94, 1)))
             // Strands alternately a little deeper and a little paler than the ball, so the winding reads.
             parts.append(ring.painted(color.0, color.1).tinted(k % 2 == 0 ? 0.93 : 1.05))
         }

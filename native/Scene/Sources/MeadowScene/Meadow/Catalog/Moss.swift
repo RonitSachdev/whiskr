@@ -17,9 +17,9 @@ enum Moss {
     static let colors: (UInt32, UInt32) = (0x3d6526, 0xa6cb5e)
 
     /// The ball a cushion is pressed from: more points round it than up it, as its outline seen from above runs round
-    /// its middle.
+    /// its middle; few, as there are dozens of cushions on a log and the tufts are in their colours as much as their shape.
     private static let ball: Geometry = {
-        var g = Shapes.sphere(1, 12, 6).welded()
+        var g = Shapes.sphere(1, 10, 5).welded()
         g.computeNormals()
         return g
     }()

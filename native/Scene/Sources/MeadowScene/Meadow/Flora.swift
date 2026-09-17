@@ -99,8 +99,9 @@ enum Flora {
             let open = mix(deep, pale, t: t)
             for g in ring(florets, { a, _ in
                 let around = a + Float(i) * 0.55
-                return Clay.blob(at: v(center.x + cos(around) * out, center.y, center.z + sin(around) * out),
-                                 size: Vec3(size * 1.25, size * 0.8, size * 0.85), color: 0, turn: v(0, -around, 0.5))
+                // A `bead`: a floret is a finger's width, and a spire holds over fifty.
+                return bead(at: v(center.x + cos(around) * out, center.y, center.z + sin(around) * out),
+                            size: Vec3(size * 1.25, size * 0.8, size * 0.85), color: 0, turn: v(0, -around, 0.5))
             }) {
                 var g = g
                 g.colors = [Vec3](repeating: t > 0.86 ? linear(0xb9c79a) : open, count: g.count)
