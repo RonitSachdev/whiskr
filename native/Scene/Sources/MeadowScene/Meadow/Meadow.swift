@@ -576,12 +576,16 @@ final class Meadow {
     }
 
     /// A tall made thing's screen (a shed, a tent, a bookcase, a nest box), drawn with `m`: up its middle to its
-    /// top, its body the ball a cat behind it is hidden by.
+    /// top, its body the ball a cat behind it is hidden by. A slender one (a nest box on its post, far taller than
+    /// wide) has its body up at its top, as small as it is: a ball round its whole height would fade it for a cat
+    /// sitting beside its post.
     static func madeScreen(_ m: Mat4, _ plant: Plant) -> Screen {
         let bounds = plant.shape.bounds
         let reach = max(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z) / 2
-        let middle = m.point(Vec3(0, plant.top.y * 0.55, 0))
-        return Screen(from: m.position, to: m.point(Vec3(0, plant.top.y, 0)), thick: reach * 0.6, crown: middle, crownSize: max(reach, plant.top.y * 0.5) * 0.85)
+        let slender = plant.top.y > reach * 3
+        let middle = m.point(Vec3(0, plant.top.y * (slender ? 0.85 : 0.55), 0))
+        return Screen(from: m.position, to: m.point(Vec3(0, plant.top.y, 0)), thick: reach * 0.6, crown: middle,
+                      crownSize: (slender ? reach * 1.2 : max(reach, plant.top.y * 0.5)) * 0.85)
     }
 
     /// A fence as it stands (its parts are laid by the caller): where its posts are on the land, and its lines.

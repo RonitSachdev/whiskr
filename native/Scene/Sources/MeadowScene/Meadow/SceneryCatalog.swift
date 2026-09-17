@@ -46,8 +46,8 @@ enum SceneryCatalog {
         "stone.stone": .plant({ [Flora.stones[0]] }, sway: 0, blooms: false, base: 1.25),
         "stone.mossy": .plant({ [Flora.stones[1]] }, sway: 0, blooms: false, base: 1.25),
         "stone.boulder": .plant({ [StonesAndWood.boulder] }, sway: 0, blooms: false, base: 2.3),
-        // The worktrees' own stepping stone, set flat in the turf; its ground is round its narrower middle, so
-        // a path of them a stride apart (`MeadowEditSession.stepping`) keeps a strip of grass between each two.
+        // A flat slab set in the turf (`steppingStone`); its ground is round its narrower middle, so a path of them
+        // a stride apart (`MeadowEditSession.stepping`) keeps a strip of trodden turf between each two.
         "stone.stepping": .plant({ [Plant(shape: steppingStone, top: Vec3(0, 0.05, 0))] }, sway: 0, blooms: false, base: 0.42),
         "wood.fallenLog": .log,
         "wood.stump": .plant({ [StonesAndWood.stump] }, sway: 0, blooms: false, base: 1.35),
@@ -132,42 +132,59 @@ enum SceneryCatalog {
 
     /// Where a cat likes to be at each thing that invites one, on the thing as it is made (its own size and turn,
     /// y up from the ground): sitting on a stump's or a boulder's top, in a box or by a bowl, napping in a bed or
-    /// on a cushion, scratching at a post. A thing has one at most.
+    /// on a cushion, scratching at a post. A thing has one at most. As a thing is first placed (turned 0, the editor
+    /// and the sidebar looking from +z), none shows you the cat's back: on or in a thing it faces you; at a bowl it
+    /// stands behind and to one side, seen three-quarters front over it; at a post or under a nest box, side on and a
+    /// little in front of it, so neither hides its face nor fades for it (`tall`).
     static let catSpots: [String: MeadowScenery.CatSpot] = [
         "cat.box": .init(.sit, at: Vec3(0, 0.09, 0), toward: Vec2(0, 1)),
         "cat.bed": .init(.nap, at: Vec3(0, 0.24, 0), toward: Vec2(0, 1)),
         "work.cushion": .init(.nap, at: Vec3(0, 0.62, 0), toward: Vec2(0, 1)),
-        "cat.scratchingPost": .init(.scratch, at: Vec3(0, 0, 1.25), toward: Vec2(0, -1)),
-        "cat.bowl": .init(.sit, at: Vec3(0, 0, 1.45), toward: Vec2(0, -1)),
+        "cat.scratchingPost": .init(.scratch, at: Vec3(-1.244, 0, 0.12), toward: simd_normalize(Vec2(1.244, -0.12))),
+        "cat.bowl": .init(.sit, at: Vec3(-0.95, 0, -0.85), toward: simd_normalize(Vec2(0.95, 0.85))),
         "wood.stump": .init(.sit, at: Vec3(0, 1.05, 0), toward: Vec2(0, 1)),
         "stone.boulder": .init(.sit, at: Vec3(-0.2, 1.62, 0), toward: Vec2(0, 1)),
         "wood.logPile": .init(.sit, at: Vec3(0, 1.73, 0.5), toward: Vec2(0, 1)),
         "wood.fallenLog": .init(.sit, at: Vec3(0, 2.02, 0.5), toward: Vec2(0, 1)),
         // On the bench's seat, on the desk among its things (cats will), on the planter's front board between its
         // lettuces and marigolds, napping on the bookcase's top, on the shed's doorstep, curled on the tent's
-        // threshold (its canvas is solid clay: the dark doorway is drawn on its front), and sitting under the nest
-        // box looking up at it.
+        // threshold (its canvas is solid clay: the dark doorway is drawn on its front), and sitting beside the nest
+        // box's post looking up at it.
         "work.bench": .init(.sit, at: Vec3(-0.9, 1.1, 0.05), toward: Vec2(0, 1)),
         "work.desk": .init(.sit, at: Vec3(-0.15, 1.36, 0.2), toward: Vec2(0, 1)),
         "garden.planter": .init(.sit, at: Vec3(0.45, 0.88, 0.69), toward: Vec2(0, 1)),
         "work.bookshelf": .init(.nap, at: Vec3(-0.45, 3.3, 0), toward: Vec2(0, 1)),
         "place.shed": .init(.sit, at: Vec3(0, 0, 2.55), toward: Vec2(0, 1)),
         "place.tent": .init(.nap, at: Vec3(0, 0, 3.3), toward: Vec2(0, 1)),
-        "garden.birdhouse": .init(.sit, at: Vec3(0, 0, 1.3), toward: Vec2(0, -1)),
+        "garden.birdhouse": .init(.sit, at: Vec3(-1.85, 0, 0.15), toward: simd_normalize(Vec2(1.85, -0.15))),
     ]
 
-    /// The worktrees' stepping stone (`Picnic.steppingStone`) as a meadow's are laid: its top levelled, a flat
-    /// slab sitting a finger's width proud of the turf, its worn face a little less pale so a row of them reads
-    /// as stone in the grass rather than as pebbles.
+    /// A garden stepping stone as a meadow's are laid: a flat slab of stone set a finger's width proud of the turf,
+    /// squarish with its corners worn round and its edge a little irregular, longer across the path than along it
+    /// (a row of them a stride apart, `MeadowEditSession.stepping`, almost meeting, a strip of trodden turf between
+    /// each two), a cool mid grey, mottled on its worn top and darker down its edge, so a row reads
+    /// from the editor's height as a path of slabs in the grass rather than as pebbles. Its ground (`base`) is round
+    /// its narrower middle, as before.
     static let steppingStone: Geometry = {
-        var stone = Picnic.steppingStone
-        let level: Float = 0.036
-        for i in stone.positions.indices where stone.positions[i].y > level {
-            stone.positions[i].y = level + (stone.positions[i].y - level) * 0.25
+        var outline: [Vec2] = []
+        let corners = 28
+        for k in 0..<corners {
+            let a = Float(k) / Float(corners) * 2 * .pi
+            let square = pow(pow(abs(cos(a)), 3.4) + pow(abs(sin(a)), 3.4), -1 / 3.4)
+            let worn = 1 + (Float(lattice(Double(k), 1.7, 3)) - 0.5) * 0.1 + 0.035 * sin(a * 3 + 1)
+            outline.append(Vec2(cos(a) * 0.8, sin(a) * 0.45) * square * worn)
         }
-        stone.computeNormals()
-        stone.colors = stone.colors.map { $0 * 0.86 }
-        return stone
+        let thick: Float = 0.04
+        var slab = Clay.pressed(outline, thick: thick, soft: 0.022, 0x7d786e)
+        slab.apply(.translation(Vec3(0, 0.008, 0)) * .rotationX(.pi / 2))
+        slab.paint(0x67645d, 0xaba79d)
+        // Mottled as weathered stone is, a few darker flecks and paler patches across its top.
+        for i in slab.positions.indices {
+            let p = slab.positions[i]
+            let mottle = Float(noise(Double(p.x * 4.3) + 2.2, Double(p.z * 4.3), 1)) - 0.5
+            slab.colors[i] *= 1 + mottle * 0.3
+        }
+        return slab
     }()
 
     /// Things walked on or used, which wear the turf round them (`GroundMap.treads`): the grass short and parted
@@ -176,7 +193,7 @@ enum SceneryCatalog {
     /// Each with how far it reaches each way along its own x and z at its own size, and whether it is walked on
     /// (a stepping stone) or round (a bed). Found things (a stump, a boulder) stand in the long grass as they are.
     static let treads: [String: (half: Vec2, walked: Bool)] = [
-        "stone.stepping": (Vec2(0.64, 0.48), true),
+        "stone.stepping": (Vec2(0.86, 0.55), true),
         "cat.box": (Vec2(1.22, 0.97), false),
         "cat.bed": (Vec2(1.45, 1.45), false),
         "cat.bowl": (Vec2(0.5, 0.5), false),

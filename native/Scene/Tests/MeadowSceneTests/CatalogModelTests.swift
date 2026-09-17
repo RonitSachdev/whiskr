@@ -133,13 +133,25 @@ private func model(_ id: String, seed: UInt32 = 1) -> Geometry? {
             }
         }
         for id in ["cat.yarn", "flower.daisy", "tree.oak", "stone.stone"] { #expect(MeadowScenery.catSpot(of: id) == nil, "\(id)") }
-        // In the meadow: turned with the thing, on the land where it stands.
+        // In the meadow: turned with the thing, on the land where it stands (a quarter turn takes its own z to x).
         let post = MeadowScenery.Thing(id: "cat.scratchingPost", x: 10, z: -4, turn: .pi / 2)
-        let spot = try #require(post.catSpot)
-        #expect(spot.kind == .scratch && abs(spot.at.y - Land.height(10, -4)) < 1e-4)
-        #expect(simd_distance(Vec2(spot.at.x, spot.at.z), Vec2(10 + 1.25, -4)) < 1e-3, "\(spot.at)")
-        #expect(simd_distance(spot.toward, Vec2(-1, 0)) < 1e-3, "\(spot.toward)")
+        let spot = try #require(post.catSpot), own = try #require(MeadowScenery.catSpot(of: "cat.scratchingPost"))
+        #expect(spot.kind == .scratch && abs(spot.at.y - Land.height(spot.at.x, spot.at.z)) < 1e-4)
+        #expect(simd_distance(Vec2(spot.at.x, spot.at.z), Vec2(10 + own.at.z, -4 - own.at.x)) < 1e-3, "\(spot.at)")
+        #expect(simd_distance(spot.toward, Vec2(own.toward.y, -own.toward.x)) < 1e-3, "\(spot.toward)")
         #expect(MeadowScenery.Thing(id: "flower.daisy", x: 0, z: 0).catSpot == nil)
+    }
+
+    @Test("as a thing is first placed, no cat at it shows the editor's or the sidebar's camera its back")
+    func catSpotsFaceTheCamera() {
+        // Both look from +z, the editor a little round (`MapCamera.bearing`); a cat side on (scratching at a post, its
+        // face to the post and turned your way) is not its back.
+        for (id, spot) in SceneryCatalog.catSpots {
+            for bearing in [Float(0), MapCamera.bearing] {
+                let toYou = Vec2(sin(bearing), cos(bearing))
+                #expect(simd_dot(spot.toward, toYou) > -0.15, "\(id) faces \(spot.toward), its back to a camera from \(bearing)")
+            }
+        }
     }
 
     @Test("each has a picture for the tray, unlike every other's")
