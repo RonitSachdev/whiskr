@@ -468,9 +468,11 @@ final class Cat: Performer {
         case .cursor: aim = aimAt(around.pointer.x, around.pointer.y, around)
         case .at(let spot): aim = aimToward(spot)
         }
-        // Whatever it attends to, it keeps its face to you: asleep, or on its way somewhere, it may not.
-        // Walking or bounding about it glances back at you, as far as its neck turns; running home it looks ahead.
-        if !isNapping && (going == nil && trot < 0.05 || gait == .walk || gait == .bound) { aim = facingYou(aim, turnY: turnY, forward: forward, tip: tip, around) }
+        // Whatever it attends to, it keeps its face to you: asleep, or on a blanket errand, it may not. Walking,
+        // bounding or running home through the grass it glances back at you, as far as its neck turns.
+        if !isNapping && (going == nil && trot < 0.05 || gait != .none) {
+            aim = facingYou(aim, turnY: turnY, forward: forward, tip: tip, cone: gait == .none ? Self.faceCone : Self.movingFaceCone, around)
+        }
         // A nod: the head dips once and comes back up.
         let nodding = clamp((t - nodAt) / 0.5, 0, 1)
         let dip = nodding > 0 && nodding < 1 ? sin(nodding * .pi) * 0.34 : 0
@@ -746,27 +748,43 @@ final class Cat: Performer {
     /// or a butterfly, never so far round that an eye (each sits a little out on the curve of the face) slips
     /// out of sight. From the sidebar's steep camera a head bowed over a book would show only its crown.
     static let faceCone: Float = 0.7
+    /// On the move through the grass, rocking and leaning as it goes, a face is kept nearer straight at you, so both
+    /// eyes read while the head swings to keep up.
+    static let movingFaceCone: Float = 0.42
     /// How far the head turns and nods on its neck before the skin would crease.
     static let headTurn: Float = 1.1, headUp: Float = -0.75, headDown: Float = 0.45
 
-    /// The head's yaw and pitch, turned toward you as little as keeps its face within `faceCone` of you,
-    /// wherever the camera is. Every pose and whim aims first; this has the last word. The body leaning
-    /// forward (`forward`) or tipped (`tip`) counts, so a cat lying over its book still looks up enough.
-    private func facingYou(_ aim: (Float, Float), turnY: Float, forward: Float, tip: Float, _ around: Surroundings) -> (Float, Float) {
+    /// The head's yaw and pitch, turned toward you as little as keeps its face within `cone` of you (`faceCone`, or
+    /// `movingFaceCone` on the move), wherever the camera is. Every pose and whim aims first; this has the last word.
+    /// The body leaning forward (`forward`) or tipped (`tip`) counts, so a cat lying over its book still looks up enough.
+    private func facingYou(_ aim: (Float, Float), turnY: Float, forward: Float, tip: Float, cone: Float, _ around: Surroundings) -> (Float, Float) {
         // The body's turn; a rotation, so its transpose takes the world into it.
         let body = Mat4.rotationY(turnY) * Mat4.euler(forward, 0, tip)
         let gaze = around.eye - head
         guard simd_length_squared(gaze) > 1e-6 else { return aim }
         let you = simd_normalize(body.transpose.direction(gaze))
-        var face = Vec3(cos(aim.1) * sin(aim.0), -sin(aim.1), cos(aim.1) * cos(aim.0))
-        let along = simd_dot(face, you)
-        if along < cos(Self.faceCone) {
-            // Swung toward you along the shortest way, to the edge of the cone.
-            var aside = face - you * along
-            if simd_length_squared(aside) < 1e-6 { aside = Vec3(0, -1, 0) - you * -you.y }
-            face = you * cos(Self.faceCone) + simd_normalize(aside) * sin(Self.faceCone)
+        let wanted = Vec3(cos(aim.1) * sin(aim.0), -sin(aim.1), cos(aim.1) * cos(aim.0))
+        /// The head swung from `wanted` toward `way` as little as brings its face within the cone round it, as far as
+        /// the neck turns.
+        func toward(_ way: Vec3, within cone: Float) -> (Float, Float) {
+            var face = wanted
+            let along = simd_dot(face, way)
+            if along < cos(cone) {
+                // Along the shortest way, to the edge of the cone.
+                var aside = face - way * along
+                if simd_length_squared(aside) < 1e-6 { aside = Vec3(0, -1, 0) - way * -way.y }
+                face = way * cos(cone) + simd_normalize(aside) * sin(cone)
+            }
+            return (clamp(atan2(face.x, face.z), -Self.headTurn, Self.headTurn), clamp(-asin(clamp(face.y, -1, 1)), Self.headUp, Self.headDown))
         }
-        return (clamp(atan2(face.x, face.z), -Self.headTurn, Self.headTurn), clamp(-asin(clamp(face.y, -1, 1)), Self.headUp, Self.headDown))
+        func face(_ angles: (Float, Float)) -> Vec3 { Vec3(cos(angles.1) * sin(angles.0), -sin(angles.1), cos(angles.1) * cos(angles.0)) }
+        let turned = toward(you, within: cone)
+        // Turned away from you further than its neck can bring its face round (its back to you at a post, a bowl, on
+        // its way home), a cat would show one eye on the side of its head: it looks away instead, both eyes out of
+        // sight (well round, so neither peeps over the curve of its head), as a real cat's back shows only the back of
+        // its head.
+        if simd_dot(face(turned), you) < cos(cone) - 0.05 { return toward(-you, within: cone * 0.5) }
+        return turned
     }
 
     // Yaw and pitch that turn the head toward a spot in the world.
