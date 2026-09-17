@@ -140,13 +140,18 @@ enum Flora {
         return Plant(shape: Geometry.join(parts), top: v(lean * 0.35, 1.22, 0))
     }
 
-    /// A weathered stone with a smaller one leaning on it; the second kind has moss settled on top.
+    /// A weathered stone with a smaller one leaning on it; the second kind has moss settled over its top in a colony
+    /// of tufted cushions (`Moss`), the grey showing between them, and a little creeping onto the smaller stone.
     static func stone(_ k: Float) -> Plant {
-        var parts = [
-            Clay.blob(at: v(0, 0.42, 0), size: Vec3(1.0, 0.62, 0.8), color: 0x9c998f, top: 0xcbc8be, lumpy: 0.13),
-            Clay.blob(at: v(0.78, 0.22, 0.34), size: Vec3(0.5, 0.34, 0.44), color: 0x96938a, top: 0xc2bfb5, lumpy: 0.13),
-        ]
-        if k > 0.5 { parts.append(Clay.blob(at: v(-0.12, 0.9, -0.05), size: Vec3(0.62, 0.17, 0.5), color: 0x7fa346, top: 0xa6c860, lumpy: 0.14)) }
+        let big = Clay.blob(at: v(0, 0.42, 0), size: Vec3(1.0, 0.62, 0.8), color: 0x9c998f, top: 0xcbc8be, lumpy: 0.13)
+        let small = Clay.blob(at: v(0.78, 0.22, 0.34), size: Vec3(0.5, 0.34, 0.44), color: 0x96938a, top: 0xc2bfb5, lumpy: 0.13)
+        var parts = [big, small]
+        if k > 0.5 {
+            let both = Geometry.join(parts)
+            parts.append(Moss.patch(Moss.colony(Vec2(-0.12, -0.08), reach: Vec2(0.55, 0.42), count: 8, size: 0.27, seed: 3, Moss.top(of: both))
+                                    + Moss.colony(Vec2(0.66, 0.24), reach: Vec2(0.16, 0.14), count: 3, size: 0.15, seed: 8, Moss.top(of: both)),
+                                    seed: 5, colors: (0x5f8a3a, 0xa9cb62)))
+        }
         return Plant(shape: Geometry.join(parts), top: v(0, 1.05, 0))
     }
 
@@ -247,8 +252,33 @@ enum Flora {
         return Plant(shape: Geometry.join(parts), top: Vec3(end.x, height * 0.75, end.z))
     }
 
-    /// A fern (male fern, as in shady woods): a shuttlecock of fronds rising from one crown and arching out, each
-    /// a midrib lined with leaflets that shorten toward its tip, and one young frond still curled.
+    /// One leaflet (pinna) of a fern's frond, its base at the origin and reaching along x to its pointed tip: narrow
+    /// and lance-shaped, its edge cut into rounded lobes (the pinnules), folded a little along its midrib. Few faces
+    /// for the many a frond has; at its size the lobes are what reads, from the editor's height as close up.
+    private static let pinna: Geometry = {
+        var g = Geometry()
+        let rings = 6
+        for i in 0...rings {
+            let x = Float(i) / Float(rings)
+            // Widest a third of the way out, tapering to a point; the lobes ripple the edge.
+            let w = 0.5 * pow(sin(.pi * min(1, 0.12 + x * 0.88)), 0.75) * (1 + 0.24 * abs(sin(x * .pi * 4.5))) * (i == rings ? 0 : 1)
+            let h = 0.16 * w + 0.01
+            for p in [Vec3(x, -h * 0.4, -w), Vec3(x, h, 0), Vec3(x, -h * 0.4, w), Vec3(x, -h, 0)] { g.positions.append(p) }
+        }
+        for i in 0..<UInt32(rings) {
+            for j in 0..<UInt32(4) {
+                let a = i * 4 + j, b = i * 4 + (j + 1) % 4
+                g.indices += [a, b, a + 4, b, b + 4, a + 4]
+            }
+        }
+        g.computeNormals()
+        return g
+    }()
+
+    /// A fern (male fern, as in shady woods): a shuttlecock of fronds rising from one crown and arching out, each a
+    /// midrib lined both sides with many narrow, lobed leaflets set close and nearly square to it, longest a third of
+    /// the way up and shortening to the frond's pointed tip, so each frond reads as a long green feather and the
+    /// whole, from above, as a star of them; and one young frond still curled.
     static let ferns: [Plant] = [fern()]
     private static func fern() -> Plant {
         var parts: [Geometry] = []
@@ -258,15 +288,18 @@ enum Flora {
             let out = Vec3(cos(yaw), 0, sin(yaw)), long = 1 + 0.12 * sin(Float(f) * 2.9)
             let rachis = CubicBezier(out * 0.06, out * 0.3 * long + up * 1.3, out * 1.45 * long + up * 2.15, out * 2.35 * long + up * 1.25)
             parts.append(Clay.limb(rachis, 0.04, 0.018, 0x6f7f3a, 0x7fa848, sides: 5, rings: 12).shape)
-            let pinnae = 8
+            let pinnae = 13
             for k in 0..<pinnae {
-                let t = 0.14 + Float(k) / Float(pinnae - 1) * 0.82
+                let t = 0.12 + Float(k) / Float(pinnae - 1) * 0.84
                 let at = rachis.pointAt(t), along = rachis.tangentAt(t)
                 let side = simd_normalize(simd_cross(along, up))
-                let length = 0.4 * pow(sin(.pi * (t - 0.06) / 0.94), 0.7) * long + 0.06
+                let length = 0.5 * pow(sin(.pi * min(1, (t - 0.04) / 0.8)), 0.8) * long + 0.07
                 for s: Float in [-1, 1] {
-                    let reach = simd_normalize(side * s + along * 0.45)
-                    parts.append(bead(at: at + reach * length * 0.8, along: reach, up: up, size: Vec3(length, 0.022, length * 0.34), color: 0x4c8536, top: 0x9acb62))
+                    // Out to the side, a little forward, the leaflets drooping as the frond arches.
+                    let reach = simd_normalize(side * s + along * 0.22 - up * 0.1)
+                    let x = reach, z = simd_normalize(simd_cross(x, up)), y = simd_cross(z, x)
+                    let m = Mat4(columns: (Vec4(x * length, 0), Vec4(y * length * 0.3, 0), Vec4(z * length * 0.3, 0), Vec4(at, 1)))
+                    parts.append(pinna.applied(m).painted(0x3d7a2e, 0x93c65c))
                 }
             }
         }
@@ -279,31 +312,59 @@ enum Flora {
         return Plant(shape: Geometry.join(parts), top: v(0, 2.1, 0))
     }
 
-    /// White clover: a low patch of trefoil leaves, each of three rounded leaflets with a pale chevron, and round
-    /// white flower heads, a blush of pink at their base, held on stalks just above the leaves.
+    /// A white clover leaflet, its base at the origin and reaching along x: rounded and broadest toward its tip, a
+    /// pale chevron across its middle pointing back to its base, as on the real leaves.
+    private static let leaflet: Geometry = {
+        var g = bead.applied(.compose(Vec3(0.5, 0, 0), euler: .zero, scale: Vec3(0.5, 0.17, 0.42)))
+        let dark = linear(0x3a7a2c), light = linear(0x6caa48), pale = linear(0xb8d89a)
+        g.colors = g.positions.map { p in
+            // Broader at the tip: the far half a little wider.
+            let chevron = abs(p.x - (0.42 + 0.7 * abs(p.z))) < 0.08 && p.y > 0
+            return chevron ? pale : mix(dark, light, t: clamp(0.5 + p.y * 4, 0, 1))
+        }
+        for i in g.positions.indices { g.positions[i].z *= 0.8 + 0.4 * g.positions[i].x }
+        g.computeNormals()
+        return g
+    }()
+
+    /// A clover's flower head: a ball of many small florets (their bumps all over it), white, the lowest blushed a
+    /// faded pink-brown where they have gone over.
+    private static let cloverHead: Geometry = {
+        var g = Shapes.sphere(1, 12, 8).welded()
+        let white = linear(0xfbfaf2), faded = linear(0xc9a39a)
+        g.colors = []
+        for i in g.positions.indices {
+            let d = g.positions[i]
+            let florets = Float(noise(Double(d.x * 6.5 + d.y * 2.1), Double(d.z * 6.5 - d.y * 1.7), 4)) - 0.5
+            g.positions[i] = d * (1 + florets * 0.32)
+            g.colors.append(mix(faded, white, t: smoothstep(d.y, -0.7, 0.1)) * (1 + florets * 0.25))
+        }
+        g.computeNormals()
+        return g
+    }()
+
+    /// White clover: a mat of trefoil leaves, each of three rounded leaflets with a pale chevron, crowded close as
+    /// clover grows and held up on their stalks to the light at the top of the meadow's grass, and round white flower
+    /// heads, a blush of pink at their base, on stalks above the leaves: from the editor's height a dark green mat
+    /// dotted white, as a clover patch in the grass.
     static let clovers: [Plant] = [clover()]
     private static func clover() -> Plant {
         var parts: [Geometry] = []
-        let leaves = 9
+        let leaves = 16
         for k in 0..<leaves {
-            let a = Float(k) * 2.399963, out = 0.1 + 0.3 * sqrt(Float(k) / Float(leaves))
-            let at = v(cos(a) * out, 0.26 + 0.12 * sin(Float(k) * 1.3), sin(a) * out)
-            parts.append(Clay.limb(Clay.bow(at, v(-cos(a) * 0.05, 0, -sin(a) * 0.05)), 0.024, 0.018, green.0, green.1, sides: 5, rings: 5).shape)
+            let a = Float(k) * 2.399963, out = 0.06 + 0.36 * sqrt(Float(k) / Float(leaves))
+            let at = v(cos(a) * out, 0.44 + 0.14 * sin(Float(k) * 1.3), sin(a) * out)
+            parts.append(Clay.limb(Clay.bow(at, v(-cos(a) * 0.05, 0, -sin(a) * 0.05)), 0.022, 0.018, green.0, green.1, sides: 4, rings: 4).shape)
             parts += ring(3) { b, _ in
-                let around = b + a
-                return bead(at: at + v(cos(around) * 0.11, 0.01, sin(around) * 0.11), size: Vec3(0.13, 0.022, 0.11), color: 0x3f7a30, top: 0x6aa748, turn: v(0, -around, 0.08))
-            }
-            parts += ring(3) { b, _ in
-                let around = b + a
-                return bead(at: at + v(cos(around) * 0.085, 0.026, sin(around) * 0.085), size: Vec3(0.04, 0.012, 0.026), color: 0x9cc47c, turn: v(0, -around, 0))
+                let around = b + a + 0.3 * sin(Float(k))
+                return leaflet.applied(.compose(at, euler: v(0, -around, 0.12), scale: Vec3(repeating: 0.29)))
             }
         }
-        for (a, out, high) in [(Float(0.6), Float(0.18), Float(0.66)), (2.9, 0.26, 0.56), (4.6, 0.12, 0.72)] {
+        for (a, out, high) in [(Float(0.6), Float(0.18), Float(0.82)), (2.9, 0.28, 0.74), (4.6, 0.12, 0.86), (1.7, 0.33, 0.7)] {
             let at = v(cos(a) * out, high, sin(a) * out)
             parts.append(Clay.limb(Clay.bow(at, v(cos(a) * 0.05, 0, sin(a) * 0.05)), 0.024, 0.02, green.0, green.1, sides: 5, rings: 6).shape)
-            // The head's lowest florets fade first, pink-brown under the white.
-            parts.append(Clay.blob(at: at + v(0, 0.05, 0), size: Vec3(0.1, 0.09, 0.1), color: 0xc9a39a, top: 0xfbfaf2, lumpy: 0.25))
+            parts.append(cloverHead.applied(.compose(at + v(0, 0.07, 0), euler: v(0, a, 0), scale: Vec3(0.12, 0.11, 0.12))))
         }
-        return Plant(shape: Geometry.join(parts), top: v(0.1, 0.82, 0.1))
+        return Plant(shape: Geometry.join(parts), top: v(0.1, 0.98, 0.1))
     }
 }

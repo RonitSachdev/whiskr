@@ -200,14 +200,24 @@ enum SceneryCatalog {
     ]
     static func isTread(_ id: String) -> Bool { treads[id] != nil }
 
-    /// A fallen trunk lying in the long grass along its own x axis, its cut ends pale and moss settling
-    /// along the top; shaped lying on y = 0.
+    /// A fallen trunk lying in the long grass along its own x axis, its cut ends pale and moss settling in colonies
+    /// along the top and down its shaded side (`Moss`), the bark worn bare in the middle where cats sit; shaped
+    /// lying on y = 0.
     static let fallenLog: Geometry = {
         let along = QuadraticBezier(Vec3(-7.5, 0.95, 0), Vec3(0, 1.1, 0.9), Vec3(7.5, 0.9, 0.2))
         let trunk = Clay.limb(along, 1.05, 0.9, 0x6f523a, 0x8f6d4b, sides: 16, rings: 14) { _, angle in 1 + sin(angle * 7) * 0.035 }
         func cut(_ x: Float, _ z: Float, _ r: Float) -> Geometry { Clay.blob(at: Vec3(x, 0.95, z), size: Vec3(0.12, r, r), color: 0xcdb089, top: 0xe6cfa6) }
-        let moss = [(Float(-3.5), Float(0.3), Float(1.9)), (0.6, 0.75, 2.6), (4.2, 0.45, 1.6)].map { x, z, size in
-            Clay.blob(at: Vec3(x, 1.95, z), size: Vec3(size, 0.22, 0.75), color: 0x79a043, top: 0xa9cb62, lumpy: 0.15)
+        // The bark's surface at a spot given as how far along x and how far round from the top (toward -z, the
+        // shaded side, as positive): the curve runs evenly along x, so x gives its parameter directly.
+        func bark(_ spot: Vec2) -> (Vec3, Vec3) {
+            let t = clamp((spot.x + 7.5) / 15, 0, 1)
+            let middle = along.point(t), ahead = along.tangent(t)
+            let up = simd_normalize(Vec3(0, 1, 0) - ahead * ahead.y), side = simd_cross(up, ahead)
+            let out = up * cos(spot.y) + side * sin(spot.y)
+            return (middle + out * (1.05 - 0.15 * t), out)
+        }
+        let moss = [(Float(-3.4), Float(0.25), Float(1.7), 13), (2.4, 0.45, 1.6, 13), (5.4, 0.2, 1.0, 7)].enumerated().map { k, colony in
+            Moss.patch(Moss.colony(Vec2(colony.0, colony.1), reach: Vec2(colony.2, 0.75), count: colony.3, size: 0.62, seed: 31 + Double(k) * 7, bark), seed: Double(k) * 3.7)
         }
         return Geometry.join([trunk.shape, cut(-7.5, 0, 1.0), cut(7.42, 0.2, 0.86)] + moss).roughened(0.9)
     }()

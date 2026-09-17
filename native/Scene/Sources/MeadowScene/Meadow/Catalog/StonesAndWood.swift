@@ -51,7 +51,17 @@ enum StonesAndWood {
             parts.append(Clay.blob(at: at, size: v(size * 1.45, 0.07, size * 1.15), color: ochre ? 0xc29a48 : 0x9fae86, top: ochre ? 0xdcb862 : 0xbcc7a2,
                                    turn: v(0, a, (1 - up) * 1.2), lumpy: 0.25))
         }
-        parts.append(Clay.blob(at: v(-0.9, 0.12, -1.25), size: v(1.1, 0.32, 0.5), color: 0x557a33, top: 0x86ad4c, turn: v(0, 0.5, 0), lumpy: 0.2))
+        // Moss in its shade: a colony round its damp foot on its west side, and a few cushions higher up it.
+        let stone = Geometry.join(parts)
+        func side(_ spot: Vec2) -> (Vec3, Vec3) {
+            // Round the body at an angle and a height, out along its curve there.
+            let a = spot.x, h = spot.y, across = sqrt(max(0.05, 1 - pow((h - 0.5) / 1.3, 2)))
+            let at = v(cos(a) * 2.05 * across, h, sin(a) * 1.65 * across)
+            return (at, simd_normalize(v(at.x / (2.05 * 2.05), (h - 0.5) / (1.3 * 1.3), at.z / (1.65 * 1.65))))
+        }
+        parts.append(Moss.patch(Moss.colony(Vec2(2.75, 0.3), reach: Vec2(0.55, 0.2), count: 9, size: 0.44, seed: 11, side)
+                                + Moss.colony(Vec2(3.0, 0.95), reach: Vec2(0.3, 0.22), count: 5, size: 0.3, seed: 12, side)
+                                + Moss.colony(Vec2(1.2, 0.82), reach: Vec2(0.36, 0.3), count: 4, size: 0.22, seed: 13, Moss.top(of: stone)), seed: 7))
         return Plant(shape: Geometry.join(parts).roughened(0.95), top: v(0, 1.75, 0))
     }()
 
@@ -70,9 +80,14 @@ enum StonesAndWood {
         var top = endGrain(radius: radius * 0.93)
         top.translate(0, height + 0.012, 0)
         parts.append(top)
-        // Moss up the shaded side and over the rim there.
-        parts.append(Clay.blob(at: v(-0.55, 0.35, -0.72), size: v(0.6, 0.42, 0.32), color: 0x557a33, top: 0x86ad4c, turn: v(0, 0.65, 0), lumpy: 0.2))
-        parts.append(Clay.blob(at: v(-0.45, height - 0.02, -0.62), size: v(0.42, 0.07, 0.24), color: 0x5e8438, top: 0x8db552, turn: v(0, 0.65, 0), lumpy: 0.2))
+        // Moss up the shaded side from the damp foot, and a little over the rim there (`Moss`).
+        func bark(_ spot: Vec2) -> (Vec3, Vec3) {
+            let a = spot.x, h = spot.y, r = radius * (1.04 + 0.2 * pow(max(0, 1 - h / 0.42), 2))
+            return (v(cos(a) * r, h, sin(a) * r), simd_normalize(v(cos(a), 0.25, sin(a))))
+        }
+        parts.append(Moss.patch(Moss.colony(Vec2(2.75, 0.4), reach: Vec2(0.6, 0.3), count: 8, size: 0.32, seed: 21, bark)
+                                + Moss.colony(Vec2(-0.66, 0.26), reach: Vec2(0.18, 0.26), count: 5, size: 0.2, seed: 22) { (v($0.x, height + 0.012, $0.y), v(0, 1, 0)) },
+                                seed: 9))
         // Bracket fungi: half-round shelves, tan with a cream edge.
         for (a, y, size) in [(Float(2.3), Float(0.5), Float(0.3)), (2.75, 0.32, 0.22)] {
             let out = Vec3(cos(a), 0, -sin(a))
@@ -92,8 +107,9 @@ enum StonesAndWood {
             let half: Float = 1.25 + shift * 0.5
             var log = Clay.limb(QuadraticBezier(v(-half + shift, y, z), v(shift, y + 0.01, z), v(half + shift, y, z)), radius, radius * 0.97, 0x6e543e, 0x6e543e,
                                 sides: 14, rings: 6) { along, angle in 1 + 0.05 * abs(sin(angle * 7 + along * 3 + z)) }.shape
-            // Bark lit from above: paler on top, as the sun bleaches it.
-            log.colors = log.positions.map { p in mix(linear(0x5a4332), linear(0x9a7b5a), t: smoothstep(p.y - y, -radius * 0.6, radius)) }
+            // Bark lit from above: paler and greyer on top, as the sun and rain weather it, so the pile reads as
+            // logs from the editor's height and not as one dark heap.
+            log.colors = log.positions.map { p in mix(linear(0x6e5844), linear(0xc4ac88), t: smoothstep(p.y - y, -radius * 0.8, radius * 0.6)) }
             parts.append(log)
             // Both sawn ends.
             for end: Float in [-1, 1] {
@@ -102,9 +118,17 @@ enum StonesAndWood {
                 parts.append(cut)
             }
         }
-        // Moss settling on the oldest logs, low on the shaded side.
-        parts.append(Clay.blob(at: v(-0.5, r * 1.6, -0.86), size: v(0.7, 0.16, 0.22), color: 0x557a33, top: 0x86ad4c, lumpy: 0.2))
-        parts.append(Clay.blob(at: v(0.35, r * 2 + r * 1.68 * 2 - 0.04, 0), size: v(0.45, 0.08, 0.2), color: 0x5e8438, top: 0x8db552, lumpy: 0.2))
+        // Moss settling on the oldest logs, low on the shaded side, and a little on the top one (`Moss`).
+        func on(_ k: Int) -> (Vec2) -> (Vec3, Vec3) {
+            let (_, z, row, scale) = logs[k]
+            let radius = r * scale, y = radius + row * r * 1.68 - 0.04
+            return { spot in
+                let out = v(0, cos(spot.y), -sin(spot.y))
+                return (v(spot.x, y, z) + out * radius, out)
+            }
+        }
+        parts.append(Moss.patch(Moss.colony(Vec2(-0.5, 0.75), reach: Vec2(0.6, 0.45), count: 6, size: 0.2, seed: 41, on(0))
+                                + Moss.colony(Vec2(0.4, 0.3), reach: Vec2(0.35, 0.3), count: 4, size: 0.15, seed: 42, on(5)), seed: 4))
         // Lying along z, so as it is first placed (and pictured) the ends face you.
         return Plant(shape: Geometry.join(parts).applied(.rotationY(.pi / 2)).roughened(0.9), top: v(0, r * 2 + r * 1.68 * 2, 0))
     }()

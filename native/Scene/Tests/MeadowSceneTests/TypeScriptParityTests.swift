@@ -202,7 +202,9 @@ private func close(_ a: Vec3, _ b: [Double], _ tolerance: Float = 1e-4) -> Bool 
         check(Flora.daisies[0].shape, flora["daisy0"] as! [String: Any])
         check(Flora.lupins[1].shape, flora["lupin1"] as! [String: Any])
         check(Flora.mushrooms[0].shape, flora["mushroom0"] as! [String: Any], vertexTolerance: 2000)
-        check(Flora.stones[1].shape, flora["stone1"] as! [String: Any], vertexTolerance: 2000, boundsTolerance: 0.02)
+        // The mossy stone's moss is the Mac's own (a colony of tufted cushions, `Moss`), standing a little prouder of
+        // the stone than flora.ts's single pad.
+        check(Flora.stones[1].shape, flora["stone1"] as! [String: Any], vertexTolerance: 2000, boundsTolerance: 0.08)
         #expect(close(Flora.daisies[0].top, (flora["daisyTop"] as! [NSNumber]).map(\.doubleValue)))
     }
 }

@@ -95,11 +95,12 @@ import simd
     }
 
     @Test(.enabled(if: folder != nil)) func models() {
-        let spot = Self.spot
         for (shelf, ids) in Self.shelves {
             var editor: [(String, CGImage)] = [], zoom: [(String, CGImage)] = [], side: [(String, CGImage)] = [], close: [(String, CGImage)] = []
             var dusk: [(String, CGImage)] = [], night: [(String, CGImage)] = []
             for id in ids {
+                // A fallen log and a fence are long, and kept off the picnic ground: they stand further out.
+                let spot = id == "wood.fallenLog" || id == "garden.fence" ? Self.spot + simd_normalize(Self.spot - TreePictures.spot) * -9 : Self.spot
                 let view = Self.editor(Self.things(id, at: spot))
                 if let c = Self.editorCrop(view, at: spot) { editor.append((id, c)) }
                 // The same framing drawn at twice a Retina screen's density, to look closely at what it shows.
@@ -123,6 +124,9 @@ import simd
             CatalogPictures.sheet(night, columns: 4, to: "\(shelf)-editor-night", in: Self.folder)
             CatalogPictures.sheet(side, columns: 4, to: "\(shelf)-sidebar", in: Self.folder)
             CatalogPictures.sheet(close, columns: 4, to: "\(shelf)-close", in: Self.folder)
+            // The tray's pictures, which are drawn from the models themselves.
+            let tray = ids.compactMap { id in Self.editor([]).portrait(of: [id], pixels: 256, background: MeadowColor(hex: 0xffffff)).map { (id, $0) } }
+            CatalogPictures.sheet(tray, columns: 8, to: "\(shelf)-tray", in: Self.folder)
         }
     }
 
@@ -204,6 +208,18 @@ import simd
         CatalogPictures.sheet(pictures, columns: 3, to: "critters", in: Self.folder)
     }
 
+    /// Each model's triangles, as the meadow draws it at its own size, one line each.
+    @Test(.enabled(if: folder != nil)) func triangles() throws {
+        var lines: [String] = []
+        for (_, ids) in Self.shelves {
+            for id in ids {
+                let shape = id == "wood.fallenLog" ? SceneryCatalog.fallenLog : Meadow.alone(MeadowScenery.Thing(id: id, x: 0, z: 0)).map { $0.make() }
+                lines.append("\(id)\t\(shape.map { $0.indices.count / 3 } ?? 0)")
+            }
+        }
+        try (lines.joined(separator: "\n") + "\n").write(toFile: URL(fileURLWithPath: Self.folder!).appendingPathComponent("triangles.txt").path, atomically: true, encoding: .utf8)
+    }
+
     // MARK: A cat out in the grass
 
     /// The editor's and the sidebar's cameras as each frames its own meadow (how far back, how steep, turned
@@ -225,16 +241,25 @@ import simd
 
     /// The cat as the editor, a sidebar and a close look show it, wherever it is now.
     static func shots(_ view: MeadowView, _ actor: Actor, _ name: String, into pictures: inout [(String, CGImage)]) {
-        let at = SIMD2(actor.cat.position.x, actor.cat.position.z)
+        /// Looked at from `camera`: a moment for the cat's head to turn to it, as it would to a camera that was there
+        /// all along, then framed on where the cat is now.
+        func look(_ camera: CameraView) {
+            for settle in [0.3, 1.0 / 120] {
+                var v = camera
+                v.x = actor.cat.position.x
+                v.z = actor.cat.position.z
+                view.stage.camera.setView(v)
+                view.advance(seconds: settle)
+            }
+        }
         // A sidebar's view is 820 points tall and the editor's 900: the same distance shows the cat the same size
         // when the picture is as tall as each view; both are rendered here in this view's size, then cropped.
         for (label, camera, size) in [("editor", Self.editorCamera, CGFloat(900)), ("sidebar", Self.sidebarCamera, 820)] {
-            view.stage.camera.setView(CameraView(x: at.x, z: at.y, distance: camera.distance * Float(view.bounds.height / size), pitch: camera.pitch, bearing: camera.bearing))
-            view.advance(seconds: 1.0 / 120)
+            look(CameraView(x: 0, z: 0, distance: camera.distance * Float(view.bounds.height / size), pitch: camera.pitch, bearing: camera.bearing))
+            let at = SIMD2(actor.cat.position.x, actor.cat.position.z)
             if let image = Self.image(view), let c = TreePictures.crop(view, image, at: at, w: 160, h: 140, below: 60) { pictures.append(("\(name), \(label)", c)) }
         }
-        view.stage.camera.setView(CameraView(x: at.x, z: at.y, distance: 10, pitch: 0.45, bearing: 0.45))
-        view.advance(seconds: 1.0 / 120)
+        look(CameraView(x: 0, z: 0, distance: 10, pitch: 0.45, bearing: 0.45))
         if let image = view.renderImage(width: 320, height: 280) { pictures.append(("\(name), close", image)) }
     }
 
