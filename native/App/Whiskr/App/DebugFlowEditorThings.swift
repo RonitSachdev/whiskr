@@ -19,16 +19,24 @@ extension EditorFlow {
     static let newThings = ["tree.apple", "tree.pine", "flower.cornflower", "flower.foxglove", "plant.fern", "plant.clover", "stone.boulder", "wood.stump",
                             "wood.logPile", "work.cushion", "cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"]
 
-    /// Free ground in view where a thing of `id` may stand as it is first placed (at the largest it is drawn).
+    /// Free ground in view where the thing armed now (its ghost: its own size, turn and shape, as it will be placed)
+    /// may stand. Judged as the editor judges the ghost (`placingRefusal`): a probe of another size passed spots the
+    /// ghost itself was refused, as a boulder drawn 1.35 across where a 1.25 one fitted (a click then placed nothing).
     func freeSpot(for id: String, near spot: SIMD2<Float>) -> SIMD2<Float>? {
-        let field = SceneryRules.Field(library.scenery), card = trayCard.insetBy(dx: -30, dy: -30)
+        guard let armed = editor.debugPending.item, armed.asset == id else { return nil }
+        let session = library.session, field = session.placingField, card = trayCard.insetBy(dx: -30, dy: -30)
         for ring in stride(from: Float(0), through: 44, by: 2) {
             for k in 0..<(ring == 0 ? 1 : 20) {
                 let a = Float(k) / 20 * 2 * .pi
                 let p = spot + SIMD2(cos(a), sin(a)) * ring
                 guard let view = meadow.viewPoint(ofGround: p), meadow.bounds.insetBy(dx: 90, dy: 90).contains(view), !card.contains(view) else { continue }
-                let probe = MeadowScenery.Thing(id: id, x: p.x, z: p.y, size: SIMD3(repeating: 1.25))
-                if field.refusal(for: probe) == nil { return p }
+                // Free a little round it too: the click's point, read back from the view, lands within a hair of it.
+                let free = [SIMD2<Float>.zero, SIMD2(0.3, 0), SIMD2(-0.3, 0), SIMD2(0, 0.3), SIMD2(0, -0.3)].allSatisfy { nudge in
+                    var probe = armed
+                    probe.placement = .at(MeadowPoint(MeadowJSON.quantized(Double(p.x + nudge.x)), MeadowJSON.quantized(Double(p.y + nudge.y))))
+                    return session.placingRefusal(probe, field: field) == nil
+                }
+                if free { return p }
             }
         }
         return nil
@@ -140,14 +148,15 @@ extension EditorFlow {
     private func filtering() async {
         suite.shortcut("v")
         suite.shortcut("cmd+f")
-        await PerfWait.sleep(300)
+        _ = await PerfWait.until(3000) { self.tray.filterHasKeyboard }
         for (query, wanted) in [("cat", ["cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"]), ("post", ["garden.fence", "work.signpost", "work.mailbox", "cat.scratchingPost", "work.lampPost"]),
                                 ("firewood", ["wood.logPile"]), ("zabuton", ["work.cushion"]), ("conifer", ["tree.pine"]), ("TOADSTOOL", ["fungus.flyAgaric"])] {
             suite.typeKeys(query)
-            await PerfWait.sleep(200)
-            check("the filter finds “\(query)” by other words and ids", Set(tray.shelf.map(\.id)) == Set(wanted), "\(tray.shelf.map(\.id))")
+            _ = await PerfWait.until(2000) { self.tray.filter == query }
+            check("the filter finds “\(query)” by other words and ids", Set(tray.shelf.map(\.id)) == Set(wanted), "“\(tray.filter)”: \(tray.shelf.map(\.id))")
+            // Emptied as its × does; the field shows it before the next is typed.
             tray.filter = ""
-            await PerfWait.sleep(100)
+            _ = await PerfWait.until(2000) { self.tray.filterField?.stringValue.isEmpty == true }
         }
         // Hiragana finds a name in katakana (Japanese names: "クローバー"), and the other way round.
         let clover = EditorTray.Item(id: "plant.clover", name: "クローバー", category: .flowers, pictured: ["plant.clover"])
@@ -175,9 +184,9 @@ extension EditorFlow {
         await PerfWait.sleep(600)
         await still()
         suite.shortcut("cmd+f")
-        await PerfWait.sleep(300)
+        _ = await PerfWait.until(3000) { self.tray.filterHasKeyboard }
         suite.typeKeys("e")
-        await PerfWait.sleep(300)
+        _ = await PerfWait.until(3000) { self.shelfScroller?.documentView.map { $0.frame.width > 700 } == true }
         guard let scroller = shelfScroller, let document = scroller.documentView, document.frame.width > scroller.contentView.bounds.width + 40 else {
             suite.shortcut("esc")
             window.setContentSize(NSSize(width: 1440, height: 900))
@@ -199,20 +208,24 @@ extension EditorFlow {
         check("a mouse's wheel over the shelf scrolls it along, and never zooms the meadow behind it",
               scrolled > start + 60 && abs(meadow.cameraView.distance - camera.distance) < 0.01, "shelf \(start) → \(scrolled), view \(camera.distance) → \(meadow.cameraView.distance)")
         await picture("tray-long-scrolled")
-        // The keys: to the last tile, which is brought into view.
-        suite.typeKeys("\r")
-        await PerfWait.sleep(200)
-        suite.shortcut("esc")
+        // The keys, along the filtered shelf: Tab in the filter hands it the keyboard, → goes to the last tile, which
+        // is brought into view. Each step waits for what it does, not for a time (a busy Mac's main thread runs late).
+        let filtered = tray.shelf.map(\.id)
         suite.shortcut("tab")
-        await PerfWait.sleep(200)
-        for _ in 0..<(tray.shelf.count - 1) { suite.shortcut("right") }
-        await PerfWait.sleep(500)
-        let last = tray.shelf.last?.id
-        let lastVisible = last.flatMap { tile($0) }.map { view in
-            let rect = view.convert(view.bounds, to: scroller.contentView)
-            return scroller.contentView.bounds.insetBy(dx: -2, dy: -40).contains(rect)
-        } ?? false
-        check("→ along the shelf brings each tile into view, to the last", tray.highlighted == last && lastVisible, "on \(tray.highlighted ?? "none")")
+        let onShelf = await PerfWait.until(3000) { self.tray.shelfHasKeyboard && self.window.firstResponder === self.editor.trayKeys } != nil
+        check("Tab in the filter hands the shelf, still filtered, the keyboard", onShelf && tray.shelf.map(\.id) == filtered && tray.highlighted == filtered.first,
+              "on shelf \(onShelf), filter “\(tray.filter)”, on \(tray.highlighted ?? "none")")
+        for _ in 0..<(filtered.count - 1) { suite.shortcut("right") }
+        let last = filtered.last
+        func lastVisible() -> Bool {
+            last.flatMap { tile($0) }.map { view in
+                let rect = view.convert(view.bounds, to: scroller.contentView)
+                return scroller.contentView.bounds.insetBy(dx: -2, dy: -40).contains(rect)
+            } ?? false
+        }
+        _ = await PerfWait.until(3000) { self.tray.highlighted == last && lastVisible() }
+        check("→ along the shelf brings each tile into view, to the last", tray.highlighted == last && lastVisible(), "on \(tray.highlighted ?? "none") of \(filtered.count)")
+        await picture("tray-long-keys")
         suite.shortcut("esc")
         tray.filter = ""
         window.setContentSize(NSSize(width: 1440, height: 900))

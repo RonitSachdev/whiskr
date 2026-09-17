@@ -51,20 +51,27 @@ extension EditModeController {
             noticeModel.choices = [.init(title: String(localized: "Reload", comment: "Meadow editor: shows the meadow as it is on disk"), id: "reload"),
                                    .init(title: String(localized: "Keep Mine", comment: "Meadow editor: keeps your version of the meadow"), id: "keep", isDefault: true)]
             noticeModel.closable = false
+            noticeModel.symbol = "exclamationmark.arrow.triangle.2.circlepath"
         case .gone(let file)?:
             noticeModel.text = String(localized: "“\(library.displayName(file))” was moved or deleted on disk.",
                                       comment: "Meadow editor: the meadow being edited was removed by something else")
             noticeModel.choices = [.init(title: String(localized: "Close It", comment: "Meadow editor: lets the removed meadow go and shows the Default"), id: "reload"),
                                    .init(title: String(localized: "Save Again", comment: "Meadow editor: writes the removed meadow back"), id: "keep", isDefault: true)]
             noticeModel.closable = false
+            noticeModel.symbol = "exclamationmark.arrow.triangle.2.circlepath"
         case nil:
             noticeModel.choices = []
             noticeModel.closable = true
+            noticeModel.symbol = "shippingbox"
             if let kept = library.keptCopy, noteClosed != "kept:\(kept)" {
                 noticeModel.text = String(localized: "The other version is kept in My Meadows as “\(library.displayName(kept))”.",
                                           comment: "Meadow editor: where the side not chosen was kept")
             } else if library.session.undrawnCount > 0, noteClosed != name {
                 noticeModel.text = MeadowFileWords.undrawn(library.session.undrawnCount)
+            } else if hintShowing {
+                noticeModel.text = Self.firstHint
+                noticeModel.symbol = "lightbulb"
+                noticeModel.choices = [.init(title: String(localized: "Editing Help", comment: "Meadow editor: the first hint's button, opening Help at editing the meadow"), id: "help")]
             } else {
                 noticeModel.text = nil
             }
@@ -83,7 +90,10 @@ extension EditModeController {
             meadowSwitched()
         case "keep":
             library.keepMine()
+        case "help":
+            HelpWindowController.shared.show(.editing)
         default:
+            if noticeModel.text == Self.firstHint { firstHintSeen() }
             if let kept = library.keptCopy, noticeModel.text?.contains(library.displayName(kept)) == true {
                 noteClosed = "kept:\(kept)"
             } else {
@@ -91,6 +101,25 @@ extension EditModeController {
             }
         }
         updateNotice()
+    }
+
+    // MARK: The first hint
+
+    /// The one hint the first time the editor opens: where the tools are and how to leave. Never again once it is
+    /// put away or editing ends.
+    static var firstHint: String {
+        String(localized: "Choose a thing in the tray below, then click the meadow to place it; V, B, E and G change the tool. Every change is saved. Done (⌘↩) or Esc when you are finished.",
+               comment: "Meadow editor: the one quiet hint the first time editing opens")
+    }
+
+    private static let hintKey = "meadowEditorHintSeen"
+
+    /// Whether this is the first time editing opens (the hint shows until put away, or until editing ends).
+    static var hintDue: Bool { !AppPlaces.defaults.bool(forKey: hintKey) }
+
+    func firstHintSeen() {
+        hintShowing = false
+        AppPlaces.defaults.set(true, forKey: Self.hintKey)
     }
 
     /// Along the meadow's top edge, in the middle, inside it.

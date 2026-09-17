@@ -54,8 +54,11 @@ final class EditorTray {
     /// The tile the keyboard is on, while the shelf has the keyboard.
     var highlighted: String?
     var shelfHasKeyboard = false
-    /// The filter field takes the keyboard (⌘F).
-    var findRequests = 0
+    /// The filter field has the keyboard (its well is ringed in the focus colour).
+    var filterHasKeyboard = false
+    /// The filter field, once drawn; and ⌘F asked for it before it was (it takes the keyboard as it comes).
+    @ObservationIgnored weak var filterField: NSTextField?
+    @ObservationIgnored var wantsFilter = false
     /// The tile being dragged onto the meadow.
     var dragging: String?
 
@@ -77,11 +80,15 @@ final class EditorTray {
         case collapse
         /// Return in the filter field: the first thing it finds.
         case filterReturn
+        /// Tab or ↓ in the filter field: the shelf, as filtered, takes the keyboard.
+        case filterToShelf
         /// Esc in the filter field, or out of the shelf: the keyboard back to the meadow.
         case keyboardBack
     }
 
     @ObservationIgnored var act: (Action) -> Void = { _ in }
+    /// The editor's keys with ⌘ that count while the filter has the keyboard (⌘↩ Done).
+    @ObservationIgnored var keyEquivalent: (NSEvent) -> Bool = { _ in false }
 
     // MARK: The catalog's things
 
@@ -178,7 +185,6 @@ final class EditorTray {
 /// shadow; its buttons are the bars'.
 struct EditorTrayView: View {
     let tray: EditorTray
-    @FocusState private var filterFocused: Bool
 
     /// Room round the card inside its view for the shadow.
     static let margin: CGFloat = 14
@@ -198,9 +204,7 @@ struct EditorTrayView: View {
         .shadow(color: .black.opacity(0.16), radius: 10, y: 3)
         .padding(Self.margin)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(String(localized: "Meadow editor's tray", comment: "VoiceOver: the tray of tools and things while editing the meadow"))
-        .onChange(of: tray.findRequests) { filterFocused = true }
-    }
+        .accessibilityLabel(String(localized: "Meadow editor's tray", comment: "VoiceOver: the tray of tools and things while editing the meadow"))    }
 
     // MARK: The top row
 
@@ -322,22 +326,21 @@ struct EditorTrayView: View {
     private var filterField: some View {
         HStack(spacing: Look.Space.xs) {
             Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(Color.ink3).accessibilityHidden(true)
-            TextField(String(localized: "Filter", comment: "Meadow editor's tray: the filter field's placeholder"), text: Binding(get: { tray.filter }, set: { tray.filter = $0 }))
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-                .focused($filterFocused)
-                .onSubmit { tray.act(.filterReturn) }
-                .onExitCommand {
-                    tray.filter = ""
-                    filterFocused = false
-                    tray.act(.keyboardBack)
-                }
-                .accessibilityLabel(String(localized: "Filter things", comment: "VoiceOver: the tray's filter field"))
-                .help(String(localized: "Filter the things on the shelf (⌘F)", comment: "Meadow editor's tray: the filter field's tooltip"))
+            TrayFilterField(tray: tray)
+            if !tray.filter.isEmpty {
+                // Empties the filter, as a search field's own button does; the keyboard stays where it is.
+                Image(systemName: "xmark.circle.fill").font(.system(size: 11)).foregroundStyle(Color.ink3)
+                    .frame(width: 16, height: 16)
+                    .barButton("tray.filter.clear", label: String(localized: "Clear the Filter", comment: "Meadow editor's tray: empties the filter field"),
+                               help: String(localized: "Clear the Filter", comment: "Meadow editor's tray: empties the filter field")) { tray.filter = "" }
+            }
         }
-        .padding(.horizontal, Look.Space.s)
+        .padding(.leading, Look.Space.s)
+        .padding(.trailing, tray.filter.isEmpty ? Look.Space.s : Look.Space.xxs)
         .frame(width: tray.narrow ? 120 : 168, height: Look.Height.control - 4)
         .background(RoundedRectangle(cornerRadius: Look.Radius.control).fill(Color.well))
+        // The keyboard in it seen at a glance, as a text field's focus ring is.
+        .overlay(RoundedRectangle(cornerRadius: Look.Radius.control).strokeBorder(Color.accent, lineWidth: tray.filterHasKeyboard ? 2 : 0))
     }
 
     // MARK: Categories and the hint
@@ -352,12 +355,16 @@ struct EditorTrayView: View {
             }
             Spacer(minLength: Look.Space.m)
             if !tray.narrow {
-                Text(tray.hint)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.ink2)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .accessibilityHidden(true)
+                // Whole or not at all: a hint cut short mid-word says less than none (the tools' tooltips remain).
+                ViewThatFits(in: .horizontal) {
+                    Text(tray.hint)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color.ink2)
+                        .lineLimit(1)
+                        .fixedSize()
+                    Color.clear.frame(width: 0, height: 0)
+                }
+                .accessibilityHidden(true)
             }
         }
         .padding(.horizontal, Look.Space.s)
@@ -382,28 +389,118 @@ struct EditorTrayView: View {
     // MARK: The shelf
 
     private var shelf: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: Look.Space.m) {
-                    ForEach(tray.shelf) { item in
-                        TrayTile(tray: tray, item: item).id(item.id)
-                    }
-                    if tray.shelf.isEmpty {
-                        Text(String(localized: "Nothing by that name", comment: "Meadow editor's tray: the filter found nothing"))
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.ink2)
-                            .frame(height: EditorTray.tile)
-                    }
+        // The tile the keyboard is on is brought into view by `TrayKeys`.
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: Look.Space.m) {
+                ForEach(tray.shelf) { item in
+                    TrayTile(tray: tray, item: item)
                 }
-                .padding(.horizontal, Look.Space.m)
-                .padding(.top, Look.Space.xxs)
-                .padding(.bottom, Look.Space.m)
+                if tray.shelf.isEmpty {
+                    Text(String(localized: "Nothing by that name", comment: "Meadow editor's tray: the filter found nothing"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.ink2)
+                        .frame(height: EditorTray.tile)
+                }
             }
-            .onChange(of: tray.highlighted) { if let id = tray.highlighted { proxy.scrollTo(id) } }
+            .padding(.horizontal, Look.Space.m)
+            .padding(.top, Look.Space.xxs)
+            .padding(.bottom, Look.Space.m)
         }
         .frame(height: EditorTray.shelfRow)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Things", comment: "VoiceOver: the tray's shelf of things"))
+    }
+}
+
+/// The tray's filter field, in AppKit, so it takes the keyboard the moment ⌘F asks (`EditModeController.findInTray`):
+/// typing filters the shelf across categories, Return arms the first thing found, Tab or ↓ hands the filtered shelf
+/// the keyboard, ⇧Tab goes back to the meadow, and Esc empties it and goes back to the meadow.
+private struct TrayFilterField: NSViewRepresentable {
+    let tray: EditorTray
+
+    func makeCoordinator() -> Coordinator { Coordinator(tray: tray) }
+
+    func makeNSView(context: Context) -> TrayFilterTextField {
+        let field = TrayFilterTextField()
+        field.tray = tray
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.font = .systemFont(ofSize: 12)
+        field.usesSingleLineMode = true
+        field.cell?.isScrollable = true
+        field.cell?.wraps = false
+        field.placeholderString = String(localized: "Filter", comment: "Meadow editor's tray: the filter field's placeholder")
+        field.toolTip = String(localized: "Filter the things on the shelf (⌘F)", comment: "Meadow editor's tray: the filter field's tooltip")
+        field.setAccessibilityLabel(String(localized: "Filter things", comment: "VoiceOver: the tray's filter field"))
+        field.identifier = NSUserInterfaceItemIdentifier("tray.filter")
+        field.delegate = context.coordinator
+        tray.filterField = field
+        return field
+    }
+
+    func updateNSView(_ field: TrayFilterTextField, context: Context) {
+        context.coordinator.tray = tray
+        field.tray = tray
+        field.textColor = Colors.text
+        if field.stringValue != tray.filter { field.stringValue = tray.filter }
+    }
+
+    @MainActor final class Coordinator: NSObject, NSTextFieldDelegate {
+        var tray: EditorTray
+
+        init(tray: EditorTray) { self.tray = tray }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField, tray.filter != field.stringValue else { return }
+            tray.filter = field.stringValue
+        }
+
+        func controlTextDidEndEditing(_ notification: Notification) { tray.filterHasKeyboard = false }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            switch selector {
+            case #selector(NSResponder.insertNewline(_:)):
+                tray.act(.filterReturn)
+            case #selector(NSResponder.insertTab(_:)) where NSApp.currentEvent?.modifierFlags.contains(.shift) == true:
+                // ⇧Tab that came as a Tab with ⇧ held (not every keyboard path makes it a backtab).
+                tray.act(.keyboardBack)
+            case #selector(NSResponder.insertTab(_:)), #selector(NSResponder.moveDown(_:)):
+                tray.act(.filterToShelf)
+            case #selector(NSResponder.insertBacktab(_:)):
+                tray.act(.keyboardBack)
+            case #selector(NSResponder.cancelOperation(_:)):
+                tray.filter = ""
+                tray.act(.keyboardBack)
+            default:
+                return false
+            }
+            return true
+        }
+    }
+}
+
+/// The filter's text field: says when it has the keyboard, takes it when ⌘F came before it was drawn, and lets the
+/// editor's ⌘ keys (⌘↩ Done) count while typing in it.
+final class TrayFilterTextField: NSTextField {
+    weak var tray: EditorTray?
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { tray?.filterHasKeyboard = true }
+        return became
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window, let tray, tray.wantsFilter else { return }
+        tray.wantsFilter = false
+        window.makeFirstResponder(self)
+    }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if let editor = window?.firstResponder as? NSText, editor.delegate === self, tray?.keyEquivalent(event) == true { return true }
+        return super.performKeyEquivalent(with: event)
     }
 }
 
@@ -626,7 +723,24 @@ final class TrayKeys: NSView {
         }
     }
 
+    /// The tray's view, where the tiles are.
+    weak var host: NSView?
+
+    /// The tile the keyboard is on, brought into view along the shelf (with room for its rings), in AppKit: SwiftUI's
+    /// `scrollTo` from a change of the highlight left a long shelf where it was.
+    private func bringIntoView() {
+        guard let tray, let id = tray.highlighted, let host else { return }
+        func find(_ view: NSView) -> TrayTileView? {
+            if let tile = view as? TrayTileView, tile.item == id { return tile }
+            for sub in view.subviews { if let found = find(sub) { return found } }
+            return nil
+        }
+        guard let tile = find(host) else { return }
+        tile.scrollToVisible(tile.bounds.insetBy(dx: -Look.Space.m, dy: 0))
+    }
+
     private func announceHighlighted() {
+        bringIntoView()
         guard let tray, let item = tray.shelf.first(where: { $0.id == tray.highlighted }) else { return }
         let text = tray.full[item.id].map { "\(item.name), \($0)" } ?? item.name
         NSAccessibility.post(element: self, notification: .announcementRequested,

@@ -6,13 +6,15 @@ import WhiskrKit
 /// unless asked for. What each picture and mark means, where cats come from, and the keys that matter.
 final class HelpWindowController: NSWindowController {
     static let shared = HelpWindowController()
+    /// The topic the page scrolls to (the Help menu's search, the editor's first hint).
+    private let place = HelpPlace()
 
     private init() {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 680), styleMask: [.titled, .closable, .resizable, .miniaturizable],
                               backing: .buffered, defer: false)
         window.title = String(localized: "Whiskr Help", comment: "The help window's title")
         window.minSize = NSSize(width: 460, height: 400)
-        window.contentViewController = NSHostingController(rootView: HelpPage())
+        window.contentViewController = NSHostingController(rootView: HelpPage(place: place))
         window.setContentSize(NSSize(width: 600, height: 680))
         window.isReleasedWhenClosed = false
         if !AppPlaces.isIsolated { window.setFrameAutosaveName("Help") }
@@ -28,10 +30,39 @@ final class HelpWindowController: NSWindowController {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
     }
+
+    /// Whiskr Help at one of its topics.
+    func show(_ topic: HelpTopic) {
+        showHelp(nil)
+        place.topic = nil
+        place.topic = topic
+    }
+
+    #if DEBUG
+    /// The page's view, for a flow's pictures and accessibility checks without showing the window.
+    var debugPage: NSView? { window?.contentView }
+    #endif
+}
+
+/// Where the page is asked to go.
+@MainActor @Observable final class HelpPlace {
+    var topic: HelpTopic?
 }
 
 private struct HelpPage: View {
+    let place: HelpPlace
+
     var body: some View {
+        ScrollViewReader { proxy in
+            page
+                .onChange(of: place.topic) {
+                    guard let topic = place.topic else { return }
+                    withAnimation(Look.Motion.moves ? .easeOut(duration: Look.Motion.standard) : nil) { proxy.scrollTo(topic, anchor: .top) }
+                }
+        }
+    }
+
+    private var page: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 HStack(spacing: 16) {
@@ -116,6 +147,7 @@ private struct HelpPage: View {
                     Text(String(localized: "Drag a tab to move it: the tabs part where it would land, and over a pane a tinted area shows the half it would take, or the whole pane where it would take that tab's place. Let go somewhere else, or press Esc, and it goes back.", comment: "Help page: dragging a tab"))
                     Text(String(localized: "View › Reset Layout brings back the meadow, the terminals and the status bar at their usual sizes, and this workspace's side panel at its usual width. The bars at the top move the window, and a double-click on them does what Desktop & Dock says a title bar's double-click does; new tabs come from + and ⌘T.", comment: "Help page: resetting the layout, and what the bars do"))
                 }
+                HelpMeadowEditorSections()
                 HelpSection(title: String(localized: "Your own keys")) {
                     Text(String(localized: "Any menu command can have a different shortcut: System Settings › Keyboard › Keyboard Shortcuts › App Shortcuts."))
                 }
@@ -127,15 +159,24 @@ private struct HelpPage: View {
     }
 }
 
-private struct HelpSection<Content: View>: View {
+struct HelpSection<Content: View>: View {
     let title: String
+    /// The topic it is, for the Help menu's search to scroll to.
+    var topic: HelpTopic?
     @ViewBuilder let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.topic = HelpTopic.allCases.first { $0.title == title }
+        self.content = content()
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.system(size: 15, weight: .semibold)).accessibilityAddTraits(.isHeader)
             content.fixedSize(horizontal: false, vertical: true)
         }
+        .id(topic.map(AnyHashable.init) ?? AnyHashable(title))
     }
 }
 
@@ -156,13 +197,15 @@ private struct HelpMark: View {
     }
 }
 
-private struct HelpKey: View {
+struct HelpKey: View {
     let keys: String
     let text: String
+    /// The keys' column: wider in the editor's table, whose lines hold several keys ("⇧← ⇧→ ⇧↑ ⇧↓").
+    var width: CGFloat = 64
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(keys).font(.system(.body, design: .rounded).weight(.medium)).frame(width: 64, alignment: .leading)
+            Text(keys).font(.system(.body, design: .rounded).weight(.medium)).frame(width: width, alignment: .leading)
             Text(text).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }

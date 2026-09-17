@@ -752,7 +752,7 @@ nonisolated final class MeadowAccessibilityElement: NSAccessibilityElement {
     private let frame: @MainActor @Sendable () -> NSRect?
     private let press: @MainActor @Sendable () -> Void
 
-    init(meadow: MeadowView, item: MeadowItem, press: @escaping @MainActor @Sendable () -> Void) {
+    @MainActor init(meadow: MeadowView, item: MeadowItem, press: @escaping @MainActor @Sendable () -> Void) {
         frame = { [weak meadow] in
             guard let meadow, let rect = meadow.screenRect(of: item), let window = meadow.window else { return nil }
             return window.convertToScreen(meadow.convert(rect, to: nil))

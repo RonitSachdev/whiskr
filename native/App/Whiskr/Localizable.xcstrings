@@ -260,12 +260,45 @@
         }
       }
     },
+    "%@, lit": {
+      "comment": "VoiceOver: a garden lamp, burning (at night)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@、点灯中"
+          }
+        }
+      }
+    },
+    "%@, not lit": {
+      "comment": "VoiceOver: a garden lamp, out (by day)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@、消灯中"
+          }
+        }
+      }
+    },
     "%@, shown, %@": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$@、表示中、%2$@"
+          }
+        }
+      }
+    },
+    "%@, with a gate": {
+      "comment": "VoiceOver: a fence that has a gate",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@、門あり"
           }
         }
       }
@@ -893,6 +926,28 @@
         }
       }
     },
+    "A meadow holds up to 5,000 things: 48 trees, 120 tall things and 32 garden lamps among them. The tray says how full it is once it is nearly full, and what cannot be added says why.": {
+      "comment": "Help page: the meadow's limits",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ひとつの草原に置けるのは最大 5,000 個です（うち木は 48 本、背の高いものは 120 個、ガーデンランプは 32 個まで）。いっぱいに近づくとトレイが残りを知らせ、追加できないものはその理由を伝えます。"
+          }
+        }
+      }
+    },
+    "A meadow made with a newer Whiskr opens as far as this one can: things it cannot draw are kept whole and show as parcels while editing, which you can move or take away, and come back as they were once Whiskr is updated. A file too new to read says so and asks you to update.": {
+      "comment": "Help page: files from newer versions",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しい Whiskr で作られた草原は、このバージョンで開ける範囲で開きます。描けないものはそのまま保たれ、編集中は小包として表示されます。移動や削除はでき、Whiskr をアップデートすると元どおりに戻ります。新しすぎて読めないファイルは、そう伝えてアップデートを勧めます。"
+          }
+        }
+      }
+    },
     "A meadow needs a name.": {
       "localizations": {
         "ja": {
@@ -972,6 +1027,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "リポジトリの .editorconfig ファイルがあれば、その対象のファイルではこれらとインデント、改行コードをそのファイルが決めます（VS Code と同じです）。"
+          }
+        }
+      }
+    },
+    "A shelf of the tray, in its order": {
+      "comment": "Help page: a key of the meadow editor (1–7)",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トレイの棚（並び順）"
           }
         }
       }
@@ -1446,6 +1512,17 @@
         }
       }
     },
+    "Benches, cushions, pots, the shed's door and other made things come in a few colours: choose one, then Colour (C) in its bar. The next one you place wears the colour chosen last.": {
+      "comment": "Help page: colours of made things",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ベンチ、座布団、植木鉢、小屋の扉などの品物は、いくつかの色から選べます。選んでから、バーの「色」（C）を使います。次に置くものは、最後に選んだ色になります。"
+          }
+        }
+      }
+    },
     "Bigger Text": {
       "localizations": {
         "ja": {
@@ -1512,6 +1589,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "大岩"
+          }
+        }
+      }
+    },
+    "Brush: drag to plant clumps of wildflowers, ferns, clover or mushrooms; ⌥-drag clears them.": {
+      "comment": "Help page: the Brush",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラシ：ドラッグで野の花、シダ、クローバー、キノコをひとかたまりずつ植えます。⌥ドラッグで取り除きます。"
           }
         }
       }
@@ -1586,6 +1674,50 @@
         }
       }
     },
+    "Choose a thing in the tray below, then click the meadow to place it; V, B, E and G change the tool. Every change is saved. Done (⌘↩) or Esc when you are finished.": {
+      "comment": "Meadow editor: the one quiet hint the first time editing opens",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下のトレイでものを選び、草原をクリックして置きます。V、B、E、G でツールを切り替えます。変更はすべて保存されます。終わったら「完了」（⌘↩）か Esc を押します。"
+          }
+        }
+      }
+    },
+    "Choose a thing on the tray's shelf and click where it should stand: ⇧-click places more, R turns it, Esc puts it back. A tile can also be dragged onto the meadow, or double-clicked to place it near the middle. Where a thing may not stand, its ring is dashed and the reason shows by the pointer. Trees, sheds, tents, fences and lamps are kept clear of the picnic ground where your workspaces' blankets lie.": {
+      "comment": "Help page: placing things",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トレイの棚でものを選び、置きたい場所をクリックします。⇧クリックで続けて置け、R で回し、Esc で戻します。タイルを草原へドラッグしたり、ダブルクリックして中央付近に置くこともできます。置けない場所では輪が破線になり、理由がポインタのそばに出ます。木、小屋、テント、柵、ランプは、ワークスペースのシートが並ぶピクニック場には置けません。"
+          }
+        }
+      }
+    },
+    "Choose everything": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべて選ぶ"
+          }
+        }
+      }
+    },
+    "Clear the Filter": {
+      "comment": "Meadow editor's tray: empties the filter field",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "絞り込みを消去"
+          }
+        }
+      }
+    },
     "Clover": {
       "localizations": {
         "ja": {
@@ -1612,6 +1744,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@を%2$@にする"
+          }
+        }
+      }
+    },
+    "Colour (C)": {
+      "comment": "Selection bar: the Colour button's tooltip, with its key",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "色（C）"
+          }
+        }
+      }
+    },
+    "Colours": {
+      "comment": "VoiceOver: the selection bar's row of colour swatches",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "色"
+          }
+        }
+      }
+    },
+    "Colours put away": {
+      "comment": "VoiceOver: the selection bar's row of colours closed",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "色を閉じました"
+          }
+        }
+      }
+    },
+    "Colours shown in the selection's bar": {
+      "comment": "VoiceOver: the selection bar's row of colours opened with C",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択バーに色を表示しました"
+          }
+        }
+      }
+    },
+    "Copy the chosen things": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだものをコピー"
           }
         }
       }
@@ -1696,6 +1883,28 @@
         }
       }
     },
+    "Cut the chosen things": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだものをカット"
+          }
+        }
+      }
+    },
+    "Delete the chosen things": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだものを削除"
+          }
+        }
+      }
+    },
     "Dove Grey": {
       "localizations": {
         "ja": {
@@ -1736,12 +1945,56 @@
         }
       }
     },
+    "Duplicate the chosen things": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだものを複製"
+          }
+        }
+      }
+    },
     "Duplicate “%@”": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "「%@」を複製"
+          }
+        }
+      }
+    },
+    "edit meadow, tools, select, brush, erase, eraser, ground, path, lawn, soil, undo": {
+      "comment": "Help search: words for the topic on editing the meadow, comma-separated",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を編集, ツール, 選択, ブラシ, 消しゴム, 地面, 小道, 芝生, 土, 取り消し, edit meadow, tools"
+          }
+        }
+      }
+    },
+    "Edit the meadow, or stop": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の編集を始める／終える"
+          }
+        }
+      }
+    },
+    "Editing Help": {
+      "comment": "Meadow editor: the first hint's button, opening Help at editing the meadow",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "編集のヘルプ"
           }
         }
       }
@@ -1762,6 +2015,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "空の草原"
+          }
+        }
+      }
+    },
+    "Erase: click a thing to take it away; drag to sweep plants and stones (never a tree or anything placed with care).": {
+      "comment": "Help page: the Eraser",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消しゴム：クリックでものを取り除きます。ドラッグで草花や石を掃きます（木や、ていねいに置いたものは掃きません）。"
           }
         }
       }
@@ -1826,6 +2090,17 @@
         }
       }
     },
+    "Fences are laid in runs: drag to lay one, a post every few steps; ⌥-drag lays it straight, and an end near another fence's joins it. Choose a fence to straighten it or to hang a gate, which cats walk through. Stepping stones dragged are laid in a row, a stride apart.": {
+      "comment": "Help page: fences and stepping stones",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "柵はひと続きで張ります。ドラッグすると数歩ごとに支柱が立ちます。⌥ドラッグでまっすぐに張り、別の柵の端の近くで終えるとつながります。柵を選ぶと、まっすぐにしたり、猫が通れる門を付けたりできます。飛び石はドラッグすると一歩おきに並びます。"
+          }
+        }
+      }
+    },
     "Fern": {
       "localizations": {
         "ja": {
@@ -1842,6 +2117,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "シダ"
+          }
+        }
+      }
+    },
+    "Find a thing on the shelf by name": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棚のものを名前で探す"
           }
         }
       }
@@ -1872,6 +2158,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "植木鉢"
+          }
+        }
+      }
+    },
+    "Fold or unfold the tray": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トレイをたたむ／広げる"
           }
         }
       }
@@ -1926,12 +2223,45 @@
         }
       }
     },
+    "Frame the picnic ground again": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ピクニック場を収め直す"
+          }
+        }
+      }
+    },
     "From the Default": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "デフォルトから"
+          }
+        }
+      }
+    },
+    "Garden lamps light at dusk and go out after sunrise. Settings › Meadow can keep them dark.": {
+      "comment": "Help page: garden lamps",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ガーデンランプは夕暮れに灯り、日の出のあとに消えます。設定 › 草原 で灯さないようにもできます。"
+          }
+        }
+      }
+    },
+    "Garden lamps you have placed light at dusk and go out after sunrise.": {
+      "comment": "Settings › Meadow: what Lamps light at night does",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "置いたガーデンランプは夕暮れに灯り、日の出のあとに消えます。"
           }
         }
       }
@@ -1967,12 +2297,45 @@
         }
       }
     },
+    "Grass colour from the temperature": {
+      "comment": "Settings › Meadow: the grass greener in warmth, paler in cold",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "気温で草の色を変える"
+          }
+        }
+      }
+    },
     "Ground brush size": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "地面ブラシの大きさ"
+          }
+        }
+      }
+    },
+    "Ground: paint paths, lawn and soil. Wild Grass, or ⌥-drag, brings the long grass back.": {
+      "comment": "Help page: the Ground tool",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地面：小道、芝生、土を塗ります。「野の草」か ⌥ドラッグで、もとの長い草に戻します。"
+          }
+        }
+      }
+    },
+    "Held: a drag slides the view": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "押したままドラッグで視点を動かす"
           }
         }
       }
@@ -1993,6 +2356,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "小屋, こや, ものおきごや, 倉庫, そうこ"
+          }
+        }
+      }
+    },
+    "Idle cats use what you place: they nap in beds, boxes and on cushions, sit on stumps, benches and the desk, scratch the post, keep to paths and stepping stones, and pass fences by their gates.": {
+      "comment": "Help page: what cats do with the meadow's things",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暇な猫は置いたものを使います。ベッドや箱、座布団で昼寝し、切り株やベンチ、文机に座り、爪とぎポールで爪をとぎ、小道や飛び石を歩き、柵は門から通ります。"
           }
         }
       }
@@ -2187,6 +2561,39 @@
         }
       }
     },
+    "Keys while editing the meadow": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の編集中のキー"
+          }
+        }
+      }
+    },
+    "keys, keyboard, shortcuts": {
+      "comment": "Help search: words for the topic listing the editor's keys, comma-separated",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キー, キーボード, ショートカット, keys, shortcuts"
+          }
+        }
+      }
+    },
+    "Larger; with nothing chosen, the next thing round the cursor": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大きくする（何も選んでいないときは、カーソルのまわりの次のもの）"
+          }
+        }
+      }
+    },
     "Lavender": {
       "localizations": {
         "ja": {
@@ -2269,6 +2676,17 @@
         }
       }
     },
+    "Life in the Meadow": {
+      "comment": "Settings › Meadow: the section of the meadow's motion, wandering cats and garden lamps",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の暮らし"
+          }
+        }
+      }
+    },
     "Log pile": {
       "localizations": {
         "ja": {
@@ -2329,6 +2747,28 @@
         }
       }
     },
+    "Making the meadow yours": {
+      "comment": "Help page heading: editing the meadow",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原を自分のものに"
+          }
+        }
+      }
+    },
+    "Meadows are .whiskrmeadow files, plain data you can share: Export… or Share… sends one, Export Picture… saves its picture. Open a file someone sent (double-click it, drop it on the meadow or on My Meadows, or File › Import Meadow…) and a sheet shows it first; adding never replaces a meadow you have.": {
+      "comment": "Help page: sharing and importing meadow files",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原は共有できる .whiskrmeadow ファイル（ただのデータ）です。「書き出す…」や「共有…」で送り、「画像を書き出す…」で画像を保存します。届いたファイルを開くと（ダブルクリック、草原やマイ草原ライブラリへのドロップ、ファイル › 草原を読み込む…）、まずシートで中身を見せます。追加しても手元の草原が置き換わることはありません。"
+          }
+        }
+      }
+    },
     "More for %@": {
       "localizations": {
         "ja": {
@@ -2385,6 +2825,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "マイ草原ライブラリ"
+          }
+        }
+      }
+    },
+    "My Meadows and meadow files": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原ライブラリと草原ファイル"
+          }
+        }
+      }
+    },
+    "my meadows, file, share, export, import, picture, newer, parcel, update, limits, default": {
+      "comment": "Help search: words for the topic on My Meadows, comma-separated",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原, ファイル, 共有, 書き出し, 読み込み, 画像, 新しい, 小包, アップデート, 上限, デフォルト, import, export"
+          }
+        }
+      }
+    },
+    "My Meadows, in Settings › Meadow and the editor's name menu, holds the Default (built in, it never changes) and your own: the first change you make copies the Default as “My Meadow”. Click a card's picture to show that meadow; its ⋯ menu renames, duplicates, exports, shares and moves it to the Trash. New Meadow starts from the Default or from empty grass.": {
+      "comment": "Help page: My Meadows",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイ草原ライブラリ（設定 › 草原 とエディタの名前メニュー）には、デフォルト（組み込みで、変わりません）と自分の草原があります。最初に変更すると、デフォルトが「マイ草原」として複製されます。カードの画像をクリックするとその草原を表示し、⋯ メニューで名前の変更、複製、書き出し、共有、ゴミ箱への移動ができます。「新しい草原」はデフォルトか、何もない草地から始めます。"
           }
         }
       }
@@ -2469,6 +2942,28 @@
         }
       }
     },
+    "Nudge further": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大きく動かす"
+          }
+        }
+      }
+    },
+    "Nudge the chosen things, or move the cursor": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだものを少し動かす、またはカーソルを動かす"
+          }
+        }
+      }
+    },
     "Oat": {
       "localizations": {
         "ja": {
@@ -2509,12 +3004,67 @@
         }
       }
     },
+    "On the shelf: back to the meadow": {
+      "comment": "Help page: a key of the meadow editor's shelf",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棚で：草原に戻る"
+          }
+        }
+      }
+    },
+    "On the shelf: choose it": {
+      "comment": "Help page: a key of the meadow editor's shelf",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棚で：それを選ぶ"
+          }
+        }
+      }
+    },
+    "On the shelf: the next thing": {
+      "comment": "Help page: a key of the meadow editor's shelf",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棚で：次のもの"
+          }
+        }
+      }
+    },
+    "On the shelf: the thing before": {
+      "comment": "Help page: a key of the meadow editor's shelf",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "棚で：前のもの"
+          }
+        }
+      }
+    },
     "Paint %@": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "%@を塗る"
+          }
+        }
+      }
+    },
+    "Paste at the pointer": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ポインタの位置にペースト"
           }
         }
       }
@@ -2529,12 +3079,56 @@
         }
       }
     },
+    "Picnics": {
+      "comment": "Settings › Meadow: the section of the picnic things and name flags on each workspace's place",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ピクニック"
+          }
+        }
+      }
+    },
     "Pine": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "松"
+          }
+        }
+      }
+    },
+    "Place, brush, erase or paint at the cursor, or choose the thing nearest it": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カーソルの位置に置く・植える・消す・塗る、またはいちばん近いものを選ぶ"
+          }
+        }
+      }
+    },
+    "place, tree, flower, fence, gate, stepping stones, colour, color, lamp, light, night, cats": {
+      "comment": "Help search: words for the topic on placing things, comma-separated",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "置く, 木, 花, 柵, 門, 飛び石, 色, ランプ, 明かり, 夜, 猫, fence, lamp"
+          }
+        }
+      }
+    },
+    "Placing, fences, colours and lamps": {
+      "comment": "Help page heading",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "置く・柵・色・ランプ"
           }
         }
       }
@@ -2565,6 +3159,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "花壇, かだん, 野菜, やさい, レタス"
+          }
+        }
+      }
+    },
+    "Real weather asks for your location once. It is rounded to about a kilometre and sent to Open-Meteo, a free weather service, in one request every 15 minutes while real weather is on. Lightning is a soft, rare glow, never with Reduce Motion or the meadow's animation off.": {
+      "comment": "Settings › Meadow: what real weather sends, and lightning",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "実際の天気は一度だけ現在地を尋ねます。現在地は約1 kmに丸められ、実際の天気がオンの間、15分ごとに1回のリクエストで無料の天気サービスOpen-Meteoに送られます。稲光はやわらかく、ときどき光るだけです。「視差効果を減らす」がオンのときや、草原を動かさないときは光りません。"
+          }
+        }
+      }
+    },
+    "Redo it": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "やり直す"
           }
         }
       }
@@ -2669,12 +3285,34 @@
         }
       }
     },
+    "Select: click a thing to choose it, ⇧-click to add, drag on the grass to choose what is inside. Drag to move (⌥-drag copies). The bar under what is chosen turns, sizes, colours, duplicates and deletes.": {
+      "comment": "Help page: the Select tool",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択：クリックでものを選び、⇧クリックで追加、草の上をドラッグすると囲んだものを選びます。ドラッグで移動します（⌥ドラッグで複製）。選んだものの下のバーで、回転、大きさ、色、複製、削除ができます。"
+          }
+        }
+      }
+    },
     "Share…": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "共有…"
+          }
+        }
+      }
+    },
+    "Show the chosen things' colours": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選んだものの色を表示"
           }
         }
       }
@@ -2699,6 +3337,17 @@
         }
       }
     },
+    "Sky": {
+      "comment": "Settings › Meadow: the section of the time of day, the sun and the moon",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "空"
+          }
+        }
+      }
+    },
     "Slate": {
       "localizations": {
         "ja": {
@@ -2709,12 +3358,34 @@
         }
       }
     },
+    "Smaller; with nothing chosen, the thing before": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "小さくする（何も選んでいないときは、前のもの）"
+          }
+        }
+      }
+    },
     "Soil": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "土"
+          }
+        }
+      }
+    },
+    "Step back: the drag, the thing to place, the tool, the choice, then editing": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ひとつ戻る：ドラッグ、置くもの、ツール、選択、最後に編集"
           }
         }
       }
@@ -2789,12 +3460,89 @@
         }
       }
     },
+    "The Brush": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ブラシ"
+          }
+        }
+      }
+    },
+    "The Eraser": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "消しゴム"
+          }
+        }
+      }
+    },
     "The ground holds as much painting as a meadow can keep": {
       "localizations": {
         "ja": {
           "stringUnit": {
             "state": "translated",
             "value": "地面にはこれ以上塗れません（草原ファイルに収まる限度です）"
+          }
+        }
+      }
+    },
+    "The Ground tool": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地面ツール"
+          }
+        }
+      }
+    },
+    "The meadow's trees, flowers, stones, paths and garden are yours to arrange. View › Edit Meadow (⌃⌘E), Edit Meadow… in the grass's right-click menu or in Settings › Meadow opens the editor: the terminals step aside, the meadow fills the window, and the tray of tools and things rises along its bottom edge. Every change is saved as you make it; Done (⌘↩) or Esc brings everything back as it was. Terminals, Claudes and alerts carry on meanwhile.": {
+      "comment": "Help page: what editing the meadow is",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "草原の木、花、石、小道、庭は自由に並べ替えられます。表示 › 草原を編集（⌃⌘E）、草の右クリックメニューの「草原を編集…」、または 設定 › 草原 からエディタを開くと、ターミナルが脇に寄り、草原がウインドウいっぱいに広がって、下端にツールとものを並べたトレイが現れます。変更はその場で保存されます。「完了」（⌘↩）か Esc ですべて元どおりになります。その間もターミナル、Claude、通知はそのまま続きます。"
+          }
+        }
+      }
+    },
+    "The Select tool": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択ツール"
+          }
+        }
+      }
+    },
+    "To the selection's bar, or the tray's shelf": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択バー、またはトレイの棚へ"
+          }
+        }
+      }
+    },
+    "To the tray's shelf": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "トレイの棚へ"
           }
         }
       }
@@ -2889,6 +3637,50 @@
         }
       }
     },
+    "Turn 15° anticlockwise (⌥: 1°)": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左に 15° 回す（⌥：1°）"
+          }
+        }
+      }
+    },
+    "Turn 15° clockwise (⌥: 1°)": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右に 15° 回す（⌥：1°）"
+          }
+        }
+      }
+    },
+    "Turn the view 45° left": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "視点を左に 45° 回す"
+          }
+        }
+      }
+    },
+    "Turn the view 45° right": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "視点を右に 45° 回す"
+          }
+        }
+      }
+    },
     "Turn View Left": {
       "localizations": {
         "ja": {
@@ -2905,6 +3697,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "視点を右に回す"
+          }
+        }
+      }
+    },
+    "Undo the last step": {
+      "comment": "Help page: a key of the meadow editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最後の操作を取り消す"
           }
         }
       }
@@ -2935,6 +3738,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "じょうろ"
+          }
+        }
+      }
+    },
+    "Weather": {
+      "comment": "Settings › Meadow: the section of real weather",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "天気"
           }
         }
       }
@@ -5293,6 +6107,7 @@
       }
     },
     "Grass color from the temperature": {
+      "extractionState": "stale",
       "comment": "Settings › Meadow: real weather",
       "localizations": {
         "ja": {
@@ -6205,6 +7020,7 @@
       }
     },
     "Meadow shown": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -7593,6 +8409,7 @@
       }
     },
     "Real weather asks for your location once. It is rounded to about a kilometer and sent to Open-Meteo, a free weather service, in one request every 15 minutes while real weather is on. Lightning is a soft, rare glow, never with Reduce Motion or the meadow's animation off.": {
+      "extractionState": "stale",
       "comment": "Settings › Meadow: what real weather sends where",
       "localizations": {
         "ja": {
@@ -10461,6 +11278,7 @@
       }
     },
     "Your meadow is saved as you change it. The Default never changes: your first change makes a copy of it, My Meadow.": {
+      "extractionState": "stale",
       "localizations": {
         "ja": {
           "stringUnit": {
@@ -11111,6 +11929,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "↩ 作成 · Esc キャンセル"
+          }
+        }
+      }
+    },
+    "⌘Z undoes each step, named in Edit › Undo (“Undo Move Oak”). Without a pointer: Tab reaches the tray's shelf, the arrows move a cursor on the ground, and Return places or chooses there.": {
+      "comment": "Help page: undo and the keyboard in the editor",
+      "localizations": {
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⌘Z で一歩ずつ取り消せます（編集 › 取り消す に名前が出ます）。ポインタを使わずに：Tab でトレイの棚へ、矢印キーで地面のカーソルを動かし、Return でそこに置くか選びます。"
           }
         }
       }

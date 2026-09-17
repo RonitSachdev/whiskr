@@ -407,13 +407,16 @@ extension PerfSuite {
               "\(packed?.map(\.name) ?? ["failed"])")
         // Switching between them, in light and dark.
         if let pair = folder?.first {
+            // Each read once the window draws in that appearance: NSApp's appearance reaches the window's own
+            // a run-loop turn later, which on a busy Mac can be past any fixed wait (both were read as light).
+            func drawsDark() -> Bool { window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua }
             store.themeID = pair.id
             store.appearance = .light
-            await PerfWait.sleep(200)
+            _ = await PerfWait.until(3000) { !drawsDark() }
             window.effectiveAppearance.performAsCurrentDrawingAppearance { background = Self.rgb(Colors.terminalBackground) }
             let light = background
             store.appearance = .dark
-            await PerfWait.sleep(200)
+            _ = await PerfWait.until(3000) { drawsDark() }
             window.effectiveAppearance.performAsCurrentDrawingAppearance { background = Self.rgb(Colors.terminalBackground) }
             check("themes: a theme with both versions follows light and dark", light == WhiskrKit.RGBColor(0xffffff) && background == WhiskrKit.RGBColor(0x202430),
                   "light \(light), dark \(background)")

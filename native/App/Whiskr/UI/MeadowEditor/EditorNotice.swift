@@ -14,6 +14,9 @@ final class EditorNoticeModel {
     }
 
     var text: String?
+    /// Its symbol: a parcel for things this Whiskr cannot draw, arrows round for a question about the disk, a
+    /// lightbulb for the first hint.
+    var symbol = "shippingbox"
     var choices: [Choice] = []
     /// It can be put away (a note; a question cannot, until it is answered).
     var closable = false
@@ -31,7 +34,7 @@ struct EditorNotice: View {
     var body: some View {
         if let text = model.text {
             HStack(spacing: Look.Space.m) {
-                Image(systemName: model.choices.isEmpty ? "shippingbox" : "exclamationmark.arrow.triangle.2.circlepath")
+                Image(systemName: model.symbol)
                     .font(.system(size: 12))
                     .foregroundStyle(Color.ink2)
                     .accessibilityHidden(true)
@@ -65,7 +68,7 @@ struct EditorNotice: View {
             .padding(.vertical, Look.Space.s)
             .frame(maxWidth: 640)
             .background(RoundedRectangle(cornerRadius: Look.Radius.card).fill(Color.chrome))
-            .overlay(RoundedRectangle(cornerRadius: Look.Radius.card).strokeBorder(Color.line))
+            .overlay(RoundedRectangle(cornerRadius: Look.Radius.card).strokeBorder(Look.increasesContrast ? Color.lineStrong : Color.line))
             .shadow(color: .black.opacity(0.16), radius: 10, y: 3)
             .padding(Self.margin)
             .fixedSize(horizontal: false, vertical: true)
