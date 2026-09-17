@@ -56,7 +56,7 @@ extension EditorFlow {
         }
         check("all thirteen placed", placed.count == Self.gardenThings.count, "\(placed.count) placed")
         let spots = placed.compactMap { library.session.item($0.entry).flatMap { library.session.thing($0)?.catSpot } }
-        check("the bench, desk, bookshelf, shed, tent and nest box each say where a cat would be", spots.count == 6, "\(spots.count)")
+        check("the bench, desk, planter, bookshelf, shed, tent and nest box each say where a cat would be", spots.count == 7, "\(spots.count)")
         editor.debugChoose([])
         await PerfWait.sleep(300)
         await picture("garden-placed")
