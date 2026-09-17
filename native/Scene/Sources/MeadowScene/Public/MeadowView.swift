@@ -175,6 +175,12 @@ public final class MeadowView: MTKView {
         stage.meadow?.walkingEase(spot.x, spot.y) ?? Meadow.walkingEase(.wild)
     }
 
+    /// Whether a cat going straight from `from` to `to` on the ground (x, z) would have to pass through a fence: any
+    /// of its spans but a gate's. For whatever leads a cat about the meadow, which goes round, or through the gate.
+    public func crossesFence(from: SIMD2<Float>, to: SIMD2<Float>) -> Bool {
+        stage.meadow?.crossesFence(from, to) ?? false
+    }
+
     /// The blankets whose blanket and flag are not wholly in view, as of the last frame: past the top edge
     /// and past the bottom edge, by id, in the world's order.
     public private(set) var blanketsOutOfView: (above: [String], below: [String]) = ([], [])
@@ -358,13 +364,28 @@ public final class MeadowView: MTKView {
         public var mist: Float
         /// The grass's deeper green, linear RGB.
         public var turf: (red: Float, green: Float, blue: Float)
+        /// Garden lamps are lit now (dark enough, and lamps light at night); how many of the meadow's are burning
+        /// fully, how many are warming up or going out, and how many it holds.
+        public var lampsLit: Bool
+        public var lamps: (burning: Int, changing: Int, all: Int)
     }
     @_spi(Diagnostics) public var sky: SkyReading {
         let l = stage.light
         return SkyReading(night: l.night, sunElevation: l.sunElevation, moonLit: l.moon.lit, moonWaxing: l.moon.waxing, moonShown: l.moonShown, stars: l.stars,
                           wind: l.wind, windToward: (stage.windToward.x, stage.windToward.y), windCalm: l.windCalm,
                           falling: l.falling, snowing: l.snowing, drops: stage.meadow?.fallingCount ?? 0, thunder: l.thunder, flash: stage.flash,
-                          mist: l.mist, turf: (l.turfLow.x, l.turfLow.y, l.turfLow.z))
+                          mist: l.mist, turf: (l.turfLow.x, l.turfLow.y, l.turfLow.z), lampsLit: l.lampsLit, lamps: lampCounts)
+    }
+
+    private var lampCounts: (burning: Int, changing: Int, all: Int) {
+        let lamps = stage.meadow?.lamps.lamps ?? []
+        let burning = lamps.filter { $0.level == 1 }.count
+        return (burning, lamps.filter { $0.level > 0 }.count - burning, lamps.count)
+    }
+
+    /// Diagnostics: the garden lamps' light baked on the ground at a point, 0 (none) … 1.
+    @_spi(Diagnostics) public func lamplight(at spot: SIMD2<Float>) -> Float {
+        stage.meadow?.groundMap.lamplight(at: Vec2(spot.x, spot.y)) ?? 0
     }
 
     /// Diagnostics: where the moon's disc is in the view (points, origin bottom left), whether or not

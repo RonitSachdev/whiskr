@@ -119,6 +119,13 @@ struct Geometry {
     }
     func roughened(_ r: Float) -> Geometry { var g = self; g.rough(r); return g }
 
+    /// Its baked colours made `k` times as bright (a shade deeper below 1, paler above).
+    func tinted(_ k: Float) -> Geometry {
+        var g = self
+        g.colors = g.colors.map { simd_min($0 * k, Vec3(1, 1, 1)) }
+        return g
+    }
+
     /// Uniform colour (for shapes standing for a single-colour material).
     func colored(_ hex: UInt32, roughness r: Float) -> Geometry {
         var g = self

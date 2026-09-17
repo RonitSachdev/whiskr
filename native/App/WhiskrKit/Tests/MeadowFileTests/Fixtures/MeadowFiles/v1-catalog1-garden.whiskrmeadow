@@ -1,0 +1,32 @@
+{
+  "author": "",
+  "base": "meadow",
+  "catalog": 1,
+  "description": "",
+  "formatMinor": 0,
+  "items": [
+    { "at": [40, 4], "id": "garden.flowerPot", "params": { "colour": "glazeCeladon" }, "turn": 0.7854 },
+    { "at": [46, 4], "id": "garden.planter", "turn": 0.7854 },
+    { "at": [52, 4], "id": "garden.wateringCan", "params": { "colour": "duckEgg" }, "turn": 0.7854 },
+    { "at": [58, 4], "id": "garden.birdhouse", "turn": 0.7854 },
+    { "at": [64, 4], "id": "garden.skep", "turn": 0.7854 },
+    { "at": [40, 12], "id": "work.desk", "turn": 0.7854 },
+    { "at": [40, 15.5], "id": "work.cushion", "params": { "colour": "mustard" }, "turn": 0.7854 },
+    { "at": [47, 12], "id": "work.bookshelf", "turn": 0.7854 },
+    { "at": [54, 12], "id": "work.bench", "params": { "colour": "sage" }, "turn": 0.7854 },
+    { "at": [61, 12], "id": "work.signpost", "turn": 0.7854 },
+    { "at": [66, 12], "id": "work.mailbox", "params": { "colour": "cream" }, "turn": 0.7854 },
+    { "at": [40, 22], "id": "work.noticeboard", "turn": 0.7854 },
+    { "at": [50, 24], "id": "place.shed", "params": { "colour": "lavender" }, "turn": 0.7854 },
+    { "at": [62, 24], "id": "place.tent", "params": { "colour": "olive" }, "turn": 0.7854 },
+    { "at": [46, 17], "id": "cat.yarn", "params": { "colour": "rose" }, "turn": 0.7854 },
+    { "at": [52, 18], "id": "cat.bed", "params": { "colour": "sage" }, "turn": 0.7854 },
+    { "at": [56, 17], "id": "cat.bowl", "params": { "colour": "terracotta" }, "turn": 0.7854 },
+    { "id": "garden.fence", "params": { "gate": 12 }, "points": [[65, -1], [62.5, -1], [60, -1], [57.5, -1], [55, -1], [52.5, -1], [50, -1], [47.5, -1], [45, -1], [42.5, -1], [40, -1], [37.5, -1], [35, -1], [35.3, 1.9], [35.3, 4.4], [35.3, 6.9], [35.3, 9.4], [35.3, 11.9], [35.3, 14.4], [35.3, 16.9], [35.3, 19.4], [35.3, 21.9], [35.3, 24.4], [35.3, 26.9], [35.3, 29.4]] },
+    { "id": "garden.fence", "points": [[75, -1], [75, 30]] }
+  ],
+  "name": "Garden Office",
+  "needsCatalog": 1,
+  "whiskrMeadow": 1,
+  "writtenBy": "0.1.0"
+}

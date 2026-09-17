@@ -53,11 +53,11 @@ private func item(_ id: String, _ x: Double, _ z: Double, seed: UInt32? = nil) -
         #expect(boulder.size.map { $0.allSatisfy { (0.75...1.3).contains($0) } } == true && boulder.seed == nil)
         let fern = try #require(session.fresh("plant.fern", at: .zero, turn: 0, using: &random))
         #expect(fern.size != nil && fern.variant == 0)
-        for id in ["wood.stump", "wood.logPile", "work.cushion", "cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"] {
+        for id in ["wood.stump", "wood.logPile", "work.cushion", "cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl", "work.lampPost"] {
             let made = try #require(session.fresh(id, at: .zero, turn: 0.5, using: &random), "\(id)")
             #expect(made.size == nil && made.tilt == nil && made.seed == nil && made.variant == 0 && made.turn == 0.5, "\(id)")
         }
-        #expect(session.fresh("work.desk", at: .zero, turn: 0, using: &random) == nil, "not drawn yet")
+        #expect(session.fresh("water.pond", at: .zero, turn: 0, using: &random) == nil, "a newer Whiskr's thing")
         #expect(session.fresh("garden.fence", at: .zero, turn: 0, using: &random) == nil, "a run, not placed at a spot")
     }
 

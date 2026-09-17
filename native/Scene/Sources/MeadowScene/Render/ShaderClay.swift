@@ -19,6 +19,7 @@ struct SkinVertex { packed_float3 p; packed_float3 n; };
 #define LIT_GINGHAM 256u   // a blanket: gingham in the tint colour (sRGB); extra.z checks per unit, extra.w faded
 #define LIT_MOON    512u   // the moon: unlit colour, lit only on the side facing the sun (`emissive`), the rest see-through
 #define LIT_GREYED 1024u   // greyed by extra.z (the editor's ghost where it may not stand)
+#define LIT_LAMP   2048u   // a garden lamp: `emissive` lights its glass alone (vertices whose roughness is the glass's plus 2)
 
 struct Instance {
     float4x4 model;
@@ -38,6 +39,7 @@ struct ClayOut {
     float3 emissive;
     float3 light;      // per-vertex ground shade for rooted plants
     float glow;        // per-vertex lamplight for rooted plants
+    float glass;       // 1 on a lamp's glass (`Lamps.glassRoughness`), else 0
     float2 local;      // object-space x, z (the blanket's gingham)
     float2 pattern;    // gingham: repeat, faded; greyed: how grey
     float fog;
@@ -94,7 +96,9 @@ ClayOut clayCommon(float3 p, float3 n, float4 c, Instance I, RootInfo R, constan
     o.color = c.rgb * I.tint.rgb;
     o.local = p.xz;
     o.pattern = I.extra.zw;
-    o.rough = I.extra.y >= 0.0 ? I.extra.y : c.a;
+    // A roughness past 1 marks a lamp's glass; its own is what is left.
+    o.glass = c.a > 1.5 ? 1.0 : 0.0;
+    o.rough = I.extra.y >= 0.0 ? I.extra.y : c.a - 2.0 * o.glass;
     o.opacity = I.tint.a;
     o.emissive = I.emissive.rgb;
     o.fog = (flags & LIT_NOFOG) != 0u ? 0.0 : fogFactor(w.xyz, F);
@@ -113,7 +117,7 @@ vertex ClayOut skinVertex(uint vid [[vertex_id]], uint iid [[instance_id]], devi
     return clayCommon(float3(v[vid].p), float3(v[vid].n), float4(1, 1, 1, 0.6), inst[iid], RootInfo{ float4(0, 0, 1, 0), float4(1, 1, 1, 0) }, F);
 }
 
-float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W, texture2d<float> groundMap) {
+float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W, texture2d<float> groundMap, texture2d<float> lamps) {
     uint flags = in.flags;
     float3 diffuse = in.color;
     if ((flags & LIT_GINGHAM) != 0u) {
@@ -142,7 +146,10 @@ float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W, t
     if ((flags & LIT_SHADED) != 0u) diffuse *= shadeAt(in.world.xz, F, groundMap);
     diffuse *= in.light;
     float3 c = (flags & LIT_LAMBERT) != 0u ? diffuse * lambertIrradiance(N, F) : standardLight(N, V, diffuse, in.rough, F);
-    c += in.emissive;
+    // A lamp's glass glows in its own colours (brightest where the lamp is); anything else's emissive is its own.
+    c += (flags & LIT_LAMP) != 0u ? in.emissive * in.glass * in.color : in.emissive;
+    // The garden lamps' light on whatever stands near one.
+    c += diffuse * lampOn(in.world, N, F, lamps);
     // Lamplight after dark.
     if ((flags & LIT_WARMED) != 0u) {
         float3 from;
@@ -162,8 +169,8 @@ float4 shadeClay(ClayOut in, bool front, constant Frame& F, constant World& W, t
 }
 
 fragment float4 clayFragment(ClayOut in [[stage_in]], bool front [[front_facing]], constant Frame& F [[buffer(0)]], constant World& W [[buffer(2)]],
-                             texture2d<float> groundMap [[texture(0)]]) {
-    return shadeClay(in, front, F, W, groundMap);
+                             texture2d<float> groundMap [[texture(0)]], texture2d<float> lamps [[texture(1)]]) {
+    return shadeClay(in, front, F, W, groundMap, lamps);
 }
 
 // ---------- blob shadow (props.ts shadowTexture: a canvas gradient read as linear) ----------

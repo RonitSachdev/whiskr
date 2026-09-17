@@ -15,12 +15,16 @@ struct Bed {
     var plant: Int              // index into Meadow.plants
     var sway: Float
     var matrices: [Mat4]
-    /// Young trees: each can fade on its own when it stands in the way; index of its screen.
+    /// Young trees and lamps: each can fade on its own when it stands in the way; index of its screen.
     var screens: [Int]? = nil
+    /// Lamps: which of the meadow's lamps (`MeadowLamps.lamps`) each is.
+    var lamps: [Int]? = nil
 }
 
 /// One shape a thing is drawn with: its id, which of its shapes, and the seed it grew from.
-struct ShapeKey: Hashable { var id: String; var variant = 0; var seed: UInt32 = 0 }
+/// For a fence's parts, `variant` is the part (`Fences.Part`); for a whole run on its own (the editor's ghost), its
+/// points and gate.
+struct ShapeKey: Hashable { var id: String; var variant = 0; var seed: UInt32 = 0; var swatch = 0; var run: [Vec2] = []; var gate = 0 }
 
 /// Trees grown from their seeds, kept so a tree is never grown twice.
 struct Grove {
@@ -89,6 +93,11 @@ final class Meadow {
     /// The part of the ground's map changed since it was last drawn by moving trees (nil: none); a new
     /// scenery bakes it whole (`sceneryVersion`).
     private var groundChanged: GroundMap.Region?
+    /// The garden lamps, lit after dark, and the part of the map's lamplight baked since it was last drawn.
+    private(set) var lamps = MeadowLamps()
+    private var lightChanged: GroundMap.Region?
+    /// The lamps as the map bakes them, kept so baking allocates nothing.
+    private var lampLights: [GroundMap.Lamp] = []
     private(set) var critters: Critters!
     private(set) var fireflyWays: [(angle: Float, spin: Float, out: Float, high: Float, phase: Float, pulse: Float)] = []
     /// This frame's fireflies: position and glow.
@@ -239,6 +248,9 @@ final class Meadow {
         case .log:
             let m = matrix(of: thing, lift: -Float(Land.ground))
             return [Float(-5), 0, 5].map { t in let p = m.point(Vec3(t, 1, 0)); return Clearing(x: p.x, z: p.z, r: 3) }
+        case .fence:
+            // Round each post (the loose arrangement's blankets keep clear of a fence).
+            return Fences.posts(along: thing.points).map { Clearing(x: $0.at.x, z: $0.at.y, r: 0.8) }
         case .youngTree, .plant:
             return []
         }
@@ -252,7 +264,50 @@ final class Meadow {
         case bed(Int, slot: Int)
         case tree(Int)
         case log(Int)
+        /// A fence: its parts, in `runs`.
+        case run(Int)
     }
+
+    /// The lamplight baked again where it changed (a lamp warming up, placed, moved or carried as the ghost).
+    private func bakeLight() {
+        guard let region = lamps.takeChanged() else { return }
+        lamps.lights(into: &lampLights)
+        groundMap.light(lampLights, in: region)
+        lightChanged = lightChanged.map { $0.union(region) } ?? region
+    }
+
+    /// The part of the map's lamplight baked since this was last asked, and forgets it (nil: none).
+    func takeLightChanges() -> GroundMap.Region? {
+        defer { lightChanged = nil }
+        return lightChanged
+    }
+
+    /// The lamps moved on by `dt` seconds: lit while `lit` (the light says it is dark and lamps light at night),
+    /// at once when `steady`; `ghost`, a lamp the editor is about to place, lit with them. Their light is baked
+    /// where it changed.
+    /// A lamp standing where a blanket has come shrinks away with its light, as rooted things do (`clearings`).
+    func light(_ dt: Float, lit: Bool, steady: Bool, ghost: MeadowScenery.Thing?, clearings: [Vec4] = [], clearingCount: Int = 0) {
+        lamps.update(dt, lit: lit, steady: steady)
+        for i in lamps.lamps.indices {
+            let lamp = lamps.lamps[i]
+            lamps.stand(i, clearingCount > 0 ? Self.standing(lamp.x, lamp.z, 0, clearings, clearingCount) : 1)
+        }
+        lamps.carry(ghost.flatMap { Lamps.isLamp($0.id) ? Self.matrix(of: $0).point(Lamps.head) : nil })
+        bakeLight()
+    }
+
+    /// One fence as it was laid: each part's bed and slot (in `Fences.parts`' order), where its posts stand, and
+    /// the lines it draws across the ground (the spans a cat cannot pass, and its gate).
+    struct Run {
+        var parts: [(bed: Int, slot: Int)]
+        var kinds: [Fences.Part]
+        var posts: [Vec3]
+        var lines: FenceLines.Run
+    }
+    private(set) var runs: [Run] = []
+    /// Every fence's lines together, for whatever leads a cat about (`crossesFence`, the cats' routes): made again
+    /// whenever a fence is laid, moved or taken away.
+    private(set) var fences = FenceLines()
 
     /// Lays `scenery`: every thing the scene can draw, within its limits (`MeadowScenery.Limits`), in its
     /// order. Returns the flowers' tops, where butterflies and bees settle. The ground's map is baked again
@@ -262,14 +317,15 @@ final class Meadow {
         let oldTrees = Dictionary(treeShapes.map { ($0.key, $0.shape) }) { first, _ in first }
         let oldFades = Dictionary(screens.map { (ScreenKey($0), $0.fade) }) { first, _ in first }
         let oldShade = shade, oldTreads = treads
+        var placedLamps: [(x: Float, z: Float, head: Vec3)] = []
         self.scenery = scenery
-        plants = []; plantKeys = []; beds = []; treeShapes = []; logs = []; screens = []; obstacles = []; shade = []; treads = []; treadOf = [:]
+        plants = []; plantKeys = []; beds = []; treeShapes = []; logs = []; runs = []; screens = []; obstacles = []; shade = []; treads = []; treadOf = [:]
         laid = []; blooms = []; bloomOf = []
         laid.reserveCapacity(scenery.things.count)
         bloomOf.reserveCapacity(scenery.things.count)
         var bedOf: [ShapeKey: Int] = [:]
         var grown = Set<ShapeKey>()
-        var things = 0, trees = 0, tall = 0
+        var things = 0, trees = 0, tall = 0, lit = 0
         typealias Limits = MeadowScenery.Limits
 
         func screen(_ s: Screen) -> Int {
@@ -300,7 +356,10 @@ final class Meadow {
             switch kind {
             case .tree, .youngTree: guard trees < Limits.trees, tall < Limits.tall else { continue }; trees += 1; tall += 1
             case .log: guard tall < Limits.tall else { continue }; tall += 1
+            case .plant where Lamps.isLamp(thing.id): guard lit < Limits.lamps, tall < Limits.tall else { continue }; lit += 1; tall += 1
+            case .plant where SceneryCatalog.tall.contains(thing.id): guard tall < Limits.tall else { continue }; tall += 1
             case .plant: break
+            case .fence: guard thing.points.count >= 2, thing.points.allSatisfy({ simd_length($0) <= Limits.reach }) else { continue }
             }
             things += 1
             obstacles += Self.obstacles(of: thing, kind)
@@ -321,11 +380,19 @@ final class Meadow {
                 let at = instance(key, { Plant(shape: tree.shape.roughened(0.8), top: Vec3(0, 9, 0)) }, sway: 0, m, screened: true)
                 beds[at.bed].screens?.append(screen(Self.youngScreen(m, species, tree)))
                 placed = .bed(at.bed, slot: at.slot)
-            case .plant(let shapes, let sway, let blooming, _):
+            case .plant(_, let sway, let blooming, _):
                 let m = Self.matrix(of: thing)
-                let all = shapes()
-                let variant = all.indices.contains(thing.variant) ? thing.variant : 0
-                let at = instance(ShapeKey(id: thing.id, variant: variant), { all[variant] }, sway: sway, m, screened: false)
+                guard let shape = SceneryCatalog.shape(of: thing) else { continue }
+                let screened = SceneryCatalog.tall.contains(thing.id)
+                let at = instance(shape.key, shape.make, sway: sway, m, screened: screened)
+                if Lamps.isLamp(thing.id) {
+                    beds[at.bed].screens?.append(screen(Self.lampScreen(m)))
+                    beds[at.bed].lamps = (beds[at.bed].lamps ?? []) + [placedLamps.count]
+                    placedLamps.append((thing.x, thing.z, m.point(Lamps.head)))
+                } else if screened {
+                    let s = screen(Self.madeScreen(m, plants[beds[at.bed].plant]))
+                    beds[at.bed].screens?.append(s)
+                }
                 if SceneryCatalog.isTread(thing.id) {
                     treadOf[laid.count] = treads.count
                     treads.append(Self.tread(thing))
@@ -339,20 +406,38 @@ final class Meadow {
                 let p = Self.logPlace(thing)
                 logs.append((p.matrix, screen(p.screen), Self.obstacles(of: thing, kind)))
                 placed = .log(logs.count - 1)
+            case .fence:
+                var run = Self.runPlace(thing)
+                for part in Fences.parts(thing.points, gate: thing.gate) {
+                    let key = ShapeKey(id: thing.id, variant: part.part.rawValue)
+                    let at = instance(key, { Fences.shapes[part.part.rawValue] }, sway: 0, part.matrix, screened: false)
+                    run.parts.append((at.bed, at.slot))
+                    run.kinds.append(part.part)
+                }
+                runs.append(run)
+                placed = .run(runs.count - 1)
             }
         }
         grove.keep(grown)
+        lamps.lay(placedLamps)
         // The shade as it was (a plant brushed in or swept away, a thing taken away beside the trees): the
         // map stands, with any part still to be drawn from moved trees.
         if shade != oldShade || groundVersion == 0 {
             groundMap = GroundMap.baked(shade: shade, ground: scenery.ground, treads: treads)
             groundVersion += 1
             groundChanged = nil
+            // A fresh map holds no light yet: the lamps' is baked into it whole (and drawn with it).
+            _ = lamps.takeChanged()
+            lamps.lights(into: &lampLights)
+            groundMap.light(lampLights, in: .whole)
+            lightChanged = nil
         } else if treads != oldTreads {
             // Stepping stones laid or taken up: the turf round each worn again, or grown back.
             let changed = Set(oldTreads).symmetricDifference(Set(treads)).compactMap(GroundMap.Region.init(tread:))
             if let first = changed.first { repaint(changed.dropFirst().reduce(first) { $0.union($1) }) }
         }
+        fences = FenceLines(runs.map(\.lines))
+        bakeLight()
         sceneryVersion += 1
         return blooms
     }
@@ -367,15 +452,20 @@ final class Meadow {
         var changed: [Int] = []
         for i in new.things.indices where new.things[i] != old.things[i] {
             let a = old.things[i], b = new.things[i]
-            guard a.id == b.id, a.seed == b.seed, a.variant == b.variant,
+            guard a.id == b.id, a.seed == b.seed, a.variant == b.variant, a.swatch == b.swatch, a.gate == b.gate,
                   (hypot(a.x, a.z) <= MeadowScenery.Limits.reach) == (hypot(b.x, b.z) <= MeadowScenery.Limits.reach) else { return false }
+            // A fence moved or turned whole keeps its parts; one reshaped (its posts not as many) is laid afresh.
+            if case .run(let r) = laid[i] {
+                guard b.points.allSatisfy({ simd_length($0) <= MeadowScenery.Limits.reach }),
+                      Fences.parts(b.points, gate: b.gate).map(\.part) == runs[r].kinds else { return false }
+            }
             changed.append(i)
         }
         scenery = new
         var shaded: GroundMap.Region?
         var worn: GroundMap.Region?
         var bloomsMoved = false
-        var obstaclesMoved = false
+        var obstaclesMoved = false, fencesMoved = false
         for i in changed {
             let thing = new.things[i]
             switch laid[i] {
@@ -384,9 +474,16 @@ final class Meadow {
             case .bed(let b, let slot):
                 let m = Self.matrix(of: thing)
                 beds[b].matrices[slot] = m
-                if let s = beds[b].screens?[slot], case .youngTree(let species) = SceneryCatalog.kinds[thing.id] {
+                if let s = beds[b].screens?[slot] {
                     let fade = screens[s].fade
-                    screens[s] = Self.youngScreen(m, species, grove.tree(ShapeKey(id: thing.id, seed: thing.seed), species))
+                    if case .youngTree(let species) = SceneryCatalog.kinds[thing.id] {
+                        screens[s] = Self.youngScreen(m, species, grove.tree(ShapeKey(id: thing.id, seed: thing.seed), species))
+                    } else if let lamp = beds[b].lamps?[slot] {
+                        screens[s] = Self.lampScreen(m)
+                        lamps.move(lamp, x: thing.x, z: thing.z, head: m.point(Lamps.head))
+                    } else {
+                        screens[s] = Self.madeScreen(m, plants[beds[b].plant])
+                    }
                     screens[s].fade = fade
                 }
                 if bloomOf[i] >= 0 {
@@ -421,8 +518,17 @@ final class Meadow {
                 logs[l].matrix = p.matrix
                 logs[l].foot = Self.obstacles(of: thing, .log)
                 obstaclesMoved = true
+            case .run(let r):
+                let parts = runs[r].parts, kinds = runs[r].kinds
+                runs[r] = Self.runPlace(thing)
+                runs[r].parts = parts
+                runs[r].kinds = kinds
+                for (part, at) in zip(Fences.parts(thing.points, gate: thing.gate), parts) { beds[at.bed].matrices[at.slot] = part.matrix }
+                obstaclesMoved = true
+                fencesMoved = true
             }
         }
+        if fencesMoved { fences = FenceLines(runs.map(\.lines)) }
         if obstaclesMoved {
             obstacles = zip(new.things, laid).flatMap { thing, placed in
                 guard placed != .none, let kind = SceneryCatalog.kinds[thing.id] else { return [Clearing]() }
@@ -434,6 +540,7 @@ final class Meadow {
             groundChanged = groundChanged.map { $0.union(shaded) } ?? shaded
         }
         if let worn { repaint(worn) }
+        bakeLight()
         if bloomsMoved { critters.bloom(blooms) }
         return true
     }
@@ -461,6 +568,30 @@ final class Meadow {
         let crown = m.point(tree.middle)
         return Screen(from: m.position, to: crown, thick: species.girth * 2 * scaleX, crown: crown, crownSize: tree.bulk * 0.85 * scaleX)
     }
+
+    /// A lamp's screen, drawn with `m`: up its post to its finial, as wide as its lantern (no crown: nothing of it
+    /// spreads over the ground).
+    private static func lampScreen(_ m: Mat4) -> Screen {
+        Screen(from: m.position, to: m.point(Lamps.post.top), thick: 0.55, crown: nil, crownSize: 0)
+    }
+
+    /// A tall made thing's screen (a shed, a tent, a bookcase, a nest box), drawn with `m`: up its middle to its
+    /// top, its body the ball a cat behind it is hidden by.
+    static func madeScreen(_ m: Mat4, _ plant: Plant) -> Screen {
+        let bounds = plant.shape.bounds
+        let reach = max(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z) / 2
+        let middle = m.point(Vec3(0, plant.top.y * 0.55, 0))
+        return Screen(from: m.position, to: m.point(Vec3(0, plant.top.y, 0)), thick: reach * 0.6, crown: middle, crownSize: max(reach, plant.top.y * 0.5) * 0.85)
+    }
+
+    /// A fence as it stands (its parts are laid by the caller): where its posts are on the land, and its lines.
+    static func runPlace(_ thing: MeadowScenery.Thing) -> Run {
+        let (posts, spans) = Fences.layout(thing.points, gate: thing.gate)
+        return Run(parts: [], kinds: [], posts: posts.map { Vec3($0.at.x, Land.height($0.at.x, $0.at.y), $0.at.y) }, lines: FenceLines.Run(posts, spans))
+    }
+
+    /// Whether going straight from `a` to `b` on the ground crosses a fence: through any of its spans but a gate's.
+    func crossesFence(_ a: Vec2, _ b: Vec2) -> Bool { fences.crosses(a, b) }
 
     /// Where a fallen log lies, and its screen along it.
     private static func logPlace(_ thing: MeadowScenery.Thing) -> (matrix: Mat4, screen: Screen) {
@@ -526,6 +657,14 @@ final class Meadow {
             return tree(s, .translation(shape.at) * shape.pose, shape.key, trunk: 3, s.thick * 1.3)
         case .log(let l):
             return along(screens[logs[l].screen], 5, 1.5)
+        case .run(let r):
+            // Each post, and each span's middle: any of it picks the whole run.
+            let posts = runs[r].posts
+            var balls = posts.map { Ball(center: $0 + Vec3(0, Fences.tall * 0.5, 0), radius: Fences.tall * 0.5) }
+            for (a, b) in zip(posts, posts.dropFirst()) where simd_distance(a, b) < Fences.spacing * 1.5 {
+                balls.append(Ball(center: (a + b) / 2 + Vec3(0, Fences.tall * 0.5, 0), radius: Fences.tall * 0.45))
+            }
+            return balls
         case .bed(let b, let slot):
             let m = beds[b].matrices[slot]
             if let s = beds[b].screens?[slot] { return tree(screens[s], m, ShapeKey(id: thing.id, seed: thing.seed), trunk: 2, screens[s].thick * 1.5) }
@@ -543,9 +682,9 @@ final class Meadow {
         switch laid[i] {
         case .tree(let t): screen = screens[treeShapes[t].screen]
         case .bed(let b, let slot):
-            guard let s = beds[b].screens?[slot] else { return nil }
+            guard let s = beds[b].screens?[slot], case .youngTree = SceneryCatalog.kinds[scenery.things[i].id] else { return nil }
             screen = screens[s]
-        case .none, .log: return nil
+        case .none, .log, .run: return nil
         }
         guard let crown = screen.crown else { return nil }
         return (crown.x, crown.z, screen.crownSize)
@@ -591,13 +730,18 @@ final class Meadow {
         case .youngTree(let species):
             let key = ShapeKey(id: thing.id, seed: thing.seed)
             return (key, { grown(key, species).shape.roughened(0.8) }, matrix(of: thing))
-        case .plant(let shapes, _, _, _):
-            let all = shapes()
-            let variant = all.indices.contains(thing.variant) ? thing.variant : 0
-            let shape = all[variant].shape
-            return (ShapeKey(id: thing.id, variant: variant), { shape.roughness.isEmpty ? shape.roughened(0.8) : shape }, matrix(of: thing))
+        case .plant:
+            guard let made = SceneryCatalog.shape(of: thing) else { return nil }
+            return (made.key, {
+                let shape = made.make().shape
+                return shape.roughness.isEmpty ? shape.roughened(0.8) : shape
+            }, matrix(of: thing))
         case .log:
             return (ShapeKey(id: thing.id), { SceneryCatalog.fallenLog }, matrix(of: thing, lift: -Float(Land.ground)))
+        case .fence:
+            // The whole run as one shape on the land where it lies (a thing with no points: the tray's short run).
+            let run = thing.isRun ? (points: thing.points, gate: thing.gate) : Fences.pictured
+            return (ShapeKey(id: thing.id, run: run.points, gate: run.gate), { Fences.joined(run.points, gate: run.gate) }, .identity)
         }
     }
 

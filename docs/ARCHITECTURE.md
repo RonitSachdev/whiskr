@@ -410,7 +410,22 @@ boulder, wood and made things stand alone (`SceneryCatalog.alone`: placed, taken
 by one). Made things a cat uses wear the turf as stepping stones do (`SceneryCatalog.treads`: bare under them,
 cut short round them) but are not walked on. Where a cat likes to be at a thing (sit on a stump, nap in a bed,
 scratch at a post) is catalog data, `MeadowScenery.catSpot(of:)`, and `MeadowScenery.Thing.catSpot` gives it
-in the meadow, turned and standing as the thing is; nothing uses it yet.
+in the meadow, turned and standing as the thing is; the roaming cats use it (`Village.places`).
+
+Made things with a palette (`SceneryCatalog.palettes`, name for name the catalog's `colour` choices, colours in
+`Palette`) are built per swatch (`SceneryCatalog.painted`; `Thing.swatch`, `ShapeKey.swatch`), each swatch a
+bed of its own. The shed, tent, bookcase and nest box fade in the way as young trees do (`SceneryCatalog.tall`,
+`Meadow.madeScreen`); the shed, tent and fence are big (`SceneryCatalog.big`). A fence is a run
+(`Thing.points`, `Thing.gate`; `MeadowItem.Placement.run` and `params.gate` in the file): `Fences.layout` stands
+its posts at each point and evenly between (as `MeadowCatalog.posts` counts them) and `Fences.parts` gives each
+post, span of rails, gate and gate cap a matrix on the land, drawn instanced in four beds (`Meadow.Laid.run`,
+`Meadow.Run`); moved or turned whole it is placed again in place. Its rules' ground is round its posts and under
+its rails, none across its gate. Its lines across the ground (every span but the gate's, and the gate's) are
+`FenceLines`, made again whenever a fence is laid, moved or taken away (`Meadow.fences`), each run with its bounds
+so a way far from a fence is passed over at once; `MeadowView.crossesFence(from:to:)` asks them whether a straight
+way passes through a span, as the cats' routes do. Laying, joining, straightening, gating and colouring are `MeadowFencing.swift`
+(WhiskrMeadow): `MeadowFenceDraft` (a drag's points a post apart), `fenceLaying` (ends joined within 0.8 units,
+at most 64 points), `layFence`, `straighten`, `toggleGate`, `recolour`, each one `MeadowChange`.
 
 **Editing** (`EditModeController`, docs/DESIGN.md "Editing the meadow"). The document is edited as a
 `MeadowEditSession` (WhiskrMeadow): every entry has an id that lasts while it is edited, and every edit is a
@@ -507,7 +522,26 @@ stop drawing when nothing moves.
   the blur's reach round them, copied into the texture in the frame's command buffer; stepping stones laid,
   moved or taken up do the same round each. `Meadow.walkingEase` (public as `MeadowView.walkingEase(at:)`)
   says how gladly a cat walks at a point: 1 on a path or a stepping stone, 0.6 on lawn, 0.25 in wild grass or
-  on soil. Beside it an R8 texture is kept for lamplight on the ground.
+  on soil.
+- Garden lamps (`MeadowLamps`, `Lamps`) light the ground through the map's second texture, R8 at the same size:
+  the square root of how bright each texel is (so a pool's dim edge keeps fine steps), each lamp's pool
+  (`GroundMap.pool`: falling as a lamp's light does from its height, eased to nothing at 14 units) multiplied by
+  how lit it is and added up to a whole at most. It is baked on the CPU only where a lamp's light changed (one
+  warming up, placed, moved, taken away, or the editor's ghost carried about) into a buffer kept for it, and
+  copied into the texture in the frame's command buffer; a region baked again equals a whole bake (tested). No
+  shader loops over lamps: the ground and grass add the pool with one sample; clay adds it in `lampOn` with
+  three (the pool's slope says which way the light comes from, the lantern's height whether from above or
+  below, fading over a tall tree's lower crown); all of it is skipped by day (`Frame.weather.z`, 1 only while a
+  lamp shines), so a day's picture is the same with lamps as without. A lamp's glass is marked by its roughness
+  (its own plus 2) and lit by its instance's emissive under `LIT_LAMP`; a soft additive halo is drawn round each
+  lit lantern (wider in mist and rain), and drops falling through a pool take its colour (one CPU sample each).
+  When to light comes from the light itself (`Light.lampsLit`: the sun 2° down in the evening, 1° up in the
+  morning, or the fixed hours' night past 0.4); each lamp's sensor answers after its own delay over 24 s (a hash
+  of where it stands, so the same meadow always lights in the same order) and warms up over 1.6 s with a short
+  stutter; then nothing changes from frame to frame, so lit lamps never keep the meadow awake. With Reduce
+  Motion or the animation off, and when the meadow is first drawn, they are lit or out at once. A lamp a blanket
+  comes over makes way as every rooted thing does (`Meadow.standing`, worked out per lamp on the CPU), its light
+  with it.
 - **A cat's day** (`Roam.swift`, `Village.keepDay`) goes by the wall clock (`Village.clock`; the meadow's own
   time slows while it rests): rests between outings, when it dozes off (`dozeAt`, four to six minutes after
   it is first at leisure, whatever its Claude allows) and when it wakes from a long nap (`wakeAt`). What its
@@ -518,7 +552,19 @@ stop drawing when nothing moves.
   (`MeadowView.letCatsDozeOff`).
 - **The meadow's things** (`Village.places`, from `MeadowScenery.Thing.catSpot`): each a place with where the
   cat stands to reach it, a hop up and down for one on or in a thing, one cat at a time (`Roam.spot`), only
-  where the thing stands whole (`Meadow.standing`).
+  where the thing stands whole (`Meadow.standing`). A screen (a tall thing, a tree) hides a cat only when its
+  nearest point to the line of sight is in front of the cat (`Occlusion.inFront`), so a bookcase under a cat
+  napping on it, or a shed behind one on its doorstep, stays solid.
+- **Fences** (`Village.fences`, `Meadow.fences`): a route never steps or is pulled straight across a span
+  (`RoamField.route(… fences:)`, asking `FenceLines.crosses`), and a gate is a way through the grass kept round
+  its posts (cleared square on to it in the field). Where a route crosses a gate it is cut to a corner a run-up
+  before it and one past it (`Village.leapFences`), the leg between one high bound (`Roam.leaps`, the hop's
+  `clearing`: the paws 2.3 units up over the gate's leaf), as a straight way home is over any fence when no route
+  is found. A fence that has made way for a blanket (`Village.stands`, by `Meadow.standing` at its posts) is
+  neither gone round nor leapt. Lamp posts are gone round by their footing, as other things are.
+- **Asked outings** (`MeadowView.sendOut`, the app's checks only): a cat at home sets off on one outing as soon
+  as it is at leisure, with no rest first: a loaf out in the grass reached in bounds, then home (`Roam.asked`);
+  the meadow flow waits on that rather than on a cat choosing one.
 - **Cats out in the grass** (`Roam.swift`). Each cat (`Actor.roam`) rests on its blanket, then sets off on an
   outing of a stop or three; a stop is chosen in its patch (`Village.inPatch`) and reached by a route over a
   grid of half-unit cells round its blanket (`RoamField`: A*, eight ways, corners pulled straight where a

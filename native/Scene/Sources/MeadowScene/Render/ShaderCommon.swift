@@ -40,7 +40,7 @@ struct Frame {
     float4 camRight;     // camera right and up in the world, for sprites and particles
     float4 camUp;
     float4 wind;         // which way the wind blows (x, z), how far its gusts have travelled (Stage.gustDrift)
-    float4 weather;      // a gust's share kept between gusts, lightning's flash 0…1, unused, unused
+    float4 weather;      // a gust's share kept between gusts, lightning's flash 0…1, garden lamps shining (0 or 1), unused
 };
 
 // Each blanket: x, z, radius (eased, as kit.ts uClearings) and the radius of the mown patch round it.
@@ -305,6 +305,35 @@ float picnicLight2(float2 g, constant Frame& F, constant World& W) {
 }
 // The lamplight's colour: a candle-warm amber, set against the cool blue of the night.
 constant float3 WARM = float3(1.0, 0.52, 0.17);
+
+// ---------- garden lamps (`MeadowLamps`) ----------
+// Their light on the ground, baked into a texture the ground map's size (`GroundMap.light`, the square root of
+// how bright) whenever it changes, so no pixel ever loops over lamps. Warm white, about 3000 K: a touch whiter
+// than the picnics' candle amber, as electric lamps are beside a flame.
+constant float3 LAMP = float3(1.0, 0.56, 0.22);
+// The height of a lamp's glass (`Lamps.head`): light falls on things below it from above, on those above from below.
+#define LAMP_HEAD \#(Lamps.head.y)
+float lampAt(float2 g, texture2d<float> lamps) {
+    float root = lamps.sample(groundMapSampler, g / (2.0 * GROUND_MAP_REACH) + 0.5, level(0)).r;
+    return root * root;
+}
+// The lamps' light on a surface at `p` facing `N` (to be multiplied by its colour): the pool's brightness there,
+// with the way it comes from read off the pool itself (it grows toward the lamp: two more samples beside), from
+// above below the lamps' glass and from below above it, so a crown's underside over a lamp is lit and its top is
+// not; fading out with height over a tall tree's lower crown. Soft-wrapped, as clay scatters light.
+float3 lampOn(float3 p, float3 N, constant Frame& F, texture2d<float> lamps) {
+    if (F.weather.z <= 0.0) return float3(0.0);
+    float here = lampAt(p.xz, lamps);
+    if (here < 1e-4) return float3(0.0);
+    float e = 0.9;
+    float2 grows = (float2(lampAt(p.xz + float2(e, 0.0), lamps), lampAt(p.xz + float2(0.0, e), lamps)) - here) / (e * here);
+    float aside = saturate(length(grows) * 2.5);
+    float2 toward = length(grows) > 1e-4 ? normalize(grows) : float2(0.0);
+    float up = clamp((LAMP_HEAD - p.y) / 2.5, -1.0, 1.0);
+    float3 L = normalize(float3(toward.x * aside, up * (1.0 - 0.5 * aside) + 1e-3, toward.y * aside));
+    float height = 1.0 - smoothstep(LAMP_HEAD + 1.5, LAMP_HEAD + 11.0, p.y);
+    return LAMP * here * height * (0.2 + 0.8 * saturate(dot(N, L) * 0.85 + 0.15));
+}
 
 float3 srgbDecode(float3 s) { return select(pow((s + 0.055) / 1.055, 2.4), s / 12.92, s < 0.04045); }
 

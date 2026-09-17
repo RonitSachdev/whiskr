@@ -25,8 +25,10 @@ Nothing has been released yet. This is what the first release will contain.
   › Cats wander when idle (on by default); never with Reduce Motion or the meadow's animation off. The meadow
   still rests between outings. An idle cat is up and about on and off for some minutes before it naps, and
   wakes now and then from a long nap for a stretch and a short outing. Cats use what the meadow offers them:
-  they sit on stumps and boulders, sit and nap in boxes, nap in beds and on cushions, scratch posts and look in
-  bowls, one at a time, and take painted paths and stepping stones when one is near.
+  they sit on stumps and boulders, benches, writing desks and planters' edges, on a shed's doorstep and under a
+  nest box, sit and nap in boxes, nap in beds, on cushions, on bookcases and on a tent's threshold, scratch
+  posts and look in bowls, one at a time, and take painted paths and stepping stones when one is near. They
+  go round lamp posts and fences, and into a fenced garden with a bound over its gate.
 - A workspace of plain terminals has a camp kettle on its blanket instead of an empty cloth: cold at the
   prompt, lit, glowing and steaming while a command runs (it reads at a glance from the sidebar) (calming to a simmer for a dev server), a whistle of steam
   when it ends well, and a little red flag when it fails until you look at that terminal, all from the shell's
@@ -81,6 +83,18 @@ Nothing has been released yet. This is what the first release will contain.
   wheel as well as a trackpad, the filter finds things by other names too ("firewood", "zabuton"; in
   Japanese, hiragana or katakana), and the Eraser's sweep leaves made things, wood and boulders alone (a
   click takes one).
+- A garden and a workplace to fill it: a wooden fence laid by dragging (a post every 2.5 units, rails
+  following the land, its end joining a fence's near it into one run; ⌥ lays it straight, a click a short one,
+  and Return at each corner lays one with the keys), with Straighten and Add Gate on its bar; a flower pot, a
+  planter box, a watering can, a birdhouse and a straw beehive; a low writing desk, a bookshelf, a bench, a
+  signpost, a mailbox, a noticeboard, a garden shed and a canvas tent. Made things with colours to choose (the
+  bench, the shed's door, the tent, the pot, the cushion, the cat's bed and more) show them on the selection
+  bar's Colour button, in the blankets' own gingham shades; the next one placed wears the colour you chose last.
+- Garden lamps for the meadow (Edit Meadow › Garden): a lamp post that lights by itself after sunset and
+  goes out after sunrise, the lamps coming on one by one with a little stutter as each catches. Lit, each
+  pools warm light on the grass round it, lights what stands near it and the rain or snow falling past it, and
+  glows softly, more so in fog. Placing one at night shows its light before it is put down. At most 32; never
+  on the picnic ground. Settings › Meadow › Lamps light at night turns them off.
 - Painted paths now read as pale, dry, trodden earth with a few pebbles and short tufts along their sides,
   and soil as a dark tilled bed in ridges, so the two are told apart at a glance; the earth's flecks are
   soft and round instead of small blocks.

@@ -4,7 +4,7 @@ import simd
 // The meadow editor's Cat Things: what a cat's home has, out in the meadow. Made things, so cat-sized (the cat
 // is 2.3 units tall and about 2 across) and never scaled: a box a cat fits in, a bed it curls up in, a post it
 // stretches up to scratch. Each modelled on the real thing, then simplified into the meadow's clay; those with
-// a palette (yarn, bed, bowl) wear its first swatch.
+// a palette (yarn, bed, bowl) are built in the swatch asked for (`Palette`), the first their own.
 
 enum CatThings {
     private static func v(_ x: Float, _ y: Float, _ z: Float) -> Vec3 { Vec3(x, y, z) }
@@ -78,35 +78,39 @@ enum CatThings {
         ]).roughened(0.92), top: v(0, tall + 0.22, 0))
     }()
 
-    /// A ball of yarn (its first swatch, oat): a round ball wound in criss-crossing bands, a little flattened
-    /// where it rests, and a loose strand trailing over the grass.
-    static let yarn: Plant = {
-        let r: Float = 0.42, color: (UInt32, UInt32) = (0xd9c9a6, 0xf2e8d2)
+    /// A ball of yarn in a swatch of its palette (oat its own): a round ball wound in criss-crossing bands, a little
+    /// flattened where it rests, and a loose strand trailing over the grass.
+    static func yarn(_ swatch: Int) -> Plant {
+        let r: Float = 0.42, clay = Palette.clay("cat.yarn", swatch), color = (clay.shade, clay.light)
         var parts = [Clay.blob(at: v(0, r * 0.94, 0), size: v(r, r * 0.94, r), color: color.0, top: color.1)]
         // Wraps laid at angles, each a strand standing a little proud of the ball.
         for (k, tilt) in [(0.3, 0.2), (1.2, 0.9), (2.0, 0.4), (2.7, 1.3), (0.8, 1.6), (1.7, 0.1), (2.4, 2.0), (3.0, 0.7)].enumerated() {
             let ring = Shapes.torus(r * 0.97, 0.04, 6, 44).applied(.compose(v(0, r * 0.94, 0), euler: v(Float(tilt.1), Float(tilt.0), Float(k) * 0.4), scale: v(1, 0.94, 1)))
-            parts.append(ring.painted(k % 2 == 0 ? 0xcfbd98 : 0xe6d9bd, color.1))
+            // Strands alternately a little deeper and a little paler than the ball, so the winding reads.
+            parts.append(ring.painted(color.0, color.1).tinted(k % 2 == 0 ? 0.93 : 1.05))
         }
         let strand = Clay.limb(CatmullRom([v(r * 0.6, r * 0.5, r * 0.55), v(r * 1.1, 0.06, r * 0.9), v(0.95, 0.045, 0.55), v(1.3, 0.045, 0.85), v(1.6, 0.045, 0.6)]),
                                0.045, 0.045, color.0, color.0, sides: 6, rings: 20)
         parts.append(strand.shape)
         return Plant(shape: Geometry.join(parts).roughened(1), top: v(0, r * 1.9, 0))
-    }()
+    }
 
-    /// A round cat bed (its first swatch, oat): a plump bolster ring round a sunken cushion a cat curls into,
-    /// soft and matte, the cushion a shade deeper than the rim.
-    static let bed: Plant = {
+    /// A round cat bed in a swatch of its palette (oat its own): a plump bolster ring round a sunken cushion a cat
+    /// curls into, soft and matte, the cushion a shade deeper than the rim.
+    static func bed(_ swatch: Int) -> Plant {
+        let clay = Palette.clay("cat.bed", swatch)
         let profile = [(0.0, 0.0), (1.35, 0.0), (1.55, 0.1), (1.62, 0.34), (1.52, 0.58), (1.3, 0.68), (1.08, 0.58), (0.98, 0.36), (0.8, 0.2), (0.4, 0.16), (0.0, 0.16)]
-        let ring = Clay.thrown(profile.map { Vec2(Float($0.0), Float($0.1)) }, 0xbfa682, 0xf0e5ce, around: 40, steps: 40)
-        return Plant(shape: Geometry.join([ring, Clay.blob(at: v(0, 0.17, 0), size: v(0.88, 0.07, 0.88), color: 0xcdb791, top: 0xd9c6a2)]).roughened(1), top: v(0, 0.68, 0))
-    }()
+        let ring = Clay.thrown(profile.map { Vec2(Float($0.0), Float($0.1)) }, clay.shade, clay.light, around: 40, steps: 40)
+        let cushion = Clay.blob(at: v(0, 0.17, 0), size: v(0.88, 0.07, 0.88), color: clay.shade, top: clay.light).tinted(0.9)
+        return Plant(shape: Geometry.join([ring, cushion]).roughened(1), top: v(0, 0.68, 0))
+    }
 
-    /// A food bowl (its first swatch, cream): wide and shallow, as cats like them, glazed stoneware on an
-    /// unglazed foot, heaped with kibble.
-    static let bowl: Plant = {
+    /// A food bowl in a swatch of its palette (cream its own): wide and shallow, as cats like them, glazed
+    /// stoneware on an unglazed foot, heaped with kibble.
+    static func bowl(_ swatch: Int) -> Plant {
+        let clay = Palette.clay("cat.bowl", swatch)
         let glaze = Clay.thrown([Vec2(0, 0.03), Vec2(0.38, 0.03), Vec2(0.47, 0.12), Vec2(0.55, 0.26), Vec2(0.58, 0.31), Vec2(0.55, 0.33), Vec2(0.48, 0.24), Vec2(0.36, 0.13), Vec2(0, 0.11)],
-                                0xe3d8c4, 0xf7f1e4, around: 28, steps: 20).roughened(0.4)
+                                clay.shade, clay.light, around: 28, steps: 20).roughened(0.4)
         let foot = Clay.thrown([Vec2(0, 0), Vec2(0.38, 0), Vec2(0.4, 0.035), Vec2(0.37, 0.05), Vec2(0, 0.05)], 0xb89268, 0xc9a67c, around: 28, steps: 6).roughened(0.9)
         var kibble: [Geometry] = []
         for k in 0..<18 {
@@ -118,5 +122,5 @@ enum CatThings {
                 .painted(colour.0, colour.1))
         }
         return Plant(shape: Geometry.join([glaze, foot, Geometry.join(kibble).roughened(0.85)]), top: v(0, 0.33, 0))
-    }()
+    }
 }

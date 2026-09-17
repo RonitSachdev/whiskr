@@ -14,6 +14,7 @@ import WhiskrKit
 /// - Each switch in Settings › Meadow, worked as a click works it, takes its effect away and gives it back;
 ///   the weather's are disabled while real weather is off.
 /// - Lightning flashes in a thunderstorm, and never with the animation off or Reduce Motion on.
+/// - Garden lamps are lit after sunset and out by day, following the real sun; their switch puts them out.
 /// - The meadow still comes to rest in the weather.
 /// - With `--weather-place`, Open-Meteo's real answer is read whole, once.
 extension PerfSuite {
@@ -38,6 +39,7 @@ extension PerfSuite {
         olderSettings()
         await sunLine()
         await switches()
+        await lampsAtNight()
         await moonInView()
         await lightning()
         await rests()
@@ -100,7 +102,7 @@ extension PerfSuite {
         let read = WorldSettings.read(from: defaults)
         check("sky: settings saved before the sky's switches load as they were, every new switch on",
               read.timeOfDay == .night && read.picnic == .spread && read.flagSize == .large
-                  && read.sunTimes && read.moonPhase && read.clouds && read.wind && read.rainAndSnow && read.lightning && read.grassColor)
+                  && read.sunTimes && read.moonPhase && read.clouds && read.wind && read.rainAndSnow && read.lightning && read.grassColor && read.lamps)
     }
 
     /// Settings › Meadow's "Today: sunrise …, sunset …" is worked out again when the day or the time zone
@@ -173,15 +175,15 @@ extension PerfSuite {
         tabs.select(pane: "meadow")
         defer { window.orderOut(nil) }
         func switchesNow() -> [NSSwitch] { Self.controls(in: root).compactMap { $0 as? NSSwitch } }
-        // Off: the sun's, the moon's, real weather's, the animation's and the cats' wandering only (the weather's
-        // are disabled, with a reason).
-        let off = await PerfWait.until(3000) { switchesNow().count == 5 }
+        // Off: the sun's, the moon's, the lamps', real weather's, the animation's and the cats' wandering only (the
+        // weather's are disabled, with a reason).
+        let off = await PerfWait.until(3000) { switchesNow().count == 6 }
         check("sky: with real weather off, its five switches are disabled", off != nil, "\(switchesNow().count) switches enabled")
 
         guard let answer = MeadowWeather(openMeteo: Data(Self.stormAnswer.utf8)) else { return check("sky: the storm's answer reads", false) }
         store.useWeather(answer)
-        let on = await PerfWait.until(3000) { switchesNow().count == 10 }
-        check("sky: with real weather on, all ten switches can be worked", on != nil, "\(switchesNow().count) switches enabled")
+        let on = await PerfWait.until(3000) { switchesNow().count == 11 }
+        check("sky: with real weather on, all eleven switches can be worked", on != nil, "\(switchesNow().count) switches enabled")
         // The wind eases round to the storm's over a few seconds.
         guard let all = await shown({ $0.settings.weather != nil && $0.sky.windToward.z < -0.68 }) else {
             return check("sky: the storm reaches the meadow, its wind eased round", false, "\(meadow.sky)")
@@ -191,7 +193,8 @@ extension PerfSuite {
                   && all.mist > 0.3 && all.thunder,
               "\(all)")
 
-        // In the order they are laid out: sun, moon, real weather, then the weather's five.
+        // In the order they are laid out: sun, moon, (the lamps', worked at night in `lampsAtNight`), real weather, then
+        // the weather's five.
         let effects: [(String, WritableKeyPath<WorldSettings, Bool>, MeadowSettings.Effects, @MainActor (MeadowView.SkyReading) -> Bool)] = [
             ("Real sunrise and sunset", \.sunTimes, .sunTimes, { $0.sunElevation == nil }),
             ("Moon phase", \.moonPhase, .moonPhase, { $0.moonLit == 1 }),
@@ -203,7 +206,7 @@ extension PerfSuite {
             ("Grass color from the temperature", \.grassColor, .grassColor, { $0.turf != all.turf }),
         ]
         for (index, (name, path, effect, gone)) in effects.enumerated() {
-            let place = index < 2 ? index : index + 1
+            let place = index < 2 ? index : index + 2
             guard switchesNow().indices.contains(place) else { check("sky: \(name)'s switch", false); continue }
             Self.set(switchesNow()[place], to: 0)
             let turnedOff = await PerfWait.until(2000) { !store.settings[keyPath: path] }
@@ -214,6 +217,45 @@ extension PerfSuite {
             check("sky: \(name) off takes its effect away, and on gives it back", turnedOff != nil && took && back.map(gone) == false,
                   reading.map { "\($0)" } ?? "not shown")
         }
+        store.clockStoppedAt = nil
+    }
+
+    /// Garden lamps follow the real sun over London at midsummer: out in the evening light, lit once dusk has
+    /// dimmed past sunset, out at midday; and their switch in Settings › Meadow, worked as a click works it, puts
+    /// them out at night and lights them again.
+    private func lampsAtNight() async {
+        let store = WorldStore.shared
+        store.settings.realWeather = false
+        store.settings.timeOfDay = .followClock
+        store.settings.sunTimes = true
+        store.settings.place = WorldSettings.Place(latitude: 51.51, longitude: -0.13)
+        let formatter = ISO8601DateFormatter()
+        // Sunset in London on 20 June 2024 is at 21:21 BST: an hour before, still out; forty minutes after, lit.
+        store.clockStoppedAt = formatter.date(from: "2024-06-20T20:21:00+01:00")
+        let evening = await shown { (3...12).contains($0.sky.sunElevation ?? -90) }
+        store.clockStoppedAt = formatter.date(from: "2024-06-20T22:01:00+01:00")
+        let dusk = await shown { ($0.sky.sunElevation ?? 90) < -2 }
+        check("sky: lamps are out in the evening light and lit after sunset", evening.map { !$0.lampsLit } == true && dusk?.lampsLit == true,
+              "evening \(String(describing: evening?.lampsLit)) at \(String(describing: evening?.sunElevation)), dusk \(String(describing: dusk?.lampsLit))")
+        let settings = SettingsWindowController.shared
+        settings.show()
+        guard let window = settings.window, let tabs = window.contentViewController as? SettingsTabs, let root = window.contentView else {
+            return check("sky: Settings opened", false)
+        }
+        tabs.select(pane: "meadow")
+        defer { window.orderOut(nil) }
+        let lampSwitch = await PerfWait.until(3000) { Self.controls(in: root).compactMap { $0 as? NSSwitch }.count >= 3 }
+        guard lampSwitch != nil else { return check("sky: Lamps light at night's switch", false) }
+        Self.set(Self.controls(in: root).compactMap { $0 as? NSSwitch }[2], to: 0)
+        let off = await shown { !$0.settings.effects.contains(.lamps) }
+        Self.set(Self.controls(in: root).compactMap { $0 as? NSSwitch }[2], to: 1)
+        let on = await shown { $0.settings.effects.contains(.lamps) }
+        check("sky: Lamps light at night off puts the lamps out after dark, and on lights them again",
+              store.settings.lamps && off.map { !$0.lampsLit } == true && on?.lampsLit == true,
+              "off \(String(describing: off?.lampsLit)), on \(String(describing: on?.lampsLit))")
+        store.clockStoppedAt = formatter.date(from: "2024-06-20T13:00:00+01:00")
+        let noon = await shown { ($0.sky.sunElevation ?? -90) > 30 }
+        check("sky: lamps are out at midday", noon.map { !$0.lampsLit } == true)
         store.clockStoppedAt = nil
     }
 

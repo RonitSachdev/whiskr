@@ -53,7 +53,7 @@ final class Stage {
             let meadow = Meadow()
             let village = Village()
             village.obstacles = meadow.obstacles
-            village.lay(meadow.scenery, shade: meadow.shade)
+            village.lay(meadow.scenery, shade: meadow.shade, fences: meadow.fences)
             // Cats prefer the ground they like walking on: a painted path, stepping stones.
             village.liking = { [unowned meadow] p in meadow.walkingEase(p.x, p.y) }
             self.meadow = meadow
@@ -232,7 +232,7 @@ final class Stage {
         guard let meadow, let village else { return }
         meadow.show(scenery)
         village.obstacles = meadow.obstacles
-        village.lay(meadow.scenery, shade: meadow.shade)
+        village.lay(meadow.scenery, shade: meadow.shade, fences: meadow.fences)
     }
 
     func show(_ world: MeadowWorld) {
@@ -499,6 +499,9 @@ final class Stage {
             meadow.update(drift, fading: dt, time: time, eye: camera.eye, lookAt: camera.target, sleepers: sleepers, sights: sights, sightCount: sightCount,
                           clearOf: clearOf, clearCount: clearCount, clearings: world.clearings, clearingCount: clearingCount, light: light, windToward: windToward)
             surroundings.critters = meadow.critters.spots
+            // Garden lamps come on at dusk one by one, warming up; at once with Reduce Motion or the animation off.
+            meadow.light(dt, lit: light.lampsLit, steady: !ambient || village.reduceMotion, ghost: editing ? editMarks.ghost : nil,
+                         clearings: world.clearings, clearingCount: clearingCount)
             village.clock += seconds
             village.update(dt, surroundings, stage: self)
             village.collectCats(into: &cats)

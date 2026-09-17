@@ -308,7 +308,8 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
   setting (nothing, just the hamper, or the hamper and a few things), laid out tidily beside the hamper,
   never scattered.
 - **Night is properly dark**, with fireflies gathered at the picnics casting warm yellow light. Lanterns
-  appear only at night.
+  appear only at night. Garden lamps someone has placed light their own pools of warm white, and nothing more:
+  away from them the night is as dark as ever.
 - **The real sky.** Following the clock, dawn, day, dusk and night come with the real sun where you are:
   night once it is 12° below the horizon, twilight's blue at 5° below, dawn's pink or dusk's gold as it
   crosses the horizon, full day from 12° up. A polar winter's noon stays in twilight; a midsummer
@@ -373,11 +374,43 @@ can hold (its catalog):
   sized for the meadow's cats: a cardboard box a cat fits in, its flaps fallen open; a sisal scratching post
   with a perch on top and a pompom; a ball of yarn; a round bed; a food bowl of kibble. Made things a cat uses
   stand on turf trodden short round them, as the grass flattens round a bed left out; found things (a stump,
-  a boulder) stand in the long grass. Until the palettes come, each made thing wears its palette's first
-  swatch (oat for the cushion, the yarn and the bed; cream for the bowl).
+  a boulder) stand in the long grass.
+- **A place they come to work in:** the Garden: a post-and-rail fence laid in runs, a flower pot with a
+  geranium, a raised planter of lettuces and marigolds, a watering can, a nest box on its post, a straw skep on
+  its stand; the Workplace: a low writing desk (a fuzukue, sat at on the floor cushion) with a mug and a little
+  plant, a bookcase of cloth-bound books, a garden bench, a fingerpost with no words, a mailbox, a noticeboard
+  with blank notes under its little roof, a garden shed with a window box, and a canvas ridge tent with its
+  flaps tied back. Made things a person uses are drawn as a cat would use them (a bench's seat a stump's height,
+  1.1 units), never scaled. Nothing lies loose that a working cat carries (rule 8): books stand on the shelf.
+- **Fences** are laid by a drag: a square post at least every 2.5 units, two rails a span following the land,
+  a corner one post; a run that ends near another's end joins it into one run. One span may hold a gate: a
+  cream ledged-and-braced gate with palings, hung on stouter capped posts, so the way through reads among the
+  weathered rails. A fence, the shed and the tent are kept off the picnic ground; a fence stops a cat but at
+  its gate, which a cat crosses with one high bound over its leaf, as cats over a garden gate do.
+- **Colours:** made things with a palette (cushion, yarn, bed, bowl, pot, watering can, bench, mailbox, shed's
+  door, tent) wear one of their 4–5 swatches, chosen from the selection bar's Colour popover; the swatches are
+  the blankets' gingham colours taken toward the cloth's cream and dulled into clay, and the meadow's woods,
+  glazes and cloths, so a sage bench, a sage shed door and a sage cushion are one sage. The next one placed
+  wears the colour last chosen for its kind.
+- **Garden lamps** (Garden shelf: the catalog files the lamp under Workplace, but people look for it with the
+  garden): a lamp post as gardens and parks have them, cat-sized (a little over twice
+  a cat's height): a flared cast base, a fluted post with a ladder bar, a four-paned lantern widening upward
+  under an overhanging roof and a ball finial, in heritage green (never black: the cats are black). Like real
+  ones on a light sensor they light by themselves once dusk has dimmed past sunset (the sun 2° down) and go out
+  just after sunrise (1° up); at fixed hours, from a little after dusk's gold to a little before dawn's pink.
+  They come on one by one over about half a minute, each catching with a stutter or two before burning
+  steadily; with Reduce Motion or the animation off they are simply lit or out. Lit, the frosted glass glows
+  with a soft halo (wider in mist, fog and rain), and a warm white pool (about 3,000 K, whiter than the
+  picnics' candle amber) falls on the ground and grass round the post, brightest at its foot and fading over a
+  few strides with no edge; it lights the near side of what stands in it, a tree's lower crown from below,
+  and rain or snow falling through it. A lamp is kept off the picnic ground, so its light never competes
+  with a blanket's lanterns and never reads as one; at most 32. Placing or moving one at night, its ghost
+  already casts its pool, so a garden can be lit as it is laid out. By day it is an unlit lamp and changes
+  nothing else in the picture. Settings › Meadow › Lamps light at night (on) leaves them unlit.
 - **Cats will like them:** each thing that invites a cat says where (sit on a stump, a boulder, a log pile,
-  the log, in a box or by a bowl; nap in a bed or on a cushion; scratch at a post). The meadow's cats do not
-  go there yet.
+  the log, a bench's seat, a desk's top, a planter's front board, in a box, by a bowl, on a shed's doorstep,
+  under a nest box; nap in a bed, on a cushion, on a bookcase's top, on a tent's threshold; scratch at a post),
+  and the meadow's cats go there (below, "Idle cats wander").
 
 ### Editing the meadow
 
@@ -439,7 +472,7 @@ most of the time.
   it goes by, "firewood" for the log pile, "zabuton" for the cushion, "cat" for every cat thing, and in
   Japanese hiragana or katakana alike; Return arms what it found); and the fold (View ›
   Hide Editor Tray, ⌥⌘T, remembered) that leaves only that row. Below: the categories that hold something
-  (Trees, Flowers, Stones & Wood, Ground, whose tab is the Ground tool's, Workplace and Cat Things; keys 1–7), a line saying what to do now, and the shelf: each thing pictured
+  (Trees, Flowers, Stones & Wood, Ground, whose tab is the Ground tool's, Garden, Workplace and Cat Things; keys 1–7), a line saying what to do now, and the shelf: each thing pictured
   by the scene in its own clay on a round of grass, by day, on a tile of the content colour (64 pt, its name
   under it, a long name a little smaller rather than cut). Under 760 pt the tools and categories show as symbols with their names in the tooltips. The shelf
   offers exactly what the meadow can draw. A shelf longer than the tray scrolls along with a trackpad's swipe
@@ -493,7 +526,7 @@ most of the time.
   is lost to a stroke passing it), and never a blanket or anything from a newer Whiskr. Choosing a kind on
   its shelf sweeps only that kind ("The Eraser clears only daisies now" where a click falls on another).
   Each click or sweep is one step.
-- **Caps.** A meadow holds at most 5,000 things, 48 trees and 120 tall things (32 lamps when lamps come). The
+- **Caps.** A meadow holds at most 5,000 things, 48 trees, 120 tall things and 32 garden lamps. The
   tray says how full the meadow is past 80 % of a cap; at one, the tiles of what cannot be added say why
   ("The meadow has as many trees as it can hold (48)"), the ghost and the Brush say it by the pointer, and
   nothing is ever cut short silently.
@@ -599,9 +632,12 @@ between them as it always did; in a meadow of many idle cats, two at most are ou
   an hour) now and then wakes, stretches, takes one short outing and naps again. A meadow of idle cats is
   gently alive over an afternoon and still rests between their bursts.
 - **The meadow's things.** What invites a cat is used, one cat at a time and preferred to bare grass when it
-  is in reach: it hops up to sit on a stump, a boulder, a log pile or the fallen log, sits in a box (and naps in
-  it), naps in a bed or on a cushion, stands up at a scratching post for a scratch (its paws stroking down in
-  turn, never lengthening), and looks in the bowl. Things that make way for a blanket (shrunk near one) are
+  is in reach: it hops up to sit on a stump, a boulder, a log pile or the fallen log, a bench's seat, a writing
+  desk's top or a planter's front board, sits in a box (and naps in it), naps in a bed or on a cushion, hops up
+  to nap on a bookcase's top, curls up on a tent's threshold, sits on a shed's doorstep or under a nest box
+  looking up at it, stands up at a scratching post for a scratch (its paws stroking down in turn, never
+  lengthening), and looks in the bowl. A tall thing it is on or in front of stays solid; it fades only for a
+  cat behind it. Things that make way for a blanket (shrunk near one) are
   not used. The ball of yarn is left as it is: a cat batting it would need the ball to answer, and a ball that
   only rocks in place reads as a mistake, so it stays a picture.
 - **Paths.** Routes and stops take the ground cats like (`MeadowView.walkingEase`): a painted path or stepping
@@ -610,7 +646,9 @@ between them as it always did; in a meadow of many idle cats, two at most are ou
 - **Its own patch.** Within a few cat-lengths of its blanket's edge, nearer its blanket than any other, clear
   of other blankets and every flag, and in view: whose cat it is always reads, and its blanket's flag stays on
   its blanket. It goes round trees, stones, logs, flowers, whatever the meadow holds, the picnic things and
-  other cats, never through them. Helpers do the same round their boss's blanket. For one of the meadow's
+  other cats, never through them; round lamp posts too, and round a fence, through its gate with one high
+  bound over the gate's leaf (a fence that has made way for a blanket is no fence to it). Helpers do the same
+  round their boss's blanket. For one of the meadow's
   things it goes a little further, to where things stand whole.
 - **Work calls it home.** The moment its Claude works, asks, finishes or fails, it turns and runs home, ears
   flat, low fast bounds, and skids to a stop on its blanket, then takes up its pose. Nothing waits for the

@@ -44,47 +44,36 @@ struct MeadowSceneryMappingTests {
         }
     }
 
-    @Test("a document maps to scenery and back unchanged; what the scene cannot draw stays in the document")
+    @Test("a document maps to scenery and back unchanged (colours and runs too); a newer Whiskr's thing is left out of the scenery")
     func roundTrip() throws {
         let document = MeadowDocument(name: "Mine", entries: [
             .item(MeadowItem(asset: "tree.birch", placement: .at(MeadowPoint(30, -12.5)), turn: 1.25, size: [1.1, 0.9, 1.05], tilt: [0.02, -0.01], seed: 99)),
             .item(MeadowItem(asset: "flower.poppy", placement: .at(MeadowPoint(-3, 4)), variant: 1)),
-            .item(MeadowItem(asset: "work.desk", placement: .at(MeadowPoint(5, 5)))),
-            .item(MeadowItem(asset: "garden.fence", placement: .run([MeadowPoint(0, 0), MeadowPoint(3, 0)]))),
+            .item(MeadowItem(asset: "work.bench", placement: .at(MeadowPoint(5, 5)), params: ["colour": .string("slate")])),
+            .item(MeadowItem(asset: "garden.fence", placement: .run([MeadowPoint(0, 0), MeadowPoint(3, 0), MeadowPoint(3, 2.5)]), params: ["gate": .number(2)])),
+            .item(MeadowItem(asset: "work.lampPost", placement: .at(MeadowPoint(8, 8)))),
             .parcel(MeadowParcel(fields: ["id": .string("water.pond"), "at": .array([.number(1), .number(2)])])),
         ])
         let scenery = MeadowScenery(document)
-        #expect(scenery.things.map(\.id) == ["tree.birch", "flower.poppy"])
+        #expect(scenery.things.map(\.id) == ["tree.birch", "flower.poppy", "work.bench", "garden.fence", "work.lampPost"])
+        #expect(scenery.things[2].swatch == 3 && scenery.things[3].points == [Vec2(0, 0), Vec2(3, 0), Vec2(3, 2.5)] && scenery.things[3].gate == 2)
         #expect(scenery.things[0] == MeadowScenery.Thing(id: "tree.birch", x: 30, z: -12.5, turn: 1.25, size: Vec3(1.1, 0.9, 1.05), tilt: Vec2(0.02, -0.01), seed: 99))
         #expect(scenery.things[1].variant == 1)
         let back = MeadowDocument(scenery, name: "Mine")
         #expect(MeadowScenery(back) == scenery)
-        #expect(back.items.map(\.asset) == ["tree.birch", "flower.poppy"])
+        #expect(back.items.map(\.asset) == ["tree.birch", "flower.poppy", "work.bench", "garden.fence", "work.lampPost"])
+        #expect(back.items[2].params == ["colour": .string("slate")] && back.items[3].params == ["gate": .number(2)])
     }
 
-    /// Catalog ids whose scene builders come in a later stage of the editor, with that stage. Until then
-    /// a meadow keeps such things and the picture leaves them out (as it does a thing from a newer
-    /// Whiskr); the tray offers only what the scene draws. This list only ever shrinks, and is empty
-    /// before catalog 1 is released.
-    static let buildersToCome: [String: String] = [
-        "garden.fence": "8", "garden.flowerPot": "8", "garden.planter": "8", "garden.wateringCan": "8", "garden.birdhouse": "8",
-        "garden.skep": "8", "work.desk": "8", "work.bookshelf": "8", "work.bench": "8", "work.signpost": "8", "work.mailbox": "8",
-        "work.noticeboard": "8", "place.shed": "8", "place.tent": "8",
-        "work.lampPost": "9",
-    ]
-
-    @Test("every catalog id has a scene builder, or is one whose builder is still to come; the scene draws nothing the catalog lacks")
-    func everyIdHasABuilder() {
+    @Test("every catalog id is drawn (none is left for a later stage), and the scene draws nothing the catalog lacks")
+    func everyIdIsDrawn() {
         let catalog = MeadowCatalog.current
         for asset in catalog.assets {
             // A paint (and the wild grass that paints them away) is drawn when the scene's ground has it.
             let drawn = asset.nature == .paint || asset.nature == .eraser ? MeadowScenery.Ground.Paint(id: asset.id) != nil : MeadowScenery.draws(asset.id)
-            #expect(drawn != (Self.buildersToCome[asset.id] != nil), "\(asset.id): drawn \(drawn), to come \(Self.buildersToCome[asset.id] ?? "no")")
+            #expect(drawn, "\(asset.id) is not drawn")
         }
         for id in MeadowScenery.drawnIds { #expect(catalog.asset(id)?.id == id, "\(id) is in the catalog") }
-        for id in Self.buildersToCome.keys { #expect(catalog.asset(id) != nil, "\(id)") }
-        // The Default needs nothing still to come.
-        #expect(MeadowScenery.standard.things.allSatisfy { Self.buildersToCome[$0.id] == nil })
     }
 
     @Test("the scene draws as much as a meadow file may hold, and no more")
@@ -92,6 +81,7 @@ struct MeadowSceneryMappingTests {
         #expect(MeadowScenery.Limits.things == MeadowFormat.maxItems)
         #expect(MeadowScenery.Limits.trees == MeadowCatalog.Cap.trees.limit)
         #expect(MeadowScenery.Limits.tall == MeadowCatalog.Cap.tall.limit)
+        #expect(MeadowScenery.Limits.lamps == MeadowCatalog.Cap.lamps.limit)
         #expect(Double(MeadowScenery.Limits.reach) == MeadowFormat.reach)
     }
 }

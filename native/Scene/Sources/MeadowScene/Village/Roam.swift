@@ -19,9 +19,10 @@ import simd
 // other, clear of every other blanket and every flag, and in view, so whose cat it is always reads. It goes
 // round the scenery's footprints (trees, stones, logs, flowers, whatever the meadow holds; stepping stones are
 // walked on), the picnic things and other cats, by a route over a grid (`RoamField`) that prefers the ground
-// cats like (`Village.liking`: a painted path, stepping stones). A spot that invites a cat (`MeadowScenery
-// .CatSpot`) holds one cat at a time. Out in short bursts with long still stops between, so between them the
-// meadow rests as it always did.
+// cats like (`Village.liking`: a painted path, stepping stones). It goes round a fence too, and through its gate
+// with one high bound over the gate's leaf (`FenceLines`). A spot that invites a cat (`MeadowScenery.CatSpot`)
+// holds one cat at a time. Out in short bursts with long still stops between, so between them the meadow rests
+// as it always did.
 
 /// How far past its blanket's edge a cat wanders, in units, at full size; and how far it goes for a spot at a
 /// thing (things near a blanket make way for it, shrinking, so those that stand whole stand further out).
@@ -49,6 +50,12 @@ private let HOP_LENGTH: Float = 1.25
 private let HOP_SPEED: Float = 5.4
 /// Room a cat keeps from things it passes, at full size.
 private let CLEARANCE: Float = 0.75
+/// Over a gate (or, hemmed in with no way round, a fence): how far before and past it a cat leaps from and lands,
+/// how high its paws are as it passes over (the gate's palings stand 2.04 tall, a fence's top rail 1.81), and how
+/// wide the way through a gate's posts is kept for it.
+private let LEAP_RUNUP: Float = 1.1
+private let LEAP_HEIGHT: Float = 2.3
+private let GATEWAY: Float = 0.3
 /// Points a cat out in the grass keeps inside the view's edges (its head and ears included).
 private let IN_VIEW: Float = 16
 /// The route's corners a cat keeps.
@@ -116,6 +123,9 @@ struct Roam {
     /// may leave.
     var hopFrom = Vec3.zero, hopTo = Vec3.zero
     var hopAt: Float = -1, hopFor: Float = 0, hopNext: Float = 0, hopRise: Float = 0
+    /// The route's corners reached by a leap over a fence (from the corner before), and whether one is under way.
+    var leaps: [Int] = []
+    var leaping = false
     /// The spot it is going to or is at (`Village.places`), the hop up onto it still to come, and the hop down
     /// off it before it goes anywhere (blanket-local).
     var spot: Int?
@@ -134,6 +144,10 @@ struct Roam {
     var awakeUntil: Float = 0
     /// Out for one short outing only (woken from a nap).
     var brief = false
+    /// Asked by the app's checks for one outing (`MeadowView.sendOut`): as soon as it is at leisure, one stop out in
+    /// the grass, reached in bounds, lying there as a loaf (long enough to be looked at), then home; never what a
+    /// cat chooses for itself.
+    var asked = false
     /// How many stops it has reached off its blanket's cloth, and how many hops it has made: counts that only
     /// grow, for the app's checks to wait on what happened rather than catch a moment of it.
     var grassStops = 0
@@ -143,6 +157,7 @@ struct Roam {
     init(seed: String) {
         random = chance("roam/" + seed)
         route.reserveCapacity(ROAM_MOST_CORNERS)
+        leaps.reserveCapacity(8)
     }
 
     /// Off its blanket, or on its way back.
@@ -261,6 +276,9 @@ extension Village {
         actor.roam.mount = nil
         actor.roam.dismount = nil
         actor.roam.brief = false
+        actor.roam.asked = false
+        actor.roam.leaping = false
+        actor.roam.leaps.removeAll(keepingCapacity: true)
         actor.roam.rested = clock + actor.roam.pick(ROAM_REST.least, ROAM_REST.more)
         let cat = actor.cat
         cat.leap = nil
@@ -330,12 +348,12 @@ extension Village {
         case .home:
             actor.rootLocal += (actor.spot - actor.rootLocal) * min(1, dt * 3.5)
             guard atLeisure(actor, plot) else {
-                // Busy: its next outing waits a full rest after it is free again.
-                actor.roam.rested = max(actor.roam.rested, clock + ROAM_FIRST_REST.least)
+                // Busy: its next outing waits a full rest after it is free again (one asked for, as soon as it is).
+                if !actor.roam.asked { actor.roam.rested = max(actor.roam.rested, clock + ROAM_FIRST_REST.least) }
                 return
             }
             let ready = (cat.activity == .awake || cat.activity == .idle) && actor.queue.isEmpty && !cat.isNapping
-            if ready && clock >= actor.roam.rested && !cat.watched && !cat.petting && simd_distance(actor.rootLocal, actor.spot) < 0.05 {
+            if ready && (clock >= actor.roam.rested || actor.roam.asked) && !cat.watched && !cat.petting && simd_distance(actor.rootLocal, actor.spot) < 0.05 {
                 // A meadow of idle cats takes turns: two out and about at once at most, the rest a while later,
                 // so the meadow is still between their bursts.
                 if outAndAbout() >= ROAM_MOST_OUT { actor.roam.rested = clock + actor.roam.pick(6, 10) } else { setOut(actor, in: plot, stage) }
@@ -387,9 +405,15 @@ extension Village {
             }
         case .recalled:
             if time < actor.roam.until { return }
+            // Called in the middle of a bound, it lands first (over a gate: on its far side), then sets off home
+            // from there.
+            if actor.roam.replan && actor.roam.hopAt >= 0 {
+                guard flight(actor) else { return }
+                actor.roam.leaping = false
+            }
             if actor.roam.replan {
                 actor.roam.replan = false
-                if !plan(actor, in: plot, to: Vec2(actor.spot.x, actor.spot.z), stage) { straight(actor, to: actor.spot) }
+                if !plan(actor, in: plot, to: Vec2(actor.spot.x, actor.spot.z), stage) { straight(actor, in: plot, to: actor.spot, stage) }
             }
             if travel(actor, in: plot, dt) {
                 cat.skid()
@@ -408,7 +432,7 @@ extension Village {
     /// Up off the blanket: it sits up and looks about a moment, then sets off on an outing of a stop or three
     /// (one, woken from a nap).
     private func setOut(_ actor: Actor, in plot: Plot, _ stage: Stage) {
-        actor.roam.stopsLeft = actor.roam.brief ? 1 : 1 + Int(actor.roam.random.float() * 2.99)
+        actor.roam.stopsLeft = actor.roam.brief || actor.roam.asked ? 1 : 1 + Int(actor.roam.random.float() * 2.99)
         if actor.roam.brief { actor.cat.fidget("stretch") }
         actor.roam.phase = .stopped
         actor.roam.outing = .watch
@@ -423,15 +447,15 @@ extension Village {
         if actor.roam.stopsLeft > 0, let target = chooseStop(actor, in: plot, stage, sleepy: false),
            plan(actor, in: plot, to: target.at, stage, opening: target.spot != nil) {
             actor.roam.stopsLeft -= 1
-            actor.roam.outing = target.outing
+            actor.roam.outing = actor.roam.asked ? .loaf : target.outing
             take(target.spot, for: actor, in: plot)
             // Through the grass a cat bounds more often than it walks; across its blanket it walks.
-            actor.roam.gait = target.onCloth || actor.roam.random.float() < 0.35 ? .walk : .bound
+            actor.roam.gait = actor.roam.asked ? .bound : target.onCloth || actor.roam.random.float() < 0.35 ? .walk : .bound
             return depart(actor)
         }
         // Home again, at an easy pace.
         actor.roam.gait = actor.roam.random.float() < 0.6 ? .walk : .bound
-        if !plan(actor, in: plot, to: Vec2(actor.spot.x, actor.spot.z), stage) { straight(actor, to: actor.spot) }
+        if !plan(actor, in: plot, to: Vec2(actor.spot.x, actor.spot.z), stage) { straight(actor, in: plot, to: actor.spot, stage) }
         depart(actor, home: true)
     }
 
@@ -530,6 +554,17 @@ extension Village {
             if hop(actor, in: plot, to: down) { actor.roam.dismount = nil }
             return false
         }
+        // Over a fence's gate: one high bound from the corner before it to the corner past it.
+        if actor.roam.leaping || leapsNext(actor) {
+            actor.roam.leaping = true
+            let c = actor.roam.route[actor.roam.next]
+            guard hop(actor, in: plot, to: Vec3(c.x, 0, c.y), clearing: LEAP_HEIGHT) else { return false }
+            actor.roam.leaping = false
+            actor.roam.next += 1
+            actor.roam.hopNext = time + actor.roam.pick(0.3, 0.3)
+            actor.roam.ramp = 0
+            actor.roam.stride = 0
+        }
         let arrived: Bool
         if actor.roam.gait == .bound && actor.roam.hopAt < 0 && actor.roam.next >= actor.roam.route.count {
             arrived = true
@@ -574,7 +609,7 @@ extension Village {
             let remaining = hypot(corner.x - actor.rootLocal.x, corner.y - actor.rootLocal.z)
             left *= clamp(remaining / (0.9 * size), 0.35, 1)
         }
-        while left > 0 && actor.roam.next < actor.roam.route.count {
+        while left > 0 && actor.roam.next < actor.roam.route.count && !actor.roam.leaps.contains(actor.roam.next) {
             let c = actor.roam.route[actor.roam.next]
             let to = Vec2(c.x - actor.rootLocal.x, c.y - actor.rootLocal.z), far = simd_length(to)
             if far <= left {
@@ -587,14 +622,22 @@ extension Village {
                 left = 0
             }
         }
-        if actor.roam.next >= actor.roam.route.count {
+        if actor.roam.next >= actor.roam.route.count || leapsNext(actor) {
+            // Arrived, or come to where it leaps over a gate (`travel`): its step ends here.
             actor.roam.ramp = 0
             actor.roam.stride = 0
             cat.stride = 0
             cat.gait = .none
-            return true
+            return actor.roam.next >= actor.roam.route.count
         }
         return false
+    }
+
+    /// Whether the cat stands where its route leaps over a fence: at the corner before a leap's landing.
+    private func leapsNext(_ actor: Actor) -> Bool {
+        let next = actor.roam.next
+        guard next > 0, next < actor.roam.route.count, actor.roam.hopAt < 0, actor.roam.leaps.contains(next) else { return false }
+        return simd_distance(Vec2(actor.rootLocal.x, actor.rootLocal.z), actor.roam.route[next - 1]) < 0.01
     }
 
     /// Bounding through the grass: hop by hop along the route, turned to each before it leaves, a look round
@@ -615,16 +658,19 @@ extension Village {
         }
         guard time >= actor.roam.hopNext, cat.height == 0 else { return false }
         // The next landing: a hop's length along the route, or its end.
-        var at = Vec2(actor.rootLocal.x, actor.rootLocal.z), left = HOP_LENGTH * size, index = actor.roam.next
-        while index < actor.roam.route.count {
+        let here = Vec2(actor.rootLocal.x, actor.rootLocal.z)
+        var at = here, left = HOP_LENGTH * size, index = actor.roam.next
+        // Never past where it leaps over a gate: that is a bound of its own (`travel`).
+        while index < actor.roam.route.count && !actor.roam.leaps.contains(index) {
             let c = actor.roam.route[index], far = simd_distance(c, at)
             if far <= left { at = c; left -= far; index += 1 } else { at += (c - at) / far * left; break }
         }
         // A last scrap of a hop is folded into the one before it.
-        if index == actor.roam.route.count - 1, simd_distance(actor.roam.route[index], at) < 0.35 * size {
+        if index == actor.roam.route.count - 1, !actor.roam.leaps.contains(index), simd_distance(actor.roam.route[index], at) < 0.35 * size {
             at = actor.roam.route[index]
             index += 1
         }
+        guard simd_distance(at, here) > 1e-3 else { return false }
         let landing = Vec3(at.x, 0, at.y)
         cat.going = plot.group + landing
         guard cat.turned(from: plot.group + landing) < 0.3 else { return false }
@@ -633,9 +679,9 @@ extension Village {
         return false
     }
 
-    /// One hop to a spot (blanket-local, its height too): up onto a stump, into a box, down again. Turned to it
-    /// first; whether it has landed.
-    private func hop(_ actor: Actor, in plot: Plot, to target: Vec3) -> Bool {
+    /// One hop to a spot (blanket-local, its height too): up onto a stump, into a box, down again; over a gate, its
+    /// paws `clearing` that high at the top of the bound. Turned to it first; whether it has landed.
+    private func hop(_ actor: Actor, in plot: Plot, to target: Vec3, clearing: Float = 0) -> Bool {
         let cat = actor.cat
         cat.gait = .bound
         if actor.roam.hopAt >= 0 {
@@ -647,7 +693,7 @@ extension Village {
         cat.going = world
         guard cat.turned(from: world) < 0.3, cat.height == 0 else { return false }
         // Higher up wants a stronger spring: the arc clears the edge it lands over.
-        launch(actor, to: target, speed: HOP_SPEED + max(0, target.y - actor.rootLocal.y) * 1.6)
+        launch(actor, to: target, speed: max(HOP_SPEED + max(0, target.y - actor.rootLocal.y) * 1.6, (2 * -GRAVITY * clearing).squareRoot()))
         return false
     }
 
@@ -671,11 +717,59 @@ extension Village {
         return true
     }
 
-    /// A route of one straight leg, when no better one is found (a cat hemmed in by others, say).
-    private func straight(_ actor: Actor, to spot: Vec3) {
+    /// A route of one straight leg, when no better one is found (a cat hemmed in by others, say), over any fence
+    /// in the way.
+    private func straight(_ actor: Actor, in plot: Plot, to spot: Vec3, _ stage: Stage) {
         actor.roam.route.removeAll(keepingCapacity: true)
         actor.roam.route.append(Vec2(spot.x, spot.z))
         actor.roam.next = 0
+        leapFences(actor, in: plot, stage)
+    }
+
+    /// Whether a fence's line stands: its posts (each of its parts is drawn from one) not shrunk away for a blanket
+    /// come near, as every rooted thing makes way (`Meadow.standing`). One that has made way is neither gone round
+    /// nor leapt.
+    func stands(_ line: FenceLines.Line, _ stage: Stage) -> Bool {
+        min(Meadow.standing(line.a.x, line.a.y, 0, stage.world.clearings, stage.clearingCount),
+            Meadow.standing(line.b.x, line.b.y, 0, stage.world.clearings, stage.clearingCount)) > 0.5
+    }
+
+    /// Where its route crosses a fence (at a gate; or, on a straight way when no route was found, anywhere), a
+    /// leap: the route goes square on to the gate's middle (a fence: where it is met) to a corner a run-up before
+    /// it, then lands as far past it; corners nearer the gate than that are passed over, and a last one is moved
+    /// out to where it lands.
+    private func leapFences(_ actor: Actor, in plot: Plot, _ stage: Stage) {
+        actor.roam.leaps.removeAll(keepingCapacity: true)
+        actor.roam.leaping = false
+        guard !fences.isEmpty else { return }
+        let offset = Vec2(plot.group.x, plot.group.z)
+        let start = actor.roam.dismount.map { Vec2($0.x, $0.z) } ?? Vec2(actor.rootLocal.x, actor.rootLocal.z)
+        var i = 0
+        while i < actor.roam.route.count && actor.roam.leaps.count < 8 {
+            let from = i == 0 ? start : actor.roam.route[i - 1], to = actor.roam.route[i]
+            guard !actor.roam.leaps.contains(i), let crossing = fences.firstCrossing(from + offset, to + offset, standing: { stands($0, stage) }) else {
+                i += 1
+                continue
+            }
+            let at = (crossing.gate ? crossing.line.middle : crossing.at) - offset
+            let across = simd_dot(crossing.line.across, to - from) < 0 ? -crossing.line.across : crossing.line.across
+            let before = at - across * LEAP_RUNUP, after = at + across * LEAP_RUNUP
+            // Within the run-up either side, square on to it.
+            func beside(_ p: Vec2) -> Bool { abs(simd_dot(p - at, Vec2(across.y, -across.x))) < LEAP_RUNUP && abs(simd_dot(p - at, across)) < LEAP_RUNUP }
+            while i > 0, !actor.roam.leaps.contains(i - 1), beside(actor.roam.route[i - 1]) {
+                actor.roam.route.remove(at: i - 1)
+                i -= 1
+            }
+            while i < actor.roam.route.count - 1, beside(actor.roam.route[i]) { actor.roam.route.remove(at: i) }
+            if beside(actor.roam.route[i]) {
+                actor.roam.route[i] = after
+                actor.roam.route.insert(before, at: i)
+            } else {
+                actor.roam.route.insert(contentsOf: [before, after], at: i)
+            }
+            actor.roam.leaps.append(i + 1)
+        }
+        actor.roam.goal = (actor.roam.route.last ?? start) + offset
     }
 
     // MARK: choosing where
@@ -705,7 +799,7 @@ extension Village {
             let score = -simd_distance(stand, here) * 0.2 + actor.roam.random.float()
             if score > spot?.score ?? -.infinity { spot = (i, stand, score) }
         }
-        if let spot, sleepy || actor.roam.random.float() < 0.8 {
+        if let spot, !actor.roam.asked, sleepy || actor.roam.random.float() < 0.8 {
             let place = places[spot.index], thing = Vec3(place.thing.x, 0, place.thing.y)
             let outing: Cat.Outing = switch place.id {
             case "cat.scratchingPost": .scratch(thing + Vec3(0, 1.3, 0))
@@ -719,7 +813,8 @@ extension Village {
         for _ in 0..<28 {
             let a = actor.roam.random.float() * 2 * .pi, dir = Vec2(sin(a), cos(a))
             let edge = clothReach(plot, toward: dir)
-            let onCloth = actor.roam.random.float() < 0.12
+            // Asked for an outing (`MeadowView.sendOut`): out in the grass, never on its blanket.
+            let onCloth = !actor.roam.asked && actor.roam.random.float() < 0.12
             let out = onCloth ? edge * actor.roam.pick(0.35, 0.45) : edge + actor.roam.pick(0.7, ROAM_RANGE * size - 0.7)
             let p = middle + dir * out
             guard roamField.open(p) else { continue }
@@ -785,10 +880,11 @@ extension Village {
         if opening { roamField.clear(to + offset, 0.7 * max(actor.size, 0.4)) }
         let start = actor.roam.dismount.map { Vec2($0.x, $0.z) } ?? Vec2(actor.rootLocal.x, actor.rootLocal.z)
         let goal = to + offset
-        guard roamField.route(from: start + offset, to: goal, into: &actor.roam.route) else { return false }
+        guard roamField.route(from: start + offset, to: goal, fences: fences, standing: { self.stands($0, stage) }, into: &actor.roam.route) else { return false }
         for i in actor.roam.route.indices { actor.roam.route[i] -= offset }
         actor.roam.next = 0
         actor.roam.goal = goal
+        leapFences(actor, in: plot, stage)
         return true
     }
 
@@ -837,6 +933,13 @@ extension Village {
             if plots.contains(where: { simd_distance(at, Vec2($0.middle.x, $0.middle.z)) < $0.radius }) { continue }
             roamField.close(at, f.r + clearance)
         }
+        // A gate is a way through the grass kept round its posts, square on to it, where both sides are its patch.
+        fences.gates(near: middle, half: plot.radius * Picnic.corner + ROAM_SPOT_RANGE + 1.5) { gate in
+            guard stands(gate, stage) else { return }
+            let a = gate.middle - gate.across * (LEAP_RUNUP + 0.5), b = gate.middle + gate.across * (LEAP_RUNUP + 0.5)
+            guard inPatch(a, of: plot, stage, reach: ROAM_SPOT_RANGE), inPatch(b, of: plot, stage, reach: ROAM_SPOT_RANGE) else { return }
+            roamField.clear(from: a, to: b, GATEWAY * size)
+        }
         for q in plots {
             for treat in q.treats where treat.wanted {
                 roamField.close(Vec2(q.group.x + treat.at.x, q.group.z + treat.at.z), treat.reach + clearance * 0.6)
@@ -871,8 +974,9 @@ extension Village {
     /// The scenery's ground, flowers, trees' shade and the spots its things offer cats, for cats to go round
     /// (never a stepping stone: those are walked on), sniff, sleep under and use: worked out once when the
     /// scenery is laid.
-    func lay(_ scenery: MeadowScenery, shade: [Vec4]) {
+    func lay(_ scenery: MeadowScenery, shade: [Vec4], fences: FenceLines) {
         footing = scenery.things.filter { SceneryCatalog.treads[$0.id]?.walked != true }.flatMap(SceneryRules.footprint)
+        self.fences = fences
         blooms = scenery.things.compactMap { thing in
             guard case .plant(_, _, true, _) = SceneryCatalog.kinds[thing.id] else { return nil }
             return Vec3(thing.x, 1.5 * thing.size.y, thing.z)
@@ -890,8 +994,8 @@ extension Village {
 
 /// The ground round one blanket a cat may cross, as a grid of cells half a unit across: which are open, what
 /// each costs to cross (less where cats like walking), and the cheapest way across it (A*, eight ways, the
-/// corners then pulled straight wherever a straight line costs no more). Its lists are kept, so a route costs
-/// no allocation.
+/// corners then pulled straight wherever a straight line costs no more), never across a fence but at its gate
+/// (`FenceLines`). Its lists are kept, so a route costs no allocation.
 struct RoamField {
     static let cell: Float = 0.5
     /// How much cheaper a cell cats like best is to cross than plain grass.
@@ -966,6 +1070,12 @@ struct RoamField {
     /// Whether a spot is open ground.
     func open(_ p: Vec2) -> Bool { index(p).map { open[$0] } ?? false }
 
+    /// Opens every cell whose middle lies within `r` of the line from `a` to `b`: a way through (a gate).
+    mutating func clear(from a: Vec2, to b: Vec2, _ r: Float) {
+        let steps = max(1, Int((simd_distance(a, b) / (Self.cell * 0.5)).rounded(.up)))
+        for s in 0...steps { clear(lerp(a, b, Float(s) / Float(steps)), r) }
+    }
+
     /// Opens every cell whose middle lies within a circle.
     mutating func clear(_ c: Vec2, _ r: Float) {
         guard reaches(c, r) else { return }
@@ -977,9 +1087,11 @@ struct RoamField {
         }
     }
 
-    /// The cheapest open way from `start` to `end`, as corners (`end` last; `start` left out), into `path`.
-    /// The cells under both ends count as open. False when there is none.
-    mutating func route(from start: Vec2, to end: Vec2, into path: inout [Vec2]) -> Bool {
+    /// The cheapest open way from `start` to `end`, as corners (`end` last; `start` left out), into `path`,
+    /// never through a fence but at its gate (`fences`, those of its lines `standing`). The cells under both ends
+    /// count as open. False when there is none.
+    mutating func route(from start: Vec2, to end: Vec2, fences: FenceLines = FenceLines(), standing: (FenceLines.Line) -> Bool = { _ in true },
+                        into path: inout [Vec2]) -> Bool {
         path.removeAll(keepingCapacity: true)
         guard let a = index(start), let b = index(end) else { return false }
         let wasA = open[a], wasB = open[b]
@@ -991,6 +1103,7 @@ struct RoamField {
         heap.removeAll(keepingCapacity: true)
         keys.removeAll(keepingCapacity: true)
         let target = middle(b)
+        let fenced = fences.near(origin + Vec2(repeating: Float(side) * Self.cell / 2), half: Float(side) * Self.cell / 2)
         // Never more than the cheapest a cell can cost, so the guess never overestimates.
         let floor = 1 - Self.pull
         func guess(_ i: Int) -> Float { simd_distance(middle(i), target) * floor }
@@ -1008,8 +1121,9 @@ struct RoamField {
                     guard r >= 0, r < side, c >= 0, c < side else { continue }
                     let j = r * side + c
                     guard open[j], !done[j] else { continue }
-                    // No cutting a corner between two shut cells.
+                    // No cutting a corner between two shut cells, and no step through a fence.
                     if dr != 0 && dc != 0 && (!open[row * side + c] || !open[r * side + column]) { continue }
+                    if fenced && fences.crosses(middle(i), middle(j), standing: standing) { continue }
                     let step = (dr != 0 && dc != 0 ? 1.41421356 : 1) * Self.cell * (cost[i] + cost[j]) / 2
                     let through = best[i] + step
                     if through < best[j] {
@@ -1038,7 +1152,8 @@ struct RoamField {
             var walked = cost(corners[anchor], corners[anchor + 1])
             for k in (anchor + 2)..<max(anchor + 2, corners.count) {
                 walked += cost(corners[k - 1], corners[k])
-                guard clear(corners[anchor], corners[k]) && cost(corners[anchor], corners[k]) <= walked + 1e-3 else { continue }
+                guard clear(corners[anchor], corners[k]) && !(fenced && fences.crosses(corners[anchor], corners[k], standing: standing))
+                        && cost(corners[anchor], corners[k]) <= walked + 1e-3 else { continue }
                 reach = k
             }
             path.append(corners[reach])

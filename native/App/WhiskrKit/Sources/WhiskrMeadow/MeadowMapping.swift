@@ -236,7 +236,8 @@ public enum MeadowMapping {
         }
         var effects = MeadowSettings.Effects()
         for (on, effect) in [(world.sunTimes, MeadowSettings.Effects.sunTimes), (world.moonPhase, .moonPhase), (world.clouds, .clouds),
-                             (world.wind, .wind), (world.rainAndSnow, .rainAndSnow), (world.lightning, .lightning), (world.grassColor, .grassColor)] where on {
+                             (world.wind, .wind), (world.rainAndSnow, .rainAndSnow), (world.lightning, .lightning), (world.grassColor, .grassColor),
+                             (world.lamps, .lamps)] where on {
             effects.insert(effect)
         }
         return MeadowSettings(map: MeadowSettings.Map(rawValue: world.map.rawValue) ?? .meadow, arrangement: arrangement, timeOfDay: time,

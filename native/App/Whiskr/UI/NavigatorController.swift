@@ -748,16 +748,15 @@ struct EdgeCapsule: View {
 /// A workspace in the meadow as VoiceOver sees it: its sentence, where its blanket is, and Press.
 /// AppKit asks for these on the main thread.
 nonisolated final class MeadowAccessibilityElement: NSAccessibilityElement {
-    /// The meadow, carried into the main thread's work (it is only ever touched there).
-    private struct Held: @unchecked Sendable { weak var view: MeadowView? }
-
-    private nonisolated(unsafe) weak var meadow: MeadowView?
-    private let item: MeadowItem
+    /// Where its blanket is drawn, on the screen (nil: not drawn), asked of the meadow, kept weakly.
+    private let frame: @MainActor @Sendable () -> NSRect?
     private let press: @MainActor @Sendable () -> Void
 
     init(meadow: MeadowView, item: MeadowItem, press: @escaping @MainActor @Sendable () -> Void) {
-        self.meadow = meadow
-        self.item = item
+        frame = { [weak meadow] in
+            guard let meadow, let rect = meadow.screenRect(of: item), let window = meadow.window else { return nil }
+            return window.convertToScreen(meadow.convert(rect, to: nil))
+        }
         self.press = press
         super.init()
         setAccessibilityRole(.button)
@@ -765,12 +764,8 @@ nonisolated final class MeadowAccessibilityElement: NSAccessibilityElement {
     }
 
     override func accessibilityFrame() -> NSRect {
-        // Read on the main thread, as AppKit asks; the view is only touched there.
-        let held = Held(view: meadow), item = item
-        return MainActor.assumeIsolated {
-            guard let meadow = held.view, let rect = meadow.screenRect(of: item), let window = meadow.window else { return .zero }
-            return window.convertToScreen(meadow.convert(rect, to: nil))
-        }
+        let frame = frame
+        return MainActor.assumeIsolated { frame() ?? .zero }
     }
 
     override func accessibilityPerformPress() -> Bool {

@@ -51,16 +51,21 @@ enum Occlusion {
         return (simd_distance(a + ab * along, p), along)
     }
 
+    /// How far in front of a ball a screen's nearest point must be to hide it, in units: one nearest at the ball
+    /// itself stands under or behind it (a cat on a bookcase's top, on a shed's doorstep), and hides nothing.
+    static let inFront: Float = 0.3
+
     /// Whether a screen hides any of the balls from the eye.
     static func blocks(_ s: Screen, eye: Vec3, sights: [Ball], count: Int) -> Bool {
         for i in 0..<count {
             let ball = sights[i]
+            let before = 1 - inFront / max(simd_distance(eye, ball.center), inFront)
             // The cone widens from nothing at the eye to the ball's own size at the ball.
             let (d, along) = apart(eye, ball.center, s.from, s.to)
-            if d < s.thick + ball.radius * along { return true }
+            if along < before && d < s.thick + ball.radius * along { return true }
             if let crown = s.crown {
                 let (d2, along2) = reach(eye, ball.center, crown)
-                if d2 < s.crownSize + ball.radius * along2 { return true }
+                if along2 < before && d2 < s.crownSize + ball.radius * along2 { return true }
             }
         }
         return false

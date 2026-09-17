@@ -12,6 +12,9 @@ import WhiskrMeadow
 /// - **Idle cats wander**: a stand-in Claude's cat, finished and seen, goes out into the grass; clicked out
 ///   there it chooses its terminal; work (its hooks) calls it home at a run, the tab's state there at once,
 ///   the cat in its seat in a second or two; left long idle it naps out there and wakes for work the same way.
+///   Each outing is asked of the cat (`MeadowView.sendOut`: a loaf in the grass, reached in bounds, then home)
+///   rather than waited for, so the flow takes the same short time every run; what a cat chooses for itself is
+///   the scene's tests' to check (`Roaming`, `AskedOutings`).
 /// - Pictures (`meadow-pictures` in the run's folder) in whiskr-light, whiskr-dark and graphite: the kettle in
 ///   each state, cats out in the grass, mid-hop, running home and asleep in the grass, and the round eyes of a
 ///   cat washing, stretching, sipping tea, nibbling and lying as a loaf.
@@ -92,7 +95,7 @@ extension PerfSuite {
         _ = await PerfWait.until(4000) { self.workbench.status(of: claude) == .idle }
         await PerfWait.sleep(1600)
         await lifePictures("eyes-loaf")
-        let away = await outing(claude, cat, until: .grassStop)
+        let away = await askedOuting(claude, cat)
         check("roaming: a cat with nothing to do goes out into the grass beside its blanket", away != nil && meadow.roaming(cat)?.out == true,
               "\(String(describing: meadow.roaming(cat))), \(String(describing: meadow.outings(cat)))")
         await lifePictures("roam-out")
@@ -105,18 +108,21 @@ extension PerfSuite {
         let chosen = await PerfWait.until(2000) { self.workbench.focusedPane === claude }
         await pointerAway()
         check("roaming: clicked out in the grass, the cat chooses its terminal", chosen != nil)
-        // Mid-hop, in each theme.
+        // Mid-hop, in each theme: an outing asked for is made in bounds.
         for (index, theme) in Self.lifeThemes.enumerated() {
             setLifeTheme(theme)
-            // Checked once; the other themes' pictures are taken when a bound comes along.
-            let hop = await outing(claude, cat, tries: index == 0 ? 5 : 2, until: .hop)
-            if index == 0 { check("roaming: out in the grass it bounds", hop != nil, "\(String(describing: meadow.outings(cat)))") }
-            // Its picture mid-air: the next hop of this outing, if it makes one.
-            if hop != nil, await PerfWait.until(4000, { meadow.roaming(cat)?.hopping == true }) != nil { await lifePicture("roam-hop", theme) }
+            await homeAndIdle(claude, cat)
+            let hops = meadow.outings(cat)?.hops ?? 0
+            let sent = ask(claude, cat)
+            let up = await PerfWait.until(20000) { meadow.roaming(cat)?.hopping == true }
+            if index == 0 {
+                check("roaming: out in the grass it bounds", sent && up != nil && (meadow.outings(cat)?.hops ?? 0) > hops, "\(String(describing: meadow.outings(cat)))")
+            }
+            if up != nil { await lifePicture("roam-hop", theme) }
         }
         setLifeTheme(Self.lifeThemes[0])
         // Work calls it home at a run.
-        _ = await outing(claude, cat, until: .grassStop)
+        _ = await askedOuting(claude, cat)
         let before = meadow.roaming(cat)?.out ?? false
         lifeHook(claude, "UserPromptSubmit", [:])
         lifeHook(claude, "PreToolUse", ["tool_name": "Read", "tool_use_id": "life-r1", "tool_input": ["file_path": "/tmp/notes.md"]])
@@ -129,7 +135,7 @@ extension PerfSuite {
         check("roaming: and is in its seat, at work, in a second or two", home != nil, "\(String(describing: meadow.roaming(cat)))")
         for theme in Self.lifeThemes.dropFirst() {
             setLifeTheme(theme)
-            _ = await outing(claude, cat, tries: 2, until: .grassStop)
+            _ = await askedOuting(claude, cat)
             lifeHook(claude, "UserPromptSubmit", [:])
             _ = await PerfWait.until(1000) { meadow.roaming(cat)?.running == true }
             await PerfWait.sleep(150)
@@ -139,7 +145,7 @@ extension PerfSuite {
         setLifeTheme(Self.lifeThemes[0])
 
         // Long idle: it naps out there, and wakes for work the same way.
-        _ = await outing(claude, cat, until: .grassStop)
+        _ = await askedOuting(claude, cat)
         // Its Claude lets it nap after a while; it would stay up and about some minutes more: it dozes off now.
         _ = await PerfWait.until((AgentWorld.napAfter + 30) * 1000) { self.workbench.session(of: claude)?.main.activity == .napping }
         meadow.letCatsDozeOff()
@@ -220,36 +226,39 @@ extension PerfSuite {
         _ = await PerfWait.until(4000) { self.workbench.status(of: pane) == .idle }
     }
 
-    /// What an outing is waited on for: a stop off the blanket's cloth, or a hop.
-    enum OutingEvent { case grassStop, hop }
-
-    /// Outings, a fresh one at a time (each cat chooses its own way: a stop on its blanket, a walk rather than a
-    /// bound), until the cat reaches a stop off its blanket's cloth or makes a hop (`tries` outings at most); when
-    /// it did. Each outing is waited out whole, however slowly a busy Mac draws it: what is waited on is a count
-    /// the scene keeps (`MeadowView.outings`), so a moment between two looks is never missed.
-    private func outing(_ pane: Pane, _ cat: MeadowItem, tries: Int = 5, until event: OutingEvent) async -> Double? {
+    /// The cat home from whatever it was doing (the last outing's loaf and its way home: slower on a busy Mac),
+    /// and idle afresh.
+    private func homeAndIdle(_ pane: Pane, _ cat: MeadowItem) async {
         let meadow = controller.navigator.meadow
-        func count() -> Int { meadow.outings(cat).map { event == .hop ? $0.hops : $0.grassStops } ?? 0 }
-        for _ in 0..<tries {
-            await idleAgain(pane)
-            await sendOut(cat)
-            let before = count()
-            // Out, then either what is waited for, or home again with it not done.
-            _ = await PerfWait.until(30000) { meadow.roaming(cat)?.out == true || count() > before }
-            if let at = await PerfWait.until(120000, { count() > before || meadow.roaming(cat)?.out == false }), count() > before { return at }
-            let meadow = controller.navigator.meadow
-            print("meadow life: an outing did not do it: \(String(describing: meadow.roaming(cat))), status \(String(describing: workbench.status(of: pane))), "
-                  + "animated \(meadow.animatesAmbient), reduced \(meadow.reduceMotion), wander \(meadow.settings.catsWander), resting \(meadow.isResting), "
-                  + "drawn \(meadow.timings.map { "\($0.framesPerSecond)" } ?? "-")")
-        }
-        return nil
+        _ = await PerfWait.until(90000) { meadow.roaming(cat)?.out == false }
+        await idleAgain(pane)
     }
 
-    /// The cat sets off at once rather than after its rest.
-    private func sendOut(_ cat: MeadowItem) async {
+    /// Asks the cat for one outing (`MeadowView.sendOut`): a loaf out in the grass, reached in bounds, then home.
+    /// Whether it was asked.
+    private func ask(_ pane: Pane, _ cat: MeadowItem) -> Bool {
         let meadow = controller.navigator.meadow
-        _ = await PerfWait.until(4000) { meadow.roaming(cat)?.out == false }
-        meadow.sendCatsOut()
+        guard meadow.sendOut(cat) else {
+            print("meadow life: the cat could not be sent out: \(String(describing: meadow.roaming(cat))), status \(String(describing: workbench.status(of: pane)))")
+            return false
+        }
+        return true
+    }
+
+    /// One outing asked of the cat, waited on until it reaches its stop out in the grass; when it did. What is
+    /// waited on is a count the scene keeps (`MeadowView.outings`), read once the cat is home, so a moment between
+    /// two looks is never missed and an earlier outing's stop is never taken for this one's.
+    private func askedOuting(_ pane: Pane, _ cat: MeadowItem) async -> Double? {
+        let meadow = controller.navigator.meadow
+        await homeAndIdle(pane, cat)
+        let before = meadow.outings(cat)?.grassStops ?? 0
+        guard ask(pane, cat) else { return nil }
+        let at = await PerfWait.until(30000) { (meadow.outings(cat)?.grassStops ?? 0) > before }
+        if at == nil {
+            print("meadow life: an asked outing reached no stop: \(String(describing: meadow.roaming(cat))), \(String(describing: meadow.outings(cat))), "
+                  + "animated \(meadow.animatesAmbient), reduced \(meadow.reduceMotion), wander \(meadow.settings.catsWander), resting \(meadow.isResting)")
+        }
+        return at
     }
 
     /// Whether the cat stands off its blanket, out in the grass (its middle outside the cloth's rect on screen).

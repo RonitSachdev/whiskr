@@ -25,7 +25,7 @@ struct FrameUniforms {
     var camRight = Vec4.zero, camUp = Vec4.zero
     /// The wind: which way it blows (x, z) and how far its gusts have travelled (`Stage.gustDrift`).
     var wind = Vec4.zero
-    /// How much of a gust's push stays between gusts, the lightning's flash, unused, unused.
+    /// How much of a gust's push stays between gusts, the lightning's flash, 1 while garden lamps shine, unused.
     var weather = Vec4.zero
 }
 
@@ -81,6 +81,8 @@ struct Lit: OptionSet {
     static let moon = Lit(rawValue: 512)
     /// Greyed, by `extra.z` (0 as it is … 1 grey): the editor's ghost where it may not stand.
     static let greyed = Lit(rawValue: 1024)
+    /// A garden lamp: `emissive` lights its glass alone (`Lamps.glassRoughness`).
+    static let lamp = Lit(rawValue: 2048)
 }
 
 /// Must match `struct Sprite` in ShaderOverlay.
@@ -144,7 +146,8 @@ final class GPU {
     let rootKernel: MTLComputePipelineState
     /// Bound where a shader declares a buffer it does not read for this draw.
     let placeholder: MTLBuffer
-    /// Bound where the ground's map (`GroundMap`) would be, with no meadow: nothing painted, shaded or lit.
+    /// Bound where the ground's map (`GroundMap`) would be, with no meadow: nothing painted, shaded or lit (and,
+    /// read for its red alone, where the lamps' light would be: none).
     let blankGroundMap: MTLTexture
 
     init(device: MTLDevice, colorFormat: MTLPixelFormat = .bgra8Unorm_srgb, sampleCount: Int = 4) throws {

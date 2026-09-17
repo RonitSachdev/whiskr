@@ -194,6 +194,8 @@ final class Village {
     var treeShade: [Vec3] = []
     /// The spots the scenery's things offer cats (a stump, a box, a bed, a post, a bowl).
     var places: [CatPlace] = []
+    /// The fences' lines: a cat goes round a fence, and over its gate (`Meadow.fences`).
+    var fences = FenceLines()
     /// Seconds by the wall clock (the meadow's own time slows while it rests): what a cat's day goes by.
     var clock: Float = 0
     /// The grid a route is found on, kept from route to route; and the camera's projection as it was when
