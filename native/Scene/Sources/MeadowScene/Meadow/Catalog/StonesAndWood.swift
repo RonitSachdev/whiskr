@@ -96,40 +96,53 @@ enum StonesAndWood {
         return Plant(shape: Geometry.join(parts).roughened(0.9), top: v(0, height, 0))
     }()
 
-    /// A pile of round logs as woodland gardens keep them for the wildlife: the biggest three at the bottom, two,
-    /// then one, each with its bark on and its sawn ends pale with rings, none quite in line.
+    /// A stacked woodpile as gardens keep one: short round logs of about one length laid front to back in four
+    /// tidy rows on two bearers, held at each end by a pair of stakes, so it is wider than it is tall; their sawn
+    /// ends, pale with rings, all face the front, their bark the back and the ends, each log a little different in
+    /// girth and length so the face is uneven as a real one's. Moss has settled on the top rows at the back. From
+    /// above it reads as a long, low stack of logs; from the front, as a wall of log ends.
     static let logPile: Plant = {
-        let r: Float = 0.34
         var parts: [Geometry] = []
-        let logs: [(Float, Float, Float, Float)] = [(-0.12, -0.7, 0, 1), (0.1, 0, 0, 1.04), (-0.05, 0.7, 0, 0.96), (0.15, -0.36, 1, 0.98), (-0.1, 0.36, 1, 1), (0.04, 0, 2, 0.92)]
-        for (shift, z, row, scale) in logs {
-            let radius = r * scale, y = radius + row * r * 1.68 - 0.04
-            let half: Float = 1.25 + shift * 0.5
-            var log = Clay.limb(QuadraticBezier(v(-half + shift, y, z), v(shift, y + 0.01, z), v(half + shift, y, z)), radius, radius * 0.97, 0x6e543e, 0x6e543e,
-                                sides: 14, rings: 6) { along, angle in 1 + 0.05 * abs(sin(angle * 7 + along * 3 + z)) }.shape
-            // Bark lit from above: paler and greyer on top, as the sun and rain weather it, so the pile reads as
-            // logs from the editor's height and not as one dark heap.
-            log.colors = log.positions.map { p in mix(linear(0x6e5844), linear(0xc4ac88), t: smoothstep(p.y - y, -radius * 0.8, radius * 0.6)) }
-            parts.append(log)
-            // Both sawn ends.
-            for end: Float in [-1, 1] {
-                var cut = endGrain(radius: radius * 0.94, rings: 4, around: 16)
-                cut.apply(.compose(v(end * half + shift + end * 0.005, y, z), euler: v(0, 0, -end * .pi / 2)))
-                parts.append(cut)
+        let weathered: (UInt32, UInt32) = (0x6f6252, 0x9d8f78)
+        /// A square stick of weathered wood from `a` to `b` (a bearer, a stake), `w` across.
+        func stick(_ a: Vec3, _ b: Vec3, _ w: Float) -> Geometry {
+            Clay.limb(QuadraticBezier(a, (a + b) / 2, b), w, w * 0.9, weathered.0, weathered.1, sides: 4, rings: 1).shape
+        }
+        // The bearers it stands on, along its length, and the stakes holding each end.
+        let half: Float = 1.62, bearer: Float = 0.14
+        for z: Float in [-0.4, 0.4] { parts.append(stick(v(-half, bearer / 2, z), v(half, bearer / 2, z), 0.08)) }
+        for x: Float in [-half - 0.03, half + 0.03] {
+            for z: Float in [-0.42, 0.42] { parts.append(stick(v(x, -0.15, z), v(x, 1.82, z), 0.065)) }
+        }
+        // The logs, row on row: seven a row, a little irregular.
+        let rows = 4, across = 7, r: Float = 0.215, rise: Float = 0.39, front: Float = 0.62
+        var top: Float = 0
+        for row in 0..<rows {
+            for k in 0..<across {
+                let n = Float(row * across + k)
+                let wobble = Float(lattice(Double(n), 2.3, 7)) - 0.5, girth = Float(lattice(Double(n), 5.9, 7)) - 0.5
+                let radius = r * (1 + girth * 0.22)
+                let x = (Float(k) - Float(across - 1) / 2) * r * 2.06 + wobble * 0.05 + (row % 2 == 0 ? 0 : 0.04)
+                let y = bearer + r + Float(row) * rise + wobble * 0.02
+                let ahead = front + wobble * 0.07, back = -front - 0.08 + girth * 0.16
+                var log = Clay.limb(QuadraticBezier(v(x, y, back), v(x, y + 0.005, (back + ahead) / 2), v(x, y, ahead)), radius, radius * 0.97, 0x6e5844, 0x6e5844,
+                                    sides: 9, rings: 1).shape
+                // Bark weathered paler and greyer on top, darker beneath and in the cracks between the logs.
+                log.colors = log.positions.map { p in mix(linear(0x5e4a3a), linear(0xb7a07e), t: smoothstep(p.y - y, -radius * 0.8, radius * 0.7)) }
+                parts.append(log)
+                // The sawn ends: the front's with its rings, the back's plainer.
+                for (end, z, rings, around) in [(Float(1), ahead + 0.004, 2, 12), (-1, back - 0.004, 1, 9)] {
+                    var cut = endGrain(radius: radius * 0.94, rings: rings, around: around)
+                    cut.apply(.compose(v(x, y, z), euler: v(end * .pi / 2, 0, 0)))
+                    parts.append(cut)
+                }
+                top = max(top, y + radius)
             }
         }
-        // Moss settling on the oldest logs, low on the shaded side, and a little on the top one (`Moss`).
-        func on(_ k: Int) -> (Vec2) -> (Vec3, Vec3) {
-            let (_, z, row, scale) = logs[k]
-            let radius = r * scale, y = radius + row * r * 1.68 - 0.04
-            return { spot in
-                let out = v(0, cos(spot.y), -sin(spot.y))
-                return (v(spot.x, y, z) + out * radius, out)
-            }
-        }
-        parts.append(Moss.patch(Moss.colony(Vec2(-0.5, 0.75), reach: Vec2(0.6, 0.45), count: 6, size: 0.2, seed: 41, on(0))
-                                + Moss.colony(Vec2(0.4, 0.3), reach: Vec2(0.35, 0.3), count: 4, size: 0.15, seed: 42, on(5)), seed: 4))
-        // Lying along z, so as it is first placed (and pictured) the ends face you.
-        return Plant(shape: Geometry.join(parts).applied(.rotationY(.pi / 2)).roughened(0.9), top: v(0, r * 2 + r * 1.68 * 2, 0))
+        // Moss settling on the top rows at the back, where the cat does not sit (`Moss`).
+        let stack = Geometry.join(parts)
+        parts.append(Moss.patch(Moss.colony(Vec2(-0.85, -0.3), reach: Vec2(0.4, 0.22), count: 4, size: 0.17, seed: 41, Moss.top(of: stack))
+                                + Moss.colony(Vec2(0.95, -0.38), reach: Vec2(0.3, 0.18), count: 3, size: 0.15, seed: 42, Moss.top(of: stack)), seed: 4))
+        return Plant(shape: Geometry.join(parts).roughened(0.9), top: v(0, top, 0))
     }()
 }
