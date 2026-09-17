@@ -41,6 +41,23 @@ enum DebugScript {
         NSApp.setActivationPolicy(.accessory)
         // A menu a click pops is recorded, not shown on this Mac's screen (`MenuStandIn`).
         MenuStandIn.install()
+        // A key the run sends that nothing takes ends in AppKit's `noResponder(for:)`, which sounds the Mac's
+        // alert: counted here, never heard. (The app's own beeps are kept quiet by `AlertCenter.beep`.)
+        var quietened: Set<OpaquePointer> = []
+        for type: AnyClass in [NSResponder.self, NSWindow.self, NSApplication.self, NSView.self] {
+            guard let method = class_getInstanceMethod(type, #selector(NSResponder.noResponder(for:))), quietened.insert(method).inserted else { continue }
+            let quiet: @convention(block) (AnyObject, Selector) -> Void = { _, selector in
+                // Only a key sounds the alert; a pointer's move nothing takes is silent anyway.
+                guard selector == #selector(NSResponder.keyDown(with:)) else { return }
+                MainActor.assumeIsolated {
+                    BackgroundKeys.untaken += 1
+                    if BackgroundKeys.untaken == 1 || BackgroundKeys.untaken % 20 == 0 {
+                        print("background run: \(BackgroundKeys.untaken) keys nothing took so far, the Mac's alert not sounded")
+                    }
+                }
+            }
+            method_setImplementation(method, imp_implementationWithBlock(quiet))
+        }
         let swaps: [(AnyClass, Selector, Selector)] = [
             (NSWindow.self, #selector(NSWindow.toggleFullScreen(_:)), #selector(NSWindow.debugRefusedFullScreen(_:))),
             (NSWindow.self, #selector(NSWindow.order(_:relativeTo:)), #selector(NSWindow.debugOrderUnseen(_:relativeTo:))),
@@ -513,6 +530,12 @@ extension NSApplication {
             debugBackgroundSendEvent(event)     // the original, exchanged
         }
     }
+}
+
+/// How many keys of a background run nothing took (each would have sounded the Mac's alert).
+@MainActor
+enum BackgroundKeys {
+    static var untaken = 0
 }
 
 /// How many of the Mac's own pointer events a background run has kept from its window.
