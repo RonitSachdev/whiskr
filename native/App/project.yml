@@ -93,6 +93,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.whiskr.Whiskr
         INFOPLIST_FILE: Whiskr/Info.plist
         GENERATE_INFOPLIST_FILE: NO
+        # How strongly the app claims its own files (Info.plist's LSHandlerRank for meadows and themes): Owner as
+        # people get it; a Debug build (and the profile build, Profile.xcconfig) is never their default handler,
+        # though Open With still reaches it.
+        WHISKR_DOCUMENT_RANK: Owner
         CODE_SIGN_ENTITLEMENTS: Whiskr/Whiskr.entitlements
         # Not signed for now (the linker's automatic ad-hoc signature only). The entitlements and
         # hardened runtime are set so that signing and notarising later means turning
@@ -110,6 +114,9 @@ targets:
         SWIFT_APPROACHABLE_CONCURRENCY: YES
         SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+      configs:
+        Debug:
+          WHISKR_DOCUMENT_RANK: None
 
   # The session host: the small process that owns the terminals, so they keep running when the app
   # quits. All of its code is the TerminalHost library in WhiskrKit; this target is its `main`.

@@ -5,3 +5,6 @@
 
 WHISKR_HARNESS_Whiskr = DEBUG
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) $(WHISKR_HARNESS_$(TARGET_NAME))
+
+// Never the default handler of meadow and theme files, however recently it was built (Info.plist).
+WHISKR_DOCUMENT_RANK = None
