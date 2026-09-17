@@ -515,7 +515,8 @@ extension EditorFlow {
         _ = await PerfWait.until(2000) { !self.controller.meadowEditing }
         let left = perfNow()
         let rested = await PerfWait.until(12000) { self.meadow.isResting }
-        check("a full meadow rests within 12 s of leaving editing", rested != nil, rested.map { String(format: "%.1f s", ($0 - left) / 1000) } ?? "not in 12 s")
+        check("a full meadow rests within 12 s of leaving editing", rested != nil,
+              rested.map { String(format: "%.1f s", ($0 - left) / 1000) } ?? "not in 12 s: \(meadow.restBlockers)")
         await suite.idleStretch("editor: idle, a full meadow", limits: false)
         await fullMeadowAtNight()
         await enter()
