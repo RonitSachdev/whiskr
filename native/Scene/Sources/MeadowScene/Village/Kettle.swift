@@ -47,6 +47,21 @@ enum Kettle {
     /// Where the flag stands, beside the kettle on the side away from its spout.
     static let flagFoot = Vec3(-0.62, 0, 0.32)
 
+    /// One puff of steam: a soft, uneven wisp swelling in three or four billows, never a ball, so a plume of them
+    /// reads as steam curling off the spout and not as a string of beads. Each puff is drawn turned its own way.
+    static let puff: Geometry = {
+        var g = Shapes.sphere(1, 16, 10).welded()
+        for i in g.positions.indices {
+            let d = g.positions[i]
+            let billow = Float(noise(Double(d.x * 1.7 + d.y * 0.6) + 3.1, Double(d.z * 1.7 - d.y * 0.9), 0)) - 0.5
+            let wisp = Float(noise(Double(d.x * 4.1 - d.y * 1.3) + 8.7, Double(d.z * 4.1 + d.y * 1.1), 0)) - 0.5
+            // Stretched up as it rises, its billows bulging out round it.
+            g.positions[i] = Vec3(d.x, d.y * 1.15, d.z) * (1 + billow * 0.75 + wisp * 0.25)
+        }
+        g.computeNormals()
+        return g.painted(0xffffff)
+    }()
+
     /// The stove and the kettle without its lid: one mesh.
     static func body() -> Geometry {
         let b = base
@@ -286,12 +301,14 @@ extension Village {
             let u = k.life[i], jet = k.jet[i]
             // Out of the spout along its line first, then up, curling away with its drift; a jet shoots further.
             // A plume: out of the spout, then up well above the kettle, so it reads from above and afar.
+            // Real steam thins out within a kettle's height or so: up, swelling and curling, and gone, the puffs
+            // overlapping into one plume rather than rising in a string.
             let reach: Float = jet ? 0.8 : 0.26
-            let along = tip + out * (0.03 + reach * min(u * 2.5, 1)) + Vec3(0, u * (jet ? 0.7 : simmer ? 1.2 : 1.7), 0)
-            let curl = Vec3(k.drift[i].x * u + sin(u * 5 + Float(i)) * 0.05 * u, 0, k.drift[i].y * u)
-            k.puffs[i] = Vec4(along + curl, 0.06 + u * (jet ? 0.22 : simmer ? 0.24 : 0.34))
+            let along = tip + out * (0.03 + reach * min(u * 2.5, 1)) + Vec3(0, u * (jet ? 0.6 : simmer ? 0.9 : 1.15), 0)
+            let curl = Vec3(k.drift[i].x * u + sin(u * 5 + Float(i)) * 0.08 * u, 0, k.drift[i].y * u + cos(u * 4 + Float(i)) * 0.05 * u)
+            k.puffs[i] = Vec4(along + curl, 0.07 + u * (jet ? 0.24 : simmer ? 0.28 : 0.36))
             // Thickest just out of the spout, thinning to nothing as it spreads.
-            k.puffAlpha[i] = (1 - u) * min(1, u * 10) * (jet ? 0.9 : simmer ? 0.6 : 0.8)
+            k.puffAlpha[i] = pow(1 - u, 1.4) * min(1, u * 10) * (jet ? 0.85 : simmer ? 0.5 : 0.65)
         }
     }
 

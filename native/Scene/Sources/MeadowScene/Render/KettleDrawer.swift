@@ -19,7 +19,7 @@ final class KettleDrawer {
         lid = gpu.mesh(Kettle.lid(), label: "kettle lid")
         flame = gpu.mesh(Kettle.flame(), label: "kettle flame")
         flag = gpu.mesh(Kettle.flag(), label: "kettle flag")
-        puff = gpu.mesh(Shapes.sphere(1, 16, 10), label: "kettle steam")
+        puff = gpu.mesh(Kettle.puff, label: "kettle steam")
     }
 
     private func draw(_ mesh: Mesh, _ instances: Int, _ enc: MTLRenderCommandEncoder) {
@@ -110,12 +110,17 @@ final class KettleDrawer {
             let inst = arena.alloc(ClayInstance.self, n)
             var k = 0
             let steam = linear(0xfbfaf6), smoke = linear(0x4a4642)
+            // After dark the steam is lit from under by the flame, pale and warm, never the moon's blue on grey; and
+            // fainter, as steam is at night.
+            let glow = linear(0xffd9a8) * (0.3 * night), faint = 1 - 0.45 * night
             for plot in village.plots where plot.kettle.shown.x > 0.01 {
                 let kettle = plot.kettle, model = Self.model(plot)
                 for i in 0..<KETTLE_PUFFS where kettle.puffAlpha[i] > 0.005 {
                     let p = kettle.puffs[i]
-                    // Lit as clay is, so a puff keeps a soft grey underside and reads on pale cloth as on grass.
-                    inst.pointer[k] = ClayInstance(model * .translation(Vec3(p.x, p.y, p.z)) * .scale(p.w), tint: Vec4(steam, kettle.puffAlpha[i]), lit: .lambert)
+                    // Lit as clay is, so a puff keeps a soft grey underside and reads on pale cloth as on grass; each
+                    // turned its own way, so no two billow alike.
+                    inst.pointer[k] = ClayInstance(model * .translation(Vec3(p.x, p.y, p.z)) * .rotationY(Float(i) * 2.4) * .scale(p.w),
+                                                   tint: Vec4(steam, kettle.puffAlpha[i] * faint), emissive: glow * kettle.flame, lit: .lambert)
                     k += 1
                 }
                 if kettle.smokeAlpha > 0.005 {
