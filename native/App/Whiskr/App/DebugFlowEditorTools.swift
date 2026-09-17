@@ -164,10 +164,10 @@ extension EditorFlow {
 
         // ⌘F: the filter.
         suite.shortcut("cmd+f")
-        await PerfWait.sleep(300)
-        let inField = (window.firstResponder as? NSView)?.isDescendant(of: editor.trayHost) == true && window.firstResponder is NSText
+        // At once: the field takes the keyboard in the same turn as ⌘F (an AppKit field, no SwiftUI focus to wait for).
+        let inField = (window.firstResponder as? NSView)?.isDescendant(of: editor.trayHost) == true && window.firstResponder is NSText && tray.filterHasKeyboard
         suite.typeKeys("mossy")
-        await PerfWait.sleep(200)
+        _ = await PerfWait.until(2000) { self.tray.filter == "mossy" }
         check("⌘F takes the keyboard to the tray's filter; typing finds across categories", inField && tray.filter == "mossy" && tray.shelf.map(\.id) == ["stone.mossy"],
               "keyboard \(String(describing: window.firstResponder.map { type(of: $0) })), filter “\(tray.filter)”, shelf \(tray.shelf.map(\.id))")
         await picture("tray-filter")
@@ -439,9 +439,14 @@ extension EditorFlow {
         check("with a kind chosen, the Eraser sweeps only that kind", daisiesAfter < daisies && count - daisiesAfter == others, "daisies \(daisies) → \(daisiesAfter), others \(others) → \(count - daisiesAfter)")
         suite.shortcut("cmd+z")
         if let stone = visible(kind: "stone.stone") {
+            // What was said, not whether it still shows: the note goes again after two seconds by its timer, which
+            // a main thread held up by a busy Mac (a frame waiting for the GPU) can run before this check does.
+            editor.debugReasonSaid = nil
+            let steps = undoName, things = count
             await clickThing(stone)
-            check("…and a click on another kind takes nothing and says why", library.session.item(stone) != nil && editor.debugReason == MeadowWords.onlyErasing("flower.daisy"),
-                  editor.debugReason ?? "no reason")
+            check("…and a click on another kind takes nothing and says why",
+                  library.session.item(stone) != nil && count == things && undoName == steps && editor.debugReasonSaid == MeadowWords.onlyErasing("flower.daisy"),
+                  "said “\(editor.debugReasonSaid ?? "nothing")”, stone \(library.session.item(stone) == nil ? "taken" : "kept"), step “\(undoName)”")
         }
         await pressTray("tray.item.\(EditorTray.anyKind)")
         suite.shortcut("v")
@@ -510,7 +515,8 @@ extension EditorFlow {
         _ = await PerfWait.until(2000) { !self.controller.meadowEditing }
         let left = perfNow()
         let rested = await PerfWait.until(12000) { self.meadow.isResting }
-        check("a full meadow rests within 12 s of leaving editing", rested != nil, rested.map { String(format: "%.1f s", ($0 - left) / 1000) } ?? "not in 12 s")
+        check("a full meadow rests within 12 s of leaving editing", rested != nil,
+              rested.map { String(format: "%.1f s", ($0 - left) / 1000) } ?? "not in 12 s: \(meadow.restBlockers)")
         await suite.idleStretch("editor: idle, a full meadow", limits: false)
         await fullMeadowAtNight()
         await enter()

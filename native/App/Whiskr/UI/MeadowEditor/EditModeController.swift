@@ -103,6 +103,8 @@ final class EditModeController: NSObject {
     let noticeModel = EditorNoticeModel()
     private(set) lazy var noticeHost = EditorNoticeHost(rootView: EditorNotice(model: noticeModel))
     var noteClosed: String?
+    /// The first hint shows (the first time editing opens, until put away or editing ends).
+    var hintShowing = false
     /// The parcel whose note shows by the pointer.
     private var parcelNoted: Int?
     private var reasonTimer: Timer?
@@ -159,10 +161,24 @@ final class EditModeController: NSObject {
         bar.done = { [weak self] in self?.leave() }
         bar.menu = { [weak self] in self?.nameMenu() ?? NSMenu() }
         barModel.act = { [weak self] action in self?.barAction(action) }
+        barModel.resized = { [weak self] in
+            // Once SwiftUI has drawn the bar at its new size.
+            Task { @MainActor in
+                guard let self else { return }
+                self.selectionBar.layoutSubtreeIfNeeded()
+                self.placeSelectionBar()
+            }
+        }
         noticeModel.chose = { [weak self] choice in self?.noticeChosen(choice) }
         marquee.isHidden = true
         tray.act = { [weak self] action in self?.trayAction(action) }
+        // ⌘↩ is Done while typing in the filter, as everywhere else in the editor.
+        tray.keyEquivalent = { [weak self] event in
+            guard event.modifierFlags.intersection([.command, .control, .option, .shift]) == .command, event.charactersIgnoringModifiers == "\r" else { return false }
+            return self?.keyEquivalent(event) ?? false
+        }
         trayKeys.tray = tray
+        trayKeys.host = trayHost
         trayKeys.editorKey = { [weak self] event in self?.key(event) ?? false }
         trayKeys.editorKeyEquivalent = { [weak self] event in self?.keyEquivalent(event) ?? false }
         restoreTray()
@@ -210,6 +226,7 @@ final class EditModeController: NSObject {
         let container = navigator.view
         for overlay in [marquee, trayHost, trayKeys, selectionBar, noticeHost, reason] as [NSView] where overlay.superview !== container { container.addSubview(overlay) }
         noteClosed = nil
+        hintShowing = Self.hintDue
         marquee.frame = container.bounds
         marquee.autoresizingMask = [.width, .height]
         selectionBar.isHidden = true
@@ -291,6 +308,7 @@ final class EditModeController: NSObject {
         meadow.onEditScroll = nil
         for overlay in [marquee, trayHost, trayKeys, selectionBar, noticeHost, reason] as [NSView] { overlay.removeFromSuperview() }
         noticeModel.text = nil
+        if hintShowing { firstHintSeen() }
         meadow.takesKeyboardFocus = false
         windowController.setMeadowEditing(false, keyboard: keyboardBefore)
         keyboardBefore = nil
@@ -688,6 +706,13 @@ final class EditModeController: NSObject {
         case "b": use(.brush); return true
         case "e": use(.erase); return true
         case "g": use(.ground); return true
+        case "c":
+            // The chosen things' colours, when they have a palette.
+            guard !barModel.swatches.isEmpty, flags.isEmpty else { return false }
+            barModel.paletteOpen.toggle()
+            announce(barModel.paletteOpen ? String(localized: "Colours shown in the selection's bar", comment: "VoiceOver: the selection bar's row of colours opened with C")
+                                          : String(localized: "Colours put away", comment: "VoiceOver: the selection bar's row of colours closed"))
+            return true
         case "r":
             let degrees: Double = flags.contains(.option) ? 1 : 15
             let radians = (shift ? 1 : -1) * degrees * .pi / 180
@@ -772,7 +797,9 @@ final class EditModeController: NSObject {
             updateSelectionBar(appearing: true)
         case .pressed, nil:
             gesture = nil
-            if tray.armed != nil {
+            if barModel.paletteOpen {
+                barModel.paletteOpen = false
+            } else if tray.armed != nil {
                 disarm()
                 announce(String(localized: "Put back", comment: "VoiceOver: the thing armed in the meadow editor's tray put back"))
             } else if tray.tool != .select {
@@ -1003,7 +1030,10 @@ final class EditModeController: NSObject {
 
     func choose(_ ids: [Int]) {
         var seen = Set<Int>()
-        selection = ids.filter { seen.insert($0).inserted }
+        let chosen = ids.filter { seen.insert($0).inserted }
+        // The colours stay open while the same things are chosen (a colour chosen, undone, chosen again).
+        if chosen != selection { barModel.paletteOpen = false }
+        selection = chosen
         stepping = nil
         focused = nil
         updateMarks()
@@ -1164,6 +1194,7 @@ final class EditModeController: NSObject {
         case .straighten: straightenFence()
         case .gate: toggleFenceGate()
         case .more:
+            barModel.paletteOpen = false
             let menu = NSMenu()
             if !barModel.onlyMoves {
                 menu.addItem(closureMenuItem(title: String(localized: "Select All Like This", comment: "Meadow editor: chooses everything of the kind nearby")) { [weak self] in self?.selectAllLike() })
@@ -1295,6 +1326,9 @@ final class EditModeController: NSObject {
 
     func showReason(_ text: String, at point: NSPoint, lasting: TimeInterval?) {
         reasonText = text
+        #if DEBUG
+        debugReasonSaid = text
+        #endif
         reason.show(title: "⃠ " + text, detail: nil, at: point, within: navigator.view.bounds)
         reasonTimer?.invalidate()
         reasonTimer = lasting.map { seconds in
@@ -1371,7 +1405,6 @@ final class EditModeController: NSObject {
                 }
             }
             let clump = members
-            let label = clump.count == 1 ? "\(MeadowWords.described(item)), \(MeadowWords.whereIs(item.at))" : MeadowWords.clump(item.asset, count: clump.count)
             let element = SceneryAccessibilityElement(meadow: meadow, frame: { [weak self] in
                 guard let self, let window = self.meadow.window,
                       let rect = self.meadow.screenRect(ofScenery: clump.compactMap(self.library.session.thingIndex(of:))) else { return nil }
@@ -1379,8 +1412,14 @@ final class EditModeController: NSObject {
             }, press: { [weak self] in
                 self?.choose(clump)
                 self?.announceSelection()
+            }, label: { [weak self] in
+                // Read as it is asked for: a lamp lit or not by the hour, a fence's gate, a colour chosen since.
+                guard clump.count == 1, let self, let now = self.library.session.item(clump[0]) else { return MeadowWords.clump(item.asset, count: clump.count) }
+                return "\(MeadowWords.described(now, lit: self.meadow.lampsAreLit)), \(MeadowWords.whereIs(now.at))"
+            }, chosen: { [weak self] in
+                guard let self else { return false }
+                return clump.allSatisfy(self.selection.contains)
             })
-            element.setAccessibilityLabel(label)
             elements.append(element)
         }
         // Each thing shown as a parcel on its own, saying what it is.
@@ -1393,8 +1432,11 @@ final class EditModeController: NSObject {
             }, press: { [weak self] in
                 self?.choose([id])
                 self?.announceSelection()
+            }, label: {
+                "\(MeadowFileWords.parcelName), \(MeadowWords.whereIs(at))"
+            }, chosen: { [weak self] in
+                self?.selection.contains(id) ?? false
             })
-            element.setAccessibilityLabel("\(MeadowFileWords.parcelName), \(MeadowWords.whereIs(at))")
             element.setAccessibilityHelp(MeadowFileWords.parcelDetail)
             elements.append(element)
         }
@@ -1410,6 +1452,8 @@ final class EditModeController: NSObject {
     var debugSelection: [Int] { selection }
     var debugGestureUnderWay: Bool { gesture != nil || spring != nil }
     var debugReason: String? { reason.isHidden ? nil : reasonText }
+    /// The reason last shown by the pointer, whether or not it has gone again since (it stays two seconds or so).
+    var debugReasonSaid: String?
     var debugSelectionBarShown: Bool { selectionBarShown && !selectionBar.isHidden && selectionBar.superview != nil }
     func debugChoose(_ ids: [Int]) { choose(ids) }
     /// The thing armed as it will be placed, and why it may not stand where its ghost is.
@@ -1427,10 +1471,16 @@ nonisolated final class SceneryAccessibilityElement: NSAccessibilityElement {
     /// Where it is drawn, on the screen (nil: not drawn).
     private let frame: @MainActor @Sendable () -> NSRect?
     private let press: @MainActor @Sendable () -> Void
+    /// Its words and whether it is chosen, read when asked (a lamp is lit by night, a colour may have changed).
+    private let label: @MainActor @Sendable () -> String
+    private let chosen: @MainActor @Sendable () -> Bool
 
-    init(meadow: MeadowView, frame: @escaping @MainActor @Sendable () -> NSRect?, press: @escaping @MainActor @Sendable () -> Void) {
+    init(meadow: MeadowView, frame: @escaping @MainActor @Sendable () -> NSRect?, press: @escaping @MainActor @Sendable () -> Void,
+         label: @escaping @MainActor @Sendable () -> String, chosen: @escaping @MainActor @Sendable () -> Bool) {
         self.frame = frame
         self.press = press
+        self.label = label
+        self.chosen = chosen
         super.init()
         setAccessibilityRole(.button)
         setAccessibilityParent(meadow)
@@ -1439,6 +1489,16 @@ nonisolated final class SceneryAccessibilityElement: NSAccessibilityElement {
     override func accessibilityFrame() -> NSRect {
         let frame = frame
         return MainActor.assumeIsolated { frame() ?? .zero }
+    }
+
+    override func accessibilityLabel() -> String? {
+        let label = label
+        return MainActor.assumeIsolated { label() }
+    }
+
+    override func isAccessibilitySelected() -> Bool {
+        let chosen = chosen
+        return MainActor.assumeIsolated { chosen() }
     }
 
     override func accessibilityPerformPress() -> Bool {

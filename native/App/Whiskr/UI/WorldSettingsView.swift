@@ -5,8 +5,9 @@ import SwiftUI
 import WhiskrKit
 import WhiskrMeadow
 
-/// Settings › Meadow: My Meadows' cards (`MeadowLibraryView`), the meadow's time of day with the real sun and moon, real weather and a switch for each
-/// thing it shows, picnic things, flag size and, once there is more than one, the map.
+/// Settings › Meadow, in sections: Your Meadow (My Meadows' cards, `MeadowLibraryView`), the map once there is more
+/// than one, Sky (the time of day, the real sun and moon), Weather (real weather and a switch for each thing it
+/// shows), Life in the Meadow (the animation, cats wandering, garden lamps) and Picnics (picnic things, flag size).
 struct WorldSettingsView: View {
     @Bindable var store: WorldStore
     private let library = MeadowLibrary.shared
@@ -30,6 +31,7 @@ struct WorldSettingsView: View {
                 }
             }
 
+            // The sky: the hour, the sun and the moon.
             Section {
                 Picker("Time of day", selection: $store.settings.timeOfDay) {
                     Text("Follow the Clock").tag(WorldSettings.TimeOfDay.followClock)
@@ -40,7 +42,8 @@ struct WorldSettingsView: View {
                 Toggle("Real sunrise and sunset", isOn: $store.settings.sunTimes)
                 sunStatus
                 Toggle("Moon phase", isOn: $store.settings.moonPhase)
-                Toggle("Lamps light at night", isOn: $store.settings.lamps)
+            } header: {
+                Text(String(localized: "Sky", comment: "Settings › Meadow: the section of the time of day, the sun and the moon"))
             } footer: {
                 Text("Worked out on this Mac for where real weather last found you, or else for your time zone. Nothing is sent and nothing is asked.")
                     .font(.callout).foregroundStyle(.secondary)
@@ -54,26 +57,35 @@ struct WorldSettingsView: View {
                     Toggle(isOn: $store.settings.wind) { Text("Wind", comment: "Settings › Meadow: the real wind in the grass") }
                     Toggle("Rain and snow", isOn: $store.settings.rainAndSnow)
                     Toggle("Lightning", isOn: $store.settings.lightning)
-                    Toggle("Grass color from the temperature", isOn: $store.settings.grassColor)
+                    Toggle(String(localized: "Grass colour from the temperature", comment: "Settings › Meadow: the grass greener in warmth, paler in cold"),
+                           isOn: $store.settings.grassColor)
                 }
                 .disabled(!store.settings.realWeather)
                 if !store.settings.realWeather {
                     Text("These show real weather, which is off.").font(.callout).foregroundStyle(.secondary)
                 }
+            } header: {
+                Text(String(localized: "Weather", comment: "Settings › Meadow: the section of real weather"))
             } footer: {
-                Text("Real weather asks for your location once. It is rounded to about a kilometer and sent to Open-Meteo, a free weather service, in one request every 15 minutes while real weather is on. Lightning is a soft, rare glow, never with Reduce Motion or the meadow's animation off.")
+                Text(String(localized: "Real weather asks for your location once. It is rounded to about a kilometre and sent to Open-Meteo, a free weather service, in one request every 15 minutes while real weather is on. Lightning is a soft, rare glow, never with Reduce Motion or the meadow's animation off.",
+                            comment: "Settings › Meadow: what real weather sends, and lightning"))
                     .font(.callout).foregroundStyle(.secondary)
             }
 
+            // What lives and moves in the meadow.
             Section {
                 Toggle(String(localized: "Animate the meadow"), isOn: $store.animatesMeadow)
                 Toggle(String(localized: "Cats wander when idle", comment: "Settings › Meadow: cats with nothing to do wander the grass near their blankets"),
                        isOn: $store.settings.catsWander)
+                Toggle("Lamps light at night", isOn: $store.settings.lamps)
+            } header: {
+                Text(String(localized: "Life in the Meadow", comment: "Settings › Meadow: the section of the meadow's motion, wandering cats and garden lamps"))
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(String(localized: "Off, the grass, butterflies and cats' little movements hold still, and there is no lightning. Cats still change as Claude does. Also in View › Animate Meadow."))
                     Text(String(localized: "A cat with nothing to do now and then wanders the grass near its blanket, and runs home the moment Claude has work. Never with Reduce Motion or the animation off.",
                                 comment: "Settings › Meadow: what Cats wander when idle does"))
+                    Text(String(localized: "Garden lamps you have placed light at dusk and go out after sunrise.", comment: "Settings › Meadow: what Lamps light at night does"))
                 }
                 .font(.callout).foregroundStyle(.secondary)
             }
@@ -91,6 +103,8 @@ struct WorldSettingsView: View {
                     Text("Large", comment: "Size of the name flags").tag(WorldSettings.FlagSize.large)
                 }
                 .pickerStyle(.segmented)
+            } header: {
+                Text(String(localized: "Picnics", comment: "Settings › Meadow: the section of the picnic things and name flags on each workspace's place"))
             }
         }
         .formStyle(.grouped)

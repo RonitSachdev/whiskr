@@ -68,8 +68,20 @@ enum MeadowWords {
 
     /// The things an edit is about, in a step's name: one by its name, several by how many.
     static func things(_ ids: [String]) -> String {
-        if ids.count == 1, let id = ids.first { return name(id) }
+        if ids.count == 1, let id = ids.first { return titled(name(id)) }
         return String(localized: "\(ids.count) Things", comment: "Meadow editor: several things, in a step's name (Move 3 Things)")
+    }
+
+    /// A name as a command's title says it: in English, title case as menu items are ("Undo Place Cherry Tree", not
+    /// "Place Cherry tree"); the tiles keep sentence case. Other languages as they are (Japanese has no case).
+    static func titled(_ name: String) -> String {
+        guard Bundle.main.preferredLocalizations.first?.hasPrefix("en") ?? true else { return name }
+        let small: Set<String> = ["a", "an", "and", "of", "the", "on", "in", "to", "for"]
+        return name.split(separator: " ", omittingEmptySubsequences: false).enumerated().map { index, word in
+            let word = String(word)
+            guard let first = word.first, index == 0 || !small.contains(word) else { return word }
+            return first.uppercased() + word.dropFirst()
+        }.joined(separator: " ")
     }
 
     /// Why an edit was not made, as the badge by the pointer and VoiceOver say it.
@@ -266,7 +278,7 @@ enum MeadowWords {
     static func erase(_ ids: [String]) -> String { String(localized: "Erase \(things(ids))", comment: "Meadow editor: a step's name") }
     /// A Ground stroke: "Paint Path", "Paint Wild Grass".
     static func paint(_ id: String) -> String {
-        String(localized: "Paint \(name(id))", comment: "Meadow editor: a step's name (a Ground stroke and what it painted)")
+        String(localized: "Paint \(titled(name(id)))", comment: "Meadow editor: a step's name (a Ground stroke and what it painted)")
     }
     /// A row of stepping stones laid along a drag: "Lay 9 Stepping Stones" (one alone is placed).
     static func lay(_ count: Int) -> String {
@@ -275,7 +287,7 @@ enum MeadowWords {
     }
     /// A Brush stroke: "Brush Daisies", "Brush Wildflowers".
     static func brush(_ kind: String) -> String {
-        String(localized: "Brush \(clumpName(kind))", comment: "Meadow editor: a step's name (a Brush stroke and what it planted)")
+        String(localized: "Brush \(titled(clumpName(kind)))", comment: "Meadow editor: a step's name (a Brush stroke and what it planted)")
     }
 
     // Fences and colours.
@@ -287,7 +299,7 @@ enum MeadowWords {
     static var removeGate: String { String(localized: "Remove Gate", comment: "Meadow editor: a step's name (a fence's gate taken away)") }
     /// "Colour Bench Sage", "Colour 3 Things Sage".
     static func colour(_ ids: [String], _ name: String) -> String {
-        String(localized: "Colour \(things(ids)) \(colourName(name))", comment: "Meadow editor: a step's name (things given a colour from their palette)")
+        String(localized: "Colour \(things(ids)) \(titled(colourName(name)))", comment: "Meadow editor: a step's name (things given a colour from their palette)")
     }
 
     /// What to do with the fence armed, in the tray's line.
@@ -305,10 +317,22 @@ enum MeadowWords {
         String(localized: "Corner \(count - 1) set", comment: "VoiceOver: a corner of a fence set with Return (its number)")
     }
 
-    /// A thing as VoiceOver names it: its name, and its colour when it has a palette ("Bench, colour sage").
-    static func described(_ item: MeadowFile.MeadowItem) -> String {
-        guard case .choice(let colour) = item.value(of: "colour", MeadowCatalog.current) else { return name(item.asset) }
-        return String(localized: "\(name(item.asset)), colour \(colourName(colour).lowercased())", comment: "VoiceOver: a thing and the colour it wears")
+    /// A thing as VoiceOver names it: its name, its colour when it has a palette ("Bench, colour sage"), whether a
+    /// fence has a gate and a lamp is lit (`lit`: the lamps are lit now).
+    static func described(_ item: MeadowFile.MeadowItem, lit: Bool = false) -> String {
+        var words = name(item.asset)
+        if case .choice(let colour) = item.value(of: "colour", MeadowCatalog.current) {
+            words = String(localized: "\(words), colour \(colourName(colour).lowercased())", comment: "VoiceOver: a thing and the colour it wears")
+        }
+        if item.asset == MeadowEditSession.fence {
+            if case .integer(let gate) = item.value(of: "gate", MeadowCatalog.current), gate > 0 {
+                words = String(localized: "\(words), with a gate", comment: "VoiceOver: a fence that has a gate")
+            }
+        } else if item.asset == "work.lampPost" {
+            words = lit ? String(localized: "\(words), lit", comment: "VoiceOver: a garden lamp, burning (at night)")
+                        : String(localized: "\(words), not lit", comment: "VoiceOver: a garden lamp, out (by day)")
+        }
+        return words
     }
 
     /// A palette's colour, as its swatch's tooltip and VoiceOver say it.

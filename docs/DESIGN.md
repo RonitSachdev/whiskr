@@ -336,6 +336,11 @@ Keep these when adding poses, props or scenery. They are what makes the meadow W
   picture's edges: a far hill the view backs off over sinks away rather than fill the foreground, and
   the column's grass grows in front of a view looking along it from far down.
 - **No streams or rivers.** That picture is kept for a second machine, which this app does not have.
+- **Settings › Meadow** reads top to bottom as the meadow is made: **Your Meadow** (My Meadows' cards, New
+  Meadow, Import…, Edit Meadow…), **Sky** (time of day, real sunrise and sunset, moon phase), **Weather** (real
+  weather, then its five switches, disabled with a reason while it is off), **Life in the Meadow** (Animate the
+  meadow, Cats wander when idle, Lamps light at night, each said in a line under them) and **Picnics** (picnic
+  things, name flags). Every section has a heading; one form, scrolling as Settings' other panes do.
 
 ### The meadow's scenery
 
@@ -403,7 +408,7 @@ can hold (its catalog):
   weathered rails. A fence, the shed and the tent are kept off the picnic ground; a fence stops a cat but at
   its gate, which a cat crosses with one high bound over its leaf, as cats over a garden gate do.
 - **Colours:** made things with a palette (cushion, yarn, bed, bowl, pot, watering can, bench, mailbox, shed's
-  door, tent) wear one of their 4–5 swatches, chosen from the selection bar's Colour popover; the swatches are
+  door, tent) wear one of their 4–5 swatches, chosen from the row of swatches the selection bar's Colour (C) opens in the bar itself; the swatches are
   the blankets' gingham colours taken toward the cloth's cream and dulled into clay, and the meadow's woods,
   glazes and cloths, so a sage bench, a sage shed door and a sage cushion are one sage. The next one placed
   wears the colour last chosen for its kind.
@@ -477,8 +482,14 @@ most of the time.
 - **The selection's bar** hangs 12 pt under the rings round what is chosen (over it when there is no room
   below, never over the tray), so it stays beside the choice however tall a tree is, and follows it as the
   view moves: Turn Left, Turn Right; Smaller, Larger and Shuffle for living things (Shuffle draws a
-  new size, lean and turn, and a tree a new seed); Duplicate, Delete; More (Select All Like This, Copy,
-  Paste). A floating piece: the chrome's colour, a line, radius 10, the one soft shadow.
+  new size, lean and turn, and a tree a new seed); Colour (C) for made things with a palette; Duplicate,
+  Delete; More (Select All Like This, Copy, Paste). A chosen fence's bar: Straighten, Add Gate (or Remove
+  Gate), Delete, More; things from a newer Whiskr: Delete and More. Colour opens a row of swatches in the bar
+  itself, under its buttons (never a popover window: it is part of the same floating piece and draws as the
+  bar does in every theme): each swatch named in its tooltip and for VoiceOver, the one worn ringed in the
+  focus colour with a tick; a choice is a step and the row stays open to try another; Esc, choosing something
+  else or More puts it away. A floating piece: the chrome's colour, a line (stronger with Increase Contrast),
+  radius 10, the one soft shadow.
 - **The tools** are in the tray and in View › Editor Tools (Select, Brush, Erase, Ground), checked as chosen.
 - **The tray** floats along the meadow's bottom edge (the chrome's colour, a line, radius 10, the one soft
   shadow; as wide as the meadow allows, at most 1,040 pt). Its top row: the tools, **Select (V)**, **Brush
@@ -487,7 +498,9 @@ most of the time.
   "4,212 of 5,000 things" or "40 of 48 trees" only past 80 % of a cap; the filter field (⌘F, which the editor
   takes from Find while editing: it finds across categories by a thing's name, its shelf's and the other words
   it goes by, "firewood" for the log pile, "zabuton" for the cushion, "cat" for every cat thing, and in
-  Japanese hiragana or katakana alike; Return arms what it found); and the fold (View ›
+  Japanese hiragana or katakana alike; Return arms what it found, Tab or ↓ hands the shelf as filtered the
+  keyboard, ⇧Tab goes back to the meadow, Esc empties it and goes back, and its × empties it; its well is
+  ringed in the focus colour while it has the keyboard; ⌘↩ is still Done); and the fold (View ›
   Hide Editor Tray, ⌥⌘T, remembered) that leaves only that row. Below: the categories that hold something
   (Trees, Flowers, Stones & Wood, Ground, whose tab is the Ground tool's, Garden, Workplace and Cat Things; keys 1–7), a line saying what to do now, and the shelf: each thing pictured
   by the scene in its own clay on a round of grass, by day, on a tile of the content colour (64 pt, its name
@@ -537,14 +550,10 @@ most of the time.
   the meadow's own turf, painted. A meadow file can hold only so much detail: a stroke that would pass it
   stops and says so ("The ground holds as much painting as a meadow can keep"), so a meadow is never painted
   into one that cannot be saved.
-- **The Eraser** (a dashed circle in the ink): a click takes away the thing under it, a tree too; a drag
-  sweeps away the plants, mushrooms and stones it passes, never a tree, a young tree, wood, a boulder or a made
-  thing (nothing big or placed with care is lost to a stroke passing it), and never a blanket or anything from
-  a newer Whiskr. Choosing a kind on
-- **The Eraser** (a dashed circle in the ink): a click takes away the thing under it, a tree or a parcel too; a drag
-  sweeps away the plants, mushrooms and stones it passes, never a tree, a young tree or the log (nothing big
-  is lost to a stroke passing it), and never a blanket or anything from a newer Whiskr. Choosing a kind on
-  its shelf sweeps only that kind ("The Eraser clears only daisies now" where a click falls on another).
+- **The Eraser** (a dashed circle in the ink): a click takes away the thing under it, a tree or a parcel too; a
+  drag sweeps away the plants, mushrooms and stones it passes, never a tree, a young tree, wood, a boulder or a
+  made thing (nothing big or placed with care is lost to a stroke passing it), and never a blanket or anything
+  from a newer Whiskr. Choosing a kind on its shelf sweeps only that kind ("The Eraser clears only daisies now" where a click falls on another).
   Each click or sweep is one step.
 - **Caps.** A meadow holds at most 5,000 things, 48 trees, 120 tall things and 32 garden lamps. The
   tray says how full the meadow is past 80 % of a cap; at one, the tiles of what cannot be added say why
@@ -571,9 +580,20 @@ most of the time.
   (undone, the Default is shown again and the copy goes). Revert to Default shows the Default; your meadow
   stays. Settings › Meadow's Your Meadow chooses which is shown.
 - **VoiceOver** reads the edited meadow as its trees, wood, boulders and made things one by one and its plants and stones as clumps
-  ("Daisies, 9"); each element chooses what it stands for. Choosing, moving, the tool, what is armed, placing,
+  ("Daisies, 9"); each element chooses what it stands for and reads as selected while chosen. A thing reads
+  with its state, as it is when asked: "Bench, colour sage", "Wooden fence, with a gate", "Garden lamp, lit" by
+  night and "not lit" by day, and a parcel as a thing from a newer Whiskr. Choosing, moving, the tool, what is armed, placing,
   strokes, refusals with their reason, undo and redo are announced. With Increase Contrast the rings, the
   circles, the picnic ground's outline and the tray's line are drawn stronger.
+- **The first time** editing opens, one quiet note along the meadow's top says where the tools are and how to
+  leave ("Choose a thing in the tray below, then click the meadow to place it; V, B, E and G change the tool.
+  Every change is saved. Done (⌘↩) or Esc when you are finished."), with Editing Help (Help at "Making the
+  meadow yours") and a × . Put away, or once editing ends, it never shows again.
+- **Help** (Help › Whiskr Help) has the editor's pages after the meadow's pictures: making the meadow yours
+  with each tool and its key, placing, fences, colours, lamps and what cats do with what is placed, My
+  Meadows and meadow files (from newer Whiskrs too) with the limits, and a table of every key of the editor
+  read from `KeyTable`, so it can never fall behind. The Help menu's search field finds these topics beside
+  the menus' items and opens Help at the one chosen.
 - **Things from a newer Whiskr** (and things of the catalog this Whiskr has no model for yet) are kept whole and
   never drawn outside editing; while editing each shows where it stands as a **parcel** (a kraft-paper box tied
   with string, neutral on purpose), which can be chosen, moved and taken away and nothing more (its bar holds

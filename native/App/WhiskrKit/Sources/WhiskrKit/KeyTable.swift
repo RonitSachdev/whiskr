@@ -326,6 +326,7 @@ public enum KeyTable {
         KeyBinding("E", "the Eraser", .meadowEditor),
         KeyBinding("G", "the Ground tool", .meadowEditor),
     ] + (1...7).map { KeyBinding("\($0)", "the tray's category \($0)", .meadowEditor) } + [
+        KeyBinding("C", "the chosen things' colours, in the selection's bar", .meadowEditor),
         KeyBinding("R", "turn the chosen things, or the thing to place, 15° clockwise", .meadowEditor),
         KeyBinding("⇧R", "turn the chosen things, or the thing to place, 15° anticlockwise", .meadowEditor),
         KeyBinding("⌥R", "turn the chosen things, or the thing to place, 1° clockwise", .meadowEditor),

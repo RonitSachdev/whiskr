@@ -74,6 +74,9 @@ extension MeadowView {
         }
     }
 
+    /// Whether the garden lamps are lit now (dark enough, and lamps light at night): what VoiceOver says of a lamp.
+    public var lampsAreLit: Bool { stage.light.lampsLit }
+
     // MARK: Where things are
 
     /// The scenery's thing drawn under a point of the view (its own coordinates), nearest first.

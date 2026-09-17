@@ -193,8 +193,8 @@ extension PerfSuite {
                   && all.mist > 0.3 && all.thunder,
               "\(all)")
 
-        // In the order they are laid out: sun, moon, (the lamps', worked at night in `lampsAtNight`), real weather, then
-        // the weather's five.
+        // In the order they are laid out: sun, moon (Sky), real weather, then the weather's five (Weather); the lamps'
+        // (Life in the Meadow) is worked at night in `lampsAtNight`.
         let effects: [(String, WritableKeyPath<WorldSettings, Bool>, MeadowSettings.Effects, @MainActor (MeadowView.SkyReading) -> Bool)] = [
             ("Real sunrise and sunset", \.sunTimes, .sunTimes, { $0.sunElevation == nil }),
             ("Moon phase", \.moonPhase, .moonPhase, { $0.moonLit == 1 }),
@@ -203,10 +203,10 @@ extension PerfSuite {
             ("Wind", \.wind, .wind, { $0.wind == 1 && $0.windCalm == 0.12 }),
             ("Rain and snow", \.rainAndSnow, .rainAndSnow, { $0.falling == 0 && $0.drops == 0 }),
             ("Lightning", \.lightning, .lightning, { !$0.thunder }),
-            ("Grass color from the temperature", \.grassColor, .grassColor, { $0.turf != all.turf }),
+            ("Grass colour from the temperature", \.grassColor, .grassColor, { $0.turf != all.turf }),
         ]
         for (index, (name, path, effect, gone)) in effects.enumerated() {
-            let place = index < 2 ? index : index + 2
+            let place = index < 2 ? index : index + 1
             guard switchesNow().indices.contains(place) else { check("sky: \(name)'s switch", false); continue }
             Self.set(switchesNow()[place], to: 0)
             let turnedOff = await PerfWait.until(2000) { !store.settings[keyPath: path] }
@@ -244,11 +244,14 @@ extension PerfSuite {
         }
         tabs.select(pane: "meadow")
         defer { window.orderOut(nil) }
-        let lampSwitch = await PerfWait.until(3000) { Self.controls(in: root).compactMap { $0 as? NSSwitch }.count >= 3 }
+        // Life in the Meadow's third switch, the pane's last: after Sky's two, Real weather (its five disabled while it
+        // is off), Animate and Cats wander.
+        let lampPlace = 5
+        let lampSwitch = await PerfWait.until(3000) { Self.controls(in: root).compactMap { $0 as? NSSwitch }.count == lampPlace + 1 }
         guard lampSwitch != nil else { return check("sky: Lamps light at night's switch", false) }
-        Self.set(Self.controls(in: root).compactMap { $0 as? NSSwitch }[2], to: 0)
+        Self.set(Self.controls(in: root).compactMap { $0 as? NSSwitch }[lampPlace], to: 0)
         let off = await shown { !$0.settings.effects.contains(.lamps) }
-        Self.set(Self.controls(in: root).compactMap { $0 as? NSSwitch }[2], to: 1)
+        Self.set(Self.controls(in: root).compactMap { $0 as? NSSwitch }[lampPlace], to: 1)
         let on = await shown { $0.settings.effects.contains(.lamps) }
         check("sky: Lamps light at night off puts the lamps out after dark, and on lights them again",
               store.settings.lamps && off.map { !$0.lampsLit } == true && on?.lampsLit == true,

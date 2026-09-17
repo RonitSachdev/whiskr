@@ -66,6 +66,10 @@ extension EditModeController {
                 tray.filter = ""
                 giveMeadowTheKeyboard()
             }
+        case .filterToShelf:
+            // On the first thing found, as a list under a search field is entered.
+            tray.highlighted = tray.shelf.first?.id
+            giveTrayTheKeyboard()
         case .keyboardBack: giveMeadowTheKeyboard()
         }
     }
@@ -694,6 +698,11 @@ extension EditModeController {
     func findInTray() {
         if tray.tool != .select { use(.select) }
         if tray.collapsed { toggleTray() }
-        tray.findRequests += 1
+        if let field = tray.filterField, let window = field.window, window === meadow.window {
+            window.makeFirstResponder(field)
+        } else {
+            // Not drawn yet (the tray just unfolded, or the Select tool just chosen): it takes the keyboard as it comes.
+            tray.wantsFilter = true
+        }
     }
 }

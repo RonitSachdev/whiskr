@@ -44,7 +44,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Owner</string>
+			<string>$(WHISKR_DOCUMENT_RANK)</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>app.whiskr.theme</string>
@@ -56,7 +56,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Owner</string>
+			<string>$(WHISKR_DOCUMENT_RANK)</string>
 			<key>CFBundleTypeIconSystemGenerated</key>
 			<integer>1</integer>
 			<key>LSItemContentTypes</key>

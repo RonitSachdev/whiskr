@@ -47,6 +47,12 @@ events, and the folders are demo ones.</sub>
   Code colour themes import from a file, an extension folder or a `.vsix` and colour code as they do there,
   files show VS Code's Seti icons, VS Code's keys work where they suit a Mac, and your VS Code or Cursor
   settings can be read once, when you ask. It is all data: no extension ever runs.
+- **Make the meadow yours.** Edit Meadow (⌃⌘E) turns the meadow into a little garden editor: place trees,
+  flowers, stones, cat things, a garden and a workplace from a tray of clay pictures, paint paths, lawn and
+  soil, lay fences with gates and stepping stones, choose colours, and light garden lamps for the night. Idle
+  cats use what you place. Every step undoes, everything is saved as you go, and it all works from the
+  keyboard and with VoiceOver. Meadows are `.whiskrmeadow` files: keep several in My Meadows, share them, and
+  open ones others made (even from a newer Whiskr).
 - **Worktrees.** Each git worktree is a workspace of its own. Its blanket is joined to its repository's by
   stepping stones.
 - **Agents steering agents.** Every terminal has `paw` on its PATH, so Claude can start helper terminals,
@@ -59,6 +65,10 @@ it](docs/images/editor.jpg)
 
 ![A diff side by side in the dark appearance, with unchanged stretches folded, and the Changes panel
 listing staged, changed and untracked files above the commit box](docs/images/diff.jpg)
+
+Screenshots still to take for the meadow editor (from the demo, with no user or host name in them): the editor
+with its tray open on the Garden shelf and a fenced garden with lamps by night; the selection bar's colours on a
+bench; My Meadows' cards in Settings › Meadow; the import sheet for a file from a newer Whiskr.
 
 ## Requirements
 
@@ -147,7 +157,8 @@ session starts.
 | ⌘B / ⌘\ | Hide the meadow / split right (VS Code's keys, beside the Mac ones) |
 | ⌥↑ ⌥↓ / ⇧⌥↑ ⇧⌥↓ / ⇧⌘K | In the editor: move lines / copy lines / delete lines |
 | ⌘/ / ⇧⌘\ / ⌘L or ⌃G | In the editor: comment / matching bracket / go to line |
-| ⌘? | Help: reading the meadow |
+| ⌃⌘E | Edit the meadow (V B E G tools, C colours, ⌘↩ done; every key in Help) |
+| ⌘? | Help: reading the meadow, editing it, and every key |
 
 Every command is also in the menus, where System Settings › Keyboard › Keyboard Shortcuts can rebind it.
 

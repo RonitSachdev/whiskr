@@ -32,7 +32,11 @@ final class SelectionBarModel {
     var swatches: [Swatch] = []
     var wearing: String?
     /// The colours' popover is open.
-    var paletteOpen = false
+    var paletteOpen = false {
+        didSet { if paletteOpen != oldValue { resized() } }
+    }
+    /// The bar changed size (the row of swatches opened or closed): placed again over what is chosen.
+    @ObservationIgnored var resized: () -> Void = {}
     /// One fence is chosen: its own bar (Straighten, Add Gate, Delete); whether it bends, has a gate, has room for one.
     var fence = false
     var bends = false
@@ -48,7 +52,7 @@ final class SelectionBarModel {
 /// Gate) and Delete; things shown as parcels can only be moved or taken away, so with one among them only Delete
 /// and More show. A
 /// floating piece: the chrome's colour, a line round it, radius 10 and the one soft shadow; its buttons are
-/// the bars' (hover, pressed and their tooltips with the key).
+/// the bars' (hover, pressed and their tooltips with the key; AppKit views under their drawing, `barButton`).
 struct SelectionBar: View {
     let model: SelectionBarModel
 
@@ -56,14 +60,32 @@ struct SelectionBar: View {
     static let margin: CGFloat = 14
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            buttons
+            if model.paletteOpen, !model.swatches.isEmpty {
+                Color.line.frame(height: 1).accessibilityHidden(true)
+                swatchRow
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: Look.Radius.card).fill(Color.chrome))
+        .overlay(RoundedRectangle(cornerRadius: Look.Radius.card).strokeBorder(Look.increasesContrast ? Color.lineStrong : Color.line))
+        .shadow(color: .black.opacity(0.16), radius: 10, y: 3)
+        .padding(Self.margin)
+        .fixedSize()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(model.count == 1 ? String(localized: "Chosen thing", comment: "VoiceOver: the selection's bar, one thing chosen")
+                                             : String(localized: "\(model.count) chosen things", comment: "VoiceOver: the selection's bar"))
+    }
+
+    private var buttons: some View {
         HStack(spacing: Look.Space.xxs) {
             if model.fence {
-                button(.straighten, "line.diagonal", String(localized: "Straighten", comment: "Selection bar: makes a fence one straight length from end to end"), key: nil)
-                    .disabled(!model.bends)
+                button(.straighten, "line.diagonal", String(localized: "Straighten", comment: "Selection bar: makes a fence one straight length from end to end"), key: nil,
+                       enabled: model.bends)
                 button(.gate, model.hasGate ? "door.left.hand.closed" : "door.left.hand.open",
                        model.hasGate ? String(localized: "Remove Gate", comment: "Selection bar: takes a fence's gate away")
-                                     : String(localized: "Add Gate", comment: "Selection bar: hangs a gate in a fence"), key: nil)
-                    .disabled(!model.hasGate && !model.gateFits)
+                                     : String(localized: "Add Gate", comment: "Selection bar: hangs a gate in a fence"), key: nil,
+                       enabled: model.hasGate || model.gateFits)
                 separator
             } else if !model.onlyMoves {
                 button(.turnLeft, "rotate.left", String(localized: "Turn Left", comment: "Selection bar"), key: "⇧R")
@@ -86,59 +108,55 @@ struct SelectionBar: View {
             button(.more, "ellipsis", String(localized: "More", comment: "Selection bar: a menu of further commands"), key: nil)
         }
         .padding(Look.Space.xs)
-        .background(RoundedRectangle(cornerRadius: Look.Radius.card).fill(Color.chrome))
-        .overlay(RoundedRectangle(cornerRadius: Look.Radius.card).strokeBorder(Color.line))
-        .shadow(color: .black.opacity(0.16), radius: 10, y: 3)
-        .padding(Self.margin)
-        .fixedSize()
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(model.count == 1 ? String(localized: "Chosen thing", comment: "VoiceOver: the selection's bar, one thing chosen")
-                                             : String(localized: "\(model.count) chosen things", comment: "VoiceOver: the selection's bar"))
     }
 
-    /// Colour: the palette's swatches in a popover under it, the one worn ringed.
+    /// Colour: opens the palette's row of swatches in the bar itself, under its buttons (a part of the same floating
+    /// piece, drawn in the theme's chrome as the bar is, rather than a popover window of its own).
     private var colourButton: some View {
-        @Bindable var model = model
-        let label = String(localized: "Colour", comment: "Selection bar: chooses a made thing's colour from its palette")
-        return Button { model.paletteOpen.toggle() } label: { ChromeIcon(symbol: "paintpalette") }
-            .buttonStyle(ChromeButtonStyle())
-            .help(label)
-            .accessibilityLabel(label)
-            .accessibilityValue(model.swatches.first { $0.name == model.wearing }?.label ?? "")
-            .popover(isPresented: $model.paletteOpen, arrowEdge: .bottom) {
-                HStack(spacing: Look.Space.xs) {
-                    ForEach(model.swatches) { swatch in
-                        Button { model.act(.colour(swatch.name)) } label: {
-                            Circle().fill(swatch.color)
-                                .overlay(Circle().strokeBorder(Color.line))
-                                .frame(width: 22, height: 22)
-                                .padding(3)
-                                .overlay(Circle().strokeBorder(swatch.name == model.wearing ? Color.accentColor : .clear, lineWidth: 2))
+        ChromeIcon(symbol: "paintpalette")
+            .barButton("bar.selection.colour", label: String(localized: "Colour", comment: "Selection bar: chooses a made thing's colour from its palette"),
+                       help: String(localized: "Colour (C)", comment: "Selection bar: the Colour button's tooltip, with its key"),
+                       value: model.swatches.first { $0.name == model.wearing }?.label, selected: model.paletteOpen) { model.paletteOpen.toggle() }
+    }
+
+    /// The palette: a swatch for each colour, its name in the tooltip and for VoiceOver, the one worn ringed in the
+    /// focus colour (with a tick, so it never rests on colour alone).
+    private var swatchRow: some View {
+        HStack(spacing: Look.Space.xs) {
+            ForEach(model.swatches) { swatch in
+                let worn = swatch.name == model.wearing
+                Circle().fill(swatch.color)
+                    .overlay(Circle().strokeBorder(Look.increasesContrast ? Color.lineStrong : Color.line))
+                    .frame(width: 22, height: 22)
+                    .overlay {
+                        if worn {
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                                .shadow(color: .black.opacity(0.5), radius: 1)
                         }
-                        .buttonStyle(.plain)
-                        .help(swatch.label)
-                        .accessibilityLabel(swatch.label)
-                        .accessibilityAddTraits(swatch.name == model.wearing ? .isSelected : [])
                     }
-                }
-                .padding(Look.Space.xs * 2)
+                    .padding(3)
+                    .overlay(Circle().strokeBorder(worn ? Color.accent : .clear, lineWidth: Look.increasesContrast ? 3 : 2))
+                    .barButton("bar.swatch.\(swatch.name)", label: swatch.label, help: swatch.label, selected: worn, radius: 14) { model.act(.colour(swatch.name)) }
             }
+        }
+        .padding(.horizontal, Look.Space.s)
+        .padding(.vertical, Look.Space.xs)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(String(localized: "Colours", comment: "VoiceOver: the selection bar's row of colour swatches"))
     }
 
     private var separator: some View {
         Color.line.frame(width: 1, height: 16).padding(.horizontal, Look.Space.xxs).accessibilityHidden(true)
     }
 
-    private func button(_ action: SelectionBarModel.Action, _ symbol: String, _ label: String, key: String?) -> some View {
-        Button { model.act(action) } label: { ChromeIcon(symbol: symbol) }
-            .buttonStyle(ChromeButtonStyle())
-            .help(key.map { "\(label) (\($0))" } ?? label)
-            .accessibilityLabel(label)
+    private func button(_ action: SelectionBarModel.Action, _ symbol: String, _ label: String, key: String?, enabled: Bool = true) -> some View {
+        ChromeIcon(symbol: symbol)
+            .barButton("bar.selection.\(String(describing: action))", label: label, help: key.map { "\(label) (\($0))" } ?? label, enabled: enabled) { model.act(action) }
     }
 }
 
 /// The selection's bar's view: takes clicks on its buttons only, so the meadow round it keeps the rest.
-final class SelectionBarHost: NSHostingView<SelectionBar> {
+final class SelectionBarHost: BarHostingView<SelectionBar> {
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
         let card = bounds.insetBy(dx: SelectionBar.margin, dy: SelectionBar.margin)

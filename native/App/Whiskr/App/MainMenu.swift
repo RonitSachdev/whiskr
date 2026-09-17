@@ -27,6 +27,8 @@ enum MainMenu {
         help.addItem(guide)
         bar.addItem(submenu(help))
         NSApp.helpMenu = help
+        // The Help menu's search field finds Help's topics on editing the meadow, beside the menus' items.
+        NSApp.registerUserInterfaceItemSearchHandler(HelpSearch.shared)
         return bar
     }
 

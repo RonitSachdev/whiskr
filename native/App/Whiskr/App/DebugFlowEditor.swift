@@ -132,6 +132,7 @@ final class EditorFlow {
         await newThings()
         await garden()
         await lamps()
+        await access()
         await limits()
         await carryingOn()
         await revert()
