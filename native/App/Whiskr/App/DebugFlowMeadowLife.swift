@@ -12,7 +12,7 @@ import WhiskrMeadow
 /// - **Idle cats wander**: a stand-in Claude's cat, finished and seen, goes out into the grass; clicked out
 ///   there it chooses its terminal; work (its hooks) calls it home at a run, the tab's state there at once,
 ///   the cat in its seat in a second or two; left long idle it naps out there and wakes for work the same way.
-///   Each outing is asked of the cat (`MeadowView.sendOut`: a stop in the grass, reached in bounds, then home)
+///   Each outing is asked of the cat (`MeadowView.sendOut`: a loaf in the grass, reached in bounds, then home)
 ///   rather than waited for, so the flow takes the same short time every run; what a cat chooses for itself is
 ///   the scene's tests' to check (`Roaming`, `AskedOutings`).
 /// - Pictures (`meadow-pictures` in the run's folder) in whiskr-light, whiskr-dark and graphite: the kettle in
@@ -225,13 +225,13 @@ extension PerfSuite {
         _ = await PerfWait.until(4000) { self.workbench.status(of: pane) == .idle }
     }
 
-    /// Asks the cat for one outing (`MeadowView.sendOut`) once it is idle afresh and home on its blanket: a stop
+    /// Asks the cat for one outing (`MeadowView.sendOut`) once it is idle afresh and home on its blanket: a loaf
     /// out in the grass, reached in bounds, then home. Whether it was asked.
     private func sendOut(_ pane: Pane, _ cat: MeadowItem) async -> Bool {
         let meadow = controller.navigator.meadow
         await idleAgain(pane)
-        // Home from whatever it was doing (a stop lasts some seconds).
-        _ = await PerfWait.until(40000) { meadow.roaming(cat)?.out == false }
+        // Home from whatever it was doing: the last outing's loaf and its way home (slower on a busy Mac).
+        _ = await PerfWait.until(90000) { meadow.roaming(cat)?.out == false }
         guard meadow.sendOut(cat) else {
             print("meadow life: the cat could not be sent out: \(String(describing: meadow.roaming(cat))), status \(String(describing: workbench.status(of: pane)))")
             return false

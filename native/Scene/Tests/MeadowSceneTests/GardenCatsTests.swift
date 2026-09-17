@@ -277,7 +277,7 @@ private func pen(round middle: Vec2, half: Float, gate: Bool) -> MeadowScenery.T
             let before = view.outings(cat)!
             #expect(view.sendOut(cat), "round \(round)")
             var spots = 0
-            let back = CatAfternoons.until(view, 40) {
+            let back = CatAfternoons.until(view, 60) {
                 if actor.roam.spot != nil { spots += 1 }
                 return view.outings(cat)!.grassStops > before.grassStops && !actor.roam.out
             }
@@ -286,6 +286,20 @@ private func pen(round middle: Vec2, half: Float, gate: Bool) -> MeadowScenery.T
             #expect(after.grassStops == before.grassStops + 1 && after.hops > before.hops, "round \(round): one stop, in bounds: \(after)")
             #expect(spots == 0 && !actor.roam.asked, "round \(round): no spot, and asked no more")
         }
+    }
+
+    @Test("asked just as its Claude's turn ends (not yet at leisure), a cat sets off the moment it is, with no rest first")
+    func askedBeforeLeisure() {
+        let view = garden([])
+        let cat = MeadowItem.cat(blanket: "home", agent: "main")
+        let actor = Roaming.actor(view)
+        view.world = CatAfternoons.alone(.reading)
+        view.advance(seconds: 1)
+        #expect(view.sendOut(cat))
+        view.advance(seconds: 2)
+        #expect(!actor.roam.out, "working: it stays")
+        view.world = CatAfternoons.alone(.idle)
+        #expect(CatAfternoons.until(view, 6) { actor.roam.out }, "free again, it is off at once")
     }
 
     @Test("asked while out, or for no such cat, nothing is asked")

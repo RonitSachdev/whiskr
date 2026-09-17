@@ -556,9 +556,9 @@ stop drawing when nothing moves.
   `clearing`: the paws 2.3 units up over the gate's leaf), as a straight way home is over any fence when no route
   is found. A fence that has made way for a blanket (`Village.stands`, by `Meadow.standing` at its posts) is
   neither gone round nor leapt. Lamp posts are gone round by their footing, as other things are.
-- **Asked outings** (`MeadowView.sendOut`, the app's checks only): a cat at home sets off at once on one
-  outing, a stop out in the grass reached in bounds, then home (`Roam.asked`); the meadow flow waits on that
-  rather than on a cat choosing one.
+- **Asked outings** (`MeadowView.sendOut`, the app's checks only): a cat at home sets off on one outing as soon
+  as it is at leisure, with no rest first: a loaf out in the grass reached in bounds, then home (`Roam.asked`);
+  the meadow flow waits on that rather than on a cat choosing one.
 - **Cats out in the grass** (`Roam.swift`). Each cat (`Actor.roam`) rests on its blanket, then sets off on an
   outing of a stop or three; a stop is chosen in its patch (`Village.inPatch`) and reached by a route over a
   grid of half-unit cells round its blanket (`RoamField`: A*, eight ways, corners pulled straight where a

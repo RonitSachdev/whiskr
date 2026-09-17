@@ -144,8 +144,9 @@ struct Roam {
     var awakeUntil: Float = 0
     /// Out for one short outing only (woken from a nap).
     var brief = false
-    /// Asked by the app's checks for one outing (`MeadowView.sendOut`): a stop out in the grass, reached in bounds,
-    /// then home; never what a cat chooses for itself.
+    /// Asked by the app's checks for one outing (`MeadowView.sendOut`): as soon as it is at leisure, one stop out in
+    /// the grass, reached in bounds, lying there as a loaf (long enough to be looked at), then home; never what a
+    /// cat chooses for itself.
     var asked = false
     /// How many stops it has reached off its blanket's cloth, and how many hops it has made: counts that only
     /// grow, for the app's checks to wait on what happened rather than catch a moment of it.
@@ -347,12 +348,12 @@ extension Village {
         case .home:
             actor.rootLocal += (actor.spot - actor.rootLocal) * min(1, dt * 3.5)
             guard atLeisure(actor, plot) else {
-                // Busy: its next outing waits a full rest after it is free again.
-                actor.roam.rested = max(actor.roam.rested, clock + ROAM_FIRST_REST.least)
+                // Busy: its next outing waits a full rest after it is free again (one asked for, as soon as it is).
+                if !actor.roam.asked { actor.roam.rested = max(actor.roam.rested, clock + ROAM_FIRST_REST.least) }
                 return
             }
             let ready = (cat.activity == .awake || cat.activity == .idle) && actor.queue.isEmpty && !cat.isNapping
-            if ready && clock >= actor.roam.rested && !cat.watched && !cat.petting && simd_distance(actor.rootLocal, actor.spot) < 0.05 {
+            if ready && (clock >= actor.roam.rested || actor.roam.asked) && !cat.watched && !cat.petting && simd_distance(actor.rootLocal, actor.spot) < 0.05 {
                 // A meadow of idle cats takes turns: two out and about at once at most, the rest a while later,
                 // so the meadow is still between their bursts.
                 if outAndAbout() >= ROAM_MOST_OUT { actor.roam.rested = clock + actor.roam.pick(6, 10) } else { setOut(actor, in: plot, stage) }
@@ -446,7 +447,7 @@ extension Village {
         if actor.roam.stopsLeft > 0, let target = chooseStop(actor, in: plot, stage, sleepy: false),
            plan(actor, in: plot, to: target.at, stage, opening: target.spot != nil) {
             actor.roam.stopsLeft -= 1
-            actor.roam.outing = actor.roam.asked ? .watch : target.outing
+            actor.roam.outing = actor.roam.asked ? .loaf : target.outing
             take(target.spot, for: actor, in: plot)
             // Through the grass a cat bounds more often than it walks; across its blanket it walks.
             actor.roam.gait = actor.roam.asked ? .bound : target.onCloth || actor.roam.random.float() < 0.35 ? .walk : .bound

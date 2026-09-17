@@ -5,8 +5,8 @@ import simd
 // (`Roam.swift`, `Kettle.swift`); a shipped app never calls these.
 extension MeadowView {
     /// Asks one cat for an outing now, rather than after its rest and of its own choosing: a stop out in the grass
-    /// off its blanket, reached in bounds (so it hops), then home. It sets off once it is at leisure on its blanket.
-    /// False for no such cat, or one already out.
+    /// off its blanket, reached in bounds (so it hops), a loaf there, then home. It sets off as soon as it is at
+    /// leisure on its blanket, with no rest first. False for no such cat, or one already out.
     @_spi(Diagnostics) public func sendOut(_ item: MeadowItem) -> Bool {
         guard case .cat(let b, let a) = item, let village = stage.village, let actor = village.actor(b, a), actor.roam.phase == .home else { return false }
         actor.roam.asked = true
