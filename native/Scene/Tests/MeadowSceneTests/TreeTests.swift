@@ -19,6 +19,12 @@ private func grown(_ id: String, _ seed: UInt32) -> Tree {
 /// birch 9.9k, cherry 11.6k, young 8.1k, apple 21.7k, pine 22.7k), the heavy apple and pine well under.
 private let triangleBudgets = ["tree.oak": 11_700, "tree.birch": 9_000, "tree.cherry": 11_600, "tree.young": 4_000, "tree.apple": 15_500, "tree.pine": 12_000]
 
+/// How tall each kind stood and how far its shade reached on average before its crown was remade (the Default's
+/// composition, shade and the ground blankets keep off rest on them): its trees keep both within a few percent.
+private let formerSizes: [String: (height: Float, crown: Float)] = [
+    "tree.oak": (29.54, 15.21), "tree.birch": (29.9, 10.17), "tree.cherry": (22.4, 13), "tree.young": (9.78, 5.48), "tree.apple": (11.99, 11.79), "tree.pine": (33.87, 9.21),
+]
+
 /// The share of the ground under a crown that its leaves cover seen from straight above, and how ragged their
 /// outline is there: the perimeter of the covered cells squared over 4π times their area (1 for a disc; holes
 /// and a broken edge raise it). Drawn at `cells` across the crown's width.
@@ -71,7 +77,7 @@ private func fromAbove(_ tree: Tree, cells: Int = 96) -> (cover: Float, ragged: 
             let small = sizes.min() ?? 0, large = sizes.max() ?? 0
             #expect(tree.masses.count >= max(7, species.crown.masses * 4 / 5), "\(id) \(seed): \(tree.masses.count) masses")
             #expect(large >= small * 1.4, "\(id) \(seed): masses from \(small) to \(large)")
-            #expect(large <= tree.crown * 0.42, "\(id) \(seed): a mass of \(large) in a crown of \(tree.crown)")
+            #expect(large <= tree.crown * 0.5, "\(id) \(seed): a mass of \(large) in a crown of \(tree.crown)")
         }
     }
 
@@ -79,7 +85,7 @@ private func fromAbove(_ tree: Tree, cells: Int = 96) -> (cover: Float, ragged: 
     func outlineFromAbove(_ id: String) {
         for seed in UInt32(1)...3 {
             let seen = fromAbove(grown(id, seed))
-            #expect(seen.ragged > 3, "\(id) \(seed): outline \(seen.ragged) times a disc's")
+            #expect(seen.ragged > 2, "\(id) \(seed): outline \(seen.ragged) times a disc's")
             #expect(seen.cover > 0.12 && seen.cover < 0.85, "\(id) \(seed): covers \(seen.cover) of the ground under it")
         }
     }
@@ -107,6 +113,15 @@ private func fromAbove(_ tree: Tree, cells: Int = 96) -> (cover: Float, ragged: 
         // Its measures still frame it: its shade reaches past its limbs, its middle is among its leaves.
         let tree = grown(id, 3)
         #expect(tree.crown >= species.reach && tree.middle.y > species.crown.low && tree.middle.y < species.crown.high, "\(id)")
+    }
+
+    @Test("each kind stands as tall and spreads as wide as it always did", arguments: kinds)
+    func sizes(_ id: String) {
+        let trees = (UInt32(0)..<24).map { grown(id, $0) }
+        let height = trees.reduce(0) { $0 + $1.shape.bounds.max.y } / 24, crown = trees.reduce(0) { $0 + $1.crown } / 24
+        let former = formerSizes[id]!
+        #expect(abs(height / former.height - 1) < 0.04, "\(id): \(height) tall, was \(former.height)")
+        #expect(abs(crown / former.crown - 1) < 0.04, "\(id): shade reaching \(crown), was \(former.crown)")
     }
 
     @Test("the Default's young trees and landmark trees leave the meadow's stream where it always was")
@@ -181,6 +196,11 @@ private func fromAbove(_ tree: Tree, cells: Int = 96) -> (cover: Float, ragged: 
             guard let image = view.renderImage(width: Int(Self.window.width * 2), height: Int(Self.window.height * 2)) else { continue }
             if let c = Self.crop(view, image, at: Self.spot, w: 300, h: 300, below: 70) { crops.append((id, c)) }
             if let c = Self.crop(view, image, at: SIMD2(Self.spot.x - 12, Self.spot.y + 8), w: 720, h: 450, below: 160) { wide.append((id, c)) }
+        }
+        // And one whole window, as the editor shows it, the tray's part along the bottom left clear.
+        let whole = Self.editor(Self.lone("tree.oak"))
+        if let image = whole.renderImage(width: Int(Self.window.width * 2), height: Int(Self.window.height * 2)) {
+            CatalogPictures.sheet([("tree.oak, the editor's whole window", image)], columns: 1, to: "editor-window", in: Self.folder)
         }
         CatalogPictures.sheet(crops, columns: 3, to: "editor-crop", in: Self.folder)
         CatalogPictures.sheet(wide, columns: 2, to: "editor-wide", in: Self.folder)

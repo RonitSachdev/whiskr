@@ -35,8 +35,8 @@ Nothing has been released yet. This is what the first release will contain.
 - Every one of the meadow's twelve landmark trees dapples the ground beneath it with moving shade; the
   four farthest, out in the haze, used to stand in unbroken sun.
 - Every tree reads as its kind from the editor's height and the sidebar as well as from the side: crowns of
-  many overlapping masses of leaves with gaps where the limbs show, sunlit outside and shaded within, instead
-  of a few big smooth lumps. An oak spreads in a broad dome; a birch is narrow and airy over a white trunk
+  overlapping masses of leaves, each one soft canopy in lobes and bays with gaps where the limbs show, in the
+  meadow's own bright colours, instead of a few big smooth lumps; each kind as tall and wide as before. An oak spreads in a broad dome; a birch is narrow and airy over a white trunk
   marked with black; a cherry's blossom gathers in clouds along its branches; an apple tree is low and open
   with small apples among its leaves; a Scots pine carries flat dark plates high on its bare trunk. They cost
   less to draw than before (the apple tree and the pine about half), and the Default meadow keeps every

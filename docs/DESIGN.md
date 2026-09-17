@@ -359,9 +359,10 @@ can hold (its catalog):
   size, as the meadow's always have; fruit hung on a tree stays near life size, among the leaves (larger, on a
   crown seen from above, it reads as boils).
 - **Trees read as foliage from every camera**, judged from the editor's height and the sidebar's as much as from
-  the side: a crown is many masses of leaves of different sizes, each a cloud of small clumps with a broken
-  edge, overlapping, with gaps where the limbs and the shade show, sunlit outside and dark within; never a few
-  big smooth balloons. Each kind keeps its own shape: an oak's broad dome on a short trunk, a birch's narrow,
+  the side: a crown is masses of leaves of different sizes, each one soft canopy with its outline in lobes and
+  bays and its surface bumped as leaves are, overlapping, with gaps where the limbs show; light and warm on top
+  in the kind's own cheerful colours, its darker green only beneath and deep inside; never balloons, and never a
+  bag of separate balls. Each kind stands as tall and spreads as wide as it always has. Each kind keeps its own shape: an oak's broad dome on a short trunk, a birch's narrow,
   airy crown of hanging leaves over a white, black-marked trunk, a cherry's blossom in clouds along its
   branches, a young tree's few branches, an apple tree's low, wide crown open in the middle with apples among
   its leaves, a Scots pine's flat-topped umbrella of dark plates high on a bare, orange-topped trunk.

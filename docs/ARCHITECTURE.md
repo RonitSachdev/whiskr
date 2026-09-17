@@ -399,8 +399,9 @@ scene draws at most what a file may hold (`MeadowScenery.Limits`, the catalog's 
 
 What the scene draws for each catalog id is `SceneryCatalog.kinds`: a tree (grown from its seed by
 `Trees.grow`: a trunk and limbs, then masses of leaves scattered through the space its kind's crown fills
-(`Species.Crown`), each on a branch from the nearest limb and made of small clumps whose light is bent toward
-their mass's and coloured darker deep in the crown; the apple tree and the Scots pine are forms of their own,
+(`Species.Crown`), each on a branch from the nearest limb and made as one canopy: a ball pushed out to the smooth
+union of its lobes, scalloped with noise, flat beneath, coloured light on top and darker beneath and deep in the
+crown; the apple tree and the Scots pine are forms of their own,
 `Species.Form`), a young tree, the log,
 or a rooted thing in a bed of instances (`Flora`'s plants; `Meadow/Catalog/`: `StonesAndWood`, `Workplace`,
 `CatThings`), each with its sway, whether butterflies settle on it and the ground it stands on. Plants,

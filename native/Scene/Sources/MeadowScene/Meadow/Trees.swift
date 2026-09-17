@@ -2,11 +2,12 @@ import Foundation
 import simd
 
 // Trees as they grow, in clay: a trunk that flares into roots gripping the ground, limbs forking off it, and the
-// leaves in masses filling the crown's space, each carried on a branch from the nearest limb. A mass is a cloud of
-// small clumps, domed on top and flat beneath (a pine's a flat plate of needles; a birch's hangs from drooping
-// twigs), so a crown reads as foliage from the editor's height as well as from the side, never as a few smooth
-// balloons: many masses of different sizes, overlapping, with gaps between them where the limbs and the shade
-// show, sunlit outside and dark within. Each kind fills a space of its own shape (`Species.Crown`): an oak's
+// leaves in masses filling the crown's space, each carried on a branch from the nearest limb. A mass is one soft
+// canopy, its outline in lobes and bays and its surface bumped as leaves are, domed on top and flat beneath (a
+// pine's a flat plate tufted with needles; a birch's hangs from drooping twigs), so a crown reads as foliage from
+// the editor's height as well as from the side, never as balls: masses of different sizes, overlapping, with gaps
+// between them where the limbs show, sunlit and light on top, the kind's darker green beneath and deep inside.
+// Each kind fills a space of its own shape (`Species.Crown`), as tall and wide as its trees always were: an oak's
 // broad dome, a birch's narrow, airy oval, a cherry's vase, an apple tree's low, wide bowl open in the middle,
 // a Scots pine's flat-topped umbrella high on a bare trunk.
 
@@ -32,8 +33,8 @@ struct Species {
         /// into a full crown; well above, the light comes through between them).
         var masses: Int
         var room: Float
-        /// Small clumps in one mass.
-        var clumps: ClosedRange<Int>
+        /// Lobes in one mass: the rounded swellings its outline runs round, in bays between.
+        var lobes: ClosedRange<Int>
         /// A mass's height for its width: a flat plate (below 0.5, a pine's needles), domed and flat beneath
         /// (below 1), or hanging in a curtain from drooping twigs (above 1, a birch's).
         var tall: Float
@@ -55,25 +56,26 @@ struct Species {
 
     /// Broad and spreading, wider than tall on a short, stout trunk: heavy limbs leaving low, a dome of leaves in
     /// crowded billows with deep shade between.
-    static let oak = Species(height: 8, girth: 1.9, limbs: 6, reach: 10.5, clump: 3, bark: (0x6a4d36, 0x97734f), leaves: (0x3f7a33, 0xa6d05c),
-                             crown: Crown(low: 7, high: 23, masses: 25, room: 0.8, clumps: 4...5, tall: 0.85))
-    /// Tall and light: a white trunk marked with black, a narrow crown of small curtains of leaves hanging from
-    /// drooping twigs, with the light coming through between them.
-    static let birch = Species(height: 9, girth: 1.0, limbs: 5, reach: 5.6, clump: 1.7, bark: (0xd9d4c6, 0xf3efe4), leaves: (0x6aa33e, 0xc6e06c),
-                               crown: Crown(low: 8, high: 25, masses: 22, room: 1.55, clumps: 3...4, tall: 1.4), marked: true)
-    /// In blossom: limbs rising into a vase, the blossom in clouds along them with the branches showing between.
-    static let cherry = Species(height: 5, girth: 1.4, limbs: 5, reach: 8.5, clump: 1.9, bark: (0x5e4038, 0x86605a), leaves: (0xe27ba8, 0xffdcea),
-                                crown: Crown(low: 5.5, high: 15, masses: 24, room: 1.05, clumps: 4...5, tall: 0.75))
-    /// A young tree, head-high to a person and five cats tall: a slender stem, a few branches, a small open crown.
-    static let sapling = Species(height: 3, girth: 0.3, limbs: 3, reach: 2.4, clump: 0.95, bark: (0x7a5a40, 0x9c7a56), leaves: (0x56973c, 0xb0d862),
-                                 crown: Crown(low: 3, high: 7.6, masses: 7, room: 1.2, clumps: 3...5, tall: 0.75))
+    static let oak = Species(height: 9, girth: 1.9, limbs: 6, reach: 10.5, clump: 4.2, bark: (0x6a4d36, 0x97734f), leaves: (0x4c8a3a, 0xa3d15a),
+                             crown: Crown(low: 10, high: 29, masses: 15, room: 0.85, lobes: 5...6, tall: 0.85))
+    /// Tall and light: a white trunk marked with black, a narrow crown of curtains of leaves hanging from drooping
+    /// twigs, with the light coming through between them.
+    static let birch = Species(height: 11, girth: 1.0, limbs: 5, reach: 7.4, clump: 2.6, bark: (0xd9d4c6, 0xf3efe4), leaves: (0x74ad42, 0xc6e06c),
+                               crown: Crown(low: 12, high: 29.5, masses: 17, room: 1.05, lobes: 3...4, tall: 1.3), marked: true)
+    /// In full blossom: limbs rising into a vase, nearly hidden under generous clouds of blossom, the branches
+    /// glimpsed between.
+    static let cherry = Species(height: 6, girth: 1.4, limbs: 5, reach: 8.8, clump: 3.6, bark: (0x5e4038, 0x86605a), leaves: (0xe880ad, 0xffd9e8),
+                                crown: Crown(low: 8.5, high: 21.5, masses: 15, room: 0.8, lobes: 5...6, tall: 0.85))
+    /// A young tree, head-high to a person and five cats tall: a slender stem, a few branches, a small full crown.
+    static let sapling = Species(height: 3.4, girth: 0.3, limbs: 3, reach: 3.3, clump: 1.7, bark: (0x7a5a40, 0x9c7a56), leaves: (0x5c9c40, 0xb0d862),
+                                 crown: Crown(low: 5, high: 9.5, masses: 7, room: 0.85, lobes: 4...5, tall: 0.75))
     /// About half an oak's height and nearly as wide: an orchard tree is kept low and open in the middle, so its
     /// apples ripen and can be picked.
-    static let apple = Species(height: 3, girth: 1.1, limbs: 5, reach: 7.4, clump: 2, bark: (0x6b5546, 0x93806c), leaves: (0x3b7a33, 0x93c955),
-                               crown: Crown(low: 3.6, high: 9.5, masses: 20, room: 0.95, clumps: 4...5, tall: 0.75, hollow: 0.35), form: .apple)
+    static let apple = Species(height: 3, girth: 1.1, limbs: 5, reach: 8.4, clump: 3.2, bark: (0x6b5546, 0x93806c), leaves: (0x3f8236, 0x93c955),
+                               crown: Crown(low: 5, high: 10.2, masses: 13, room: 0.85, lobes: 5...6, tall: 0.85, hollow: 0.3), form: .apple)
     /// As tall as an oak, slimmer, and dark blue-green all year.
-    static let pine = Species(height: 31, girth: 1.25, limbs: 0, reach: 6.5, clump: 3, bark: (0x6e5446, 0xc8743f), leaves: (0x2a5540, 0x6f9c68),
-                              crown: Crown(low: 15, high: 33, masses: 16, room: 1.6, clumps: 6...8, tall: 0.45), form: .pine)
+    static let pine = Species(height: 31, girth: 1.25, limbs: 0, reach: 4.5, clump: 3.4, bark: (0x6e5446, 0xc8743f), leaves: (0x2e5a42, 0x6f9c68),
+                              crown: Crown(low: 14, high: 33.2, masses: 15, room: 1.25, lobes: 5...7, tall: 0.42), form: .pine)
 }
 
 struct Tree {
@@ -85,8 +87,8 @@ struct Tree {
 }
 
 enum Trees {
-    /// One small clump of leaves: where, its radius each way, and which mass it belongs to.
-    private struct Clump { var at: Vec3; var size: Vec3; var mass: Int }
+    /// One lobe of a mass of leaves: where, its radius each way, and which mass it belongs to.
+    private struct Lobe { var at: Vec3; var size: Vec3; var mass: Int }
     /// A mass of leaves: its middle and radius.
     private struct Mass { var at: Vec3; var size: Float }
 
@@ -167,103 +169,131 @@ enum Trees {
                               : Clay.limb(branch, s.girth * 0.17, s.girth * 0.06, s.bark.0, s.bark.1, sides: 5, rings: 4).shape)
         }
 
-        var clumps: [Clump] = []
+        var lobes: [Lobe] = []
         for (m, mass) in masses.enumerated() {
-            clumps += self.clumps(of: mass, m, count: Int(between(Float(c.clumps.lowerBound), Float(c.clumps.upperBound) + 0.99)), tall: c.tall, &random)
+            lobes += self.lobes(of: mass, m, count: Int(between(Float(c.lobes.lowerBound), Float(c.lobes.upperBound) + 0.99)), tall: c.tall, &random)
         }
-        parts.append(foliage(clumps, masses, colors: s.leaves, grain))
-        if s.form == .apple { parts += apples(in: clumps, &random) }
-        return tree(parts, masses, clumps)
+        let leaves = canopies(lobes, masses, colors: s.leaves, needles: pine, coarse: s.clump < 2.8, grain)
+        parts.append(leaves)
+        if s.form == .apple { parts += apples(in: lobes, &random) }
+        return tree(parts, masses, leaves)
     }
 
     /// The tree's measures from its leaves: how far they spread, the middle of its crown, and the ball round
     /// that middle holding most of them.
-    private static func tree(_ parts: [Geometry], _ masses: [Mass], _ clumps: [Clump]) -> Tree {
-        let crown = clumps.map { hypot($0.at.x, $0.at.z) + $0.size.x }.max() ?? 0
+    private static func tree(_ parts: [Geometry], _ masses: [Mass], _ leaves: Geometry) -> Tree {
+        let crown = leaves.positions.map { hypot($0.x, $0.z) }.max() ?? 0
         let middle = masses.reduce(Vec3.zero) { $0 + $1.at } / Float(max(masses.count, 1))
         let bulk = masses.map { simd_distance($0.at, middle) + $0.size * 0.8 }.max() ?? 0
         return Tree(shape: Geometry.join(parts), crown: crown, middle: middle, bulk: bulk, masses: masses.map { Ball(center: $0.at, radius: $0.size) })
     }
 
-    /// A mass as small clumps: a larger one in the middle, the rest round it and a little lower, so it is domed
-    /// on top and flat beneath, its edge broken. A plate (`tall` below 0.5) spreads them flat; hanging (above 1),
-    /// they trail down below it instead.
-    private static func clumps(of mass: Mass, _ m: Int, count: Int, tall: Float, _ random: inout Seeded) -> [Clump] {
+    /// A mass's lobes: a larger one in the middle, the rest round it and a little lower, so the mass is domed on
+    /// top and flat beneath, its edge in bays and lobes. A plate (`tall` below 0.5) spreads them flat; hanging
+    /// (above 1), they trail down below it instead.
+    private static func lobes(of mass: Mass, _ m: Int, count: Int, tall: Float, _ random: inout Seeded) -> [Lobe] {
         func between(_ low: Float, _ high: Float) -> Float { low + random.float() * (high - low) }
-        var out: [Clump] = []
+        var out: [Lobe] = []
         var around = between(0, 2 * .pi)
         for c in 0..<count {
             let r: Float, at: Vec3
             if c == 0 {
-                r = mass.size * 0.6
+                r = mass.size * 0.62
                 at = mass.at
             } else if tall < 0.5 {
                 // A plate: spread flat round the middle, thicker toward it.
                 around += 2.4 + between(-0.5, 0.5)
-                let spread = mass.size * between(0.4, 1)
-                r = mass.size * between(0.3, 0.44)
-                at = mass.at + Vec3(cos(around) * spread, mass.size * (between(-0.12, 0.1) + 0.18 * (1 - spread / mass.size)), sin(around) * spread)
+                let spread = mass.size * between(0.35, 0.75)
+                r = mass.size * between(0.38, 0.5)
+                at = mass.at + Vec3(cos(around) * spread, mass.size * (between(-0.1, 0.08) + 0.15 * (1 - spread / mass.size)), sin(around) * spread)
             } else if tall > 1 {
                 around += 2.4 + between(-0.4, 0.4)
                 r = mass.size * between(0.42, 0.56)
                 let down = mass.size * tall * Float(c) / Float(count) * between(0.75, 1)
-                let spread = mass.size * between(0.25, 0.55)
+                let spread = mass.size * between(0.25, 0.5)
                 at = mass.at + Vec3(cos(around) * spread, -down, sin(around) * spread)
             } else {
                 around += 2.4 + between(-0.5, 0.5)
-                r = mass.size * between(0.42, 0.6)
-                let spread = mass.size * between(0.38, 0.72)
-                at = mass.at + Vec3(cos(around) * spread, mass.size * tall * between(-0.4, 0.25), sin(around) * spread)
+                r = mass.size * between(0.4, 0.58)
+                let spread = mass.size * between(0.35, 0.62)
+                at = mass.at + Vec3(cos(around) * spread, mass.size * tall * between(-0.25, 0.5), sin(around) * spread)
             }
-            out.append(Clump(at: at, size: tall < 0.5 ? Vec3(r * 1.15, r * 0.58, r) : Vec3(r, r * min(tall, 1) * 1.1, r), mass: m))
+            out.append(Lobe(at: at, size: tall < 0.5 ? Vec3(r * 1.2, r * 0.5, r * 1.2) : Vec3(r, r * min(tall, 1) * 1.1, r), mass: m))
         }
         return out
     }
 
-    /// A small clump of leaves: a ball of few points (it is small, and there are many), lit as a smooth one.
-    private static let leafBall: Geometry = Shapes.icosahedron(1, detail: 1).welded()
+    /// The balls a mass of leaves is pressed from: more points round it than up it, as its outline seen from
+    /// above runs round its middle. The larger for the larger masses.
+    private static let fineBall = Shapes.sphere(1, 24, 14)
+    private static let coarseBall = Shapes.sphere(1, 20, 9)
 
-    /// The clumps as one shape. Each is pressed a little out of round; its light is bent toward its mass's, so a
-    /// mass shades as one soft cloud while its edge stays broken by the clumps; and it is coloured by where it
-    /// lies: dark deep inside the crown and in the hollows between clumps, lighter outward and toward the top,
-    /// each mass a little different from the next.
-    private static func foliage(_ clumps: [Clump], _ masses: [Mass], colors: (UInt32, UInt32), _ grain: Double) -> Geometry {
-        let low = linear(colors.0), high = linear(colors.1), deep = low * 0.34
-        let ys = masses.map(\.at.y)
-        let bottom = (ys.min() ?? 0) - (masses.map(\.size).max() ?? 0), top = (ys.max() ?? 0) + (masses.map(\.size).max() ?? 0)
+    /// The masses as one shape, each a single soft canopy: a ball pushed out to the smooth union of its lobes (so
+    /// there is no crease where two meet, only a bay), its edge scalloped as leaves are (a pine's plate in tufts of
+    /// needles round its rim), and flat beneath. Its light is bent a little toward its middle, so it shades softly
+    /// as one cloud. Coloured as the kind's leaves are in the sun, light and warm on top down to the darker
+    /// green beneath, and a little darker deep inside the crown; each mass a little different from the next.
+    private static func canopies(_ lobes: [Lobe], _ masses: [Mass], colors: (UInt32, UInt32), needles: Bool, coarse: Bool, _ grain: Double) -> Geometry {
+        let low = linear(colors.0), high = linear(colors.1)
         let middle = masses.reduce(Vec3.zero) { $0 + $1.at } / Float(max(masses.count, 1))
         let wide = max(masses.map { hypot($0.at.x - middle.x, $0.at.z - middle.z) + $0.size }.max() ?? 1, 1)
+        let bottom = (masses.map(\.at.y).min() ?? 0) - (masses.map(\.size).max() ?? 0), top = (masses.map(\.at.y).max() ?? 0)
         var parts: [Geometry] = []
-        parts.reserveCapacity(clumps.count)
-        for (k, clump) in clumps.enumerated() {
-            let mass = masses[clump.mass]
-            var g = leafBall
-            // Smooth: each point's normal is the pressed ball's, not its facets'.
-            g.normals = g.positions.map { simd_normalize($0 / clump.size) }
-            for i in g.positions.indices {
-                let press = 1 + Float(lattice(Double(i) * 1.37, Double(k) * 0.71, grain) - 0.5) * 0.24
-                g.positions[i] = clump.at + g.positions[i] * clump.size * press
+        parts.reserveCapacity(masses.count)
+        for (m, mass) in masses.enumerated() {
+            let own = lobes.filter { $0.mass == m }
+            let seed = grain + Double(m) * 7.3
+            let lowest = (own.map { $0.at.y - $0.size.y }.min() ?? mass.at.y - mass.size) - mass.at.y
+            // Scalloped as a mass of leaves is, in three sizes of bay and bump (-0.5 to 0.5), and a pine's plate in
+            // tufts of needles round its rim.
+            func leafy(_ d: Vec3) -> Float {
+                let broad = noise(Double(d.x * 2.6 + d.y * 1.1) + seed, Double(d.z * 2.6 - d.y * 0.8), 0)
+                let fine = noise(Double(d.x * 6.3 - d.y * 2.3) + seed, Double(d.z * 6.3 + d.y * 1.7), 0)
+                let finer = noise(Double(d.x * 12.7 + d.y * 3.1) + seed, Double(d.z * 12.7 - d.y * 2.9), 0)
+                var bump = Float(broad - 0.5) * 0.45 + Float(fine - 0.5) * 0.35 + Float(finer - 0.5) * 0.2
+                if needles { bump += 0.28 * (abs(sin(atan2(d.z, d.x) * 23 + Float(m))) - 0.5) * (1 - abs(d.y)) + Float(finer - 0.5) * 0.3 }
+                return bump
             }
-            // The side of a clump turned in toward its mass's middle (the top of the middle one) is in the hollow.
-            let inward = simd_normalize(clump.at - mass.at + Vec3(0, mass.size * 0.5, 0))
-            // Each mass a little lighter or darker, a little warmer or cooler, than the next.
-            let shift = Float(lattice(Double(clump.mass) * 3.3, 1.9, grain) - 0.5)
-            let tint = Vec3(1 + shift * 0.12, 1 + shift * 0.06, 1 - shift * 0.16) * (1 + shift * 0.22)
+            var g = coarse ? coarseBall : fineBall
+            for i in g.positions.indices {
+                let d = simd_normalize(g.positions[i])
+                // How far out along `d` the lobes reach, softly the farthest of them.
+                var sum: Float = 0
+                for lobe in own {
+                    let v = d / lobe.size, c = (lobe.at - mass.at) / lobe.size
+                    let a = simd_dot(v, v), b = -2 * simd_dot(v, c), e = simd_dot(c, c) - 1
+                    let disc = b * b - 4 * a * e
+                    guard disc > 0 else { continue }
+                    let t = (-b + disc.squareRoot()) / (2 * a)
+                    if t > 0 { sum += pow(t / mass.size, 8) }
+                }
+                var r = mass.size * max(pow(sum, 1 / 8), 0.3)
+                r *= 1 + leafy(d) * (needles ? 0.5 : 0.42)
+                var p = d * r
+                // Flat beneath: what hangs below its lowest lobe is pressed up.
+                if p.y < lowest * 0.8 { p.y = lowest * 0.8 + (p.y - lowest * 0.8) * 0.3 }
+                g.positions[i] = mass.at + p
+            }
+            g = g.welded()
+            g.computeNormals()
+            let shift = Float(lattice(Double(m) * 3.3, 1.9, grain) - 0.5)
+            let tint = Vec3(1 + shift * 0.08, 1 + shift * 0.05, 1 - shift * 0.1) * (1 + shift * 0.12)
+            let span = max(own.map { $0.at.y + $0.size.y }.max() ?? mass.at.y, mass.at.y + 0.1) - (mass.at.y + lowest * 0.8)
             g.colors = []
             for i in g.positions.indices {
                 let p = g.positions[i], n = g.normals[i]
-                let outward = simd_normalize(p - mass.at + Vec3(0, mass.size * 0.35, 0))
-                let whole = simd_normalize(p - middle + Vec3(0, (top - bottom) * 0.2, 0))
-                g.normals[i] = simd_normalize(n * 0.35 + outward * 0.45 + whole * 0.2)
-                let up = clamp((p.y - bottom) / max(top - bottom, 1e-3), 0, 1)
+                g.normals[i] = simd_normalize(n * 0.8 + simd_normalize(p - mass.at) * 0.2)
+                // Sunlit on top, the kind's darker green beneath, as the old trees always were; the bumps catching
+                // the light and the bays between them a little in shade.
+                let height = clamp((p.y - mass.at.y - lowest * 0.8) / span, 0, 1)
+                var color = lerp(low, high, smooth(height * 1.1)) * (1 + leafy(simd_normalize(p - mass.at)) * 0.6)
+                // Darker deep inside the crown and low in it, where the light does not reach.
                 let out = clamp(hypot(p.x - middle.x, p.z - middle.z) / wide, 0, 1)
-                let inMass = clamp((p.y - mass.at.y) / mass.size * 0.6 + 0.5, 0, 1)
-                let open = smoothstep(simd_dot(n, inward), -0.6, 0.4)
-                let light = clamp(0.06 + 0.46 * up + 0.24 * out + 0.26 * inMass, 0, 1) * (0.5 + 0.5 * open)
-                let color = light < 0.5 ? lerp(deep, low, light * 2) : lerp(low, high, (light - 0.5) * 2)
-                // Dappled, as leaves catch the light one by one.
-                let dapple = 1 + Float(lattice(Double(i) * 2.9, Double(k) * 1.3, grain + 3) - 0.5) * 0.34
-                g.colors.append(color * tint * dapple)
+                let up = clamp((p.y - bottom) / max(top - bottom, 1e-3), 0, 1)
+                color *= 0.8 + 0.2 * clamp(out * 0.7 + up * 0.6, 0, 1)
+                // And underneath each mass, in its own shadow.
+                if n.y < 0 { color *= 1 + n.y * 0.22 }
+                g.colors.append(color * tint)
             }
             parts.append(g)
         }
@@ -295,14 +325,14 @@ enum Trees {
         return [body, stalk.shape]
     }
 
-    /// Apples hanging among the leaves, half hidden in the clumps' lower and outer sides (where they hang from
-    /// the spurs below the leaves), and a few windfalls lying in the grass under the crown.
-    private static func apples(in clumps: [Clump], _ random: inout Seeded) -> [Geometry] {
+    /// Apples hanging among the leaves, half hidden in the lower and outer sides of the lobes (where they hang
+    /// from the spurs below the leaves), and a few windfalls lying in the grass under the crown.
+    private static func apples(in lobes: [Lobe], _ random: inout Seeded) -> [Geometry] {
         var parts: [Geometry] = []
-        for clump in clumps where random.float() < 0.42 {
+        for lobe in lobes where random.float() < 0.42 {
             let around = random.float() * 2 * .pi
             let way = simd_normalize(Vec3(cos(around), 0.35 - random.float() * 1.35, sin(around)))
-            let at = clump.at + way * clump.size * 0.92
+            let at = lobe.at + way * lobe.size
             parts += apple(at: at, red: random.float() < 0.8)
         }
         for k in 0..<4 {
