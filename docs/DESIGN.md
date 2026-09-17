@@ -167,7 +167,10 @@ Each state differs by **silhouette**, **mark**, **colour** (on the mark only, ne
   most eight, failed first, then lit, then dark. More are counted on the flag as a small lantern and
   "+N", red when one counted has failed.
 - **Faces stay toward the camera.** Every waking cat's face stays within 40° of the camera, whatever it
-  is doing, so a working cat never reads as a dark lump.
+  is doing, so a working cat never reads as a dark lump. Out in the grass it keeps the rule from every side (on
+  the move, within 24°): both eyes toward you, or, where its back is to you further than its neck turns (at a
+  scratching post, at its bowl, running home away from you), its head turned on away so neither shows. Never
+  one eye alone on the side of its head.
 - **Contrast.** Every bubble against the grass, and the black cat by day and by night, reaches 3:1 (WCAG
   1.4.11), in every sky and weather. At night each picnic's fireflies give the cats a warm rim of light.
 
@@ -367,6 +370,16 @@ can hold (its catalog):
   airy crown of hanging leaves over a white, black-marked trunk, a cherry's blossom in clouds along its
   branches, a young tree's few branches, an apple tree's low, wide crown open in the middle with apples among
   its leaves, a Scots pine's flat-topped umbrella of dark plates high on a bare, orange-topped trunk.
+- **Everything else reads as itself from the editor's height and the sidebar's too**, judged small, from those
+  cameras, as well as close from the side (`ModelPictures`, with a blanket and its cats beside each thing for
+  scale, by day, at dusk and by night). Nothing is a single smooth lump standing for something leafy or soft:
+  moss settles on a log, a stump, a log pile and old stones in colonies of low, tufted cushions of different
+  sizes, the wood or stone showing between them and round its ragged edge (the trees' foliage at a smaller
+  scale); a fern is a star of long, feathery fronds of many narrow, lobed leaflets in a deeper blue-green than
+  the grass; a clover patch is a dark mat of trefoils held up into the light with white heads above it; a log
+  pile's bark is weathered pale on top so it reads as logs, not a dark heap; a kettle's steam is soft, uneven
+  wisps that thin out within a kettle's height or so, lit warm by its flame after dark, never a string of balls
+  and never the moon's blue on grey.
 - **What the meadow holds today:** oak, birch, cherry, young tree, apple tree (apples among its leaves,
   windfalls beneath) and Scots pine (bare below, orange high on its trunk, a flat-topped crown of needle plates); daisy,
   buttercup, lupin, poppy, cornflower, foxglove, fern, clover and fly agaric; stone, mossy stone, boulder

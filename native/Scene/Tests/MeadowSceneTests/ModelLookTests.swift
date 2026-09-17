@@ -3,7 +3,7 @@ import Testing
 import simd
 @testable import MeadowScene
 
-// The looks the model audit fixed, held (docs/DESIGN.md, "Things read from the editor's height"): moss settles in
+// The looks the model audit fixed, held (docs/DESIGN.md, "Everything else reads as itself"): moss settles in
 // colonies of tufted cushions with the wood or stone showing between them, never one smooth pad; a fern is a star of
 // feathery fronds, not a mat of leaves; a clover patch is a mat of trefoils its white heads stand above; a kettle's
 // steam is wisps, not a string of balls.

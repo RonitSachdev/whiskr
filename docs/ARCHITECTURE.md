@@ -404,7 +404,8 @@ union of its lobes, scalloped with noise, flat beneath, coloured light on top an
 crown; the apple tree and the Scots pine are forms of their own,
 `Species.Form`), a young tree, the log,
 or a rooted thing in a bed of instances (`Flora`'s plants; `Meadow/Catalog/`: `StonesAndWood`, `Workplace`,
-`CatThings`), each with its sway, whether butterflies settle on it and the ground it stands on. Plants,
+`CatThings`; their moss is `Moss`: colonies of tufted cushions laid over a surface the thing describes, or over its
+own top), each with its sway, whether butterflies settle on it and the ground it stands on. Plants,
 mushrooms and stones are brushed and swept in numbers and read out as clumps (`SceneryRules.isSmall`); a
 boulder, wood and made things stand alone (`SceneryCatalog.alone`: placed, taken by a click and read out one
 by one). Made things a cat uses wear the turf as stepping stones do (`SceneryCatalog.treads`: bare under them,
@@ -576,7 +577,7 @@ stop drawing when nothing moves.
   allocated per frame: routes, the grid and its heap are kept. A burst is not `still`, so the meadow wakes at
   the calm rate (a run home at the full rate) and rests again at the next stop.
 - **The kettle** (`Kettle.swift`, `KettleDrawer`): its seat is laid as a cat's would be, its steam is a fixed
-  list of puffs, and a simmer is `still`, so a dev server running for hours lets the meadow rest at its slow
+  list of puffs (one billowed mesh, `Kettle.puff`, each turned its own way), and a simmer is `still`, so a dev server running for hours lets the meadow rest at its slow
   tick like the fireflies; only the first half-minute's boil, a whistle and a snuffed flame keep it awake.
 - Frames come from a `CAMetalDisplayLink`, at the rate the display presents. The render scale adapts to
   hold the frame budget. The scene's per-frame update allocates nothing, and a test checks this.
