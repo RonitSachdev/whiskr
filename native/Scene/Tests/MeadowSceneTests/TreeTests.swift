@@ -313,6 +313,26 @@ private func fromAbove(_ tree: Tree, cells: Int = 96) -> (cover: Float, ragged: 
         CatalogPictures.sheet(pictures, columns: 2, to: "together", in: Self.folder)
     }
 
+    /// The trees among the made things that stand near them: a shed, a tent, a bench, fences and lamps, which light
+    /// the crowns' undersides after dark.
+    @Test(.enabled(if: folder != nil)) func neighbours() {
+        let made: [(String, Float, Float, Float)] = [("tree.oak", 26, -14, 0.3), ("tree.apple", 38, -2, 1.2), ("tree.pine", 44, -24, 2), ("tree.cherry", 14, -30, 0.7),
+                                                     ("tree.birch", 30, -36, 2.4), ("tree.young", 24, 2, 0.5), ("place.shed", 36, -14, 3.6), ("place.tent", 16, -12, 0.9),
+                                                     ("work.bench", 22, -6, 0.2), ("work.lampPost", 30, -8, 0), ("work.lampPost", 20, -22, 0), ("work.lampPost", 40, -32, 0),
+                                                     ("garden.fence", 46, -8, 1.57), ("garden.fence", 46, -14, 1.57), ("garden.fence", 46, -20, 1.57)]
+        let scenery = MeadowScenery(things: made.enumerated().map { k, t in MeadowScenery.Thing(id: t.0, x: t.1, z: t.2, turn: t.3, seed: UInt32(31 + k)) })
+        var pictures: [(String, CGImage)] = []
+        for (mood, time) in [("day", MeadowSettings.TimeOfDay.day), ("night", .night)] {
+            let view = Self.editor(scenery, time: time)
+            if let image = view.renderImage(width: Int(Self.window.width * 2), height: Int(Self.window.height * 2)),
+               let crop = Self.crop(view, image, at: SIMD2(30, -16), w: 640, h: 420, below: 150) { pictures.append(("editor, \(mood)", crop)) }
+            view.stage.camera.setView(CameraView(x: 30, z: -14, distance: 70, pitch: 0.42, bearing: 0.45))
+            view.advance(seconds: 0.1)
+            if let image = view.renderImage(width: 1280, height: 840) { pictures.append(("close, \(mood)", image)) }
+        }
+        CatalogPictures.sheet(pictures, columns: 2, to: "neighbours", in: Self.folder)
+    }
+
     @Test(.enabled(if: folder != nil)) func tray() {
         let view = MeadowView(frame: NSRect(x: 0, y: 0, width: 200, height: 200), mode: .meadow)
         let tiles = Self.ids.compactMap { id in view.portrait(of: [id], pixels: 256, background: MeadowColor(hex: 0xffffff)).map { (id, $0) } }
