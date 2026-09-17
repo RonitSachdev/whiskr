@@ -25,8 +25,10 @@ Nothing has been released yet. This is what the first release will contain.
   › Cats wander when idle (on by default); never with Reduce Motion or the meadow's animation off. The meadow
   still rests between outings. An idle cat is up and about on and off for some minutes before it naps, and
   wakes now and then from a long nap for a stretch and a short outing. Cats use what the meadow offers them:
-  they sit on stumps and boulders, sit and nap in boxes, nap in beds and on cushions, scratch posts and look in
-  bowls, one at a time, and take painted paths and stepping stones when one is near.
+  they sit on stumps and boulders, benches, writing desks and planters' edges, on a shed's doorstep and under a
+  nest box, sit and nap in boxes, nap in beds, on cushions, on bookcases and on a tent's threshold, scratch
+  posts and look in bowls, one at a time, and take painted paths and stepping stones when one is near. They
+  go round lamp posts and fences, and into a fenced garden with a bound over its gate.
 - A workspace of plain terminals has a camp kettle on its blanket instead of an empty cloth: cold at the
   prompt, lit, glowing and steaming while a command runs (it reads at a glance from the sidebar) (calming to a simmer for a dev server), a whistle of steam
   when it ends well, and a little red flag when it fails until you look at that terminal, all from the shell's
@@ -81,7 +83,7 @@ Nothing has been released yet. This is what the first release will contain.
   signpost, a mailbox, a noticeboard, a garden shed and a canvas tent. Made things with colours to choose (the
   bench, the shed's door, the tent, the pot, the cushion, the cat's bed and more) show them on the selection
   bar's Colour button, in the blankets' own gingham shades; the next one placed wears the colour you chose last.
-- Garden lamps for the meadow (Edit Meadow › Workplace): a lamp post that lights by itself after sunset and
+- Garden lamps for the meadow (Edit Meadow › Garden): a lamp post that lights by itself after sunset and
   goes out after sunrise, the lamps coming on one by one with a little stutter as each catches. Lit, each
   pools warm light on the grass round it, lights what stands near it and the rain or snow falling past it, and
   glows softly, more so in fog. Placing one at night shows its light before it is put down. At most 32; never

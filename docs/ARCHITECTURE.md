@@ -404,7 +404,7 @@ boulder, wood and made things stand alone (`SceneryCatalog.alone`: placed, taken
 by one). Made things a cat uses wear the turf as stepping stones do (`SceneryCatalog.treads`: bare under them,
 cut short round them) but are not walked on. Where a cat likes to be at a thing (sit on a stump, nap in a bed,
 scratch at a post) is catalog data, `MeadowScenery.catSpot(of:)`, and `MeadowScenery.Thing.catSpot` gives it
-in the meadow, turned and standing as the thing is; nothing uses it yet.
+in the meadow, turned and standing as the thing is; the roaming cats use it (`Village.places`).
 
 Made things with a palette (`SceneryCatalog.palettes`, name for name the catalog's `colour` choices, colours in
 `Palette`) are built per swatch (`SceneryCatalog.painted`; `Thing.swatch`, `ShapeKey.swatch`), each swatch a
@@ -414,8 +414,10 @@ bed of its own. The shed, tent, bookcase and nest box fade in the way as young t
 its posts at each point and evenly between (as `MeadowCatalog.posts` counts them) and `Fences.parts` gives each
 post, span of rails, gate and gate cap a matrix on the land, drawn instanced in four beds (`Meadow.Laid.run`,
 `Meadow.Run`); moved or turned whole it is placed again in place. Its rules' ground is round its posts and under
-its rails, none across its gate; `MeadowView.crossesFence(from:to:)` tells whatever leads the cats whether a
-straight way passes through it. Laying, joining, straightening, gating and colouring are `MeadowFencing.swift`
+its rails, none across its gate. Its lines across the ground (every span but the gate's, and the gate's) are
+`FenceLines`, made again whenever a fence is laid, moved or taken away (`Meadow.fences`), each run with its bounds
+so a way far from a fence is passed over at once; `MeadowView.crossesFence(from:to:)` asks them whether a straight
+way passes through a span, as the cats' routes do. Laying, joining, straightening, gating and colouring are `MeadowFencing.swift`
 (WhiskrMeadow): `MeadowFenceDraft` (a drag's points a post apart), `fenceLaying` (ends joined within 0.8 units,
 at most 64 points), `layFence`, `straighten`, `toggleGate`, `recolour`, each one `MeadowChange`.
 
@@ -544,7 +546,19 @@ stop drawing when nothing moves.
   (`MeadowView.letCatsDozeOff`).
 - **The meadow's things** (`Village.places`, from `MeadowScenery.Thing.catSpot`): each a place with where the
   cat stands to reach it, a hop up and down for one on or in a thing, one cat at a time (`Roam.spot`), only
-  where the thing stands whole (`Meadow.standing`).
+  where the thing stands whole (`Meadow.standing`). A screen (a tall thing, a tree) hides a cat only when its
+  nearest point to the line of sight is in front of the cat (`Occlusion.inFront`), so a bookcase under a cat
+  napping on it, or a shed behind one on its doorstep, stays solid.
+- **Fences** (`Village.fences`, `Meadow.fences`): a route never steps or is pulled straight across a span
+  (`RoamField.route(… fences:)`, asking `FenceLines.crosses`), and a gate is a way through the grass kept round
+  its posts (cleared square on to it in the field). Where a route crosses a gate it is cut to a corner a run-up
+  before it and one past it (`Village.leapFences`), the leg between one high bound (`Roam.leaps`, the hop's
+  `clearing`: the paws 2.3 units up over the gate's leaf), as a straight way home is over any fence when no route
+  is found. A fence that has made way for a blanket (`Village.stands`, by `Meadow.standing` at its posts) is
+  neither gone round nor leapt. Lamp posts are gone round by their footing, as other things are.
+- **Asked outings** (`MeadowView.sendOut`, the app's checks only): a cat at home sets off at once on one
+  outing, a stop out in the grass reached in bounds, then home (`Roam.asked`); the meadow flow waits on that
+  rather than on a cat choosing one.
 - **Cats out in the grass** (`Roam.swift`). Each cat (`Actor.roam`) rests on its blanket, then sets off on an
   outing of a stop or three; a stop is chosen in its patch (`Village.inPatch`) and reached by a route over a
   grid of half-unit cells round its blanket (`RoamField`: A*, eight ways, corners pulled straight where a

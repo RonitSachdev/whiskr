@@ -377,13 +377,14 @@ can hold (its catalog):
   a corner one post; a run that ends near another's end joins it into one run. One span may hold a gate: a
   cream ledged-and-braced gate with palings, hung on stouter capped posts, so the way through reads among the
   weathered rails. A fence, the shed and the tent are kept off the picnic ground; a fence stops a cat but at
-  its gate.
+  its gate, which a cat crosses with one high bound over its leaf, as cats over a garden gate do.
 - **Colours:** made things with a palette (cushion, yarn, bed, bowl, pot, watering can, bench, mailbox, shed's
   door, tent) wear one of their 4–5 swatches, chosen from the selection bar's Colour popover; the swatches are
   the blankets' gingham colours taken toward the cloth's cream and dulled into clay, and the meadow's woods,
   glazes and cloths, so a sage bench, a sage shed door and a sage cushion are one sage. The next one placed
   wears the colour last chosen for its kind.
-- **Garden lamps** (Workplace shelf): a lamp post as gardens and parks have them, cat-sized (a little over twice
+- **Garden lamps** (Garden shelf: the catalog files the lamp under Workplace, but people look for it with the
+  garden): a lamp post as gardens and parks have them, cat-sized (a little over twice
   a cat's height): a flared cast base, a fluted post with a ladder bar, a four-paned lantern widening upward
   under an overhanging roof and a ball finial, in heritage green (never black: the cats are black). Like real
   ones on a light sensor they light by themselves once dusk has dimmed past sunset (the sun 2° down) and go out
@@ -398,9 +399,9 @@ can hold (its catalog):
   already casts its pool, so a garden can be lit as it is laid out. By day it is an unlit lamp and changes
   nothing else in the picture. Settings › Meadow › Lamps light at night (on) leaves them unlit.
 - **Cats will like them:** each thing that invites a cat says where (sit on a stump, a boulder, a log pile,
-  the log, a bench's seat, a desk's top, in a box, by a bowl, on a shed's doorstep, under a nest box; nap in a
-  bed, on a cushion, on a bookcase's top, in a tent's doorway; scratch at a post). The meadow's cats do not go
-  there yet.
+  the log, a bench's seat, a desk's top, a planter's front board, in a box, by a bowl, on a shed's doorstep,
+  under a nest box; nap in a bed, on a cushion, on a bookcase's top, on a tent's threshold; scratch at a post),
+  and the meadow's cats go there (below, "Idle cats wander").
 
 ### Editing the meadow
 
@@ -622,9 +623,12 @@ between them as it always did; in a meadow of many idle cats, two at most are ou
   an hour) now and then wakes, stretches, takes one short outing and naps again. A meadow of idle cats is
   gently alive over an afternoon and still rests between their bursts.
 - **The meadow's things.** What invites a cat is used, one cat at a time and preferred to bare grass when it
-  is in reach: it hops up to sit on a stump, a boulder, a log pile or the fallen log, sits in a box (and naps in
-  it), naps in a bed or on a cushion, stands up at a scratching post for a scratch (its paws stroking down in
-  turn, never lengthening), and looks in the bowl. Things that make way for a blanket (shrunk near one) are
+  is in reach: it hops up to sit on a stump, a boulder, a log pile or the fallen log, a bench's seat, a writing
+  desk's top or a planter's front board, sits in a box (and naps in it), naps in a bed or on a cushion, hops up
+  to nap on a bookcase's top, curls up on a tent's threshold, sits on a shed's doorstep or under a nest box
+  looking up at it, stands up at a scratching post for a scratch (its paws stroking down in turn, never
+  lengthening), and looks in the bowl. A tall thing it is on or in front of stays solid; it fades only for a
+  cat behind it. Things that make way for a blanket (shrunk near one) are
   not used. The ball of yarn is left as it is: a cat batting it would need the ball to answer, and a ball that
   only rocks in place reads as a mistake, so it stays a picture.
 - **Paths.** Routes and stops take the ground cats like (`MeadowView.walkingEase`): a painted path or stepping
@@ -633,7 +637,9 @@ between them as it always did; in a meadow of many idle cats, two at most are ou
 - **Its own patch.** Within a few cat-lengths of its blanket's edge, nearer its blanket than any other, clear
   of other blankets and every flag, and in view: whose cat it is always reads, and its blanket's flag stays on
   its blanket. It goes round trees, stones, logs, flowers, whatever the meadow holds, the picnic things and
-  other cats, never through them. Helpers do the same round their boss's blanket. For one of the meadow's
+  other cats, never through them; round lamp posts too, and round a fence, through its gate with one high
+  bound over the gate's leaf (a fence that has made way for a blanket is no fence to it). Helpers do the same
+  round their boss's blanket. For one of the meadow's
   things it goes a little further, to where things stand whole.
 - **Work calls it home.** The moment its Claude works, asks, finishes or fails, it turns and runs home, ears
   flat, low fast bounds, and skids to a stop on its blanket, then takes up its pose. Nothing waits for the
