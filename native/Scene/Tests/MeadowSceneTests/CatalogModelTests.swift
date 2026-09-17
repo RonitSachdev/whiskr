@@ -152,17 +152,22 @@ private func model(_ id: String, seed: UInt32 = 1) -> Geometry? {
             let bytes = picture.dataProvider!.data! as Data
             #expect(seen[bytes] == nil, "\(id) pictured as \(seen[bytes] ?? "")")
             seen[bytes] = id
-            // Its subject stands out of its tile: a good share of its middle unlike the tile's colour (a slender
-            // flower less than a solid thing, as the meadow's own daisies).
+            // Its subject reads on its tile: it fills the tile its longer way (a tall pine tall, a wide bed wide), and
+            // is a solid share of the box it fills, not a speck or a scribble (a slender flower less than a solid thing,
+            // as the meadow's own daisies). What is unlike the tile's colour is the subject.
             let pixels = [UInt8](bytes)
-            var unlike = 0
-            for y in 24..<72 {
-                for x in 24..<72 {
+            var unlike = 0, lo = SIMD2(96, 96), hi = SIMD2(-1, -1)
+            for y in 0..<96 {
+                for x in 0..<96 {
                     let i = y * picture.bytesPerRow + x * 4
-                    if abs(Int(pixels[i + 2]) - 0xf4) + abs(Int(pixels[i + 1]) - 0xf1) + abs(Int(pixels[i]) - 0xea) > 60 { unlike += 1 }
+                    guard abs(Int(pixels[i + 2]) - 0xf4) + abs(Int(pixels[i + 1]) - 0xf1) + abs(Int(pixels[i]) - 0xea) > 60 else { continue }
+                    unlike += 1
+                    lo = SIMD2(min(lo.x, x), min(lo.y, y)); hi = SIMD2(max(hi.x, x), max(hi.y, y))
                 }
             }
-            #expect(unlike > 48 * 48 / (id.hasPrefix("flower.") ? 8 : 4), "\(id): \(unlike) of \(48 * 48)")
+            let box = SIMD2(hi.x - lo.x + 1, hi.y - lo.y + 1)
+            #expect(max(box.x, box.y) >= 58, "\(id): spans \(box.x) by \(box.y) of 96")
+            #expect(unlike * (id.hasPrefix("flower.") ? 8 : 4) > box.x * box.y, "\(id): \(unlike) of the \(box.x * box.y) it spans")
         }
     }
 

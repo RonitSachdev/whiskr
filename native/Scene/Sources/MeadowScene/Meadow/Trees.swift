@@ -74,8 +74,8 @@ struct Species {
     static let apple = Species(height: 3, girth: 1.1, limbs: 5, reach: 8.4, clump: 3.2, bark: (0x6b5546, 0x93806c), leaves: (0x3f8236, 0x93c955),
                                crown: Crown(low: 5, high: 10.2, masses: 13, room: 0.85, lobes: 5...6, tall: 0.85, hollow: 0.3), form: .apple)
     /// As tall as an oak, slimmer, and dark blue-green all year.
-    static let pine = Species(height: 31, girth: 1.25, limbs: 0, reach: 4.5, clump: 3.4, bark: (0x6e5446, 0xc8743f), leaves: (0x2e5a42, 0x6f9c68),
-                              crown: Crown(low: 14, high: 33.2, masses: 15, room: 1.25, lobes: 5...7, tall: 0.42), form: .pine)
+    static let pine = Species(height: 31, girth: 1.25, limbs: 0, reach: 4.85, clump: 3.1, bark: (0x6e5446, 0xc8743f), leaves: (0x2e5a42, 0x6f9c68),
+                              crown: Crown(low: 19, high: 33.2, masses: 11, room: 1.55, lobes: 5...7, tall: 0.42), form: .pine)
 }
 
 struct Tree {
@@ -176,16 +176,20 @@ enum Trees {
         let leaves = canopies(lobes, masses, colors: s.leaves, needles: pine, coarse: s.clump < 2.8, grain)
         parts.append(leaves)
         if s.form == .apple { parts += apples(in: lobes, &random) }
-        return tree(parts, masses, leaves, over: top)
+        return tree(parts, masses, lobes, plates: pine, leaves, over: top)
     }
 
     /// The tree's measures from its leaves: how far they spread, the middle of its crown (over the top of its trunk,
-    /// at the masses' height), and the ball round that middle holding most of them.
-    private static func tree(_ parts: [Geometry], _ masses: [Mass], _ leaves: Geometry, over trunk: Vec3) -> Tree {
+    /// at the masses' height), the ball round that middle holding most of them, and each mass as a ball (a plate as far
+    /// as its lobes reach, wider than its own size).
+    private static func tree(_ parts: [Geometry], _ masses: [Mass], _ lobes: [Lobe], plates: Bool, _ leaves: Geometry, over trunk: Vec3) -> Tree {
         let crown = leaves.positions.map { hypot($0.x, $0.z) }.max() ?? 0
         let middle = Vec3(trunk.x, masses.reduce(0) { $0 + $1.at.y } / Float(max(masses.count, 1)), trunk.z)
         let bulk = masses.map { simd_distance($0.at, middle) + $0.size * 0.5 }.max() ?? 0
-        return Tree(shape: Geometry.join(parts), crown: crown, middle: middle, bulk: bulk, masses: masses.map { Ball(center: $0.at, radius: $0.size) })
+        let balls = masses.enumerated().map { m, mass in
+            Ball(center: mass.at, radius: plates ? lobes.filter { $0.mass == m }.map { simd_distance($0.at, mass.at) + $0.size.max() }.max() ?? mass.size : mass.size)
+        }
+        return Tree(shape: Geometry.join(parts), crown: crown, middle: middle, bulk: bulk, masses: balls)
     }
 
     /// A mass's lobes: a larger one in the middle, the rest round it and a little lower, so the mass is domed on

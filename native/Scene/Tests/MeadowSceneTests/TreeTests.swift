@@ -77,7 +77,7 @@ private func fromAbove(_ tree: Tree, cells: Int = 96) -> (cover: Float, ragged: 
             let small = sizes.min() ?? 0, large = sizes.max() ?? 0
             #expect(tree.masses.count >= max(7, species.crown.masses * 4 / 5), "\(id) \(seed): \(tree.masses.count) masses")
             #expect(large >= small * 1.4, "\(id) \(seed): masses from \(small) to \(large)")
-            #expect(large <= tree.crown * 0.5, "\(id) \(seed): a mass of \(large) in a crown of \(tree.crown)")
+            #expect(large <= tree.crown * 0.6, "\(id) \(seed): a mass of \(large) in a crown of \(tree.crown)")
         }
     }
 
@@ -128,6 +128,60 @@ private func fromAbove(_ tree: Tree, cells: Int = 96) -> (cover: Float, ragged: 
     func defaultStream() {
         #expect(StandardMeadow.treeDraws.landmarks.count == StandardMeadow.landmarks.count && StandardMeadow.treeDraws.young.count == 3)
         #expect(StandardMeadow.grown.end == StandardMeadow.end)
+    }
+}
+
+/// Pressing on a tree as the editor shows it: across its picture from the editor's camera, every point where the
+/// tree is drawn (its leaves or its trunk) chooses it, and the grass seen between its masses mostly does not.
+@MainActor
+@Suite(.serialized) struct TreePicking {
+    /// Where a ray meets a triangle, along it (Möller–Trumbore); nil if it misses.
+    static func hit(_ from: Vec3, _ way: Vec3, _ a: Vec3, _ b: Vec3, _ c: Vec3) -> Float? {
+        let e1 = b - a, e2 = c - a, p = simd_cross(way, e2), det = simd_dot(e1, p)
+        guard abs(det) > 1e-7 else { return nil }
+        let t0 = from - a, u = simd_dot(t0, p) / det
+        guard u >= 0, u <= 1 else { return nil }
+        let q = simd_cross(t0, e1), v = simd_dot(way, q) / det
+        guard v >= 0, u + v <= 1 else { return nil }
+        let t = simd_dot(e2, q) / det
+        return t > 0 ? t : nil
+    }
+
+    @Test("from the editor's camera, a press where a tree is drawn chooses it; on the grass between its masses, mostly not", arguments: kinds)
+    func pressing(_ id: String) throws {
+        let view = TreePictures.editor(TreePictures.lone(id))
+        let stage = view.stage, m = try #require(stage.meadow)
+        // The tree as drawn: a landmark tree's own mesh, or a young tree's in its bed.
+        let (shape, matrix): (Geometry, Mat4) = m.treeShapes.isEmpty
+            ? (m.plants[m.beds[0].plant].shape, m.beds[0].matrices[0])
+            : (m.treeShapes[0].shape, .translation(m.treeShapes[0].at) * m.treeShapes[0].pose)
+        let world = shape.positions.map { matrix.point($0) }
+        let onScreen = world.map { stage.screen($0) }
+        let lo = onScreen.reduce(Vec2(repeating: .infinity)) { simd_min($0, Vec2($1.x, $1.y)) }, hi = onScreen.reduce(Vec2(repeating: -.infinity)) { simd_max($0, Vec2($1.x, $1.y)) }
+        let v = stage.camera.viewport
+        let inverse = (stage.camera.projection(aspect: v.x / max(v.y, 1)) * stage.camera.viewMatrix).inverse
+        func unproject(_ s: Vec2, _ z: Float) -> Vec3 {
+            let h = inverse * Vec4(s.x / v.x * 2 - 1, 1 - s.y / v.y * 2, z, 1)
+            return Vec3(h.x, h.y, h.z) / h.w
+        }
+        var drawn = 0, drawnPicked = 0, grass = 0, grassPicked = 0
+        let steps = 28
+        for row in 0..<steps {
+            for column in 0..<steps {
+                let s = lo + (hi - lo) * Vec2((Float(column) + 0.5) / Float(steps), (Float(row) + 0.5) / Float(steps))
+                let near = unproject(s, 0), way = simd_normalize(unproject(s, 1) - near)
+                var t = 0
+                var meets = false
+                while t + 2 < shape.indices.count, !meets {
+                    meets = Self.hit(near, way, world[Int(shape.indices[t])], world[Int(shape.indices[t + 1])], world[Int(shape.indices[t + 2])]) != nil
+                    t += 3
+                }
+                let picked = stage.pickScenery(s) == 0
+                if meets { drawn += 1; if picked { drawnPicked += 1 } } else { grass += 1; if picked { grassPicked += 1 } }
+            }
+        }
+        #expect(drawn > 20 && Float(drawnPicked) >= Float(drawn) * 0.92, "\(id): \(drawnPicked) of \(drawn) drawn points choose it")
+        #expect(Float(grassPicked) <= Float(grass) * 0.25, "\(id): \(grassPicked) of \(grass) points of grass choose it")
     }
 }
 

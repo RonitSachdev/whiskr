@@ -510,17 +510,25 @@ final class Meadow {
         func along(_ s: Screen, _ count: Int, _ radius: Float) -> [Ball] {
             (0..<count).map { k in Ball(center: s.from + (s.to - s.from) * (Float(k) + 0.5) / Float(count), radius: radius) }
         }
+        // A tree's trunk from its foot up, and its masses of leaves as drawn (`m`), so a gap between them is not
+        // the tree; its crown's ball if it is not grown.
+        func tree(_ s: Screen, _ m: Mat4, _ key: ShapeKey, trunk count: Int, _ radius: Float) -> [Ball] {
+            let foot = Ball(center: s.from + simd_normalize(s.to - s.from) * radius, radius: radius)
+            let scale = max(simd_length(Vec3(m.columns.0.x, m.columns.0.y, m.columns.0.z)), simd_length(Vec3(m.columns.2.x, m.columns.2.y, m.columns.2.z)))
+            let leaves = grove.trees[key].map { $0.masses.map { Ball(center: m.point($0.center), radius: $0.radius * scale) } }
+            return (leaves ?? [Ball(center: s.crown ?? s.to, radius: s.crownSize)]) + [foot] + along(s, count, radius)
+        }
         switch laid[i] {
         case .none:
             return []
         case .tree(let t):
-            let s = screens[treeShapes[t].screen]
-            return [Ball(center: s.crown ?? s.to, radius: s.crownSize)] + along(s, 3, s.thick * 1.3)
+            let s = screens[treeShapes[t].screen], shape = treeShapes[t]
+            return tree(s, .translation(shape.at) * shape.pose, shape.key, trunk: 3, s.thick * 1.3)
         case .log(let l):
             return along(screens[logs[l].screen], 5, 1.5)
         case .bed(let b, let slot):
             let m = beds[b].matrices[slot]
-            if let s = beds[b].screens?[slot] { return [Ball(center: screens[s].crown ?? screens[s].to, radius: screens[s].crownSize)] + along(screens[s], 2, screens[s].thick * 1.5) }
+            if let s = beds[b].screens?[slot] { return tree(screens[s], m, ShapeKey(id: thing.id, seed: thing.seed), trunk: 2, screens[s].thick * 1.5) }
             let top = plants[beds[b].plant].top, size = max(thing.size.x, thing.size.y, thing.size.z)
             let base = SceneryRules.footprint(of: thing).first?.r ?? 0.3
             return [Ball(center: m.point(Vec3(0, top.y * 0.5, 0)), radius: max(top.y * 0.5 * size, base * 1.1))]
