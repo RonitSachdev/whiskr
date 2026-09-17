@@ -287,10 +287,13 @@ Nothing has been released yet. This is what the first release will contain.
   as well as close up, and what did not read as itself was remade after the real thing: moss on the fallen log,
   the mossy stone, the boulder, the stump and the log pile grows in colonies of tufted cushions with the wood or
   stone between them, not smooth green pads; a fern is a star of feathery fronds, not a mat of leaves; a clover
-  patch is a mat of trefoils with white heads above it, not a few white specks; a log pile reads as logs from
-  above, not a dark heap; a camp kettle's steam is soft wisps that thin out, warm in its flame's light at night,
+  patch is a mat of trefoils with white heads above it, not a few white specks; a log pile is a tidy stacked
+  woodpile with its sawn ends to the front, not a dark heap; stepping stones are flat grey slabs that read as a
+  path, not pebbles; a camp kettle's steam is soft wisps that thin out, warm in its flame's light at night,
   not a column of blue balls. A cat out in the grass shows both eyes or neither, never one on the side of its
-  head (at a scratching post, at its bowl, running home). The meadow's models come to fewer triangles than
+  head (at a scratching post, at its bowl, running home), and no cat at a thing shows you its back as the thing
+  is first placed: it eats from its bowl three-quarters front and stands side on at a post or a nest box, which
+  no longer fades for a cat beside it. The meadow's models come to fewer triangles than
   before (a lupin's florets, a log pile's sawn ends and a ball of yarn's wraps in fewer faces).
 
 - Cats keep their eyes round whenever they are awake: no more half-shut look while washing, stretching,

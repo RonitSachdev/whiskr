@@ -408,7 +408,9 @@ or a rooted thing in a bed of instances (`Flora`'s plants; `Meadow/Catalog/`: `S
 own top), each with its sway, whether butterflies settle on it and the ground it stands on. Plants,
 mushrooms and stones are brushed and swept in numbers and read out as clumps (`SceneryRules.isSmall`); a
 boulder, wood and made things stand alone (`SceneryCatalog.alone`: placed, taken by a click and read out one
-by one). Made things a cat uses wear the turf as stepping stones do (`SceneryCatalog.treads`: bare under them,
+by one). A tall made thing's fade (`Meadow.madeScreen`) is its body as a ball, round its middle, or for a slender one
+(a nest box on its post) round its top and its own size, so a cat beside the post does not fade it. Made things
+a cat uses wear the turf as stepping stones do (`SceneryCatalog.treads`: bare under them,
 cut short round them) but are not walked on. Where a cat likes to be at a thing (sit on a stump, nap in a bed,
 scratch at a post) is catalog data, `MeadowScenery.catSpot(of:)`, and `MeadowScenery.Thing.catSpot` gives it
 in the meadow, turned and standing as the thing is; the roaming cats use it (`Village.places`).

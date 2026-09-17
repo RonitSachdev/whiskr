@@ -377,7 +377,9 @@ can hold (its catalog):
   sizes, the wood or stone showing between them and round its ragged edge (the trees' foliage at a smaller
   scale); a fern is a star of long, feathery fronds of many narrow, lobed leaflets in a deeper blue-green than
   the grass; a clover patch is a dark mat of trefoils held up into the light with white heads above it; a log
-  pile's bark is weathered pale on top so it reads as logs, not a dark heap; a kettle's steam is soft, uneven
+  pile is a tidy stacked woodpile, wider than it is tall, short logs in rows on two bearers between end stakes,
+  their pale sawn ends all making its front and their weathered bark its top, never a dark heap or a cone; a
+  kettle's steam is soft, uneven
   wisps that thin out within a kettle's height or so, lit warm by its flame after dark, never a string of balls
   and never the moon's blue on grey.
 - **What the meadow holds today:** oak, birch, cherry, young tree, apple tree (apples among its leaves,
@@ -422,8 +424,10 @@ can hold (its catalog):
   nothing else in the picture. Settings › Meadow › Lamps light at night (on) leaves them unlit.
 - **Cats will like them:** each thing that invites a cat says where (sit on a stump, a boulder, a log pile,
   the log, a bench's seat, a desk's top, a planter's front board, in a box, by a bowl, on a shed's doorstep,
-  under a nest box; nap in a bed, on a cushion, on a bookcase's top, on a tent's threshold; scratch at a post),
-  and the meadow's cats go there (below, "Idle cats wander").
+  beside a nest box's post; nap in a bed, on a cushion, on a bookcase's top, on a tent's threshold; scratch at a
+  post), and the meadow's cats go there (below, "Idle cats wander"). As a thing is first placed, no cat at it
+  shows the editor or the sidebar its back: on or in a thing it faces you, at a bowl it eats from behind and to
+  one side (seen three-quarters front over the bowl), at a post or a nest box it is side on and a little in front.
 
 ### Editing the meadow
 
@@ -508,8 +512,11 @@ most of the time.
   person lays them (its long side square to the path, give or take a little, a hair off the line, a little
   wider than deep, its own size and turn), with a strip of grass between each two and the turf trodden short
   round them; one that would stand too close to something is left out and the row goes on. The row is one
-  step ("Lay 9 Stepping Stones") and is chosen once laid (⇧ keeps stones armed for another). They are the
-  worktrees' own stepping stone, its top levelled as a laid stone's is.
+  step ("Lay 9 Stepping Stones") and is chosen once laid (⇧ keeps stones armed for another). Each is a flat
+  slab of cool grey stone, squarish with worn corners and a slightly irregular edge, nearly as deep as the
+  stride along the path and longer across it, so a row reads from the editor's height as a garden path of
+  slabs with a strip of trodden turf between each two, not as pebbles. The stride, the catalog id and the
+  ground it stands on are the file format's and the rules' and are unchanged; only how it is drawn is.
 - **The Brush** paints the plants of the Flowers shelf, or the **Wildflowers** mix (the meadow's own:
   daisies, buttercups, lupins and poppies in the shares it grows them). Its circle lies on the ground under the
   pointer. A stroke drops a clump every half radius: a loose clump of one kind, thicker toward its middle,
@@ -647,8 +654,8 @@ between them as it always did; in a meadow of many idle cats, two at most are ou
 - **The meadow's things.** What invites a cat is used, one cat at a time and preferred to bare grass when it
   is in reach: it hops up to sit on a stump, a boulder, a log pile or the fallen log, a bench's seat, a writing
   desk's top or a planter's front board, sits in a box (and naps in it), naps in a bed or on a cushion, hops up
-  to nap on a bookcase's top, curls up on a tent's threshold, sits on a shed's doorstep or under a nest box
-  looking up at it, stands up at a scratching post for a scratch (its paws stroking down in turn, never
+  to nap on a bookcase's top, curls up on a tent's threshold, sits on a shed's doorstep or beside a nest box's
+  post looking up at it, stands up at a scratching post for a scratch (its paws stroking down in turn, never
   lengthening), and looks in the bowl. A tall thing it is on or in front of stays solid; it fades only for a
   cat behind it. Things that make way for a blanket (shrunk near one) are
   not used. The ball of yarn is left as it is: a cat batting it would need the ball to answer, and a ball that
