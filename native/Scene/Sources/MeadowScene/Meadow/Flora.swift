@@ -299,8 +299,8 @@ enum Flora {
                     // Out to the side, a little forward, the leaflets drooping as the frond arches.
                     let reach = simd_normalize(side * s + along * 0.22 - up * 0.1)
                     let x = reach, z = simd_normalize(simd_cross(x, up)), y = simd_cross(z, x)
-                    let m = Mat4(columns: (Vec4(x * length, 0), Vec4(y * length * 0.3, 0), Vec4(z * length * 0.3, 0), Vec4(at, 1)))
-                    parts.append(pinna.applied(m).painted(0x3d7a2e, 0x93c65c))
+                    let m = Mat4(columns: (Vec4(x * length, 0), Vec4(y * length * 0.36, 0), Vec4(z * length * 0.36, 0), Vec4(at, 1)))
+                    parts.append(pinna.applied(m).painted(0x2c6a38, 0x82bd66))
                 }
             }
         }
