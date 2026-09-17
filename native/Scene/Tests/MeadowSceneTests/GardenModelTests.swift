@@ -93,9 +93,9 @@ func surface(_ shape: Geometry, under p: Vec2, below: Float) -> Float {
         #expect(m.canopy(0) == nil, "a shed has no crown to ring")
     }
 
-    @Test("things that invite a cat say where: on a bench's seat, a desk's top, a bookcase's top, a shed's doorstep, a tent's doorway, under a nest box")
+    @Test("things that invite a cat say where: on a bench's seat, a desk's top, a planter's front board, a bookcase's top, a shed's doorstep, a tent's threshold, under a nest box")
     func catSpots() throws {
-        for id in ["work.bench", "work.desk", "work.bookshelf"] {
+        for id in ["work.bench", "work.desk", "garden.planter", "work.bookshelf"] {
             let spot = try #require(MeadowScenery.catSpot(of: id))
             let shape = try #require(model(id))
             let under = surface(shape, under: Vec2(spot.at.x, spot.at.z), below: spot.at.y + 0.3)

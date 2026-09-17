@@ -296,15 +296,18 @@ final class Meadow {
         bakeLight()
     }
 
-    /// One fence as it was laid: each part's bed and slot (in `Fences.parts`' order), where its posts stand and
-    /// the spans a cat cannot pass (its gate's aside).
+    /// One fence as it was laid: each part's bed and slot (in `Fences.parts`' order), where its posts stand, and
+    /// the lines it draws across the ground (the spans a cat cannot pass, and its gate).
     struct Run {
         var parts: [(bed: Int, slot: Int)]
         var kinds: [Fences.Part]
         var posts: [Vec3]
-        var barriers: [(Vec2, Vec2)]
+        var lines: FenceLines.Run
     }
     private(set) var runs: [Run] = []
+    /// Every fence's lines together, for whatever leads a cat about (`crossesFence`, the cats' routes): made again
+    /// whenever a fence is laid, moved or taken away.
+    private(set) var fences = FenceLines()
 
     /// Lays `scenery`: every thing the scene can draw, within its limits (`MeadowScenery.Limits`), in its
     /// order. Returns the flowers' tops, where butterflies and bees settle. The ground's map is baked again
@@ -433,6 +436,7 @@ final class Meadow {
             let changed = Set(oldTreads).symmetricDifference(Set(treads)).compactMap(GroundMap.Region.init(tread:))
             if let first = changed.first { repaint(changed.dropFirst().reduce(first) { $0.union($1) }) }
         }
+        fences = FenceLines(runs.map(\.lines))
         bakeLight()
         sceneryVersion += 1
         return blooms
@@ -461,7 +465,7 @@ final class Meadow {
         var shaded: GroundMap.Region?
         var worn: GroundMap.Region?
         var bloomsMoved = false
-        var obstaclesMoved = false
+        var obstaclesMoved = false, fencesMoved = false
         for i in changed {
             let thing = new.things[i]
             switch laid[i] {
@@ -521,8 +525,10 @@ final class Meadow {
                 runs[r].kinds = kinds
                 for (part, at) in zip(Fences.parts(thing.points, gate: thing.gate), parts) { beds[at.bed].matrices[at.slot] = part.matrix }
                 obstaclesMoved = true
+                fencesMoved = true
             }
         }
+        if fencesMoved { fences = FenceLines(runs.map(\.lines)) }
         if obstaclesMoved {
             obstacles = zip(new.things, laid).flatMap { thing, placed in
                 guard placed != .none, let kind = SceneryCatalog.kinds[thing.id] else { return [Clearing]() }
@@ -578,26 +584,14 @@ final class Meadow {
         return Screen(from: m.position, to: m.point(Vec3(0, plant.top.y, 0)), thick: reach * 0.6, crown: middle, crownSize: max(reach, plant.top.y * 0.5) * 0.85)
     }
 
-    /// A fence as it stands (its parts are laid by the caller): where its posts are on the land, and the spans a
-    /// cat cannot pass, every one but its gate's.
+    /// A fence as it stands (its parts are laid by the caller): where its posts are on the land, and its lines.
     static func runPlace(_ thing: MeadowScenery.Thing) -> Run {
         let (posts, spans) = Fences.layout(thing.points, gate: thing.gate)
-        return Run(parts: [], kinds: [], posts: posts.map { Vec3($0.at.x, Land.height($0.at.x, $0.at.y), $0.at.y) },
-                   barriers: spans.filter { !$0.gate }.map { (posts[$0.from].at, posts[$0.to].at) })
+        return Run(parts: [], kinds: [], posts: posts.map { Vec3($0.at.x, Land.height($0.at.x, $0.at.y), $0.at.y) }, lines: FenceLines.Run(posts, spans))
     }
 
-    /// Whether going straight from `a` to `b` on the ground crosses a fence (through any span but a gate's, or
-    /// within a post's reach of one).
-    func crossesFence(_ a: Vec2, _ b: Vec2) -> Bool {
-        func cross(_ o: Vec2, _ p: Vec2, _ q: Vec2) -> Float { (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x) }
-        for run in runs {
-            for (c, d) in run.barriers {
-                let d1 = cross(c, d, a), d2 = cross(c, d, b), d3 = cross(a, b, c), d4 = cross(a, b, d)
-                if (d1 > 0) != (d2 > 0), (d3 > 0) != (d4 > 0) { return true }
-            }
-        }
-        return false
-    }
+    /// Whether going straight from `a` to `b` on the ground crosses a fence: through any of its spans but a gate's.
+    func crossesFence(_ a: Vec2, _ b: Vec2) -> Bool { fences.crosses(a, b) }
 
     /// Where a fallen log lies, and its screen along it.
     private static func logPlace(_ thing: MeadowScenery.Thing) -> (matrix: Mat4, screen: Screen) {

@@ -191,3 +191,85 @@ enum Fences {
         return Plant(shape: Clay.thrown(profile, wood.body, wood.top, around: 14, steps: 14).roughened(0.9), top: v(0, 0.41, 0))
     }()
 }
+
+/// The lines the meadow's fences draw across its ground (x, z), for whatever leads a cat about: the spans it cannot
+/// pass and the gates it can (`Meadow.crossesFence`, the cats' routes, `Roam.swift`). Each run keeps its bounds, so a
+/// way far from a fence is passed over at once. Made when the scenery is laid; asked of without allocating.
+struct FenceLines {
+    struct Line {
+        var a: Vec2
+        var b: Vec2
+        /// Its middle, and the way across it (a unit vector, either way).
+        var middle: Vec2 { (a + b) / 2 }
+        var across: Vec2 { let d = simd_normalize(b - a); return Vec2(-d.y, d.x) }
+    }
+
+    /// One run's lines: every span but the gate's, and the gate's (if it has one), within their bounds.
+    struct Run {
+        var barriers: [Line]
+        var gate: Line?
+        var low: Vec2
+        var high: Vec2
+
+        init(_ posts: [Fences.Post], _ spans: [Fences.Span]) {
+            barriers = spans.filter { !$0.gate }.map { Line(a: posts[$0.from].at, b: posts[$0.to].at) }
+            gate = spans.first(where: \.gate).map { Line(a: posts[$0.from].at, b: posts[$0.to].at) }
+            low = posts.map(\.at).reduce(Vec2(repeating: .infinity)) { simd_min($0, $1) }
+            high = posts.map(\.at).reduce(Vec2(repeating: -.infinity)) { simd_max($0, $1) }
+        }
+    }
+
+    private(set) var runs: [Run] = []
+
+    init(_ runs: [Run] = []) { self.runs = runs }
+
+    var isEmpty: Bool { runs.isEmpty }
+
+    /// Whether going straight from `p` to `q` crosses any span but a gate's (of those `standing` says stand: a
+    /// fence makes way for a blanket come near, as every rooted thing does).
+    func crosses(_ p: Vec2, _ q: Vec2, standing: (Line) -> Bool = { _ in true }) -> Bool {
+        let low = simd_min(p, q), high = simd_max(p, q)
+        for run in runs where Self.overlaps(run, low, high) {
+            for line in run.barriers where Self.cut(p, q, line) != nil && standing(line) { return true }
+        }
+        return false
+    }
+
+    /// Whether any fence reaches into the square `half` each way round `middle`.
+    func near(_ middle: Vec2, half: Float) -> Bool {
+        runs.contains { Self.overlaps($0, middle - Vec2(repeating: half), middle + Vec2(repeating: half)) }
+    }
+
+    /// The first fence line (a span or a gate, of those standing) going straight from `p` to `q` crosses, nearest
+    /// `p`: the line, where it is crossed, and whether it is a gate.
+    func firstCrossing(_ p: Vec2, _ q: Vec2, standing: (Line) -> Bool = { _ in true }) -> (line: Line, at: Vec2, gate: Bool)? {
+        let low = simd_min(p, q), high = simd_max(p, q)
+        var best: (line: Line, at: Vec2, gate: Bool, t: Float)?
+        for run in runs where Self.overlaps(run, low, high) {
+            for line in run.barriers {
+                if let t = Self.cut(p, q, line), t < best?.t ?? .infinity, standing(line) { best = (line, p + (q - p) * t, false, t) }
+            }
+            if let line = run.gate, let t = Self.cut(p, q, line), t < best?.t ?? .infinity, standing(line) { best = (line, p + (q - p) * t, true, t) }
+        }
+        return best.map { ($0.line, $0.at, $0.gate) }
+    }
+
+    /// Every gate within a square `half` each way round `middle`.
+    func gates(near middle: Vec2, half: Float, _ body: (Line) -> Void) {
+        let low = middle - Vec2(repeating: half), high = middle + Vec2(repeating: half)
+        for run in runs where Self.overlaps(run, low, high) { if let gate = run.gate { body(gate) } }
+    }
+
+    private static func overlaps(_ run: Run, _ low: Vec2, _ high: Vec2) -> Bool {
+        run.low.x <= high.x && run.high.x >= low.x && run.low.y <= high.y && run.high.y >= low.y
+    }
+
+    /// Where along `p`→`q` (0…1) it cuts `line`, nil when it does not.
+    private static func cut(_ p: Vec2, _ q: Vec2, _ line: Line) -> Float? {
+        func cross(_ u: Vec2, _ v: Vec2) -> Float { u.x * v.y - u.y * v.x }
+        let r = q - p, s = line.b - line.a, d = cross(r, s)
+        guard abs(d) > 1e-9 else { return nil }
+        let t = cross(line.a - p, s) / d, u = cross(line.a - p, r) / d
+        return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : nil
+    }
+}

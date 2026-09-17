@@ -53,7 +53,7 @@ final class Stage {
             let meadow = Meadow()
             let village = Village()
             village.obstacles = meadow.obstacles
-            village.lay(meadow.scenery, shade: meadow.shade)
+            village.lay(meadow.scenery, shade: meadow.shade, fences: meadow.fences)
             // Cats prefer the ground they like walking on: a painted path, stepping stones.
             village.liking = { [unowned meadow] p in meadow.walkingEase(p.x, p.y) }
             self.meadow = meadow
@@ -232,7 +232,7 @@ final class Stage {
         guard let meadow, let village else { return }
         meadow.show(scenery)
         village.obstacles = meadow.obstacles
-        village.lay(meadow.scenery, shade: meadow.shade)
+        village.lay(meadow.scenery, shade: meadow.shade, fences: meadow.fences)
     }
 
     func show(_ world: MeadowWorld) {

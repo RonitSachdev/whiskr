@@ -4,11 +4,15 @@ import simd
 // What the app's checks and pictures read and set of the cats' lives off their blankets and the kettles
 // (`Roam.swift`, `Kettle.swift`); a shipped app never calls these.
 extension MeadowView {
-    /// Every cat with nothing to do sets off now, rather than after its rest.
-    @_spi(Diagnostics) public func sendCatsOut() {
-        guard let village = stage.village else { return }
-        for plot in village.plots { for actor in plot.actors.values where actor.roam.phase == .home { actor.roam.rested = village.clock } }
+    /// Asks one cat for an outing now, rather than after its rest and of its own choosing: a stop out in the grass
+    /// off its blanket, reached in bounds (so it hops), then home. It sets off once it is at leisure on its blanket.
+    /// False for no such cat, or one already out.
+    @_spi(Diagnostics) public func sendOut(_ item: MeadowItem) -> Bool {
+        guard case .cat(let b, let a) = item, let village = stage.village, let actor = village.actor(b, a), actor.roam.phase == .home else { return false }
+        actor.roam.asked = true
+        actor.roam.rested = village.clock
         wake()
+        return true
     }
 
     /// Every cat at leisure dozes off now rather than after its minutes up and about.

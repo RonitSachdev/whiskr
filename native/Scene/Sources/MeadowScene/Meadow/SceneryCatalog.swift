@@ -143,13 +143,16 @@ enum SceneryCatalog {
         "stone.boulder": .init(.sit, at: Vec3(-0.2, 1.62, 0), toward: Vec2(0, 1)),
         "wood.logPile": .init(.sit, at: Vec3(0, 1.73, 0.5), toward: Vec2(0, 1)),
         "wood.fallenLog": .init(.sit, at: Vec3(0, 2.02, 0.5), toward: Vec2(0, 1)),
-        // On the bench's seat, on the desk among its things (cats will), napping on the bookcase's top, on the
-        // shed's doorstep, curled in the tent's doorway, and sitting under the nest box looking up at it.
+        // On the bench's seat, on the desk among its things (cats will), on the planter's front board between its
+        // lettuces and marigolds, napping on the bookcase's top, on the shed's doorstep, curled on the tent's
+        // threshold (its canvas is solid clay: the dark doorway is drawn on its front), and sitting under the nest
+        // box looking up at it.
         "work.bench": .init(.sit, at: Vec3(-0.9, 1.1, 0.05), toward: Vec2(0, 1)),
         "work.desk": .init(.sit, at: Vec3(-0.15, 1.36, 0.2), toward: Vec2(0, 1)),
+        "garden.planter": .init(.sit, at: Vec3(0.45, 0.88, 0.69), toward: Vec2(0, 1)),
         "work.bookshelf": .init(.nap, at: Vec3(-0.45, 3.3, 0), toward: Vec2(0, 1)),
         "place.shed": .init(.sit, at: Vec3(0, 0, 2.55), toward: Vec2(0, 1)),
-        "place.tent": .init(.nap, at: Vec3(0, 0.02, 1.5), toward: Vec2(0, 1)),
+        "place.tent": .init(.nap, at: Vec3(0, 0, 3.3), toward: Vec2(0, 1)),
         "garden.birdhouse": .init(.sit, at: Vec3(0, 0, 1.3), toward: Vec2(0, -1)),
     ]
 
