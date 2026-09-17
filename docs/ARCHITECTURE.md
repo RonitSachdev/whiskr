@@ -271,7 +271,7 @@ Code does.
 | Session host | `app.whiskr.Whiskr.host` (executable `whiskr-host`) |
 | `paw` | `app.whiskr.Whiskr.paw` |
 | Theme file type | `app.whiskr.theme` (`.whiskrtheme`) |
-| Meadow file type | `app.whiskr.meadow` (`.whiskrmeadow`, exported, conforms to `public.json` and `public.data`; "Whiskr Meadow", role Viewer, rank Owner; its Finder icon the system's page with the `MeadowDocument` badge, drawn by `Scripts/make-meadow-icon.swift`) |
+| Meadow file type | `app.whiskr.meadow` (`.whiskrmeadow`, exported, conforms to `public.json` and `public.data`; "Whiskr Meadow", role Viewer, rank Owner in Release builds and None in Debug and profile builds (`WHISKR_DOCUMENT_RANK`, project.yml and Profile.xcconfig; the theme type likewise), so a build made for testing never becomes the files' default handler; opened in place, never copied before reading; its Finder icon the system's page with the `MeadowDocument` badge, drawn by `Scripts/make-meadow-icon.swift`) |
 | Pane environment | `WHISKR_PANE`, `WHISKR_BIN`, `WHISKR_HOOKS`, `WHISKR_ZDOTDIR`, `WHISKR_XDG_DATA_DIRS`, `PAW_ID`, `PAW_SOCKET`, `PAW_PARENT`, `PAW_NAME`, `PAW_WORKTREES`, `PAW_TASK` (a `paw run` task on its way to Claude); `TERM_PROGRAM=Whiskr` |
 
 ## git
@@ -491,6 +491,23 @@ else in it. A chosen tree is lit a little brighter in its own colours (`MeadowDr
 round its crown as well as its trunk; the selection's bar hangs under the
 rings (`MeadowView.screenRect(ofGroundMarks:)`). The camera frames the picnic ground above the tray
 (`MeadowView.editingCover`, the camera's bottom cover).
+
+**The filter, the bar's colours, VoiceOver and Help.** The tray's filter field is an AppKit `NSTextField`
+(`TrayFilterField`, its delegate taking Return, Tab, ↓, ⇧Tab and Esc), so ⌘F gives it the keyboard in the same
+turn of the main loop (a SwiftUI `@FocusState` arrived a turn later, and a key typed meanwhile went to the
+meadow); a field not drawn yet takes it as it comes (`EditorTray.wantsFilter`). The selection bar's Colour opens
+a row of swatches inside the bar (`SelectionBarModel.paletteOpen`; the bar is placed again at its new size), not
+a SwiftUI popover: a popover is a window of its own whose glass the window server draws, which a picture of the
+window cannot show and whose look the theme does not reach. Each thing VoiceOver reads while editing is a
+`SceneryAccessibilityElement` whose label and selected state are closures read when asked, so a lamp is "lit"
+by night (`MeadowView.lampsAreLit`), a fence says its gate and a thing its colour as they are now, without the
+meadow's elements being made again. The first hint is the top note's last case, shown while
+`meadowEditorHintSeen` (the app's defaults) is unset. Help's editor pages are `HelpMeadowEditor.swift`: its key
+table is `HelpEditorKeys.rows`, read from `KeyTable` (the `.meadowEditor` and `.editorTray` keys and the menus'
+keys the editor uses, one line per thing done), with a localised line per command and the editor flow failing
+on any key without one (`HelpEditorKeys.unsaid`); `HelpSearch` (`NSUserInterfaceItemSearching`, registered with
+the Help menu) gives the Help menu's search field its topics, and `HelpWindowController.show(_:)` scrolls the
+page to one.
 
 ## Rendering the meadow
 

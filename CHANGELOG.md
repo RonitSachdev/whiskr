@@ -43,76 +43,56 @@ Nothing has been released yet. This is what the first release will contain.
   with small apples among its leaves; a Scots pine carries flat dark plates high on its bare trunk. They cost
   less to draw than before (the apple tree and the pine about half), and the Default meadow keeps every
   flower, stone and cat where it was.
-- Edit Meadow (View › Edit Meadow, ⌃⌘E; also the grass's menu, Settings › Meadow and Go to): the
-  terminals slide away and the meadow fills the window, seen from above. Choose its trees, flowers, stones
-  and the log with a click, ⇧-click, ⌘-click (all of a kind nearby) or a marquee; drag to move them (⌥-drag
-  copies), with a ring under each and, where one cannot stand, a dashed ring and the reason by the pointer;
-  arrows nudge, R turns, [ and ] size living things, ⌘D duplicates, ⌫ deletes, and ⌘C, ⌘X and ⌘V copy and
-  paste. A bar floats over what is chosen; `,` `.` and `0` (or View › Editor View, or the grass's menu) turn
-  the view, face it north and frame the workspaces again. Every gesture is one
-  step of ⌘Z and ⇧⌘Z. Everything is saved as you go: the first change makes "My Meadow", a copy of the
-  Default, which never changes, and Revert to Default (the meadow's name in the top bar, or Settings ›
-  Meadow) shows it again. Done (⌘↩) or Esc brings the window back exactly as it was; terminals, Claudes and
-  alerts carry on throughout, and ⌘J, ⌘T and choosing anything on the right leave editing first.
-- The meadow's editor has a tray along its bottom edge: Select (V), Brush (B), Erase (E) and Ground (G), the
-  shelf of everything the meadow can hold, each pictured by the meadow itself in its clay, by category (1–4) or by
-  filter (⌘F), folded to one row with ⌥⌘T. Click a thing and its ghost follows the pointer, greyed with the
-  reason where it cannot stand; a click places it (⇧-click places more), or drag it straight out of the tray;
-  each one grows its own size, lean and shape (no two oaks alike) and settles into the meadow. The Brush
-  plants loose clumps of flowers (or the meadow's own wildflower mix) along a stroke, never an even sprinkle,
-  with a size and a density; ⌥-drag clears. The Eraser takes away what you click, or sweeps plants and stones
-  (one kind, if you like) and never a tree. Every placing, stroke and sweep is one step of ⌘Z. The tray says
-  how full the meadow is before a cap is reached (5,000 things, 48 trees, 120 tall things) and why at one.
-  All of it works from the keyboard alone (Tab to the shelf, Return to arm, arrows to move, Return to place)
-  and with VoiceOver.
-- A chosen tree in the editor is ringed round its crown's shade as well as its trunk and lit a little
-  brighter in its own colours (no longer tinted blue), and the bar for what is chosen hangs just under its
-  rings instead of high above the crown.
-- The editor's Ground tool (G): paint paths of worn earth (the grass closing in over their edges, so they
-  look walked rather than drawn), lawn mown short with the mower's stripes, and soil for flower beds, and
-  bring the wild grass back with Wild Grass or ⌥-drag. The brush follows the ground, `[` and `]` or the
-  slider size it, each stroke is one step of ⌘Z, and the meadow keeps its frame rate while you paint. Plants
-  are left as they are; blankets always lie on their own ground. The painting is saved in the meadow's file.
-- Stepping stones: on the Stones & Wood shelf; a click places one, a drag lays a row a stride apart, each
-  set its own way across the path with the turf trodden short round it, as one step.
-- More to make the meadow theirs, each modelled on the real thing in the meadow's clay: an apple tree with
-  apples among its leaves (a few windfalls in the grass) and a tall Scots pine, orange high on its trunk; cornflowers,
-  foxgloves, ferns and clover for the Brush; a boulder to sit on, a tree stump with its rings and a log
-  pile; a floor cushion; and Cat Things: a cardboard box with its flaps open, a scratching post, a ball of
-  yarn, a cat bed and a food bowl, the grass trodden short round them. The shelf scrolls with a mouse's
-  wheel as well as a trackpad, the filter finds things by other names too ("firewood", "zabuton"; in
-  Japanese, hiragana or katakana), and the Eraser's sweep leaves made things, wood and boulders alone (a
-  click takes one).
-- A garden and a workplace to fill it: a wooden fence laid by dragging (a post every 2.5 units, rails
-  following the land, its end joining a fence's near it into one run; ⌥ lays it straight, a click a short one,
-  and Return at each corner lays one with the keys), with Straighten and Add Gate on its bar; a flower pot, a
-  planter box, a watering can, a birdhouse and a straw beehive; a low writing desk, a bookshelf, a bench, a
-  signpost, a mailbox, a noticeboard, a garden shed and a canvas tent. Made things with colours to choose (the
-  bench, the shed's door, the tent, the pot, the cushion, the cat's bed and more) show them on the selection
-  bar's Colour button, in the blankets' own gingham shades; the next one placed wears the colour you chose last.
-- Garden lamps for the meadow (Edit Meadow › Garden): a lamp post that lights by itself after sunset and
-  goes out after sunrise, the lamps coming on one by one with a little stutter as each catches. Lit, each
-  pools warm light on the grass round it, lights what stands near it and the rain or snow falling past it, and
-  glows softly, more so in fog. Placing one at night shows its light before it is put down. At most 32; never
-  on the picnic ground. Settings › Meadow › Lamps light at night turns them off.
-- Painted paths now read as pale, dry, trodden earth with a few pebbles and short tufts along their sides,
-  and soil as a dark tilled bed in ridges, so the two are told apart at a glance; the earth's flecks are
-  soft and round instead of small blocks.
-- My Meadows (Settings › Meadow, and My Meadows… in the editor's name menu): a card for every meadow, the
-  Default first, each with a picture of it drawn by the meadow itself and what it holds ("214 things · paths
-  and lawn"); click to use one; Rename in place, Duplicate, Show in Finder, Move to Trash (asking first), and
-  New Meadow from the Default or empty.
-- Meadows as files to share: Export… (with your name and a line about it, if you like), Share…, or drag a card
-  to the Finder; Export Picture… for a post. A meadow file holds the scenery only: nothing of your Mac, your
-  folders, your workspaces, the date or you. Open one with a double-click, File › Import Meadow…, or by
-  dropping it on the meadow, My Meadows or the Dock icon: the import sheet shows it drawn, who made it, what it
-  holds and what to know, and Add or Add and Use never replaces a meadow of yours. A file from a newer Whiskr
-  opens and keeps what this one cannot show; one too new, damaged or too large says why and what to do.
-  Meadow files have their own icon in the Finder.
-- Things a newer Whiskr put in a meadow show as parcels while editing, to be moved or taken away, and are
-  never lost on save.
-- A meadow changed on disk by something else (a sync tool, the Finder) is read again; while you edit it,
-  you choose Keep Mine or Reload, and the other version is kept as a meadow of its own.
+- **The meadow editor: make the meadow yours.**
+  - Edit Meadow (View › Edit Meadow, ⌃⌘E; also the grass's menu, Settings › Meadow and Go to): the terminals
+    slide away and the meadow fills the window, seen from above, with a tray of tools and things along its
+    bottom edge. Everything is saved as you go: the first change makes "My Meadow", a copy of the Default,
+    which never changes; Revert to Default shows it again. Done (⌘↩) or Esc brings the window back exactly as it
+    was; terminals, Claudes and alerts carry on throughout, and ⌘J, ⌘T and choosing anything on the right leave
+    editing first. The first time, one quiet note says where the tools are and how to leave.
+  - Select (V): click, ⇧-click, ⌘-click (all of a kind nearby) or a marquee; drag to move (⌥-drag copies), with a
+    ring under each and, where one cannot stand, a dashed ring and the reason by the pointer. Arrows nudge, R
+    turns, [ and ] size living things, ⌘D duplicates, ⌫ deletes, ⌘C, ⌘X and ⌘V copy and paste. A bar under what
+    is chosen turns, sizes, shuffles, colours (C), duplicates and deletes; a chosen tree is ringed round its
+    crown's shade and lit a little brighter in its own colours. `,` `.` and `0` (or View › Editor View, or the
+    grass's menu) turn the view and frame the workspaces again. Every gesture is one step of ⌘Z and ⇧⌘Z, named
+    in Edit › Undo.
+  - The tray: Select, Brush (B), Erase (E) and Ground (G); shelves by category (1–7: Trees, Flowers, Stones &
+    Wood, Ground, Garden, Workplace, Cat Things), each thing pictured by the meadow itself in its clay; a filter
+    (⌘F) that finds things by other names too ("firewood", "zabuton"; in Japanese, hiragana or katakana alike);
+    folded to one row with ⌥⌘T. Click a thing and its ghost follows the pointer; a click places it (⇧-click
+    places more), or drag it straight out of the tray; each grows its own size, lean and shape. The tray says
+    how full the meadow is before a cap (5,000 things, 48 trees, 120 tall things, 32 lamps) and why at one.
+  - The Brush plants loose clumps of flowers, ferns, clover or mushrooms (or the meadow's own wildflower mix);
+    ⌥-drag clears. The Eraser takes what you click and sweeps plants and stones (one kind, if you like), never a
+    tree, wood or a made thing. The Ground tool paints pale trodden paths, lawn mown in stripes and dark tilled
+    soil, and brings the wild grass back. Stepping stones are laid in a row by a drag, a stride apart.
+  - More to place, each modelled on the real thing in the meadow's clay: an apple tree and a Scots pine;
+    cornflowers, foxgloves, ferns and clover; a boulder, a tree stump and a log pile; Cat Things (a cardboard
+    box, a scratching post, a ball of yarn, a cat bed, a food bowl); a garden (a wooden fence laid by dragging,
+    joining a fence's end near it, with Straighten and Add Gate on its bar; a flower pot, a planter box, a
+    watering can, a birdhouse, a straw beehive, garden lamps); a workplace (a floor cushion, a low writing desk,
+    a bookshelf, a bench, a signpost, a mailbox, a noticeboard, a garden shed, a canvas tent). Made things come
+    in a few colours, chosen in the selection bar; the next one placed wears the colour chosen last. Garden
+    lamps light by themselves after sunset, one by one, and pool warm light on the grass (Settings › Meadow ›
+    Lamps light at night). Idle cats use what you place.
+  - Complete from the keyboard (Tab to the shelf, Return to arm, arrows to move, Return to place; Tab in the
+    filter to the shelf as filtered) and with VoiceOver, which reads each thing with its state ("Garden lamp,
+    lit", "Wooden fence, with a gate", "Bench, colour sage"). Reduce Motion and Increase Contrast are honoured
+    throughout.
+  - Help › Whiskr Help has pages on editing, placing, fences, colours, lamps, My Meadows and files, with a
+    table of every key of the editor, and the Help menu's search finds them.
+  - My Meadows (Settings › Meadow, and My Meadows… in the editor's name menu): a card for every meadow, the
+    Default first, each with a picture drawn by the meadow itself and what it holds; Rename in place,
+    Duplicate, Show in Finder, Move to Trash (asking first), and New Meadow from the Default or empty.
+  - Meadows as files to share: Export… (with your name and a line about it, if you like), Share…, a card
+    dragged to the Finder, Export Picture…. A meadow file holds the scenery only: nothing of your Mac, your
+    folders, your workspaces, the date or you. Open one with a double-click, File › Import Meadow…, or by
+    dropping it on the meadow, My Meadows or the Dock icon: the import sheet shows it first, and adding never
+    replaces a meadow of yours. A file from a newer Whiskr opens and keeps what this one cannot show (parcels
+    while editing, to be moved or taken away); one too new, damaged or too large says why and what to do.
+    Meadow files have their own icon in the Finder. A meadow changed on disk by something else is read again;
+    while you edit it, you choose Keep Mine or Reload, and the other version is kept as a meadow of its own.
 - Trees and the fallen log make way where a blanket comes, as flowers and stones always did, and come back
   when it goes. The workspaces' column always runs down the middle of the meadow.
 - The meadow's sky follows the real sun: dawn, day, dusk and night come at the real sunrise and sunset
