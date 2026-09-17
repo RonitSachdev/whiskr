@@ -176,14 +176,14 @@ enum Trees {
         let leaves = canopies(lobes, masses, colors: s.leaves, needles: pine, coarse: s.clump < 2.8, grain)
         parts.append(leaves)
         if s.form == .apple { parts += apples(in: lobes, &random) }
-        return tree(parts, masses, leaves)
+        return tree(parts, masses, leaves, over: top)
     }
 
-    /// The tree's measures from its leaves: how far they spread, the middle of its crown, and the ball round
-    /// that middle holding most of them.
-    private static func tree(_ parts: [Geometry], _ masses: [Mass], _ leaves: Geometry) -> Tree {
+    /// The tree's measures from its leaves: how far they spread, the middle of its crown (over the top of its trunk,
+    /// at the masses' height), and the ball round that middle holding most of them.
+    private static func tree(_ parts: [Geometry], _ masses: [Mass], _ leaves: Geometry, over trunk: Vec3) -> Tree {
         let crown = leaves.positions.map { hypot($0.x, $0.z) }.max() ?? 0
-        let middle = masses.reduce(Vec3.zero) { $0 + $1.at } / Float(max(masses.count, 1))
+        let middle = Vec3(trunk.x, masses.reduce(0) { $0 + $1.at.y } / Float(max(masses.count, 1)), trunk.z)
         let bulk = masses.map { simd_distance($0.at, middle) + $0.size * 0.8 }.max() ?? 0
         return Tree(shape: Geometry.join(parts), crown: crown, middle: middle, bulk: bulk, masses: masses.map { Ball(center: $0.at, radius: $0.size) })
     }
