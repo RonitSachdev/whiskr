@@ -27,8 +27,9 @@ extension EditorFlow {
         await still()
         let before = count
 
-        check("the tray offers Stage 8's things on the Garden and Workplace shelves, the fence first",
-              EditorTray.things.filter { $0.category == .garden }.map(\.id) == ["garden.fence", "garden.flowerPot", "garden.planter", "garden.wateringCan", "garden.birdhouse", "garden.skep"]
+        check("the tray offers Stage 8's things on the Garden and Workplace shelves, the fence first and the garden lamp last on the Garden's",
+              EditorTray.things.filter { $0.category == .garden }.map(\.id) == ["garden.fence", "garden.flowerPot", "garden.planter", "garden.wateringCan", "garden.birdhouse", "garden.skep",
+                                                                                 "work.lampPost"]
                   && EditorTray.things.filter { $0.category == .workplace }.map(\.id) == ["work.desk", "work.cushion", "work.bookshelf", "work.bench", "work.signpost", "work.mailbox",
                                                                                           "work.noticeboard", "place.shed", "place.tent"])
 
@@ -37,7 +38,7 @@ extension EditorFlow {
         var placed: [(id: String, entry: Int)] = []
         for (k, id) in Self.gardenThings.enumerated() {
             let asset = MeadowCatalog.current.asset(id)!
-            await pressTray("tray.category.\(asset.category.rawValue)")
+            await pressTray("tray.category.\((EditorTray.shelf(of: id) ?? asset.category).rawValue)")
             await pressTray("tray.item.\(id)")
             let near = SIMD2<Float>(28 + Float(k % 4) * 7, middle.y - 10 + Float(k / 4) * 7)
             guard tray.armed == id, let spot = freeSpot(for: id, near: near), let point = meadow.viewPoint(ofGround: spot) else {

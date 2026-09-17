@@ -48,7 +48,6 @@ extension EditorFlow {
               EditorTray.categories == [.trees, .flowers, .stonesAndWood, .ground, .garden, .workplace, .catThings]
                   && EditorTray.things.filter { $0.category == .catThings }.map(\.id) == ["cat.box", "cat.scratchingPost", "cat.yarn", "cat.bed", "cat.bowl"]
                   && EditorTray.things.filter { $0.category == .workplace }.map(\.id).first == "work.desk"
-                  && EditorTray.things.filter { $0.category == .workplace }.map(\.id).last == "work.lampPost"
                   && Self.newThings.allSatisfy { id in EditorTray.things.contains { $0.id == id } },
               "\(EditorTray.categories)")
         check("the Brush paints the new plants; the Eraser's kinds are the small things only (no made thing, no wood, no boulder)",
@@ -62,7 +61,7 @@ extension EditorFlow {
         var placed: [(id: String, entry: Int)] = []
         for (k, id) in Self.newThings.enumerated() {
             let asset = MeadowCatalog.current.asset(id)!
-            await pressTray("tray.category.\(asset.category.rawValue)")
+            await pressTray("tray.category.\((EditorTray.shelf(of: id) ?? asset.category).rawValue)")
             await pressTray("tray.item.\(id)")
             // Beside the picnic ground, where nothing has to make way for a blanket.
             let near = SceneryRules.isBig(id) ? SIMD2<Float>(k == 0 ? -42 : 46, middle.y + 6) : SIMD2(29 + Float(k % 4) * 5, middle.y - 8 + Float(k / 4) * 5)

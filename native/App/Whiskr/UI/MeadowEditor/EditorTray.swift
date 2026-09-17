@@ -89,7 +89,14 @@ final class EditorTray {
     /// Whiskr draws (others join by themselves as the scene learns to draw them).
     static let things: [Item] = MeadowCatalog.current.assets.filter { asset in
         asset.inTray && MeadowScenery.draws(asset.id)
-    }.map { Item(id: $0.id, name: MeadowWords.name($0.id), category: $0.category, pictured: [$0.id]) }
+    }.map { Item(id: $0.id, name: MeadowWords.name($0.id), category: shelved[$0.id] ?? $0.category, pictured: [$0.id]) }
+
+    /// Things the tray shelves away from their catalog category, where people look for them: the garden lamp
+    /// stands with the Garden (catalog 1 files it under Workplace, and a catalog's categories are frozen with it).
+    static let shelved: [String: MeadowAsset.Category] = ["work.lampPost": .garden]
+
+    /// The shelf a thing is offered on (nil: the tray does not offer it).
+    static func shelf(of id: String) -> MeadowAsset.Category? { things.first { $0.id == id }?.category }
 
     /// The categories that hold something, in the catalog's order: those of things, and the ground's paints
     /// (whose tab is the Ground tool's).

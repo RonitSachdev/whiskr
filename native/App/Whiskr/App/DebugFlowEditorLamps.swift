@@ -6,7 +6,7 @@ import WhiskrKit
 import WhiskrMeadow
 
 /// The editor flow's part for the garden lamp (Stage 9, `DebugFlowEditor.swift`), through the app's own event paths:
-/// - the lamp on the Workplace shelf, named, found by other words;
+/// - the lamp on the Garden shelf (its catalog category is Workplace), named, found by other words;
 /// - at night its ghost lights the ground where it would stand, before it is placed, and follows the pointer;
 /// - kept off the picnic ground, with the reason;
 /// - placed with a click: lit at once, its pool where it stands; undone, its light goes with it;
@@ -19,8 +19,8 @@ extension EditorFlow {
         await PerfWait.sleep(1200)
         await still()
         let id = "work.lampPost"
-        check("the garden lamp is on the Workplace shelf, by name, and found by other words",
-              EditorTray.things.contains { $0.id == id && $0.category == .workplace } && MeadowWords.name(id) == String(localized: "Garden lamp")
+        check("the garden lamp is on the Garden shelf, by name, and found by other words",
+              EditorTray.things.contains { $0.id == id && $0.category == .garden } && MeadowCatalog.current.asset(id)?.category == .workplace && MeadowWords.name(id) == String(localized: "Garden lamp")
                   && EditorTray.things.first { $0.id == id }.map { EditorTray.matches($0, "street lamp") && EditorTray.matches($0, "lantern") } == true)
 
         let store = WorldStore.shared, time = store.settings.timeOfDay
@@ -29,7 +29,7 @@ extension EditorFlow {
         await PerfWait.sleep(600)
 
         guard let middle = meadow.groundPoint(at: NSPoint(x: meadow.bounds.midX, y: meadow.bounds.midY + 60)) else { return check("ground in view", false) }
-        await pressTray("tray.category.workplace")
+        await pressTray("tray.category.garden")
         await pressTray("tray.item.\(id)")
         check("the lamp's tile arms it", tray.armed == id, "armed \(tray.armed ?? "nothing")")
 
