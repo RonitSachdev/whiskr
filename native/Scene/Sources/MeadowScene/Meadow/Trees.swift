@@ -184,7 +184,7 @@ enum Trees {
     private static func tree(_ parts: [Geometry], _ masses: [Mass], _ leaves: Geometry, over trunk: Vec3) -> Tree {
         let crown = leaves.positions.map { hypot($0.x, $0.z) }.max() ?? 0
         let middle = Vec3(trunk.x, masses.reduce(0) { $0 + $1.at.y } / Float(max(masses.count, 1)), trunk.z)
-        let bulk = masses.map { simd_distance($0.at, middle) + $0.size * 0.8 }.max() ?? 0
+        let bulk = masses.map { simd_distance($0.at, middle) + $0.size * 0.5 }.max() ?? 0
         return Tree(shape: Geometry.join(parts), crown: crown, middle: middle, bulk: bulk, masses: masses.map { Ball(center: $0.at, radius: $0.size) })
     }
 
